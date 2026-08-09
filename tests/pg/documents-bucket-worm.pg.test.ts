@@ -183,15 +183,20 @@ describe('documents bucket: WORM (no client-side DELETE)', () => {
         'worm_ratchet_bucketless (d)',
       ])
 
-      // And it is not merely reported: it really would let the uploader
-      // destroy their own rakenskapsinformation, which is why the catalogue
-      // assertion has to catch it.
+      // And it is not merely reported: on a cloud project it really would let
+      // the uploader destroy their own rakenskapsinformation. Self-hosted
+      // storage ships a guard trigger that raises on any direct DELETE, so
+      // there the hole is closed by the platform; both shapes are accepted.
       await withUserContext(owner, async (client) => {
-        const res = await client.query(
-          `DELETE FROM storage.objects WHERE bucket_id = 'documents' AND name = $1`,
-          [legacyKey],
-        )
-        expect(res.rowCount).toBe(1)
+        try {
+          const res = await client.query(
+            `DELETE FROM storage.objects WHERE bucket_id = 'documents' AND name = $1`,
+            [legacyKey],
+          )
+          expect(res.rowCount).toBe(1)
+        } catch (err) {
+          expect(String(err)).toMatch(/Direct deletion from storage tables is not allowed/)
+        }
       })
     } finally {
       await getPool().query(`DROP POLICY IF EXISTS worm_ratchet_bucketless ON storage.objects`)
@@ -219,14 +224,17 @@ describe('documents bucket: WORM (no client-side DELETE)', () => {
     // The exact production shape: [2] of `documents/{userId}/...` is the
     // uploader's auth.uid(), which is what the dropped policy matched on.
     await withUserContext(owner, async (client) => {
-      const res = await client.query(
-        `DELETE FROM storage.objects WHERE bucket_id = 'documents' AND name = $1`,
-        [legacyKey],
-      )
-      // RLS filters the row out rather than raising: the DELETE reports
-      // success having removed nothing. That silence is why the hole was
-      // invisible from the application side.
-      expect(res.rowCount).toBe(0)
+      // Cloud RLS filters the row out silently (rowCount 0); the self-hosted
+      // storage guard raises instead. Either way the delete must not land.
+      try {
+        const res = await client.query(
+          `DELETE FROM storage.objects WHERE bucket_id = 'documents' AND name = $1`,
+          [legacyKey],
+        )
+        expect(res.rowCount).toBe(0)
+      } catch (err) {
+        expect(String(err)).toMatch(/Direct deletion from storage tables is not allowed/)
+      }
     })
 
     const after = await getPool().query(
@@ -238,11 +246,15 @@ describe('documents bucket: WORM (no client-side DELETE)', () => {
 
   it('a company member cannot delete a company-scoped object either', async () => {
     await withUserContext(owner, async (client) => {
-      const res = await client.query(
-        `DELETE FROM storage.objects WHERE bucket_id = 'documents' AND name = $1`,
-        [companyScopedKey],
-      )
-      expect(res.rowCount).toBe(0)
+      try {
+        const res = await client.query(
+          `DELETE FROM storage.objects WHERE bucket_id = 'documents' AND name = $1`,
+          [companyScopedKey],
+        )
+        expect(res.rowCount).toBe(0)
+      } catch (err) {
+        expect(String(err)).toMatch(/Direct deletion from storage tables is not allowed/)
+      }
     })
 
     const after = await getPool().query(

@@ -5,12 +5,12 @@ import { seedCompany, insertAuthUser, insertCompany } from '../../../tests/pg/fi
 
 // pg-real coverage for migrations 20260628140000 (capability_grants /
 // company_capability_config / metered_events + company_has_capability RPC +
-// RLS) and 20260629120000 (trial-grant trigger). Required by
+// RLS) and 20260809200000 (trial seeding stopped). Required by
 // .claude/rules/database.md for any RPC/RLS/trigger change.
 //
-// NOTE: as of 20260629120000 an AFTER INSERT trigger auto-seeds a trial grant
-// on the PAID keys for every new company. The resolver tests therefore call
-// clearGrants() first to assert against a controlled grant state.
+// NOTE: the 20260629120000 trial-seeding trigger is dropped by
+// 20260809200000, so a fresh company starts with no grants at all. The
+// clearGrants() calls stay as belt-and-braces against pre-existing rows.
 
 const future = () => new Date(Date.now() + 86_400_000).toISOString()
 const past = () => new Date(Date.now() - 86_400_000).toISOString()
@@ -114,6 +114,8 @@ describe('company_has_capability tenant guard', () => {
 
   it('lets a member resolve their own company under authenticated ctx', async () => {
     const { userId, companyId } = await seedCompany()
+    // Trial seeding is gone (20260809200000): grant explicitly.
+    await insertGrant({ companyId, key: 'ai' })
     const ok = await withUserContext(userId, async (client) => {
       const r = await client.query<{ ok: boolean }>(
         `SELECT public.company_has_capability($1, 'ai') AS ok`,
@@ -121,7 +123,6 @@ describe('company_has_capability tenant guard', () => {
       )
       return r.rows[0].ok
     })
-    // entitled via the auto-seeded trial grant
     expect(ok).toBe(true)
   })
 })
@@ -186,29 +187,17 @@ describe('capability_grants scope constraint', () => {
   })
 })
 
-describe('trial grant seeding trigger (20260629120000)', () => {
-  it('grants a new company a 30-day trial on the PAID keys at creation', async () => {
+describe('trial seeding stopped (20260809200000)', () => {
+  it('creates no grants at all for a new company', async () => {
     const userId = await insertAuthUser()
     const companyId = await insertCompany({ createdBy: userId })
-    const { rows } = await getPool().query<{
-      capability_key: string
-      source: string
-      expires_at: string | null
-    }>(
-      `SELECT capability_key, source, expires_at FROM public.capability_grants
-       WHERE company_id = $1 ORDER BY capability_key`,
+    const { rows } = await getPool().query(
+      `SELECT 1 FROM public.capability_grants WHERE company_id = $1`,
       [companyId],
     )
-    expect(rows.map((r) => r.capability_key)).toEqual(['ai', 'bank_sync', 'email_send', 'skatteverket'])
-    expect(rows.every((r) => r.source === 'trial')).toBe(true)
-    expect(rows.every((r) => r.expires_at !== null)).toBe(true)
-    expect(await rpc(companyId, 'ai')).toBe(true)
-  })
-
-  it('does not seed free keys (only the PAID set is granted)', async () => {
-    const userId = await insertAuthUser()
-    const companyId = await insertCompany({ createdBy: userId })
-    expect(await rpc(companyId, 'cloud_backup')).toBe(false)
-    expect(await rpc(companyId, 'org_lookup')).toBe(false)
+    expect(rows).toHaveLength(0)
+    // The DB-level gate stays fail-closed; the self-hosted app bypasses the
+    // paywall application-side instead.
+    expect(await rpc(companyId, 'ai')).toBe(false)
   })
 })

@@ -1,19 +1,20 @@
 # Architecture
 
-Accounted is a multi-tenant double-entry bookkeeping system built for Swedish
-accounting law. This document explains how the system is put together and why
-some parts are deliberately rigid. For contribution workflow, see
-[CONTRIBUTING.md](CONTRIBUTING.md).
+This fork of Accounted is a single-tenant-in-practice double-entry bookkeeping
+system for Swedish accounting law, slimmed for one enskild firma on a private
+network. This document explains how the system is put together and why some
+parts are deliberately rigid.
 
 ## Overview
 
 - **Framework**: Next.js (App Router) with React and TypeScript in strict mode.
 - **Database**: Supabase (PostgreSQL with Row Level Security), which also
-  provides auth (email/password plus TOTP MFA).
-- **Deployment**: Vercel-hosted is the primary target; a Docker self-hosted
-  setup is fully supported (see [docs/SELF-HOSTING.md](docs/SELF-HOSTING.md)).
-- **UI**: Tailwind CSS with shadcn/ui components. User-facing product language
-  is Swedish and English (`messages/sv.json`, `messages/en.json`).
+  provides auth (email/password). The whole stack runs locally: see
+  [docs/SELF-HOSTING.md](docs/SELF-HOSTING.md), section "Fully Self-Hosted".
+- **Deployment**: Docker, behind a reverse proxy that terminates HTTPS
+  (secure cookies require it even on a LAN).
+- **UI**: Tailwind CSS with shadcn/ui components. UI strings live in
+  `messages/sv.json` and `messages/en.json`.
 
 ## The bookkeeping engine
 
@@ -30,9 +31,14 @@ The journal entry lifecycle is draft, then commit:
 Two invariants hold for every entry:
 
 - Debits equal credits, and both sides are greater than zero.
-- Once committed, an entry is never edited or deleted. Mistakes are corrected
-  with reversal entries (storno): `reverseEntry()` cancels a voucher and
-  `correctEntry()` replaces it (`lib/core/bookkeeping/storno-service.ts`).
+- Once committed, an entry changes only through the two sanctioned correction
+  tracks of BFL 5 kap 5 §: **storno** (`reverseEntry()`/`correctEntry()` in
+  `lib/core/bookkeeping/storno-service.ts`, which cancels and replaces under
+  new voucher numbers) and **inline rättelse** (the `correct_entry_metadata`
+  and `correct_entry_lines_inline` RPCs, which change text/date or
+  strike-and-replace lines inside the same voucher, logging who/when to the
+  write-once `journal_entry_rattelse_log`). Deletion is only possible for the
+  last voucher in a series via `delete_last_voucher`.
 
 If a gap still occurs in a voucher series (for example around imported
 history), it must be documented, and the explanation is stored
@@ -42,11 +48,12 @@ history), it must be documented, and the explanation is stored
 
 The rules above are not conventions; they are enforced by PostgreSQL triggers:
 
-- Committed journal entries cannot be edited or deleted. The only change the
-  triggers permit is the controlled status transition used by the storno flow
-  (marking an entry as reversed).
+- Committed journal entries cannot be edited or deleted, except through the
+  narrow trigger branches behind the correction RPCs (transaction-local GUCs
+  such as `gnubok.allow_metadata_rattelse`, set only after the rättelse log
+  row is written) and the storno status transition.
 - Writes to closed or locked accounting periods are rejected, as are writes
-  behind a company-wide lock date.
+  behind a company-wide lock date. These have no GUC escape.
 - Documents linked to posted entries cannot be deleted; Swedish law requires
   7-year retention of accounting records.
 
@@ -63,53 +70,43 @@ Two smaller invariants that show up everywhere in the codebase:
 
 ## Multi-tenancy and security
 
-Users belong to companies through `company_members`, and every business table
-carries a `company_id`. Access control is layered:
+The multi-tenant machinery from upstream is intact (removing it would mean
+rewriting hundreds of RLS policies for no gain). Users belong to companies
+through `company_members`, and every business table carries a `company_id`:
 
 - **Row Level Security** in PostgreSQL restricts rows to companies the user
   belongs to.
 - **Explicit filtering**: queries still filter by `company_id` in code, as
   defense in depth, because service-role code paths bypass RLS.
-- **Route guards**: API routes wrap a shared route context helper that
-  resolves the authenticated user, the active company, and MFA enforcement in
-  one place. Routes never hand-roll their own auth.
+- **Route guards**: API routes wrap `withRouteContext`, which resolves the
+  authenticated user and the active company in one place. Routes never
+  hand-roll their own auth.
 
-The active company is resolved server-side from the user's stored preference,
-so the Next.js app and RLS always agree on which company is active.
+`NEXT_PUBLIC_SELF_HOSTED=true` (the default here) disables MFA enforcement,
+session timeouts, BankID, analytics and the upstream paywall.
 
-## Extension system
+## The one extension: MCP
 
-Core is a complete accounting product on its own. Optional functionality
-(AI categorization, receipt OCR, email, calendar, the MCP server, and more)
-ships as extensions under `extensions/`, toggled by `extensions.config.json`.
+Upstream's extension system remains, but this fork enables a single
+extension: `extensions/general/mcp-server/`. It exposes the bookkeeping
+engine as MCP (Model Context Protocol) tools so an external AI agent, with
+its own API key and its own model account, can operate the ledger. There is
+no LLM call anywhere in this codebase.
 
-The boundary is strict and CI-enforced:
+- Authentication uses scoped API keys (`gnubok_sk_*`, stored as SHA-256
+  hashes) created under `/settings/api`, or MCP OAuth.
+- Posting operations are staged: the agent proposes, and a human approves on
+  the `/pending` page before anything is committed to the journal.
+- The Swedish accounting skills under `.claude/skills/swedish-*` are compiled
+  into the `agent_atom_registry` seed and served to agents via the
+  `gnubok_load_skill` tool.
 
-- Core code never imports from `@/extensions/`. CI builds core with zero
-  extensions enabled, so a direct import breaks the build.
-- Extensions integrate through the event bus and documented extension APIs,
-  and are wired via a generated static registry (`npm run setup:extensions`).
+Core code never imports from `@/extensions/`; extensions integrate through
+the event bus (`lib/events/bus.ts`) and the generated static registry
+(`npm run setup:extensions`).
 
 The project is licensed AGPL-3.0-or-later; this fork carries no extension
 exception. See [LICENSE](LICENSE).
-
-## Agent surface (MCP)
-
-The bookkeeping engine is exposed as an MCP (Model Context Protocol) server
-with over 100 tools, so AI agents can operate the ledger: list and categorize
-transactions, draft vouchers, reconcile periods, generate reports and
-declarations.
-
-- Authentication uses scoped API keys (stored as SHA-256 hashes, rate limited
-  per key).
-- Posting operations are staged: an agent proposes an operation, and a human
-  approves it before anything is committed to the journal.
-
-## Events
-
-`lib/events/bus.ts` is a module-level singleton event bus. Domain events (for
-example "invoice created" or "transaction imported") are how extensions react
-to core activity without core knowing about them.
 
 ## Repository map
 
@@ -118,15 +115,15 @@ to core activity without core knowing about them.
 | `app/` | Next.js App Router pages and API routes |
 | `lib/bookkeeping/` | Engine, entry generators, account mapping, BAS chart data |
 | `lib/core/` | Periods, year-end, storno, tax codes, audit, documents |
-| `lib/reports/` | Balance sheet, income statement, VAT, SIE, tax reports |
-| `lib/` (other) | Invoices, transactions, imports, salary, reconciliation, tax, providers |
+| `lib/reports/` | Balance sheet, income statement, VAT, SIE, NE-bilaga |
+| `lib/bokslut/enskild-firma/` | Egenavgifter, räntefördelning, fonder for the NE flow |
 | `components/` | React components (shadcn/ui based) |
-| `extensions/` | Opt-in extension plugins |
+| `extensions/general/mcp-server/` | The MCP tool surface |
+| `packages/accounted-mcp` | stdio→HTTP MCP bridge (npm) |
 | `supabase/migrations/` | Database schema, RLS policies, enforcement triggers |
-| `packages/gnubok-mcp` | Published MCP bridge package |
+| `packs/` | Konteringspaket (booking templates) as validated YAML |
 | `messages/` | Swedish and English UI strings |
-| `tests/` | Shared test helpers and fixtures |
-| `docs/` | Self-hosting, Docker, extensions, white-label guides |
+| `docs/` | Self-hosting, Docker and white-label guides |
 
 ## Testing
 

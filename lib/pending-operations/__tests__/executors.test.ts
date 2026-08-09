@@ -1,0 +1,907 @@
+/**
+ * Unit tests for the executors added to bring every declared op type up to a
+ * callable state through `commitPendingOperation`. Tests run through the
+ * public dispatcher (executors are not exported individually) so the wiring
+ * is exercised alongside executor logic.
+ */
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { eventBus } from '@/lib/events/bus'
+import {
+  createQueuedMockSupabase,
+  makeCustomer,
+  makeInvoice,
+  makeFiscalPeriod,
+  makeSupplierInvoice,
+} from '@/tests/helpers'
+import type { PendingOperation } from '@/types'
+
+vi.mock('@/lib/core/bookkeeping/period-service', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/core/bookkeeping/period-service')>(
+    '@/lib/core/bookkeeping/period-service'
+  )
+  return {
+    ...actual,
+    unlockPeriod: vi.fn(),
+  }
+})
+
+// create_transaction and create_invoice now resolve a Riksbanken rate for any
+// non-SEK row (and refuse when there is none), so the foreign-currency cases
+// below must not reach the real API. FX behaviour itself is covered in
+// staged-fx-rates.test.ts.
+vi.mock('@/lib/currency/riksbanken', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/currency/riksbanken')>(
+    '@/lib/currency/riksbanken'
+  )
+  return {
+    ...actual,
+    fetchExchangeRate: vi.fn(async (currency: string) => ({
+      currency,
+      rate: 10.5,
+      date: '2026-05-01',
+    })),
+  }
+})
+
+vi.mock('@/lib/import/sie-parser', () => ({
+  parseSIEFile: vi.fn(),
+  calculateFileHash: vi.fn(async () => 'mock-hash'),
+}))
+
+vi.mock('@/lib/import/sie-import', () => ({
+  executeSIEImport: vi.fn(),
+}))
+
+vi.mock('@/lib/bokslut/assets/depreciation-engine', () => ({
+  commitAnnualPostings: vi.fn(),
+}))
+
+vi.mock('@/lib/bookkeeping/invoice-entries', async () => {
+  const actual =
+    await vi.importActual<typeof import('@/lib/bookkeeping/invoice-entries')>(
+      '@/lib/bookkeeping/invoice-entries'
+    )
+  return {
+    ...actual,
+    createCreditNoteJournalEntry: vi.fn(),
+  }
+})
+
+vi.mock('@/lib/bookkeeping/supplier-invoice-entries', async () => {
+  const actual =
+    await vi.importActual<typeof import('@/lib/bookkeeping/supplier-invoice-entries')>(
+      '@/lib/bookkeeping/supplier-invoice-entries'
+    )
+  return {
+    ...actual,
+    createSupplierCreditNoteEntry: vi.fn(),
+  }
+})
+
+vi.mock('@/lib/entitlements/has-capability', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/entitlements/has-capability')>()
+  return { ...actual, hasCapability: vi.fn().mockResolvedValue(true) }
+})
+
+vi.mock('@/lib/email/service', () => ({
+  getEmailService: () => ({
+    isConfigured: () => true,
+    sendEmail: vi.fn(),
+  }),
+}))
+
+vi.mock('@/lib/invoices/ensure-invoice-number', () => ({
+  ensureInvoiceNumber: vi.fn(),
+}))
+
+const mockRecordManualInvoiceDelivery = vi.fn().mockResolvedValue({ id: 'delivery-1' })
+const mockReserveInvoiceDelivery = vi.fn().mockResolvedValue('delivery-1')
+vi.mock('@/lib/invoices/invoice-deliveries', () => ({
+  recordManualInvoiceDelivery: (...args: unknown[]) => mockRecordManualInvoiceDelivery(...args),
+  reserveInvoiceDelivery: (...args: unknown[]) => mockReserveInvoiceDelivery(...args),
+  sendTrackedInvoiceEmail: vi.fn(),
+}))
+
+import { commitPendingOperation } from '../commit'
+import { unlockPeriod } from '@/lib/core/bookkeeping/period-service'
+import { parseSIEFile } from '@/lib/import/sie-parser'
+import { executeSIEImport } from '@/lib/import/sie-import'
+import { commitAnnualPostings } from '@/lib/bokslut/assets/depreciation-engine'
+import { createCreditNoteJournalEntry } from '@/lib/bookkeeping/invoice-entries'
+import { createSupplierCreditNoteEntry } from '@/lib/bookkeeping/supplier-invoice-entries'
+import { ensureInvoiceNumber } from '@/lib/invoices/ensure-invoice-number'
+
+function makePendingOp(overrides: Partial<PendingOperation>): PendingOperation {
+  return {
+    id: 'op-1',
+    user_id: 'user-1',
+    company_id: 'company-1',
+    operation_type: 'create_customer',
+    status: 'pending',
+    title: 'test',
+    params: {},
+    preview_data: {},
+    result_data: null,
+    actor_type: 'user',
+    actor_id: null,
+    actor_label: null,
+    risk_level: 'high',
+    created_at: '2026-05-03T00:00:00Z',
+    resolved_at: null,
+    updated_at: '2026-05-03T00:00:00Z',
+    ...overrides,
+  } as PendingOperation
+}
+
+beforeEach(() => {
+  vi.clearAllMocks()
+  eventBus.clear()
+})
+
+// ─── unlock_period ──────────────────────────────────────────────────
+
+describe('commitPendingOperation: unlock_period', () => {
+  it('happy path: clears locked_at and returns committed', async () => {
+    const period = makeFiscalPeriod({ id: 'fp-1', locked_at: null })
+    vi.mocked(unlockPeriod).mockResolvedValueOnce(period)
+
+    const { supabase, enqueue } = createQueuedMockSupabase()
+    enqueue({ data: { id: 'op-1' }, error: null }) // CAS claim
+    enqueue({ data: null, error: null }) // dispatcher's pending_operations update
+
+    const op = makePendingOp({
+      operation_type: 'unlock_period',
+      params: { fiscal_period_id: 'fp-1' },
+    })
+
+    const result = await commitPendingOperation(supabase as never, 'user-1', 'company-1', op)
+
+    expect(result.status).toBe('committed')
+    expect(result.data).toMatchObject({ period_id: 'fp-1', locked_at: null })
+    expect(unlockPeriod).toHaveBeenCalledWith(expect.anything(), 'company-1', 'user-1', 'fp-1')
+  })
+
+  it('rejects when fiscal_period_id is missing', async () => {
+    const { supabase, enqueue } = createQueuedMockSupabase()
+    enqueue({ data: { id: 'op-1' }, error: null }) // CAS claim
+    enqueue({ data: null, error: null }) // dispatcher's reject update
+    const op = makePendingOp({ operation_type: 'unlock_period', params: {} })
+
+    const result = await commitPendingOperation(supabase as never, 'user-1', 'company-1', op)
+
+    expect(result.status).toBe('failed')
+    expect(result.http_status).toBe(400)
+    expect(unlockPeriod).not.toHaveBeenCalled()
+  })
+
+  it('surfaces underlying service errors', async () => {
+    vi.mocked(unlockPeriod).mockRejectedValueOnce(new Error('Period is not locked'))
+
+    const { supabase, enqueue } = createQueuedMockSupabase()
+    enqueue({ data: { id: 'op-1' }, error: null }) // CAS claim
+    enqueue({ data: null, error: null }) // dispatcher's reject update on throw
+    const op = makePendingOp({
+      operation_type: 'unlock_period',
+      params: { fiscal_period_id: 'fp-1' },
+    })
+
+    const result = await commitPendingOperation(supabase as never, 'user-1', 'company-1', op)
+
+    expect(result.status).toBe('failed')
+    expect(result.error).toMatch(/not locked/)
+  })
+})
+
+describe('commitPendingOperation: credit-note issuance guard', () => {
+  it('rejects mark_invoice_sent before the ordinary invoice executor can book it', async () => {
+    const { supabase, enqueue } = createQueuedMockSupabase()
+    enqueue({ data: { id: 'op-1' }, error: null }) // CAS claim
+    enqueue({
+      data: makeInvoice({
+        id: 'credit-1',
+        status: 'draft',
+        credited_invoice_id: 'invoice-1',
+      }),
+      error: null,
+    })
+    enqueue({ data: null, error: null }) // dispatcher's rejected update
+
+    const op = makePendingOp({
+      operation_type: 'mark_invoice_sent',
+      params: { invoice_id: 'credit-1' },
+    })
+
+    const result = await commitPendingOperation(
+      supabase as never,
+      'user-1',
+      'company-1',
+      op,
+    )
+
+    expect(result.status).toBe('rejected')
+    expect(result.http_status).toBe(409)
+    expect(result.error).toContain('Credit notes must be issued')
+  })
+
+  it('records delivery history when a regular invoice is marked as sent', async () => {
+    const { supabase, enqueue } = createQueuedMockSupabase()
+    enqueue({ data: { id: 'op-1' }, error: null }) // CAS claim
+    enqueue({
+      data: makeInvoice({
+        id: 'invoice-1',
+        status: 'draft',
+        invoice_number: 'F-2026001',
+        credited_invoice_id: null,
+      }),
+      error: null,
+    })
+    enqueue({
+      data: { accounting_method: 'cash', entity_type: 'enskild_firma', bankgiro: '123-4567' },
+      error: null,
+    })
+    enqueue({ data: null, error: null }) // status update
+    enqueue({ data: null, error: null }) // dispatcher update
+
+    const op = makePendingOp({
+      operation_type: 'mark_invoice_sent',
+      params: { invoice_id: 'invoice-1' },
+    })
+
+    const result = await commitPendingOperation(
+      supabase as never,
+      'user-1',
+      'company-1',
+      op,
+    )
+
+    expect(result.status).toBe('committed')
+    expect(mockRecordManualInvoiceDelivery).toHaveBeenCalledWith({
+      supabase,
+      companyId: 'company-1',
+      userId: 'user-1',
+      invoiceId: 'invoice-1',
+    })
+  })
+
+  it.each(['SEK', 'EUR'] as const)(
+    'rejects a %s invoice without a payment account before number allocation',
+    async (currency) => {
+    const { supabase, enqueue } = createQueuedMockSupabase()
+    enqueue({ data: { id: 'op-1' }, error: null }) // CAS claim
+    enqueue({
+      data: makeInvoice({
+        id: 'invoice-1',
+        status: 'draft',
+        invoice_number: null,
+        credited_invoice_id: null,
+        currency,
+      }),
+      error: null,
+    })
+    enqueue({ data: { invoice_payment_accounts: {} }, error: null })
+    enqueue({ data: null, error: null }) // dispatcher rejected update
+
+    const op = makePendingOp({
+      operation_type: 'mark_invoice_sent',
+      params: { invoice_id: 'invoice-1' },
+    })
+
+    const result = await commitPendingOperation(
+      supabase as never,
+      'user-1',
+      'company-1',
+      op,
+    )
+
+    expect(result.status).toBe('failed')
+    expect(result.http_status).toBe(400)
+    expect(ensureInvoiceNumber).not.toHaveBeenCalled()
+    expect(mockRecordManualInvoiceDelivery).not.toHaveBeenCalled()
+    },
+  )
+})
+
+describe('commitPendingOperation: invoice send payment account guard', () => {
+  it.each(['SEK', 'EUR'] as const)(
+    'rejects a %s invoice before delivery reservation and number allocation',
+    async (currency) => {
+    const { supabase, enqueue } = createQueuedMockSupabase()
+    enqueue({ data: { id: 'op-1' }, error: null }) // CAS claim
+    enqueue({
+      data: makeInvoice({
+        id: 'invoice-1',
+        status: 'draft',
+        invoice_number: null,
+        currency,
+        customer: makeCustomer({ id: 'customer-1', email: 'customer@example.test' }),
+        items: [],
+      }),
+      error: null,
+    })
+    enqueue({
+      data: {
+        company_name: 'Test AB',
+        invoice_payment_accounts: {},
+      },
+      error: null,
+    })
+    enqueue({ data: null, error: null }) // dispatcher's rejected update
+
+    const op = makePendingOp({
+      operation_type: 'send_invoice',
+      params: { invoice_id: 'invoice-1' },
+    })
+
+    const result = await commitPendingOperation(
+      supabase as never,
+      'user-1',
+      'company-1',
+      op,
+    )
+
+    expect(result.status).toBe('failed')
+    expect(result.http_status).toBe(400)
+    expect(ensureInvoiceNumber).not.toHaveBeenCalled()
+    expect(supabase.from).not.toHaveBeenCalledWith('invoice_deliveries')
+    },
+  )
+})
+
+describe('commitPendingOperation: invoice send recipient limit', () => {
+  it('rejects an oversized configured recipient set before reservation and allocation', async () => {
+    const { supabase, enqueue } = createQueuedMockSupabase()
+    enqueue({ data: { id: 'op-1' }, error: null }) // CAS claim
+    enqueue({
+      data: makeInvoice({
+        id: 'invoice-1',
+        status: 'draft',
+        invoice_number: null,
+        customer: makeCustomer({ id: 'customer-1', email: 'customer@example.test' }),
+        items: [],
+      }),
+      error: null,
+    })
+    enqueue({
+      data: {
+        company_name: 'Test AB',
+        bankgiro: '123-4567',
+        invoice_email_cc_addresses: Array.from(
+          { length: 20 },
+          (_, index) => `fixed-${index}@example.test`,
+        ),
+        invoice_email_bcc_addresses: [],
+      },
+      error: null,
+    })
+    enqueue({ data: null, error: null }) // dispatcher's rejected update
+
+    const result = await commitPendingOperation(
+      supabase as never,
+      'user-1',
+      'company-1',
+      makePendingOp({
+        operation_type: 'send_invoice',
+        params: { invoice_id: 'invoice-1' },
+      }),
+    )
+
+    expect(result.status).toBe('failed')
+    expect(result.http_status).toBe(400)
+    expect(mockReserveInvoiceDelivery).not.toHaveBeenCalled()
+    expect(ensureInvoiceNumber).not.toHaveBeenCalled()
+  })
+})
+
+// ─── post_annual_depreciation ───────────────────────────────────────
+
+describe('commitPendingOperation: post_annual_depreciation', () => {
+  it('happy path: routes to commitAnnualPostings and returns the posted entries', async () => {
+    vi.mocked(commitAnnualPostings).mockResolvedValueOnce({
+      posted: [
+        { assetId: 'asset-1', entry: { id: 'je-1', voucher_number: 7 } as never, scheduleId: 'sch-1' },
+      ],
+      skipped: [],
+    })
+
+    const { supabase, enqueue } = createQueuedMockSupabase()
+    enqueue({ data: { id: 'op-1' }, error: null }) // CAS claim
+    enqueue({ data: null, error: null }) // dispatcher update
+
+    const op = makePendingOp({
+      operation_type: 'post_annual_depreciation',
+      params: { fiscal_period_id: 'fp-1', asset_ids: ['asset-1'] },
+    })
+
+    const result = await commitPendingOperation(supabase as never, 'user-1', 'company-1', op)
+
+    expect(result.status).toBe('committed')
+    expect(result.data).toMatchObject({
+      posted_count: 1,
+      skipped_count: 0,
+      posted: [{ asset_id: 'asset-1', journal_entry_id: 'je-1', voucher_number: 7, schedule_id: 'sch-1' }],
+    })
+    expect(commitAnnualPostings).toHaveBeenCalledWith(
+      expect.anything(), 'company-1', 'user-1', 'fp-1', { assetIds: ['asset-1'] }
+    )
+  })
+
+  it('rejects with 400 when fiscal_period_id is missing', async () => {
+    const { supabase, enqueue } = createQueuedMockSupabase()
+    enqueue({ data: { id: 'op-1' }, error: null }) // CAS claim
+    enqueue({ data: null, error: null }) // reject update
+    const op = makePendingOp({ operation_type: 'post_annual_depreciation', params: {} })
+
+    const result = await commitPendingOperation(supabase as never, 'user-1', 'company-1', op)
+
+    expect(result.status).toBe('failed')
+    expect(result.http_status).toBe(400)
+    expect(commitAnnualPostings).not.toHaveBeenCalled()
+  })
+
+  it('surfaces engine errors (e.g. locked period) as a failed commit', async () => {
+    vi.mocked(commitAnnualPostings).mockRejectedValueOnce(new Error('Period is locked or closed'))
+    const { supabase, enqueue } = createQueuedMockSupabase()
+    enqueue({ data: { id: 'op-1' }, error: null }) // CAS claim
+    enqueue({ data: null, error: null }) // reject update
+    const op = makePendingOp({
+      operation_type: 'post_annual_depreciation',
+      params: { fiscal_period_id: 'fp-1' },
+    })
+
+    const result = await commitPendingOperation(supabase as never, 'user-1', 'company-1', op)
+
+    expect(result.status).toBe('failed')
+    expect(result.error).toMatch(/locked or closed/)
+  })
+})
+
+// ─── create_transaction ─────────────────────────────────────────────
+
+// ─── import_sie ─────────────────────────────────────────────────────
+
+describe('commitPendingOperation: import_sie', () => {
+  it('happy path: parses, imports, returns committed with summary', async () => {
+    vi.mocked(parseSIEFile).mockReturnValueOnce({} as never)
+    vi.mocked(executeSIEImport).mockResolvedValueOnce({
+      success: true,
+      importId: 'imp-1',
+      fiscalPeriodId: 'fp-1',
+      openingBalanceEntryId: 'ob-1',
+      journalEntriesCreated: 5,
+      journalEntryIds: ['je-1', 'je-2', 'je-3', 'je-4', 'je-5'],
+      errors: [],
+      warnings: ['minor warning'],
+    })
+
+    const { supabase, enqueue } = createQueuedMockSupabase()
+    enqueue({ data: { id: 'op-1' }, error: null }) // CAS claim
+    enqueue({ data: null, error: null }) // dispatcher's update
+
+    const op = makePendingOp({
+      operation_type: 'import_sie',
+      params: {
+        file_content: '#FLAGGA 0\n',
+        filename: 'test.sie',
+        mappings: [],
+        create_fiscal_period: true,
+        import_opening_balances: true,
+        import_transactions: true,
+      },
+    })
+
+    const result = await commitPendingOperation(supabase as never, 'user-1', 'company-1', op)
+
+    expect(result.status).toBe('committed')
+    expect(result.data).toMatchObject({
+      import_id: 'imp-1',
+      journal_entries_created: 5,
+      warnings: ['minor warning'],
+    })
+    expect(parseSIEFile).toHaveBeenCalledWith('#FLAGGA 0\n')
+    // Operations staged before update_account_names existed (params without
+    // the key) must default to true: Boolean(undefined) would flip it off.
+    expect(executeSIEImport).toHaveBeenCalledWith(
+      expect.anything(),
+      'company-1',
+      'user-1',
+      expect.anything(),
+      [],
+      expect.objectContaining({ updateAccountNames: true })
+    )
+  })
+
+  it('passes update_account_names: false through to executeSIEImport', async () => {
+    vi.mocked(parseSIEFile).mockReturnValueOnce({} as never)
+    vi.mocked(executeSIEImport).mockResolvedValueOnce({
+      success: true,
+      importId: 'imp-2',
+      fiscalPeriodId: 'fp-1',
+      openingBalanceEntryId: null,
+      journalEntriesCreated: 1,
+      journalEntryIds: ['je-1'],
+      errors: [],
+      warnings: [],
+    })
+
+    const { supabase, enqueue } = createQueuedMockSupabase()
+    enqueue({ data: { id: 'op-1' }, error: null }) // CAS claim
+    enqueue({ data: null, error: null }) // dispatcher's update
+
+    const op = makePendingOp({
+      operation_type: 'import_sie',
+      params: {
+        file_content: '#FLAGGA 0\n',
+        filename: 'test.sie',
+        mappings: [],
+        create_fiscal_period: true,
+        import_opening_balances: true,
+        import_transactions: true,
+        update_account_names: false,
+      },
+    })
+
+    await commitPendingOperation(supabase as never, 'user-1', 'company-1', op)
+
+    expect(executeSIEImport).toHaveBeenCalledWith(
+      expect.anything(),
+      'company-1',
+      'user-1',
+      expect.anything(),
+      [],
+      expect.objectContaining({ updateAccountNames: false })
+    )
+  })
+
+  it('rejects when required params are missing', async () => {
+    const { supabase, enqueue } = createQueuedMockSupabase()
+    enqueue({ data: { id: 'op-1' }, error: null }) // CAS claim
+    enqueue({ data: null, error: null }) // dispatcher's reject update
+    const op = makePendingOp({ operation_type: 'import_sie', params: { filename: 'x.sie' } })
+
+    const result = await commitPendingOperation(supabase as never, 'user-1', 'company-1', op)
+
+    expect(result.status).toBe('failed')
+    expect(result.http_status).toBe(400)
+    expect(parseSIEFile).not.toHaveBeenCalled()
+  })
+
+  it('returns the executeSIEImport errors when success=false', async () => {
+    vi.mocked(parseSIEFile).mockReturnValueOnce({} as never)
+    vi.mocked(executeSIEImport).mockResolvedValueOnce({
+      success: false,
+      importId: null,
+      fiscalPeriodId: null,
+      openingBalanceEntryId: null,
+      journalEntriesCreated: 0,
+      journalEntryIds: [],
+      errors: ['duplicate import'],
+      warnings: [],
+    })
+
+    const { supabase, enqueue } = createQueuedMockSupabase()
+    enqueue({ data: { id: 'op-1' }, error: null }) // CAS claim
+    enqueue({ data: null, error: null }) // dispatcher's reject update
+    const op = makePendingOp({
+      operation_type: 'import_sie',
+      params: {
+        file_content: '#FLAGGA 0\n',
+        filename: 'test.sie',
+        mappings: [],
+        create_fiscal_period: true,
+        import_opening_balances: false,
+        import_transactions: true,
+      },
+    })
+
+    const result = await commitPendingOperation(supabase as never, 'user-1', 'company-1', op)
+
+    expect(result.status).toBe('failed')
+    expect(result.error).toMatch(/duplicate import/)
+  })
+})
+
+// ─── credit_invoice ─────────────────────────────────────────────────
+
+describe('commitPendingOperation: credit_invoice', () => {
+  it('happy path (accrual): inserts negated credit note and books JE', async () => {
+    const original = makeInvoice({
+      id: 'inv-1',
+      invoice_number: 'F-2024001',
+      status: 'sent',
+      document_type: 'invoice',
+      subtotal: 1000,
+      vat_amount: 250,
+      total: 1250,
+    })
+    const originalWithItems = {
+      ...original,
+      items: [
+        { sort_order: 0, description: 'Service', quantity: 1, unit: 'st', unit_price: 1000, line_total: 1000, vat_rate: 25, vat_amount: 250 },
+      ],
+    }
+
+    const creditNoteRow = { ...original, id: 'cn-1', invoice_number: 'KR-F-2024001' }
+    const completeCreditNote = { ...creditNoteRow, customer: { name: 'Acme AB' }, items: [] }
+
+    const { supabase, enqueue } = createQueuedMockSupabase()
+    // 0: CAS claim
+    enqueue({ data: { id: 'op-1' }, error: null })
+    // 1: fetch original with items
+    enqueue({ data: originalWithItems, error: null })
+    // 2: insert credit note
+    enqueue({ data: creditNoteRow, error: null })
+    // 3: insert items (await thenable)
+    enqueue({ data: null, error: null })
+    // 4: update original status='credited'
+    enqueue({ data: null, error: null })
+    // 5: re-fetch complete credit note with customer + items
+    enqueue({ data: completeCreditNote, error: null })
+    // 6: company_settings
+    enqueue({ data: { entity_type: 'aktiebolag', accounting_method: 'accrual' }, error: null })
+    // 7: update invoice with journal_entry_id
+    enqueue({ data: null, error: null })
+    // 8: dispatcher's pending_operations update
+    enqueue({ data: null, error: null })
+
+    vi.mocked(createCreditNoteJournalEntry).mockResolvedValueOnce({ id: 'je-1' } as never)
+
+    const op = makePendingOp({
+      operation_type: 'credit_invoice',
+      params: { invoice_id: 'inv-1', reason: 'Wrong amount' },
+    })
+
+    const result = await commitPendingOperation(supabase as never, 'user-1', 'company-1', op)
+
+    expect(result.status).toBe('committed')
+    expect(result.data).toMatchObject({ credit_note_id: 'cn-1', journal_entry_id: 'je-1' })
+    expect(createCreditNoteJournalEntry).toHaveBeenCalled()
+  })
+
+  it('skips JE on cash accounting', async () => {
+    const original = makeInvoice({ id: 'inv-1', status: 'paid', document_type: 'invoice' })
+    const originalWithItems = { ...original, items: [] }
+    const creditNoteRow = { ...original, id: 'cn-2', invoice_number: 'KR-F-2024001' }
+    const completeCreditNote = { ...creditNoteRow, customer: null, items: [] }
+
+    const { supabase, enqueue } = createQueuedMockSupabase()
+    enqueue({ data: { id: 'op-1' }, error: null }) // CAS claim
+    enqueue({ data: originalWithItems, error: null })
+    enqueue({ data: creditNoteRow, error: null })
+    enqueue({ data: null, error: null })
+    enqueue({ data: null, error: null })
+    enqueue({ data: completeCreditNote, error: null })
+    enqueue({ data: { entity_type: 'enskild_firma', accounting_method: 'cash' }, error: null })
+    // no JE update; go straight to dispatcher update
+    enqueue({ data: null, error: null })
+
+    const op = makePendingOp({
+      operation_type: 'credit_invoice',
+      params: { invoice_id: 'inv-1' },
+    })
+
+    const result = await commitPendingOperation(supabase as never, 'user-1', 'company-1', op)
+
+    expect(result.status).toBe('committed')
+    expect(result.data).toMatchObject({ credit_note_id: 'cn-2', journal_entry_id: null })
+    expect(createCreditNoteJournalEntry).not.toHaveBeenCalled()
+  })
+
+  it('auto-rejects when invoice is already credited (409)', async () => {
+    const original = makeInvoice({ id: 'inv-1', status: 'credited', document_type: 'invoice' })
+    const { supabase, enqueue } = createQueuedMockSupabase()
+    enqueue({ data: { id: 'op-1' }, error: null }) // CAS claim
+    enqueue({ data: { ...original, items: [] }, error: null })
+    // dispatcher auto-reject path also does an update
+    enqueue({ data: null, error: null })
+
+    const op = makePendingOp({
+      operation_type: 'credit_invoice',
+      params: { invoice_id: 'inv-1' },
+    })
+
+    const result = await commitPendingOperation(supabase as never, 'user-1', 'company-1', op)
+
+    expect(result.status).toBe('rejected')
+    expect(result.auto_rejected).toBe(true)
+    expect(result.http_status).toBe(409)
+  })
+
+  it('rejects when invoice_id is missing', async () => {
+    const { supabase, enqueue } = createQueuedMockSupabase()
+    enqueue({ data: { id: 'op-1' }, error: null }) // CAS claim
+    enqueue({ data: null, error: null }) // dispatcher's reject update
+    const op = makePendingOp({ operation_type: 'credit_invoice', params: {} })
+
+    const result = await commitPendingOperation(supabase as never, 'user-1', 'company-1', op)
+
+    expect(result.status).toBe('failed')
+    expect(result.http_status).toBe(400)
+  })
+
+  it('rejects invoices with status outside sent/paid/overdue', async () => {
+    const original = makeInvoice({ id: 'inv-1', status: 'draft', document_type: 'invoice' })
+    const { supabase, enqueue } = createQueuedMockSupabase()
+    enqueue({ data: { id: 'op-1' }, error: null }) // CAS claim
+    enqueue({ data: { ...original, items: [] }, error: null })
+    enqueue({ data: null, error: null }) // dispatcher's reject update
+
+    const op = makePendingOp({
+      operation_type: 'credit_invoice',
+      params: { invoice_id: 'inv-1' },
+    })
+
+    const result = await commitPendingOperation(supabase as never, 'user-1', 'company-1', op)
+
+    expect(result.status).toBe('failed')
+    expect(result.http_status).toBe(400)
+  })
+})
+
+// ─── credit_supplier_invoice ────────────────────────────────────────
+
+describe('commitPendingOperation: credit_supplier_invoice', () => {
+  it('normalizes copied storage and reverses with the untouched original items', async () => {
+    const originalItems = [
+      {
+        sort_order: 0,
+        description: 'Office supplies',
+        quantity: 1,
+        unit: 'st',
+        unit_price: 1000,
+        line_total: 1000,
+        account_number: '5410',
+        vat_code: null,
+        vat_rate: 25,
+        vat_amount: 250,
+        dimensions: {},
+      },
+    ]
+    const original = {
+      ...makeSupplierInvoice({ id: 'supplier-invoice-1', status: 'registered' }),
+      supplier: { name: 'Office Depot AB', supplier_type: 'swedish_business' },
+      items: originalItems,
+    }
+    const creditNote = makeSupplierInvoice({
+      id: 'supplier-credit-1',
+      is_credit_note: true,
+      credited_invoice_id: original.id,
+    })
+    const { supabase, enqueueMany, findCall } = createQueuedMockSupabase()
+    enqueueMany([
+      { data: { id: 'op-1' }, error: null },
+      { data: original, error: null },
+      { data: 2, error: null },
+      { data: creditNote, error: null },
+      { data: null, error: null },
+      { data: { accounting_method: 'accrual' }, error: null },
+      { data: null, error: null },
+      { data: null, error: null },
+      { data: null, error: null },
+    ])
+    vi.mocked(createSupplierCreditNoteEntry).mockResolvedValueOnce({ id: 'je-1' } as never)
+
+    const op = makePendingOp({
+      operation_type: 'credit_supplier_invoice',
+      params: { supplier_invoice_id: original.id },
+    })
+    const result = await commitPendingOperation(
+      supabase as never,
+      'user-1',
+      'company-1',
+      op,
+    )
+
+    expect(result.status).toBe('committed')
+    const insertArgs = findCall('supplier_invoice_items', 'insert')
+    const insertedItems = insertArgs?.[0] as Array<{ vat_rate: number }>
+    expect(insertedItems[0]?.vat_rate).toBe(0.25)
+    expect(createSupplierCreditNoteEntry).toHaveBeenCalledWith(
+      supabase,
+      'company-1',
+      'user-1',
+      creditNote,
+      originalItems,
+      'swedish_business',
+      'Office Depot AB',
+    )
+  })
+})
+
+// ─── attach_document_to_transaction ─────────────────────────────────
+
+// ─── link_document_to_voucher ─────────────────────────────────
+
+describe('commitPendingOperation: link_document_to_voucher', () => {
+  const baseOp: Partial<PendingOperation> = {
+    operation_type: 'link_document_to_voucher',
+    params: { document_id: 'doc-1', journal_entry_id: 'je-1' },
+  }
+
+  it('auto-rejects 404 when document is not in the company', async () => {
+    const { supabase, enqueue } = createQueuedMockSupabase()
+    enqueue({ data: { id: 'op-1' }, error: null }) // CAS claim
+    enqueue({ data: null, error: null })            // doc fetch: not found
+    enqueue({ data: null, error: null })            // dispatcher reject update
+
+    const result = await commitPendingOperation(
+      supabase as never, 'user-1', 'company-1', makePendingOp(baseOp),
+    )
+    expect(result.status).toBe('rejected')
+    expect(result.http_status).toBe(404)
+  })
+
+  it('auto-rejects 409 when doc is already linked to a different posted JE (WORM guard)', async () => {
+    const { supabase, enqueue } = createQueuedMockSupabase()
+    enqueue({ data: { id: 'op-1' }, error: null })                              // CAS claim
+    enqueue({ data: { id: 'doc-1', journal_entry_id: 'je-OTHER' }, error: null }) // doc fetch
+    enqueue({ data: { status: 'posted' }, error: null })                        // WORM: existing JE status
+    enqueue({ data: null, error: null })                                         // dispatcher reject update
+
+    const result = await commitPendingOperation(
+      supabase as never, 'user-1', 'company-1', makePendingOp(baseOp),
+    )
+    expect(result.status).toBe('rejected')
+    expect(result.http_status).toBe(409)
+  })
+
+  it('allows re-linking when existing linked JE is not yet posted (draft)', async () => {
+    // A doc linked to a draft (uncommitted) JE can be moved: only posted
+    // verifikationer trigger the WORM guard.
+    const { supabase, enqueue } = createQueuedMockSupabase()
+    enqueue({ data: { id: 'op-1' }, error: null })                              // CAS claim
+    enqueue({ data: { id: 'doc-1', journal_entry_id: 'je-DRAFT' }, error: null }) // doc fetch
+    enqueue({ data: { status: 'draft' }, error: null })                         // WORM: existing JE: not posted
+    enqueue({ data: { id: 'je-1' }, error: null })                              // linkToJournalEntry: JE ownership
+    enqueue({
+      data: { id: 'doc-1', file_name: 'kvitto.pdf', journal_entry_id: 'je-1', journal_entry_line_id: null },
+      error: null,
+    })                                                                           // linkToJournalEntry: doc update
+    enqueue({ data: null, error: null })                                         // dispatcher commit update
+
+    const result = await commitPendingOperation(
+      supabase as never, 'user-1', 'company-1', makePendingOp(baseOp),
+    )
+    expect(result.status).toBe('committed')
+  })
+
+  it('happy path: links doc to verifikation with no prior journal_entry_id', async () => {
+    const { supabase, enqueue } = createQueuedMockSupabase()
+    enqueue({ data: { id: 'op-1' }, error: null })                              // CAS claim
+    enqueue({ data: { id: 'doc-1', journal_entry_id: null }, error: null })     // doc fetch
+    enqueue({ data: { id: 'je-1' }, error: null })                              // linkToJournalEntry: JE ownership
+    enqueue({
+      data: { id: 'doc-1', file_name: 'faktura.pdf', journal_entry_id: 'je-1', journal_entry_line_id: null },
+      error: null,
+    })                                                                           // linkToJournalEntry: doc update
+    enqueue({ data: null, error: null })                                         // dispatcher commit update
+
+    const result = await commitPendingOperation(
+      supabase as never, 'user-1', 'company-1', makePendingOp(baseOp),
+    )
+    expect(result.status).toBe('committed')
+    expect(result.data).toMatchObject({
+      document_id: 'doc-1',
+      journal_entry_id: 'je-1',
+    })
+  })
+
+  it('auto-rejects 409 when linkToJournalEntry throws a period-lock error', async () => {
+    const { supabase, enqueue } = createQueuedMockSupabase()
+    enqueue({ data: { id: 'op-1' }, error: null })                              // CAS claim
+    enqueue({ data: { id: 'doc-1', journal_entry_id: null }, error: null })     // doc fetch
+    enqueue({ data: { id: 'je-1' }, error: null })                              // linkToJournalEntry: JE ownership
+    enqueue({
+      data: null,
+      error: { message: 'cannot link document in a locked/closed fiscal period' },
+    })                                                                           // linkToJournalEntry: doc update: period locked
+    enqueue({ data: null, error: null })                                         // dispatcher reject update
+
+    const result = await commitPendingOperation(
+      supabase as never, 'user-1', 'company-1', makePendingOp(baseOp),
+    )
+    expect(result.status).toBe('rejected')
+    expect(result.http_status).toBe(409)
+  })
+})
+
+// ─── categorize_transaction: dimensions propagation (PR7) ──────────

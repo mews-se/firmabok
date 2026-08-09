@@ -1,0 +1,43 @@
+{
+  "regions": [
+    "arn1"
+  ],
+  "crons": [
+    {
+      "path": "/api/deadlines/status/cron",
+      "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/invoices/recurring/cron",
+      "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/settings/booking-templates/sync/cron",
+      "schedule": "30 4 * * *"
+    },
+    {
+      "path": "/api/tax-deadlines/cron",
+      "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/documents/verify/cron",
+      "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/events/cleanup/cron",
+      "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/idempotency/cleanup/cron",
+      "schedule": "30 * * * *"
+    },
+    {
+      "path": "/api/pending-operations/expire/cron",
+      "schedule": "30 2 * * *"
+    },
+    {
+      "path": "/api/bookkeeping/accruals/post-due/cron",
+      "schedule": "15 5 * * *"
+    }
+  ]
+}

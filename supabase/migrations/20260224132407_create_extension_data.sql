@@ -1,0 +1,4 @@
+-- Migration: create_extension_data
+-- No-op: extension_data table is created by migration 020 (extension_data)
+-- in this consolidated migration set.
+-- Originally applied to production as a separate migration.

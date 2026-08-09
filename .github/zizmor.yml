@@ -1,0 +1,23 @@
+# zizmor configuration. See .github/workflows/zizmor.yml for why this repo
+# audits its own CI.
+#
+# Suppressions here are reviewed exceptions, not a backlog. Anything added needs
+# a reason that says why the generic rule does not apply, so the Security tab
+# stays worth reading.
+
+rules:
+  dangerous-triggers:
+    ignore:
+      # zizmor's position is that `workflow_run` is almost always used
+      # insecurely, and it is right in general: the usual mistake is triggering
+      # on a fork's build and then checking out that fork's code with secrets in
+      # scope. The use below is the opposite pattern, and the documented fix for
+      # the trigger it replaced.
+      #
+      # Re-scans an image that has already been published to GHCR. It checks out
+      # no source at all and only fires on `conclusion == 'success'` of a
+      # workflow that itself runs only on main and release tags, so there is no
+      # untrusted input and no fork ref in reach. The trigger exists to shrink
+      # the window between publishing an image and gating it from up to 24h
+      # (the cron) down to the scan's own duration.
+      - docker-image-scan.yml

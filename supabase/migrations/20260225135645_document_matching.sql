@@ -1,0 +1,4 @@
+-- Migration: document_matching
+-- No-op: match_documents function and knowledge_documents table
+-- are created by migration 033 (ai_chat_schema) in this consolidated set.
+-- Originally applied to production as a separate migration.

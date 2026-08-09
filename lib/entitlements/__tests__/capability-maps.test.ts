@@ -1,0 +1,48 @@
+import { describe, it, expect } from 'vitest'
+import {
+  MCP_TOOL_CAPABILITY_MAP,
+  PAID_OPERATION_CAPABILITY_MAP,
+  PAID_CAPABILITIES,
+  CAPABILITY,
+} from '../keys'
+
+/**
+ * These maps are the contract that gates the paid MCP/agent path (dispatch +
+ * commit). Locking the exact entries is the guard against a future paid
+ * external-service tool silently bypassing the paywall: mirrors the
+ * TOOL_SCOPE_MAP assertions in the mcp-server tests.
+ */
+describe('MCP_TOOL_CAPABILITY_MAP', () => {
+  it('gates exactly the paid MCP tools', () => {
+    expect(MCP_TOOL_CAPABILITY_MAP).toEqual({
+      gnubok_send_invoice: CAPABILITY.email_send,
+    })
+  })
+
+  it('only maps tools to PAID capabilities', () => {
+    for (const key of Object.values(MCP_TOOL_CAPABILITY_MAP)) {
+      expect(PAID_CAPABILITIES).toContain(key)
+    }
+  })
+})
+
+describe('PAID_OPERATION_CAPABILITY_MAP', () => {
+  it('gates exactly the paid pending-operation types', () => {
+    expect(PAID_OPERATION_CAPABILITY_MAP).toEqual({
+      send_invoice: CAPABILITY.email_send,
+    })
+  })
+
+  it('only maps operations to PAID capabilities', () => {
+    for (const key of Object.values(PAID_OPERATION_CAPABILITY_MAP)) {
+      expect(PAID_CAPABILITIES).toContain(key)
+    }
+  })
+
+  it('covers the same capabilities as the STAGING MCP tools (dispatch ↔ commit parity)', () => {
+    // An op that can be staged via MCP OR approved in the UI must be gated on
+    // both transports.
+    const stagingMcpCaps = new Set(Object.values(MCP_TOOL_CAPABILITY_MAP))
+    expect(new Set(Object.values(PAID_OPERATION_CAPABILITY_MAP))).toEqual(stagingMcpCaps)
+  })
+})

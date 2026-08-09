@@ -1,0 +1,201 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import {
+  createMockRequest,
+  createMockRouteParams,
+  parseJsonResponse,
+  createQueuedMockSupabase,
+} from '@/tests/helpers'
+import { eventBus } from '@/lib/events/bus'
+
+const { supabase: mockSupabase, enqueue, enqueueMany, reset } = createQueuedMockSupabase()
+vi.mock('@/lib/supabase/server', () => ({
+  createClient: () => Promise.resolve(mockSupabase),
+}))
+vi.mock('@/lib/init', () => ({ ensureInitialized: vi.fn() }))
+
+vi.mock('@/lib/company/context', () => ({
+  requireCompanyId: vi.fn().mockResolvedValue('company-1'),
+  getActiveCompanyId: vi.fn().mockResolvedValue('company-1'),
+}))
+
+vi.mock('@/lib/auth/require-write', () => ({
+  requireWritePermission: vi.fn().mockResolvedValue({ ok: true }),
+}))
+
+// Mock the counterparty templates (non-critical side effect)
+vi.mock('@/lib/bookkeeping/counterparty-templates', () => ({
+  upsertCounterpartyTemplate: vi.fn().mockResolvedValue(undefined),
+}))
+
+// Mock createTransactionJournalEntry
+const mockCreateJournalEntry = vi.fn()
+vi.mock('@/lib/bookkeeping/transaction-entries', () => ({
+  createTransactionJournalEntry: (...args: unknown[]) => mockCreateJournalEntry(...args),
+}))
+
+// Mock VAT validation
+vi.mock('@/lib/vat/vies-client', () => ({
+  validateVatNumber: vi.fn().mockResolvedValue({ valid: true }),
+}))
+
+// Mock exchange rate
+vi.mock('@/lib/currency/riksbanken', () => ({
+  fetchExchangeRate: vi.fn().mockResolvedValue({ rate: 11.5, date: '2026-03-25' }),
+  convertToSEK: vi.fn((amount: number, rate: number) => Math.round(amount * rate * 100) / 100),
+}))
+
+import { POST } from '../../commit/route'
+
+describe('POST /api/pending-operations/:id/commit', () => {
+  const mockUser = { id: 'user-1', email: 'test@test.se' }
+  const routeParams = createMockRouteParams({ id: 'op-1' })
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    eventBus.clear()
+    reset()
+    mockSupabase.auth.getUser.mockResolvedValue({ data: { user: mockUser } })
+    mockCreateJournalEntry.mockResolvedValue({ id: 'je-1' })
+  })
+
+  it('returns 401 when not authenticated', async () => {
+    mockSupabase.auth.getUser.mockResolvedValue({ data: { user: null } })
+
+    const request = createMockRequest('/api/pending-operations/op-1/commit', { method: 'POST' })
+    const response = await POST(request, routeParams)
+    const { status } = await parseJsonResponse(response)
+
+    expect(status).toBe(401)
+  })
+
+  it('returns 404 when operation not found', async () => {
+    enqueue({ data: null, error: { message: 'not found' } })
+
+    const request = createMockRequest('/api/pending-operations/op-1/commit', { method: 'POST' })
+    const response = await POST(request, routeParams)
+    const { status, body } = await parseJsonResponse<{ error: string }>(response)
+
+    expect(status).toBe(404)
+    expect(body.error).toContain('not found')
+  })
+
+  it('returns 409 when operation already committed', async () => {
+    enqueue({
+      data: {
+        id: 'op-1',
+        user_id: 'user-1',
+        operation_type: 'create_customer',
+        status: 'committed',
+        params: {},
+        preview_data: {},
+      },
+    })
+    enqueue({ data: null, error: null }) // CAS UPDATE returns 0 rows since status != 'pending'
+
+    const request = createMockRequest('/api/pending-operations/op-1/commit', { method: 'POST' })
+    const response = await POST(request, routeParams)
+    const { status, body } = await parseJsonResponse<{ error: string }>(response)
+
+    expect(status).toBe(409)
+    // The executor's English error string maps to the Swedish HTTP-409
+    // fallback: raw English never reaches the toast (issue #337).
+    expect(body.error).toBe('En konflikt uppstod. Ladda om sidan och försök igen.')
+  })
+
+  describe('create_customer', () => {
+    const pendingOp = {
+      id: 'op-1',
+      user_id: 'user-1',
+      operation_type: 'create_customer',
+      status: 'pending',
+      title: 'Ny kund: Acme AB',
+      params: {
+        name: 'Acme AB',
+        customer_type: 'swedish_business',
+        email: 'info@acme.se',
+      },
+      preview_data: {},
+    }
+
+    it('commits successfully', async () => {
+      enqueueMany([
+        { data: pendingOp },                         // fetch pending op
+        { data: { id: 'op-1' } },                    // CAS claim
+        { data: { id: 'cust-1', name: 'Acme AB' } }, // insert customer
+        { data: null, error: null },                  // update pending op status
+      ])
+
+      const request = createMockRequest('/api/pending-operations/op-1/commit', { method: 'POST' })
+      const response = await POST(request, routeParams)
+      const { status, body } = await parseJsonResponse<{ data: { customer_id: string } }>(response)
+
+      expect(status).toBe(200)
+      expect(body.data.customer_id).toBe('cust-1')
+    })
+  })
+
+  describe('create_invoice', () => {
+    const pendingOp = {
+      id: 'op-1',
+      user_id: 'user-1',
+      operation_type: 'create_invoice',
+      status: 'pending',
+      title: 'Ny faktura: Acme AB 15000 SEK',
+      params: {
+        customer_id: 'cust-1',
+        items: [{ description: 'Konsulttjänster', quantity: 1, unit: 'st', unit_price: 15000 }],
+        invoice_date: '2026-03-25',
+        due_date: '2026-04-24',
+        currency: 'SEK',
+      },
+      preview_data: {},
+    }
+
+    it('commits successfully', async () => {
+      const customer = {
+        id: 'cust-1',
+        name: 'Acme AB',
+        customer_type: 'swedish_business',
+        vat_number_validated: false,
+        default_payment_terms: 30,
+      }
+
+      enqueueMany([
+        { data: pendingOp },                          // fetch pending op
+        { data: { id: 'op-1' } },                     // CAS claim
+        { data: customer },                           // fetch customer
+        { data: { vat_registered: true } },           // company_settings VAT registration gate
+        { data: { id: 'inv-1', invoice_number: null } }, // insert invoice (no number: assigned at send)
+        { data: null, error: null },                  // insert items
+        { data: { id: 'inv-1', invoice_number: null, customer: customer, items: [] } }, // fetch complete invoice
+        { data: null, error: null },                  // update pending op status
+      ])
+
+      const request = createMockRequest('/api/pending-operations/op-1/commit', { method: 'POST' })
+      const response = await POST(request, routeParams)
+      const { status, body } = await parseJsonResponse<{ data: { invoice_id: string; invoice_number: string | null } }>(response)
+
+      expect(status).toBe(200)
+      expect(body.data.invoice_id).toBe('inv-1')
+      // Drafts no longer reserve a number: assigned at send time instead
+      expect(body.data.invoice_number).toBeNull()
+    })
+
+    it('returns 404 when customer not found', async () => {
+      enqueueMany([
+        { data: pendingOp },                          // fetch pending op
+        { data: { id: 'op-1' } },                     // CAS claim
+        { data: null, error: { message: 'not found' } }, // customer not found
+        { data: null, error: null },                  // auto-reject update
+      ])
+
+      const request = createMockRequest('/api/pending-operations/op-1/commit', { method: 'POST' })
+      const response = await POST(request, routeParams)
+      const { status, body } = await parseJsonResponse<{ error: string }>(response)
+
+      expect(status).toBe(404)
+      // English executor message → Swedish HTTP-404 fallback (issue #337).
+      expect(body.error).toBe('Resursen kunde inte hittas.')
+    })
+  })
+})

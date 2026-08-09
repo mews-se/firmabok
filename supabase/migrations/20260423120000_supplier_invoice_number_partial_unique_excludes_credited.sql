@@ -1,0 +1,12 @@
+-- SUPERSEDED — no-op stub retained for migration-history alignment.
+--
+-- This migration was originally introduced to widen
+-- idx_supplier_invoices_company_supplier_number to exclude status='credited'.
+-- The next migration (20260423121000_supplier_invoice_reversed_status.sql)
+-- immediately drops and recreates the same index with the broader
+-- NOT IN ('credited', 'reversed') predicate, which makes the change here
+-- redundant.
+--
+-- The file is kept (empty) so that Supabase environments that already
+-- applied this version do not fail their local-vs-remote migration-history
+-- diff. The real index work lives in 20260423121000.

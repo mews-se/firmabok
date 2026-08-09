@@ -1,0 +1,24 @@
+{
+  "_comment": "Ratchet baseline for scripts/checks/no-new-antipatterns.mjs. These counts may only decrease. Re-run with --update after a migration lowers them. Goal: both reach 0 (A1 route-auth campaign, D1 rounding codemod).",
+  "rawRouteAuth": {
+    "count": 1,
+    "files": [
+      "app/api/mcp-oauth/authorize/route.ts"
+    ]
+  },
+  "naiveOreRound": {
+    "count": 405
+  },
+  "handRolledInvariants": {
+    "count": 66
+  },
+  "ledgerScanningReports": {
+    "count": 4,
+    "files": [
+      "lib/bokslut/assets/asset-service.ts",
+      "lib/bokslut/reserves/periodiseringsfond-service.ts",
+      "lib/bokslut/tax-provision/bolagsskatt-calculator.ts",
+      "lib/bokslut/tax-provision/sarskild-loneskatt-calculator.ts"
+    ]
+  }
+}

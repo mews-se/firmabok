@@ -1,0 +1,13 @@
+{$DOMAIN} {
+	# LAN default: Caddy's internal CA issues the certificate. Trust it on
+	# your devices (caddy trust, or import the root from the caddy_data
+	# volume). For a publicly resolvable domain with open ports 80/443,
+	# remove this line and Caddy provisions Let's Encrypt instead.
+	tls internal
+
+	reverse_proxy app:3000
+
+	# HSTS: lock clients onto HTTPS for one year. `preload` is intentionally
+	# omitted: preload-list submission is irreversible on short timescales.
+	header Strict-Transport-Security "max-age=31536000; includeSubDomains"
+}

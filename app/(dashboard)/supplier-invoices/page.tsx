@@ -1,0 +1,395 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import dynamic from 'next/dynamic'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { useTranslations } from 'next-intl'
+import { Skeleton } from '@/components/ui/skeleton'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { DataListEmpty } from '@/components/ui/data-list'
+import { TH_CLASS, TD_CLASS, QUIET_LINK_CLASS } from '@/components/ui/dry-table'
+import { FyPicker } from '@/components/common/FyPicker'
+import { ContextPicker } from '@/components/common/ContextPicker'
+import { HelpPopover } from '@/components/ui/help-popover'
+import { Plus, FileInput, Lock, Search } from 'lucide-react'
+import Link from 'next/link'
+import { DialogLoadingSkeleton } from '@/components/ui/dialog-loading-skeleton'
+import { useCanWrite } from '@/lib/hooks/use-can-write'
+import { useToast } from '@/components/ui/use-toast'
+import { getErrorMessage } from '@/lib/errors/get-error-message'
+import { cn, formatCurrency, formatDate } from '@/lib/utils'
+import { getDisplayTotal } from '@/lib/invoices/rounding'
+import { canApproveSupplierInvoice } from '@/lib/supplier-invoices/lifecycle'
+import type { FiscalPeriod, SupplierInvoice } from '@/types'
+
+const NewSupplierInvoiceDialog = dynamic(
+  () => import('@/components/supplier-invoices/NewSupplierInvoiceDialog'),
+  { loading: DialogLoadingSkeleton },
+)
+
+// One derivable chip per row (concept scene 21): Registrerad is the "waiting
+// for attest" state (outline), Godkänd the beige ready-to-pay state; paid is
+// the sage exception-free end state.
+const STATUS_VARIANTS: Record<string, 'default' | 'secondary' | 'success' | 'warning' | 'destructive' | 'outline'> = {
+  registered: 'outline',
+  approved: 'secondary',
+  paid: 'success',
+  partially_paid: 'warning',
+  overdue: 'destructive',
+  disputed: 'warning',
+  credited: 'secondary',
+  reversed: 'secondary',
+}
+
+const STATUS_LABEL_KEYS: Record<string, string> = {
+  registered: 'status_registered',
+  approved: 'status_approved',
+  paid: 'status_paid',
+  partially_paid: 'status_partially_paid',
+  overdue: 'status_overdue',
+  disputed: 'status_disputed',
+  credited: 'status_credited',
+  reversed: 'status_reversed',
+}
+
+const TABS = ['all', 'registered', 'approved', 'to_pay', 'paid'] as const
+type ListTab = (typeof TABS)[number]
+
+const TAB_LABEL_KEYS: Record<ListTab, string> = {
+  all: 'tab_all',
+  registered: 'tab_registered',
+  approved: 'tab_approved',
+  to_pay: 'tab_to_pay',
+  paid: 'tab_paid',
+}
+
+export default function SupplierInvoicesPage() {
+  const t = useTranslations('supplier_invoices')
+  const { canWrite } = useCanWrite()
+  const { toast } = useToast()
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const [invoices, setInvoices] = useState<(SupplierInvoice & { supplier?: { id: string; name: string } })[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState<ListTab>('all')
+  const [searchTerm, setSearchTerm] = useState('')
+  // Fiscal-year scope (convention 8): null = all years.
+  const [fyPeriodId, setFyPeriodId] = useState<string | null>(null)
+  const [fyPeriod, setFyPeriod] = useState<FiscalPeriod | null>(null)
+  const [approvingId, setApprovingId] = useState<string | null>(null)
+
+  // The "Registrera leverantörsfaktura" modal is driven by the URL (?new=1,
+  // optionally with inbox_item_id for the invoice-inbox conversion flow) so
+  // every entry point (the header button, the empty state, the command
+  // palette, and the legacy /supplier-invoices/new redirect) opens the same
+  // dialog, and the browser back button closes it.
+  const showNewInvoice = searchParams.has('new')
+  const inboxItemId = searchParams.get('inbox_item_id')
+  const closeNewInvoice = () => router.replace('/supplier-invoices', { scroll: false })
+  const openNewInvoice = () => router.push('/supplier-invoices?new=1', { scroll: false })
+
+  async function fetchInvoices() {
+    setIsLoading(true)
+    const res = await fetch('/api/supplier-invoices?status=all')
+    const { data } = await res.json()
+    setInvoices(data || [])
+    setIsLoading(false)
+  }
+
+  useEffect(() => {
+    fetchInvoices()
+  }, [])
+
+  // Mirrors the old standalone page's post-create navigation: inbox
+  // conversions land back in the inbox, a created invoice opens its detail
+  // page, and flows that end here (e.g. private expense) close the modal and
+  // refresh the list in place.
+  const handleCreated = (invoiceId?: string) => {
+    if (inboxItemId) {
+      router.push('/inbox')
+      return
+    }
+    if (invoiceId) {
+      router.push(`/supplier-invoices/${invoiceId}`)
+      return
+    }
+    closeNewInvoice()
+    fetchInvoices()
+  }
+
+  // "Att betala" is the full payment queue: registered invoices are already
+  // booked as debt (2440), so they belong here too. Approval stays the gate
+  // for paying, not for visibility; unapproved rows get a hover approve.
+  const filteredInvoices = invoices.filter((inv) => {
+    const matchesTab = (() => {
+      switch (activeTab) {
+        case 'registered': return inv.status === 'registered'
+        case 'approved': return inv.status === 'approved'
+        case 'to_pay': return inv.status === 'registered' || inv.status === 'approved' || inv.status === 'overdue'
+        case 'paid': return inv.status === 'paid'
+        default: return true
+      }
+    })()
+    const query = searchTerm.trim().toLowerCase()
+    const matchesSearch =
+      !query ||
+      (inv.supplier?.name ?? '').toLowerCase().includes(query) ||
+      (inv.supplier_invoice_number ?? '').toLowerCase().includes(query) ||
+      String(inv.arrival_number ?? '').includes(query)
+    const matchesFy =
+      !fyPeriod ||
+      (inv.invoice_date >= fyPeriod.period_start && inv.invoice_date <= fyPeriod.period_end)
+    return matchesTab && matchesSearch && matchesFy
+  })
+
+  const registeredCount = invoices.filter((inv) => inv.status === 'registered').length
+  const toPayCount = invoices.filter(
+    (inv) => inv.status === 'registered' || inv.status === 'approved' || inv.status === 'overdue',
+  ).length
+
+  async function handleApprove(id: string) {
+    setApprovingId(id)
+    try {
+      const res = await fetch(`/api/supplier-invoices/${id}/approve`, { method: 'POST' })
+      const result = await res.json()
+      if (!res.ok) {
+        toast({ title: t('approve_failed_title'), description: getErrorMessage(result, { context: 'supplier_invoice' }), variant: 'destructive' })
+        // Re-sync from the server: an operator about to pay must see the
+        // invoice's true approval state, not an optimistic guess.
+        fetchInvoices()
+      } else {
+        toast({ title: t('approved_title'), description: t('approved_description') })
+        // Trust the server's status: an attested invoice that is still past due
+        // stays labelled 'overdue' rather than flipping to 'approved'. An
+        // incomplete payload is not an excuse to invent either field: the row an
+        // operator is about to pay must show real state, so re-read instead.
+        const approved = result?.data as Partial<SupplierInvoice> | undefined
+        if (!approved?.status || !approved.approved_at) {
+          fetchInvoices()
+          return
+        }
+        setInvoices((prev) =>
+          prev.map((inv) =>
+            inv.id === id
+              ? { ...inv, status: approved.status!, approved_at: approved.approved_at! }
+              : inv,
+          ),
+        )
+      }
+    } catch {
+      toast({ title: t('approve_failed_title'), description: getErrorMessage(null, { context: 'supplier_invoice' }), variant: 'destructive' })
+      fetchInvoices()
+    } finally {
+      setApprovingId(null)
+    }
+  }
+
+  return (
+    <div className="space-y-8">
+      {/* Page header (concept scene 21): title + help + primary action.
+          The help popover carries the payment model (convention 7): approval
+          attests for payment; payments reconcile via bank matching, so there
+          is deliberately no mark-as-paid button here. */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <span className="flex items-center gap-2">
+          <h1 className="font-display text-2xl leading-8 tracking-tight">{t('title')}</h1>
+          <HelpPopover>{t('help_body')}</HelpPopover>
+        </span>
+        {canWrite ? (
+          <Button onClick={openNewInvoice}>
+            <Plus className="mr-2 h-4 w-4" />
+            {t('register_invoice')}
+          </Button>
+        ) : (
+          <Button disabled title={t('viewer_disabled_tooltip')}>
+            <Lock className="mr-2 h-4 w-4" />
+            {t('register_invoice')}
+          </Button>
+        )}
+      </div>
+
+      {/* Toolbar: one status chip-picker (founder direction: the status
+          views live behind a filter chip, not a seg), sök, FyPicker far
+          right. Counts ride as row annotations and on the trigger. */}
+      <div className="flex flex-wrap items-center gap-2">
+        <ContextPicker
+          value={activeTab}
+          onChange={(id) => setActiveTab(id as ListTab)}
+          ariaLabel={t('status_picker_aria')}
+          triggerLabel={(() => {
+            const count =
+              activeTab === 'registered' ? registeredCount : activeTab === 'to_pay' ? toPayCount : 0
+            return count > 0
+              ? `${t(TAB_LABEL_KEYS[activeTab])} · ${count}`
+              : t(TAB_LABEL_KEYS[activeTab])
+          })()}
+          items={TABS.map((tab) => ({
+            id: tab,
+            label: t(TAB_LABEL_KEYS[tab]),
+            annotation:
+              tab === 'registered' && registeredCount > 0
+                ? String(registeredCount)
+                : tab === 'to_pay' && toPayCount > 0
+                  ? String(toPayCount)
+                  : undefined,
+          }))}
+        />
+        <div className="relative min-w-[190px] max-w-xs flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder={t('search_placeholder')}
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="h-9 pl-10"
+          />
+        </div>
+        <div className="ml-auto">
+          <FyPicker
+            value={fyPeriodId}
+            onChange={(periodId, period) => {
+              setFyPeriodId(periodId)
+              setFyPeriod(period ?? null)
+            }}
+            includeAllOption
+          />
+        </div>
+      </div>
+
+      {isLoading ? (
+        <div className="space-y-3">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="flex items-center gap-4 px-4 py-3">
+              <Skeleton className="h-4 w-28" />
+              <Skeleton className="h-4 w-20 flex-1" />
+              <Skeleton className="h-4 w-20" />
+              <Skeleton className="h-5 w-16" />
+            </div>
+          ))}
+        </div>
+      ) : filteredInvoices.length === 0 ? (
+        <DataListEmpty
+          icon={<FileInput className="h-6 w-6" />}
+          title={t('empty_title')}
+          description={
+            activeTab === 'all' && !searchTerm
+              ? t('empty_description_all')
+              : t('empty_description_category')
+          }
+          action={
+            activeTab === 'all' && !searchTerm && canWrite ? (
+              <Button onClick={openNewInvoice}>{t('register_invoice')}</Button>
+            ) : undefined
+          }
+        />
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse text-[13px]">
+            <thead>
+              <tr>
+                <th className={cn(TH_CLASS, 'w-full')}>{t('th_supplier')}</th>
+                <th className={TH_CLASS}>{t('th_invoice_number')}</th>
+                <th className={cn(TH_CLASS, 'hidden text-right md:table-cell')}>{t('th_invoice_date')}</th>
+                <th className={cn(TH_CLASS, 'hidden text-right sm:table-cell')}>{t('th_due_date')}</th>
+                <th className={cn(TH_CLASS, 'text-right')}>{t('th_amount')}</th>
+                <th className={cn(TH_CLASS, 'hidden text-right lg:table-cell')}>{t('th_remaining')}</th>
+                <th className={TH_CLASS}>{t('th_status')}</th>
+                <th className={cn(TH_CLASS, 'w-[96px]')} aria-hidden="true"></th>
+              </tr>
+            </thead>
+            <tbody className="stagger-enter">
+              {filteredInvoices.map((inv) => {
+                const chipVariant = STATUS_VARIANTS[inv.status] || 'secondary'
+                const chipLabel =
+                  inv.status === 'paid' && inv.paid_at
+                    ? t('status_paid_date', { date: formatDate(inv.paid_at) })
+                    : STATUS_LABEL_KEYS[inv.status]
+                      ? t(STATUS_LABEL_KEYS[inv.status])
+                      : inv.status
+                // Aged-but-unapproved invoices sit on 'overdue' (the cron flips
+                // them there), so attest keys off approved_at, not the status.
+                const canApprove =
+                  canApproveSupplierInvoice(inv) && !inv.is_credit_note && canWrite
+                return (
+                  <tr
+                    key={inv.id}
+                    className="group cursor-pointer transition-colors duration-150 hover:bg-secondary/35"
+                    onClick={() => router.push(`/supplier-invoices/${inv.id}`)}
+                  >
+                    <td className={cn(TD_CLASS, 'max-w-0 w-full')}>
+                      <span className="block truncate">{inv.supplier?.name || '-'}</span>
+                    </td>
+                    <td className={cn(TD_CLASS, 'whitespace-nowrap tabular-nums')}>
+                      <Link
+                        href={`/supplier-invoices/${inv.id}`}
+                        className="hover:underline"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {inv.supplier_invoice_number}
+                      </Link>
+                    </td>
+                    <td className={cn(TD_CLASS, 'hidden whitespace-nowrap text-right tabular-nums text-muted-foreground md:table-cell')}>
+                      {formatDate(inv.invoice_date)}
+                    </td>
+                    <td className={cn(TD_CLASS, 'hidden whitespace-nowrap text-right tabular-nums text-muted-foreground sm:table-cell')}>
+                      {formatDate(inv.due_date)}
+                    </td>
+                    {/* Belopp rounds like the detail page when the invoice's
+                        öresavrundning flag is on; "kvar att betala" stays
+                        öre-exact (it is the actual outstanding debt). */}
+                    <td className={cn(TD_CLASS, 'whitespace-nowrap text-right tabular-nums rr-mask')}>
+                      {formatCurrency(getDisplayTotal(
+                        { total: inv.total, currency: inv.currency, ore_rounding: inv.ore_rounding },
+                        { ore_rounding: false },
+                      ).displayed, inv.currency)}
+                    </td>
+                    <td className={cn(TD_CLASS, 'hidden whitespace-nowrap text-right tabular-nums rr-mask lg:table-cell')}>
+                      {formatCurrency(inv.remaining_amount, inv.currency)}
+                    </td>
+                    <td className={cn(TD_CLASS, 'whitespace-nowrap')}>
+                      <Badge variant={chipVariant} className="font-normal">
+                        {chipLabel}
+                      </Badge>
+                    </td>
+                    {/* Attest as a hover action on registered rows (concept):
+                        approval gates payment, so it lives right on the row. */}
+                    <td
+                      className={cn(TD_CLASS, 'whitespace-nowrap text-right')}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {canApprove && (
+                        <button
+                          type="button"
+                          className={cn(
+                            QUIET_LINK_CLASS,
+                            'opacity-0 transition-opacity duration-150 focus-visible:opacity-100 group-hover:opacity-100',
+                            approvingId !== null && 'pointer-events-none opacity-50',
+                          )}
+                          onClick={() => handleApprove(inv.id)}
+                        >
+                          {t('approve')}
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {showNewInvoice && (
+        <NewSupplierInvoiceDialog
+          open
+          onOpenChange={(open) => {
+            if (!open) closeNewInvoice()
+          }}
+          inboxItemId={inboxItemId}
+          onCreated={handleCreated}
+        />
+      )}
+    </div>
+  )
+}

@@ -1,0 +1,5 @@
+-- Migration: add_journal_entry_reversal_columns
+-- No-op: reversed_by_id, reverses_id, correction_of_id, and committed_at columns
+-- on journal_entries are created by migration 011 (alter_existing_tables)
+-- in this consolidated set.
+-- Originally applied to production as a separate migration.

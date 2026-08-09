@@ -1,0 +1,41 @@
+import type { McpResource } from './types'
+
+export const recentActivityResource: McpResource = {
+  uri: 'Accounted://recent-activity',
+  name: 'Recent Activity',
+  description: 'Most recent journal entries and invoices for the current company. Optional ?limit=N (default 20, max 100). Use to orient on the latest state without burning tool calls.',
+  mimeType: 'application/json',
+  read: async ({ supabase, companyId, query }) => {
+    const limit = Math.min(Math.max(Number(query?.get('limit') ?? 20), 1), 100)
+
+    const [journalEntries, invoices] = await Promise.all([
+      supabase
+        .from('journal_entries')
+        .select('id, voucher_number, voucher_series, entry_date, description, status, created_at')
+        .eq('company_id', companyId)
+        .order('created_at', { ascending: false })
+        .limit(limit),
+      supabase
+        .from('invoices')
+        .select('id, invoice_number, customer_id, invoice_date, due_date, total, currency, status, created_at')
+        .eq('company_id', companyId)
+        .order('created_at', { ascending: false })
+        .limit(limit),
+    ])
+
+    // Never report an empty list when the query failed: an agent that is told
+    // "zero invoices" reasons from false state, which is worse than an error.
+    if (journalEntries.error) {
+      throw new Error(`Failed to read recent journal entries: ${journalEntries.error.message}`)
+    }
+    if (invoices.error) {
+      throw new Error(`Failed to read recent invoices: ${invoices.error.message}`)
+    }
+
+    return {
+      limit,
+      journal_entries: journalEntries.data ?? [],
+      invoices: invoices.data ?? [],
+    }
+  },
+}

@@ -1,0 +1,4 @@
+-- Migration: fix_audit_triggers_child_tables
+-- No-op: audit triggers on suppliers and supplier_invoices are included
+-- in migration 025 (supplier_invoices) in this consolidated set.
+-- Originally applied to production as a separate migration.

@@ -1,0 +1,202 @@
+name: pg-real tests
+
+on: [pull_request]
+
+# Neither job writes anything back: they read the repo, stand up a throwaway
+# Postgres, and run tests. Without this block both inherit the repository's
+# default token permissions, which are broader than that.
+permissions:
+  contents: read
+
+concurrency:
+  group: pg-real-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  coverage-gate:
+    # Enforces the database.md rule: a migration touching a trigger/RPC/RLS/
+    # DEFERRABLE must come with a *.pg.test.ts change. Previously instruction-
+    # only. Escape hatch: `-- pg-test: covered-by <path>` / `-- pg-test: skip
+    # (<reason>)` comments inside the migration.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          # Full history so the merge-base with the PR base branch exists.
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 20
+      - name: Require pg-real coverage for trigger/RPC/RLS migrations
+        env:
+          PG_GATE_BASE: origin/${{ github.base_ref }}
+        run: node scripts/check-pg-test-coverage.mjs
+
+  # Proves that an EXISTING database survives the PR's migrations, which the
+  # pg-real job below cannot: it applies every migration to an empty database,
+  # so a NOT NULL, a CHECK, a unique index or a backfill passes trivially
+  # against zero rows and can still fail (or silently corrupt) on production.
+  #
+  # Shape: schema at the merge-base -> seed real rows -> apply ONLY the new
+  # migrations -> assert the rows are intact. A PR that adds no migration skips
+  # straight past the apply step and costs one cheap no-op run.
+  pg-upgrade:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: supabase/postgres:15.8.1.060
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+      PGPASSWORD: postgres
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          # Full history so the merge-base with the PR base branch exists.
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Install psql client
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends postgresql-client
+
+      - name: Identify the migrations this PR adds
+        id: newmig
+        env:
+          BASE_REF: origin/${{ github.base_ref }}
+        run: |
+          set -euo pipefail
+          MERGE_BASE=$(git merge-base "$BASE_REF" HEAD)
+          echo "merge_base=$MERGE_BASE" >> "$GITHUB_OUTPUT"
+          echo "Merge base: $MERGE_BASE"
+
+          # Migrations present at HEAD but not at the merge base. Uses the git
+          # tree, not the filesystem, so a rebase or a merge commit cannot make
+          # an already-shipped migration look new.
+          git ls-tree -r --name-only HEAD -- supabase/migrations \
+            | grep '\.sql$' | sort > /tmp/head-migrations.txt
+          git ls-tree -r --name-only "$MERGE_BASE" -- supabase/migrations \
+            | grep '\.sql$' | sort > /tmp/base-migrations.txt
+          comm -23 /tmp/head-migrations.txt /tmp/base-migrations.txt > /tmp/new-migrations.txt
+
+          COUNT=$(wc -l < /tmp/new-migrations.txt | tr -d ' ')
+          echo "count=$COUNT" >> "$GITHUB_OUTPUT"
+          echo "New migrations ($COUNT):"
+          cat /tmp/new-migrations.txt
+
+      - name: Bootstrap storage schema
+        if: steps.newmig.outputs.count != '0'
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f tests/pg/bootstrap.sql
+
+      - name: Apply the schema as it stands at the merge base
+        if: steps.newmig.outputs.count != '0'
+        env:
+          MERGE_BASE: ${{ steps.newmig.outputs.merge_base }}
+        run: |
+          set -euo pipefail
+          # Read each migration out of the merge-base tree rather than the
+          # working tree: a PR that EDITS a shipped migration (forbidden, but
+          # this job must not be the thing that hides it) still gets the
+          # original applied here, so the edit shows up as a failure below.
+          while read -r f; do
+            echo "Applying (base) $f"
+            git show "$MERGE_BASE:$f" | psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q
+          done < /tmp/base-migrations.txt
+
+      - name: Seed a real company with posted verifikat
+        if: steps.newmig.outputs.count != '0'
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f tests/pg/upgrade/seed.sql
+
+      - name: Apply ONLY the new migrations, against existing data
+        if: steps.newmig.outputs.count != '0'
+        run: |
+          set -euo pipefail
+          while read -r f; do
+            echo "Applying (new) $f"
+            psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f "$f"
+          done < /tmp/new-migrations.txt
+
+      - name: Assert the existing data survived
+        if: steps.newmig.outputs.count != '0'
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f tests/pg/upgrade/assert.sql
+
+      - name: No migrations in this PR
+        if: steps.newmig.outputs.count == '0'
+        run: echo "This PR adds no migration; nothing to upgrade-test."
+
+  pg-real:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        # Supabase image ships the auth schema, auth.uid(), and the extensions
+        # (uuid-ossp, pg_cron, btree_gist, vector) this repo's migrations need.
+        # Plain postgres:15 would require manual bootstrap SQL.
+        image: supabase/postgres:15.8.1.060
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+      PGPASSWORD: postgres
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      # Deliberately no `cache: npm` here. This workflow runs on pull_request
+      # only, so the cache is never written on main, and GitHub scopes caches
+      # by ref: every PR uploaded its own 284 MB copy under an identical key
+      # that no other PR could ever restore. Fourteen dead copies (4 GB, 40% of
+      # the repo quota) accumulated in a single day. If this is ever worth
+      # caching again, it has to be actions/cache/save on main plus
+      # actions/cache/restore here, which is the only shape that gets hits.
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 20
+
+      - run: npm ci
+
+      - name: Install psql client
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends postgresql-client
+
+      - name: Bootstrap storage schema
+        # The supabase/postgres image ships a partial storage schema; the rest
+        # is provisioned by the storage-api service at runtime, which we do
+        # not run in CI. This aligns the schema with what migrations expect.
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f tests/pg/bootstrap.sql
+
+      - name: Apply migrations
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          files=(supabase/migrations/*.sql)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "No migration files found"
+            exit 1
+          fi
+          for f in "${files[@]}"; do
+            echo "Applying $f"
+            psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f "$f"
+          done
+
+      - run: npm run test:pg

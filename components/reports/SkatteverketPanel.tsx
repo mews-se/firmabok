@@ -31,9 +31,6 @@ import {
 } from 'lucide-react'
 import type { VatPeriodType } from '@/types'
 import { formatRedovisare, formatRedovisningsperiod } from '@/lib/skatteverket/format'
-import { useCapability } from '@/contexts/CompanyContext'
-import { CAPABILITY } from '@/lib/entitlements/keys'
-import { UpgradeNote } from '@/components/billing/UpgradeNote'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
 
 interface SkatteverketStatus {
@@ -156,7 +153,6 @@ function SkatteverketPanelInner({
   // so the `year` prop is stale (stuck at the current year). Every SKV call
   // must target the FY-end year instead.
   const effectiveYear = periodType === 'yearly' && fiscalYearEnd ? fiscalYearEnd.year : year
-  const hasSkvCapability = useCapability(CAPABILITY.skatteverket)
   const { dialogProps, confirm } = useDestructiveConfirm()
   const [status, setStatus] = useState<SkatteverketStatus | null>(null)
   const [loading, setLoading] = useState(true)
@@ -686,32 +682,6 @@ function SkatteverketPanelInner({
         <div className="space-y-4">
           <Skeleton className="h-5 w-48" />
           <Skeleton className="h-24" />
-        </div>
-      </section>
-    )
-  }
-
-  // Paywall: direct API submission is the paid convenience; manual filing at
-  // skatteverket.se stays free and is owned by the "Lämna in" card above.
-  // Rendered BEFORE the connected check so a company that connected during
-  // trial sees the upsell instead of action buttons that would 403.
-  if (!hasSkvCapability) {
-    return (
-      <section>
-        <div className="mb-3">
-          <h3 className="flex items-center gap-2 font-sans text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            <FileCheck className="h-4 w-4" />
-            Skicka direkt till Skatteverket (valfritt)
-          </h3>
-        </div>
-        <div className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            Med ett abonnemang kan du ansluta med BankID och skicka deklarationen
-            direkt härifrån, samt validera, spara utkast och signera.
-          </p>
-          <UpgradeNote>
-            Direktinlämning till Skatteverket kräver ett abonnemang.
-          </UpgradeNote>
         </div>
       </section>
     )

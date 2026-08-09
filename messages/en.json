@@ -132,7 +132,6 @@
     "badge_beta": "Beta",
     "needs_company_tooltip": "Add a company to enable",
     "logout_sandbox": "Exit sandbox",
-    "trial_days_left": "Trial: {days, plural, =1 {1 day} other {# days}} left",
     "ext_tic": "Company profile",
     "ext_invoice_inbox": "Document inbox",
     "fold_register": "Registers",
@@ -140,7 +139,6 @@
     "collapse_nav": "Collapse menu",
     "expand_nav": "Expand menu",
     "members_roles": "Members and roles",
-    "subscription": "Subscription",
     "discord_community": "Discord community"
   },
   "agentKnowledge": {
@@ -325,7 +323,6 @@
   },
   "settings_intro": {
     "account": "Your personal details and security. Applies to you, not the company.",
-    "billing": "Each company has its own subscription.",
     "company": "Shown on invoices, in email and in files to the authorities.",
     "bookkeeping": "Framework, method and series. Most of this is set once.",
     "tax": "Drives the VAT return, the employer declaration and which deadlines are tracked.",
@@ -355,7 +352,6 @@
     "backup": "Backup",
     "account": "Account",
     "api": "API",
-    "billing": "Subscription",
     "whatsapp": "WhatsApp",
     "group_account": "Account",
     "group_company": "Company",
@@ -1890,10 +1886,6 @@
     "bic_label": "BIC/SWIFT",
     "bic_placeholder": "Filled in automatically",
     "bic_error": "Invalid BIC/SWIFT (8 or 11 characters)"
-  },
-  "settings_billing": {
-    "load_failed": "The subscription details could not be loaded, so your status cannot be shown right now.",
-    "load_retry": "Try again"
   },
   "settings_invoice_form": {
     "default_our_reference_label": "Default \"Our reference\"",
@@ -3772,7 +3764,6 @@
     "validation_min_one_row": "At least one row required",
     "send_hour_label": "Send at",
     "send_hour_hint": "Swedish time",
-    "auto_send_requires_subscription": "Automatic sending requires a subscription. Invoices are still created as drafts each period.",
     "auto_send_missing_email": "The customer has no email address. Add one to the customer to enable automatic sending."
   },
   "invoice_send_dialog": {
@@ -4855,9 +4846,6 @@
     "data_source_heading": "Data source",
     "reads_from": "Reads from: {tables}",
     "open": "Open",
-    "upsell_title": "Upgrade to use {name}",
-    "upsell_description": "This feature is included in a paid subscription. Upgrade to enable it.",
-    "upsell_cta": "Upgrade",
     "sandbox_locked_title": "{name} is locked in the sandbox",
     "sandbox_locked_note": "The sandbox runs entirely without external services, so this feature is switched off here. Create an account to use it for real.",
     "sandbox_locked_cta": "Create account",

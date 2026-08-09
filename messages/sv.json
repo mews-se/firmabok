@@ -132,7 +132,6 @@
     "badge_beta": "Beta",
     "needs_company_tooltip": "Lägg till ett företag för att aktivera",
     "logout_sandbox": "Avsluta sandbox",
-    "trial_days_left": "Provperiod: {days, plural, =1 {1 dag} other {# dagar}} kvar",
     "ext_tic": "Företagsprofil",
     "ext_invoice_inbox": "Dokumentinkorg",
     "fold_register": "Register",
@@ -140,7 +139,6 @@
     "collapse_nav": "Minimera menyn",
     "expand_nav": "Expandera menyn",
     "members_roles": "Medlemmar och roller",
-    "subscription": "Abonnemang",
     "discord_community": "Discord-community"
   },
   "agentKnowledge": {
@@ -325,7 +323,6 @@
   },
   "settings_intro": {
     "account": "Dina personliga uppgifter och din säkerhet. Gäller dig, inte företaget.",
-    "billing": "Varje företag har sitt eget abonnemang.",
     "company": "Uppgifterna visas på fakturor, i e-post och i filer till myndigheter.",
     "bookkeeping": "Regelverk, metod och serier. Det mesta sätts en gång.",
     "tax": "Styr momsdeklarationen, arbetsgivardeklarationen och vilka datum som bevakas.",
@@ -355,7 +352,6 @@
     "backup": "Säkerhetsbackup",
     "account": "Konto",
     "api": "API",
-    "billing": "Abonnemang",
     "whatsapp": "WhatsApp",
     "group_account": "Konto",
     "group_company": "Företag",
@@ -1890,10 +1886,6 @@
     "bic_label": "BIC/SWIFT",
     "bic_placeholder": "Fylls i automatiskt",
     "bic_error": "Ogiltig BIC/SWIFT (8 eller 11 tecken)"
-  },
-  "settings_billing": {
-    "load_failed": "Abonnemangsuppgifterna kunde inte läsas in, så din status kan inte visas just nu.",
-    "load_retry": "Försök igen"
   },
   "settings_invoice_form": {
     "default_our_reference_label": "Standard för Vår referens",
@@ -3772,7 +3764,6 @@
     "validation_min_one_row": "Minst en rad krävs",
     "send_hour_label": "Skicka klockan",
     "send_hour_hint": "Svensk tid",
-    "auto_send_requires_subscription": "Automatiskt utskick kräver ett abonnemang. Fakturorna skapas ändå som utkast varje period.",
     "auto_send_missing_email": "Kunden saknar e-postadress. Lägg till en e-postadress på kundkortet för att kunna skicka automatiskt."
   },
   "invoice_send_dialog": {
@@ -4855,9 +4846,6 @@
     "data_source_heading": "Datakälla",
     "reads_from": "Läser från: {tables}",
     "open": "Öppna",
-    "upsell_title": "Uppgradera för att använda {name}",
-    "upsell_description": "Den här funktionen ingår i en betald prenumeration. Uppgradera för att aktivera den.",
-    "upsell_cta": "Uppgradera",
     "sandbox_locked_title": "{name} är låst i sandlådan",
     "sandbox_locked_note": "Sandlådan kör helt utan externa tjänster, så den här funktionen är avstängd här. Skapa ett konto för att använda den på riktigt.",
     "sandbox_locked_cta": "Skapa konto",

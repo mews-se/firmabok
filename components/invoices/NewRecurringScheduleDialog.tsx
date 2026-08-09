@@ -27,7 +27,6 @@ import {
 import { useToast } from '@/components/ui/use-toast'
 import { useCompany, useCapability } from '@/contexts/CompanyContext'
 import { CAPABILITY } from '@/lib/entitlements/keys'
-import { UpgradeNote } from '@/components/billing/UpgradeNote'
 import { Plus, Trash2 } from 'lucide-react'
 import type { Customer, Currency, RecurringInvoiceSchedule } from '@/types'
 import { formatCurrency } from '@/lib/utils'
@@ -432,11 +431,6 @@ function NewRecurringScheduleForm({
                   <p className="text-sm text-warning-foreground mt-1">
                     {t('auto_send_missing_email')}
                   </p>
-                )}
-                {!hasEmailSend && (
-                  <UpgradeNote className="mt-2">
-                    {t('auto_send_requires_subscription')}
-                  </UpgradeNote>
                 )}
               </div>
             </div>

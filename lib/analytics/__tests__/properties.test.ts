@@ -31,7 +31,6 @@ describe('buildGroupProperties', () => {
     entityType: 'aktiebolag' as const,
     accountingFramework: 'k2' as const,
     paysSalaries: true,
-    trialEndsAt: '2026-08-01',
     capabilities: ['ai', 'salary'],
   }
 
@@ -41,7 +40,6 @@ describe('buildGroupProperties', () => {
       entity_type: 'aktiebolag',
       accounting_framework: 'k2',
       pays_salaries: true,
-      trial_ends_at: '2026-08-01',
       capabilities: ['ai', 'salary'],
     })
   })

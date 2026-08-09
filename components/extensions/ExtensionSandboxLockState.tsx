@@ -25,14 +25,13 @@ interface ExtensionSandboxLockStateProps {
  * sandbox blocks those services outright (lib/sandbox/guard.ts), so an
  * unlocked workspace looks functional and then quietly does nothing.
  *
- * Deliberately not ExtensionUpsellState: an anonymous demo user has no billing
- * to upgrade, they need an account. The CTA signs the anonymous session out
- * first, mirroring SandboxBanner: /register on top of a live anonymous session
- * registers into the sandbox instead of leaving it.
+ * An anonymous demo user needs an account, so the CTA signs the anonymous
+ * session out first, mirroring SandboxBanner: /register on top of a live
+ * anonymous session registers into the sandbox instead of leaving it.
  *
- * Same RSC constraint as ExtensionUpsellState: every prop stays a plain string
- * and the icon is resolved client-side from its name, because passing a
- * resolved component across the server/client boundary 500s the page.
+ * RSC constraint: every prop stays a plain string and the icon is resolved
+ * client-side from its name, because passing a resolved component across the
+ * server/client boundary 500s the page.
  */
 export function ExtensionSandboxLockState({
   iconName,

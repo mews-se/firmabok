@@ -103,7 +103,6 @@ export default async function DashboardLayout({
           team,
           isSandbox: false,
           capabilities: [],
-          trialEndsAt: null,
         }}
       >
         <SessionTimeoutController />
@@ -192,7 +191,6 @@ export default async function DashboardLayout({
       team,
       isSandbox: false,
       capabilities: [],
-      trialEndsAt: null,
     }
 
     return (
@@ -270,7 +268,6 @@ export default async function DashboardLayout({
     team,
     isSandbox,
     capabilities: entitlements.capabilities,
-    trialEndsAt: entitlements.trialEndsAt,
   }
 
   return (
@@ -323,7 +320,6 @@ export default async function DashboardLayout({
             entityType,
             accountingFramework: companyRow.accounting_framework as AccountingFramework,
             paysSalaries,
-            trialEndsAt: entitlements.trialEndsAt,
             capabilities: entitlements.capabilities,
           }}
         />

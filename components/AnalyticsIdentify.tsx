@@ -44,7 +44,6 @@ export default function AnalyticsIdentify({
     entityType,
     accountingFramework,
     paysSalaries,
-    trialEndsAt,
     capabilities,
   } = company
 
@@ -73,7 +72,6 @@ export default function AnalyticsIdentify({
         entityType,
         accountingFramework,
         paysSalaries,
-        trialEndsAt,
         capabilities: capabilityKey ? capabilityKey.split(',') : undefined,
       })
     )
@@ -87,7 +85,6 @@ export default function AnalyticsIdentify({
     entityType,
     accountingFramework,
     paysSalaries,
-    trialEndsAt,
     capabilityKey,
     identityHash,
   ])

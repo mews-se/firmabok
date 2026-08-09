@@ -14,7 +14,6 @@ import {
   Check,
   ChevronsUpDown,
   ChevronRight,
-  CreditCard,
   HelpCircle,
   Loader2,
   LogOut,
@@ -325,10 +324,6 @@ export default function UserMenu({
               <Link href="/settings/team" onClick={close} className={menuRow}>
                 <Users className="h-4 w-4 flex-shrink-0" />
                 {tNav('members_roles')}
-              </Link>
-              <Link href="/settings/billing" onClick={close} className={menuRow}>
-                <CreditCard className="h-4 w-4 flex-shrink-0" />
-                {tNav('subscription')}
               </Link>
               <div className="my-1 border-t border-border/60" />
               <Link href="/help" onClick={close} className={menuRow}>

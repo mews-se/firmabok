@@ -45,7 +45,6 @@ export function useSettingsNavItems(): { items: SettingsNavItem[]; groups: Setti
   // (show:false) until enabled.
   const defs: Array<SettingsNavItem & { show: boolean }> = [
     { id: 'account', href: '/settings/account', label: t('account'), group: 'account', show: true },
-    { id: 'billing', href: '/settings/billing', label: t('billing'), group: 'account', show: true },
     { id: 'company', href: '/settings/company', label: t('company'), group: 'company', show: hasCompany },
     { id: 'bookkeeping', href: '/settings/bookkeeping', label: t('bookkeeping'), group: 'accounting', show: hasCompany },
     { id: 'tax', href: '/settings/tax', label: t('tax'), group: 'accounting', show: hasCompany },

@@ -34,11 +34,6 @@ const ApiSettingsContent = dynamic(() =>
   import('./ApiSettingsContent').then((module) => ({ default: module.ApiSettingsContent })),
   { loading: SettingsLoadingSkeleton },
 )
-const BillingSettingsContent = dynamic(() =>
-  import('./BillingSettingsContent').then((module) => ({ default: module.BillingSettingsContent })),
-  { loading: SettingsLoadingSkeleton },
-)
-
 /**
  * Single source of truth mapping a settings section id to the component that
  * renders its content. Both the per-section route (`settings/<section>/page.tsx`,
@@ -55,7 +50,6 @@ export const SETTINGS_SECTIONS: Record<string, ComponentType> = {
   templates: TemplatesSettingsContent,
   banking: BankingSettingsContent,
   api: ApiSettingsContent,
-  billing: BillingSettingsContent,
 }
 
 export type SettingsSectionId = keyof typeof SETTINGS_SECTIONS

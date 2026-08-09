@@ -67,7 +67,6 @@
     "resend": "^6.17.2",
     "server-only": "^0.0.1",
     "sharp": "^0.35.3",
-    "stripe": "^22.3.1",
     "svix": "^1.85.0",
     "swr": "^2.4.2",
     "tailwind-merge": "^3.6.0",

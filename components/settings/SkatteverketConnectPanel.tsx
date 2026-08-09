@@ -9,7 +9,6 @@ import { useToast } from '@/components/ui/use-toast'
 import { useCapability } from '@/contexts/CompanyContext'
 import { isAllowedSkvPopupOrigin } from '@/lib/skatteverket/popup-origin'
 import { CAPABILITY } from '@/lib/entitlements/keys'
-import { UpgradeNote } from '@/components/billing/UpgradeNote'
 import {
   SettingsGroup,
   SettingsRow,
@@ -311,11 +310,6 @@ function SkatteverketPersonalConnectionCard() {
             </Button>
           </SettingsRowEnd>
         </SettingsRow>
-        {!hasSkatteverket && (
-          <div className="px-1 py-3">
-            <UpgradeNote>Anslutning till Skatteverket kräver ett abonnemang.</UpgradeNote>
-          </div>
-        )}
       </SettingsGroup>
     )
   }

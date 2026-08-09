@@ -32,7 +32,6 @@ export interface AnalyticsCompanyInput {
   entityType?: EntityType | null
   accountingFramework?: AccountingFramework | null
   paysSalaries?: boolean | null
-  trialEndsAt?: string | null
   capabilities?: readonly string[]
 }
 
@@ -70,7 +69,6 @@ export function buildGroupProperties(company: AnalyticsCompanyInput): Record<str
     entity_type: company.entityType,
     accounting_framework: company.accountingFramework,
     pays_salaries: company.paysSalaries,
-    trial_ends_at: company.trialEndsAt,
     // Sorted so the same entitlement set doesn't look like a change every
     // time the underlying query returns a different order.
     capabilities: company.capabilities ? [...company.capabilities].sort() : undefined,

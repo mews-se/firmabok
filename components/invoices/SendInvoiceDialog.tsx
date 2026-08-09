@@ -481,15 +481,6 @@ export default function SendInvoiceDialog({
                 flödet.
               </div>
             )}
-            {!isSandbox && !canEmail && mode === 'email' && (
-              <div className="rounded-lg border border-border bg-secondary/40 px-3 py-2.5 text-sm text-muted-foreground">
-                E-postutskick kräver ett abonnemang.{' '}
-                <a href="/settings/billing" className="underline underline-offset-2">
-                  Uppgradera
-                </a>{' '}
-                eller använd &laquo;Markera som skickad&raquo;.
-              </div>
-            )}
             {mode === 'email' && (
               <div className="space-y-3 rounded-lg border border-border p-3">
                 <div className="space-y-1 text-sm">

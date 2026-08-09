@@ -65,41 +65,9 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: projectRoot,
   },
-  // PostHog sends trailing-slash API requests; without this Next 308s them
-  // and the events are lost. Required by the reverse proxy below.
   skipTrailingSlashRedirect: true,
   experimental: {
     optimizePackageImports: ['recharts', 'date-fns', 'framer-motion'],
-  },
-  // PostHog reverse proxy. Keeping analytics same-origin buys three things:
-  // the strict CSP below needs NO posthog hosts (`connect-src 'self'` already
-  // covers ingestion, `script-src 'self'` the lazy-loaded replay/survey
-  // bundles), tracking blockers have no third-party host to match, and the
-  // Recapt host allowlist is replaced by nothing at all.
-  //
-  // `/rl` is deliberately meaningless: PostHog's own guidance is that obvious
-  // prefixes (/analytics, /tracking, /telemetry, /posthog, and increasingly
-  // /ingest) are on blocker filter lists. It must stay in sync with `api_host`
-  // in instrumentation-client.ts AND with the matcher exclusion in proxy.ts,
-  // or middleware redirects the ingestion POSTs to /login.
-  //
-  // Both /static/* and /array/* must point at the ASSETS origin, not the
-  // ingestion origin: array/ serves the config bundle and is easy to miss.
-  async rewrites() {
-    return [
-      {
-        source: '/rl/static/:path*',
-        destination: 'https://eu-assets.i.posthog.com/static/:path*',
-      },
-      {
-        source: '/rl/array/:path*',
-        destination: 'https://eu-assets.i.posthog.com/array/:path*',
-      },
-      {
-        source: '/rl/:path*',
-        destination: 'https://eu.i.posthog.com/:path*',
-      },
-    ]
   },
   async redirects() {
     const appUrlForRedirect = process.env.NEXT_PUBLIC_APP_URL?.trim().replace(/\/$/, '')
@@ -153,7 +121,7 @@ const nextConfig: NextConfig = {
         headers: [
           {
             key: "Strict-Transport-Security",
-            value: "max-age=63072000; includeSubDomains; preload",
+            value: "max-age=86400",
           },
           {
             key: "X-Frame-Options",
@@ -197,7 +165,7 @@ const nextConfig: NextConfig = {
         headers: [
           {
             key: "Strict-Transport-Security",
-            value: "max-age=63072000; includeSubDomains; preload",
+            value: "max-age=86400",
           },
           {
             key: "X-Frame-Options",

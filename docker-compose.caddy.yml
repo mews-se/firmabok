@@ -1,10 +1,13 @@
-# Optional TLS overlay. Adds a Caddy reverse proxy that auto-provisions
-# Let's Encrypt certificates for ${DOMAIN}.
+# TLS overlay: a Caddy reverse proxy in front of the app. HTTPS is required
+# even on a LAN, since the app sets Secure cookies in production builds.
 #
-# Usage:
-#   1. Set DOMAIN=app.example.com in .env (must resolve to this host's public IP)
-#   2. Open ports 80 and 443 to the public internet (LE HTTP-01 challenge needs 80)
-#   3. docker compose -f docker-compose.yml -f docker-compose.caddy.yml up -d
+# LAN usage (the default, docker/Caddyfile uses `tls internal`):
+#   1. Set DOMAIN=accounted.example.lan in .env and point that name at this
+#      host in your local DNS
+#   2. docker compose -f docker-compose.yml -f docker-compose.caddy.yml up -d
+#   3. Trust Caddy's internal root CA on your devices
+# For a public domain with open ports 80/443, remove `tls internal` from
+# docker/Caddyfile and Caddy provisions Let's Encrypt instead.
 #
 # Caddy reaches the app over the internal Docker network; the app no longer
 # binds a host port at all.

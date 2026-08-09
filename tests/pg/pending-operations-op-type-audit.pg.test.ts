@@ -53,11 +53,12 @@ describe('pending_operations operation_type CHECK audit', () => {
 
   it('extraction still matches the staging call sites', () => {
     const { types, callSites } = extractStagedOpTypes()
-    // 44 call sites / 43 distinct types as of 2026-07-03. The floor is a
+    // 39 call sites / 39 distinct types as of 2026-08-09, after the fork
+    // dropped payroll, transaction and integration tools. The floor is a
     // canary: a big drop means the regex no longer matches the code shape,
     // not that tools were removed.
-    expect(callSites).toBeGreaterThanOrEqual(40)
-    expect(types.size).toBeGreaterThanOrEqual(40)
+    expect(callSites).toBeGreaterThanOrEqual(30)
+    expect(types.size).toBeGreaterThanOrEqual(30)
   })
 
   it('accepts every op type staged in code or tiered in risk-tiers', async () => {

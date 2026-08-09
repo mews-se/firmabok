@@ -19,7 +19,6 @@
     "lint": "eslint",
     "check:guards": "node scripts/checks/no-new-antipatterns.mjs",
     "validate:packs": "npx tsx scripts/validate-packs.ts",
-    "validate:registry": "npx tsx scripts/validate-registry.ts",
     "check:lint": "node scripts/checks/no-new-lint-errors.mjs",
     "test": "vitest run --project unit",
     "test:pg": "vitest run --project pg-real"
@@ -46,7 +45,6 @@
     "@upstash/ratelimit": "^2.0.8",
     "@upstash/redis": "^1.38.0",
     "@use-gesture/react": "^10.3.1",
-    "@vercel/speed-insights": "^2.0.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.4.0",

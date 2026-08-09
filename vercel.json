@@ -34,10 +34,6 @@
       "schedule": "0 3 * * *"
     },
     {
-      "path": "/api/sandbox/cleanup/cron",
-      "schedule": "0 4 * * *"
-    },
-    {
       "path": "/api/events/cleanup/cron",
       "schedule": "0 2 * * *"
     },

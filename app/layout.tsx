@@ -4,7 +4,6 @@ import { Hedvig_Letters_Serif } from "next/font/google";
 import Script from "next/script";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
-import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip-provider";
 import { DeployReloadPrompt } from "@/components/system/DeployReloadPrompt";
@@ -102,7 +101,6 @@ export default async function RootLayout({
             </PaletteProvider>
           </ThemeProvider>
         </NextIntlClientProvider>
-        <SpeedInsights />
         <Script src="/sw-register.js" strategy="afterInteractive" />
       </body>
     </html>

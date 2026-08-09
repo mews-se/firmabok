@@ -90,10 +90,8 @@ The boundary is strict and CI-enforced:
 - Extensions integrate through the event bus and documented extension APIs,
   and are wired via a generated static registry (`npm run setup:extensions`).
 
-Licensing follows the same boundary: the project is AGPL-3.0, with an
-extension exception that allows third-party extensions using only the
-documented Extension API to be licensed under any terms. See
-[LICENSE](LICENSE) and [docs/EXTENSIONS.md](docs/EXTENSIONS.md).
+The project is licensed AGPL-3.0-or-later; this fork carries no extension
+exception. See [LICENSE](LICENSE).
 
 ## Agent surface (MCP)
 

@@ -1,94 +1,41 @@
-# Accounted
+# Accounted — personlig fork
 
-Open-source Swedish accounting software for sole traders (enskild firma) and limited companies (aktiebolag). Double-entry bookkeeping that complies with Swedish accounting law, built to be operated by you or by your AI agent.
+Svensk bokföring för enskild firma, nedbantad för privat drift på eget LAN.
 
-[![License: AGPL-3.0-or-later](https://img.shields.io/badge/License-AGPL--3.0--or--later-blue.svg)](LICENSE)
-[![Core Build](https://github.com/erp-mafia/accounted/actions/workflows/core-build.yml/badge.svg)](https://github.com/erp-mafia/accounted/actions/workflows/core-build.yml)
-[![pg-real tests](https://github.com/erp-mafia/accounted/actions/workflows/test-pg-real.yml/badge.svg)](https://github.com/erp-mafia/accounted/actions/workflows/test-pg-real.yml)
-[![Docker](https://github.com/erp-mafia/accounted/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/erp-mafia/accounted/actions/workflows/docker-publish.yml)
+Det här är en personlig fork av [Accounted](https://github.com/erp-mafia/accounted)
+(erp-mafia). Allt kvalificerat arbete — bokföringsmotorn, regelefterlevnaden i
+databasen, rapporterna, SIE-stödet — är uppströmsprojektets förtjänst. Är du
+inte jag vill du nästan säkert använda [originalet](https://github.com/erp-mafia/accounted)
+i stället: det är aktivt utvecklat, dokumenterat och byggt för fler än en
+användare.
 
-[Website](https://accounted.se) · [Hosted app](https://app.gnubok.se) · [Documentation](https://docs.gnubok.se)
+## Vad som skiljer mot uppströms
 
-<!-- Hero screenshot goes here (pending founder-approved shot):
-![Accounted dashboard](docs/assets/hero.png)
--->
+Forken är avskalad till det en ensam enskild firma på ett privat nät behöver.
+Borttaget:
 
-## Why Accounted?
+- AI-assistenten och all LLM-koppling i själva appen
+- Bankkoppling (PSD2), Stripe, WooCommerce, WhatsApp och e-postutskick
+- Skatteverkets inlämnings-API och BankID
+- Löner, lönebesked och AGI
+- INK2, digital årsredovisning och iXBRL (aktiebolagsdelarna)
+- Publika REST-API:t, demo-sandboxen och övrig SaaS-apparat
 
-**Compliant by construction.** Accounted implements double-entry bookkeeping under Swedish accounting law (Bokföringslagen). Voucher immutability, sequential voucher numbering, period locks, and 7-year document retention are enforced by database triggers, not by convention. Corrections are made the legal way, with reversal entries (storno), never by editing history. See [ARCHITECTURE.md](ARCHITECTURE.md) for how.
+Kvar och oförändrat från uppströms:
 
-**Agent-native.** The full bookkeeping engine is exposed as 100+ MCP (Model Context Protocol) tools with scoped API keys, so an AI agent can do the books in Accounted: categorize transactions, draft vouchers, reconcile periods, and prepare declarations. Posting is staged for human approval, so the agent proposes and you decide.
+- Dubbel bokföring med BAS 2026, verifikat med draft/commit och inline-rättelse
+- Fakturering med PDF-export, leverantörsfakturor, dokumentarkiv
+- SIE import/export, momsdeklaration (SKV 4700), NE-bilaga, rapporterna och
+  årsbokslut för enskild firma
+- MCP-servern: bokföringen kan skötas av en AI-agent utifrån med egen
+  API-nyckel, och alla skrivningar kräver manuellt godkännande i appen
 
-**Yours to run.** AGPL-3.0 licensed and fully self-hostable with Docker and Supabase. Use the hosted version at [app.gnubok.se](https://app.gnubok.se) or run your own.
+## Drift
 
-## Features
+Docker plus självhostad Supabase, allt lokalt. Se
+[docs/SELF-HOSTING.md](docs/SELF-HOSTING.md).
 
-- **Double-entry bookkeeping** -- BAS 2026 chart of accounts, draft/commit workflow, sequential voucher numbering
-- **Invoicing** -- Create, send, and track invoices with mixed VAT rates and PDF generation
-- **Bank reconciliation** -- PSD2 bank connection via Enable Banking, 4-pass automatic matching
-- **VAT declaration** -- SKV 4700 form mapping, per-rate breakdown, EU/export handling
-- **Tax reports** -- NE-bilaga, INK2, SRU export for Skatteverket
-- **Payroll** -- Salary runs, payslips, and AGI (arbetsgivardeklaration) employer declarations
-- **Supplier invoices** -- Registration, payment tracking, input VAT deduction
-- **Document archive** -- SHA-256 integrity, 7-year retention enforcement, full archive ZIP export
-- **SIE import/export** -- Standard Swedish accounting interchange format
-- **Agent access (MCP)** -- 100+ bookkeeping tools over the Model Context Protocol, with scoped API keys and staged approvals
-- **Extension system** -- Opt-in plugins for AI categorization, receipt OCR, email, calendar, and more
+## Licens
 
-## Self-Hosting
-
-```bash
-git clone https://github.com/erp-mafia/accounted.git
-cd accounted
-./setup.sh              # Prompts for Supabase credentials, generates .env
-docker compose up -d
-```
-
-You need a Supabase project and must apply the database migrations before first use. See [docs/SELF-HOSTING.md](docs/SELF-HOSTING.md) for the full step-by-step guide, including Supabase setup, auth configuration, optional features (AI, email, push notifications), and troubleshooting.
-
-## Development Setup
-
-Prerequisites: Node.js 20+, a Supabase project.
-
-```bash
-npm install
-npm run dev       # Start dev server (auto-generates extension registry)
-npm test          # Run tests
-npm run build     # Production build
-npm run lint      # ESLint
-```
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the full development workflow.
-
-## Tech Stack
-
-- **Framework**: Next.js 16 (App Router), React 19, TypeScript (strict)
-- **Database**: Supabase (PostgreSQL + Row Level Security + email/password auth + TOTP MFA)
-- **Styling**: Tailwind CSS 4 + shadcn/ui
-- **Integrations**: Enable Banking (PSD2), Anthropic SDK, LangChain, OpenAI, Resend, JSZip
-
-## Documentation
-
-- [User and API documentation](https://docs.gnubok.se) -- Guides for using the product and the public API
-- [ARCHITECTURE.md](ARCHITECTURE.md) -- How the system is built: bookkeeping engine, legal enforcement, tenancy, extensions, agent surface
-- [docs/SELF-HOSTING.md](docs/SELF-HOSTING.md) -- Full self-hosting guide (Docker, Supabase setup, migrations, optional features)
-- [docs/EXTENSIONS.md](docs/EXTENSIONS.md) -- Extension development guide
-- [docs/DOCKER.md](docs/DOCKER.md) -- Docker deployment reference
-- [CONTRIBUTING.md](CONTRIBUTING.md) -- Development workflow, code style, pull request process
-- [SECURITY.md](SECURITY.md) -- Vulnerability reporting policy
-
-## Community
-
-- Found a bug or have an idea? [Open an issue](https://github.com/erp-mafia/accounted/issues/new/choose)
-- Security vulnerabilities: see [SECURITY.md](SECURITY.md), never a public issue
-- Everyone interacting in the project is expected to follow the [Code of Conduct](CODE_OF_CONDUCT.md)
-
-## Contributing
-
-Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for the full guide.
-
-All commits require a [DCO sign-off](DCO) (`git commit -s`).
-
-## License
-
-[AGPL-3.0-or-later](LICENSE) with an **extension exception**: third-party extensions that interact solely through the documented Extension API may be licensed under any terms, including proprietary. See [LICENSE](LICENSE) for details and [NOTICE](NOTICE) for third-party attributions.
+[AGPL-3.0-or-later](LICENSE), samma som uppströms. Tredjepartserkännanden i
+[NOTICE](NOTICE).

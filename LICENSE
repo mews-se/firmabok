@@ -13,43 +13,6 @@ GNU Affero General Public License for more details.
 
 ----------------------------------------------------------------------
 
-EXTENSION EXCEPTION
-
-Additional Permission under GNU AGPL version 3 section 7
-
-As a special exception, the copyright holder of gnubok gives you
-permission to create extensions ("plugins") that interact with gnubok
-solely through the documented Extension API — defined in
-lib/extensions/types.ts (the Extension interface, ExtensionContext,
-and related types), lib/events/types.ts (the event bus), and the
-extension catch-all API route (app/api/extensions/ext/[...path]/route.ts)
-— without those extensions being
-considered derivative works of gnubok under the terms of this License.
-
-This means you may license your extensions under any terms you choose,
-including proprietary licenses, provided that:
-
-  1. Your extension interacts with gnubok only through the documented
-     Extension API and does not modify gnubok's own source code.
-
-  2. Your extension is clearly separable from gnubok (e.g., in its own
-     directory under extensions/, with its own manifest.json).
-
-  3. You do not copy substantial portions of gnubok's source code into
-     your extension.
-
-If you modify gnubok itself — including its core libraries, database
-migrations, API routes, or UI components — the modified version remains
-subject to the full terms of the GNU Affero General Public License.
-
-The copyright holder will not revoke this exception in any future
-release of gnubok. Note that under AGPL version 3 section 7, any party
-who redistributes gnubok may remove additional permissions from their
-copy; however, the original grant from the copyright holder remains
-in effect for copies obtained directly or indirectly from this source.
-
-----------------------------------------------------------------------
-
                     GNU AFFERO GENERAL PUBLIC LICENSE
                        Version 3, 19 November 2007
 

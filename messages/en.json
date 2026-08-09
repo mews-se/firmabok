@@ -2960,7 +2960,11 @@
     "link_search_placeholder": "Search voucher text…",
     "link_empty": "No vouchers found",
     "link_failed": "Linking failed",
-    "link_success": "The document was linked to the voucher"
+    "link_success": "The document was linked to the voucher",
+    "action_delete": "Delete permanently",
+    "delete_confirm_title": "Delete this document permanently?",
+    "delete_confirm_description": "{name} and its inbox entry will be permanently deleted. This cannot be undone. Documents attached to a voucher cannot be deleted.",
+    "unnamed_document": "The document"
   },
   "inbox_bulk_book": {
     "total_label": "Total for the documents: {amount}",

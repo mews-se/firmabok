@@ -4,6 +4,7 @@ import { withRouteContext } from '@/lib/api/with-route-context'
 import { validateBody } from '@/lib/api/validate'
 import { InboxItemActionSchema } from '@/lib/api/schemas'
 import { errorResponse, errorResponseFromCode } from '@/lib/errors/get-structured-error'
+import { deleteDocument } from '@/lib/core/documents/document-service'
 
 ensureInitialized()
 
@@ -156,6 +157,75 @@ export const PATCH = withRouteContext<{ params: Promise<{ id: string }> }>(
     }
 
     return NextResponse.json({ data: updated })
+  },
+  { requireWrite: true },
+)
+
+/**
+ * DELETE /api/inbox/[id]: permanently remove an inbox item together with its
+ * document. Only for items that never became bookkeeping: a terminal-linked
+ * item refuses here, and a document attached to a verifikat refuses inside
+ * deleteDocument (räkenskapsinformation, BFL 7 kap 2 §). The document goes
+ * first so a refusal leaves the item intact and visible.
+ */
+export const DELETE = withRouteContext<{ params: Promise<{ id: string }> }>(
+  'inbox.delete',
+  async (_request, ctx, { params }) => {
+    const { id } = await params
+    const { supabase, companyId, log, requestId } = ctx
+
+    const { data: item, error } = await supabase
+      .from('invoice_inbox_items')
+      .select(
+        'id, document_id, created_supplier_invoice_id, created_journal_entry_id, matched_transaction_id',
+      )
+      .eq('id', id)
+      .eq('company_id', companyId)
+      .maybeSingle()
+
+    if (error) {
+      log.error('inbox item fetch failed', error)
+      return errorResponse(error, log, { requestId })
+    }
+    if (!item) {
+      return errorResponseFromCode('INBOX_ITEM_NOT_FOUND', log, { requestId })
+    }
+
+    const handled = !!(
+      item.created_supplier_invoice_id ||
+      item.created_journal_entry_id ||
+      item.matched_transaction_id
+    )
+    if (handled) {
+      return errorResponseFromCode('INBOX_ITEM_ALREADY_HANDLED', log, {
+        requestId,
+        details: {
+          created_supplier_invoice_id: item.created_supplier_invoice_id,
+          created_journal_entry_id: item.created_journal_entry_id,
+          matched_transaction_id: item.matched_transaction_id,
+        },
+      })
+    }
+
+    if (item.document_id) {
+      const result = await deleteDocument(supabase, companyId, item.document_id)
+      if (!result.ok && result.reason !== 'not_found') {
+        return NextResponse.json({ error: result.message }, { status: result.status })
+      }
+    }
+
+    const { error: deleteError } = await supabase
+      .from('invoice_inbox_items')
+      .delete()
+      .eq('id', id)
+      .eq('company_id', companyId)
+
+    if (deleteError) {
+      log.error('inbox item delete failed', deleteError)
+      return errorResponse(deleteError, log, { requestId })
+    }
+
+    return NextResponse.json({ data: { id: item.id, deleted: true } })
   },
   { requireWrite: true },
 )

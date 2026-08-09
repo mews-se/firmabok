@@ -31,10 +31,12 @@ import {
   Link2,
   Loader2,
   RotateCcw,
+  Trash2,
   Upload,
   Wallet,
   X,
 } from 'lucide-react'
+import { DestructiveConfirmDialog } from '@/components/ui/destructive-confirm-dialog'
 
 const InboxLinkVoucherDialog = dynamic(() => import('@/components/inbox/InboxLinkVoucherDialog'))
 
@@ -107,6 +109,7 @@ export default function InboxPageContent() {
   const [actioningId, setActioningId] = useState<string | null>(null)
   const [previewItem, setPreviewItem] = useState<InboxListItem | null>(null)
   const [linkItem, setLinkItem] = useState<InboxListItem | null>(null)
+  const [deleteItem, setDeleteItem] = useState<InboxListItem | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   const fetchItems = useCallback(
@@ -187,6 +190,27 @@ export default function InboxPageContent() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action }),
       })
+      if (!res.ok) {
+        const json = await res.json().catch(() => null)
+        toast({
+          title: t('action_failed'),
+          description: getErrorMessage(json, { statusCode: res.status }),
+          variant: 'destructive',
+        })
+        return
+      }
+      void fetchItems(filter)
+    } catch {
+      toast({ title: t('action_failed'), variant: 'destructive' })
+    } finally {
+      setActioningId(null)
+    }
+  }
+
+  async function handleDelete(item: InboxListItem) {
+    setActioningId(item.id)
+    try {
+      const res = await fetch(`/api/inbox/${item.id}`, { method: 'DELETE' })
       if (!res.ok) {
         const json = await res.json().catch(() => null)
         toast({
@@ -418,21 +442,34 @@ export default function InboxPageContent() {
                           </>
                         )}
                         {dismissed && canWrite && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-10 w-10"
-                            aria-label={t('action_restore')}
-                            title={t('action_restore')}
-                            disabled={busy}
-                            onClick={() => void handleAction(item, 'restore')}
-                          >
-                            {busy ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <RotateCcw className="h-4 w-4" />
-                            )}
-                          </Button>
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-10 w-10"
+                              aria-label={t('action_restore')}
+                              title={t('action_restore')}
+                              disabled={busy}
+                              onClick={() => void handleAction(item, 'restore')}
+                            >
+                              {busy ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <RotateCcw className="h-4 w-4" />
+                              )}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-10 w-10 text-destructive"
+                              aria-label={t('action_delete')}
+                              title={t('action_delete')}
+                              disabled={busy}
+                              onClick={() => setDeleteItem(item)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </>
                         )}
                       </span>
                     </td>
@@ -530,6 +567,21 @@ export default function InboxPageContent() {
           }}
         />
       )}
+
+      <DestructiveConfirmDialog
+        open={deleteItem !== null}
+        onOpenChange={(o) => !o && setDeleteItem(null)}
+        title={t('delete_confirm_title')}
+        description={t('delete_confirm_description', {
+          name: deleteItem?.file_name ?? t('unnamed_document'),
+        })}
+        confirmLabel={t('action_delete')}
+        cancelLabel={t('preview_close')}
+        onConfirm={async () => {
+          if (deleteItem) await handleDelete(deleteItem)
+          setDeleteItem(null)
+        }}
+      />
     </div>
   )
 }

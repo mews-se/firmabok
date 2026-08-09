@@ -2960,7 +2960,11 @@
     "link_search_placeholder": "Sök verifikationstext…",
     "link_empty": "Inga verifikationer hittades",
     "link_failed": "Kopplingen misslyckades",
-    "link_success": "Underlaget kopplades till verifikatet"
+    "link_success": "Underlaget kopplades till verifikatet",
+    "action_delete": "Ta bort permanent",
+    "delete_confirm_title": "Ta bort dokumentet permanent?",
+    "delete_confirm_description": "{name} och dess inkorgspost raderas permanent. Detta går inte att ångra. Dokument som är knutna till en verifikation kan inte tas bort.",
+    "unnamed_document": "Dokumentet"
   },
   "inbox_bulk_book": {
     "total_label": "Underlagens summa: {amount}",

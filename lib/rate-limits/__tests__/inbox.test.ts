@@ -52,8 +52,8 @@ describe('checkInboxUploadRateLimit', () => {
     await checkInboxUploadRateLimit(supabase, 'company-xyz')
     expect(supabase.rpc).toHaveBeenCalledWith('check_and_increment_inbox_quota', {
       p_company_id: 'company-xyz',
-      p_minute_max: 30,
-      p_day_max: 500,
+      p_minute_max: 600,
+      p_day_max: 20000,
     })
   })
 })

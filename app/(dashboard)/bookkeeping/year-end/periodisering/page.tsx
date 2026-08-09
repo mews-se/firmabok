@@ -28,11 +28,10 @@ import type {
 import type { FiscalPeriod } from '@/types'
 import { getErrorMessage as getUserErrorMessage } from '@/lib/errors/get-error-message'
 
-type Step = 'vacation' | 'audit' | 'auto' | 'manual' | 'review'
+type Step = 'audit' | 'auto' | 'manual' | 'review'
 
-const STEP_ORDER: Step[] = ['vacation', 'audit', 'auto', 'manual', 'review']
+const STEP_ORDER: Step[] = ['audit', 'auto', 'manual', 'review']
 const STEP_LABELS: Record<Step, string> = {
-  vacation: 'Semester',
   audit: 'Revisionsarvode',
   auto: 'Auto-detektering',
   manual: 'Manuella tillägg',
@@ -100,12 +99,11 @@ export default function PeriodiseringWizardPage() {
     searchParams.get('period') ?? null,
   )
 
-  const [step, setStep] = useState<Step>('vacation')
+  const [step, setStep] = useState<Step>('audit')
   const [proposal, setProposal] = useState<ProposalResponse | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
-  const [vacationAccepted, setVacationAccepted] = useState(true)
   const [auditState, setAuditState] = useState<AuditState>({
     enabled: false,
     amount: '',
@@ -184,11 +182,6 @@ export default function PeriodiseringWizardPage() {
     }
   }, [selectedPeriodId])
 
-  const vacationProposal = useMemo(
-    () => proposal?.proposals.find((p) => p.kind === 'vacation_liability_change') ?? null,
-    [proposal],
-  )
-
   const currentStepIndex = STEP_ORDER.indexOf(step)
   const progressValue = ((currentStepIndex + 1) / STEP_ORDER.length) * 100
   const showWizard = selectedPeriodId !== null && (periods?.length ?? 0) > 0 && !loading && !loadError
@@ -227,9 +220,6 @@ export default function PeriodiseringWizardPage() {
     setPostError(null)
     try {
       const items: unknown[] = []
-      if (vacationProposal && vacationAccepted) {
-        items.push({ kind: 'vacation_liability_change' })
-      }
       if (auditState.enabled) {
         const amount = parseFloat(auditState.amount)
         if (Number.isFinite(amount) && amount > 0) {
@@ -347,8 +337,6 @@ export default function PeriodiseringWizardPage() {
     }
   }, [
     selectedPeriodId,
-    vacationProposal,
-    vacationAccepted,
     auditState,
     autoState,
     manualEntries,
@@ -436,19 +424,10 @@ export default function PeriodiseringWizardPage() {
             </CardContent>
           </Card>
 
-          {step === 'vacation' && (
-            <VacationStep
-              proposal={vacationProposal}
-              accepted={vacationAccepted}
-              onChange={setVacationAccepted}
-              onNext={() => setStep('audit')}
-            />
-          )}
           {step === 'audit' && (
             <AuditStep
               state={auditState}
               onChange={setAuditState}
-              onBack={() => setStep('vacation')}
               onNext={() => setStep('auto')}
             />
           )}
@@ -475,8 +454,6 @@ export default function PeriodiseringWizardPage() {
           )}
           {step === 'review' && (
             <ReviewStep
-              vacationProposal={vacationProposal}
-              vacationAccepted={vacationAccepted}
               auditState={auditState}
               suggestions={proposal.autoDetected ?? []}
               selections={autoState.selections}
@@ -499,80 +476,20 @@ export default function PeriodiseringWizardPage() {
 // Step components
 // ============================================================
 
-function VacationStep({
-  proposal,
-  accepted,
-  onChange,
-  onNext,
-}: {
-  proposal: AccrualsProposal['proposals'][number] | null
-  accepted: boolean
-  onChange: (v: boolean) => void
-  onNext: () => void
-}) {
-  return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Steg 1: Semesterlöneskuld</CardTitle>
-          <p className="text-sm text-muted-foreground">
-            Justering av 2920 mot 7090 plus 31,42 % sociala avgifter (2940 / 7519).
-            Saldot rullas vidare till nästa år.
-          </p>
-        </CardHeader>
-        <CardContent>
-          {proposal ? (
-            <div className="flex items-start justify-between gap-4 rounded-md border border-border p-4">
-              <div className="flex-1 space-y-2">
-                <p className="text-sm font-medium">{proposal.label}</p>
-                <p className="text-xs text-muted-foreground">{proposal.description}</p>
-                <div className="flex items-center gap-2 pt-1">
-                  <Checkbox
-                    id="accept-vacation"
-                    checked={accepted}
-                    onCheckedChange={(c) => onChange(Boolean(c))}
-                  />
-                  <Label htmlFor="accept-vacation" className="text-sm cursor-pointer select-none">
-                    Boka denna justering
-                  </Label>
-                </div>
-              </div>
-              <p className="font-display text-2xl tabular-nums shrink-0">
-                {formatCurrency(proposal.amount)}
-              </p>
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground italic">
-              Ingen justering behövs: semesterlöneskulden ligger redan rätt.
-            </p>
-          )}
-        </CardContent>
-      </Card>
-      <div className="flex justify-end">
-        <Button onClick={onNext}>
-          Nästa <ArrowRight className="ml-1 h-4 w-4" />
-        </Button>
-      </div>
-    </div>
-  )
-}
-
 function AuditStep({
   state,
   onChange,
-  onBack,
   onNext,
 }: {
   state: AuditState
   onChange: (s: AuditState) => void
-  onBack: () => void
   onNext: () => void
 }) {
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Steg 2: Revisions- / bokslutsarvode</CardTitle>
+          <CardTitle className="text-base">Steg 1: Revisions- / bokslutsarvode</CardTitle>
           <p className="text-sm text-muted-foreground">
             Periodisera arvode för revision (2992) eller bokslut (2991). Posten
             vänds första dagen i nästa räkenskapsår när fakturan kommer.
@@ -619,10 +536,7 @@ function AuditStep({
           )}
         </CardContent>
       </Card>
-      <div className="flex justify-between">
-        <Button variant="outline" onClick={onBack}>
-          Tillbaka
-        </Button>
+      <div className="flex justify-end">
         <Button onClick={onNext}>
           Nästa <ArrowRight className="ml-1 h-4 w-4" />
         </Button>
@@ -648,7 +562,7 @@ function AutoStep({
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Steg 3: Auto-detekterade periodiseringar</CardTitle>
+          <CardTitle className="text-base">Steg 2: Auto-detekterade periodiseringar</CardTitle>
           <p className="text-sm text-muted-foreground">
             Fakturor (kund och leverantör) i den stängda perioden vars beskrivning
             innehåller en datumintervall som sträcker sig in i nästa räkenskapsår.
@@ -737,7 +651,7 @@ function ManualStep({
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Steg 4: Manuella periodiseringar</CardTitle>
+          <CardTitle className="text-base">Steg 3: Manuella periodiseringar</CardTitle>
           <p className="text-sm text-muted-foreground">
             Använd mallarna nedan för vanliga fall, eller hoppa direkt till granskning.
           </p>
@@ -858,8 +772,6 @@ function ManualEntryEditor({
 }
 
 function ReviewStep({
-  vacationProposal,
-  vacationAccepted,
   auditState,
   suggestions,
   selections,
@@ -871,8 +783,6 @@ function ReviewStep({
   onBack,
   onPost,
 }: {
-  vacationProposal: AccrualsProposal['proposals'][number] | null
-  vacationAccepted: boolean
   auditState: AuditState
   suggestions: PeriodiseringSuggestion[]
   selections: Record<string, boolean>
@@ -892,7 +802,6 @@ function ReviewStep({
   )
 
   const totalCount =
-    (vacationProposal && vacationAccepted ? 1 : 0) +
     (auditValid ? 1 : 0) +
     selectedSuggestions.length +
     validManual.length
@@ -901,7 +810,7 @@ function ReviewStep({
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Steg 5: Granska & posta</CardTitle>
+          <CardTitle className="text-base">Steg 4: Granska & posta</CardTitle>
           <p className="text-sm text-muted-foreground">
             {totalCount === 0
               ? 'Inga periodiseringar valda. Gå tillbaka och välj minst en.'
@@ -909,9 +818,6 @@ function ReviewStep({
           </p>
         </CardHeader>
         <CardContent className="space-y-3">
-          {vacationProposal && vacationAccepted && (
-            <ReviewLine label={vacationProposal.label} amount={vacationProposal.amount} note="Rullas vidare" />
-          )}
           {auditValid && (
             <ReviewLine
               label={

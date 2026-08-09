@@ -48,7 +48,7 @@ export const PUT = withRouteContext(
     // Fetch current settings to check for tax-relevant changes
     const { data: oldSettings } = await supabase
       .from('company_settings')
-      .select(`${DEADLINE_SETTINGS_SELECT}, vat_number, onboarding_complete, salary_vacation_year_basis, reminder_days_level_1, reminder_days_level_2, reminder_days_level_3, aktiekapital, antal_aktier`)
+      .select(`${DEADLINE_SETTINGS_SELECT}, vat_number, onboarding_complete, reminder_days_level_1, reminder_days_level_2, reminder_days_level_3, aktiekapital, antal_aktier`)
       .eq('company_id', companyId)
       .single()
 
@@ -129,35 +129,6 @@ export const PUT = withRouteContext(
       if ((effectiveAktiekapital === null) !== (effectiveAntalAktier === null)) {
         return NextResponse.json(
           { error: 'Aktiekapital och antal aktier måste anges tillsammans. Fyll i båda fälten eller lämna båda tomma.' },
-          { status: 400 },
-        )
-      }
-    }
-
-    // Vacation year basis (payroll gap-closure 3.1): changing the boundary
-    // while OPEN vacation-ledger rows exist would orphan them (rows are keyed
-    // by vacation_year_start). Close the current year first.
-    if (
-      body.salary_vacation_year_basis !== undefined &&
-      body.salary_vacation_year_basis !==
-        (oldSettings as Record<string, unknown> | null)?.salary_vacation_year_basis
-    ) {
-      const { count: openRows, error: openRowsError } = await supabase
-        .from('employee_vacation_balances')
-        .select('id', { count: 'exact', head: true })
-        .eq('company_id', companyId)
-        .eq('status', 'open')
-      // Fail closed: a failed check must not let the basis change through
-      // and orphan open vacation-ledger rows.
-      if (openRowsError) {
-        return NextResponse.json({ error: getUserErrorMessage(openRowsError) }, { status: 500 })
-      }
-      if ((openRows ?? 0) > 0) {
-        return NextResponse.json(
-          {
-            error:
-              'Semesterårets basis kan inte ändras medan öppna semestersaldon finns. Stäng semesteråret först.',
-          },
           { status: 400 },
         )
       }

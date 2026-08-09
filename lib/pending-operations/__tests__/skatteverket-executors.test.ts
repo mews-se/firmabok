@@ -1,8 +1,8 @@
 /**
- * Unit tests for commitSubmitVatDeclaration / commitSubmitAgi.
+ * Unit tests for commitSubmitVatDeclaration.
  * Driven through the public commitPendingOperation dispatcher.
  *
- * The MCP submit tools stage submit_vat_declaration / submit_agi ops; this
+ * The MCP submit tool stages submit_vat_declaration ops; this
  * dispatcher resolves the skatteverket extension's commit services via the
  * registry and translates their SkvSubmitResult into the op lifecycle:
  *   - ok                    → committed (signing_url in result_data)
@@ -22,7 +22,7 @@ import type { PendingOperation } from '@/types'
 import { commitPendingOperation } from '../commit'
 
 // The commit-time capability gate (PR: gate paid MCP tools) runs hasCapability
-// before the atomic claim for submit_vat_declaration/submit_agi. These tests
+// before the atomic claim for submit_vat_declaration. These tests
 // isolate the registry/lifecycle wiring, so make the gate transparent here;
 // its enforcement is covered by commit-capability-gate.test.ts.
 vi.mock('@/lib/entitlements/has-capability', async (importOriginal) => {
@@ -71,12 +71,12 @@ afterEach(() => {
   extensionRegistry.clear()
 })
 
-describe('commitPendingOperation: submit_vat_declaration / submit_agi', () => {
+describe('commitPendingOperation: submit_vat_declaration', () => {
   it('happy VAT path → committed with signing_url + awaiting_signature status', async () => {
     const vat = vi.fn().mockResolvedValue({
       ok: true, signing_url: 'https://skv.test/sign/abc', redovisningsperiod: '202503',
     })
-    registerFakeSkatteverket({ commitSubmitVatDeclaration: vat, commitSubmitAgi: vi.fn() })
+    registerFakeSkatteverket({ commitSubmitVatDeclaration: vat })
     const { supabase, enqueue } = createQueuedMockSupabase()
     enqueue({ data: { id: 'op-1' }, error: null }) // CAS claim
     enqueue({ data: null, error: null })           // dispatcher commit update
@@ -89,21 +89,6 @@ describe('commitPendingOperation: submit_vat_declaration / submit_agi', () => {
     expect(vat).toHaveBeenCalledWith(expect.anything(), 'user-1', 'company-1', {
       period_type: 'monthly', year: 2025, period: 3,
     })
-  })
-
-  it('happy AGI path → committed with signing_url', async () => {
-    const agi = vi.fn().mockResolvedValue({ ok: true, signing_url: 'https://skv.test/agi/xyz', period: '202503' })
-    registerFakeSkatteverket({ commitSubmitVatDeclaration: vi.fn(), commitSubmitAgi: agi })
-    const { supabase, enqueue } = createQueuedMockSupabase()
-    enqueue({ data: { id: 'op-1' }, error: null })
-    enqueue({ data: null, error: null })
-
-    const op = makePendingOp({ operation_type: 'submit_agi', params: { salary_run_id: 'sr-1' } })
-    const result = await commitPendingOperation(supabase as never, 'user-1', 'company-1', op)
-
-    expect(result.status).toBe('committed')
-    expect(result.data).toMatchObject({ signing_url: 'https://skv.test/agi/xyz' })
-    expect(agi).toHaveBeenCalledWith(expect.anything(), 'user-1', 'company-1', { salary_run_id: 'sr-1' })
   })
 
   it('no service registered → failed EXTENSION_DISABLED, op released to pending', async () => {
@@ -124,7 +109,7 @@ describe('commitPendingOperation: submit_vat_declaration / submit_agi', () => {
     const vat = vi.fn().mockResolvedValue({
       ok: false, code: 'SKATTEVERKET_NOT_CONNECTED', http_status: 401, recoverable: true, error: 'no connection',
     })
-    registerFakeSkatteverket({ commitSubmitVatDeclaration: vat, commitSubmitAgi: vi.fn() })
+    registerFakeSkatteverket({ commitSubmitVatDeclaration: vat })
     const { supabase, enqueue } = createQueuedMockSupabase()
     enqueue({ data: { id: 'op-1' }, error: null })
     enqueue({ data: null, error: null }) // release-to-pending update
@@ -141,7 +126,7 @@ describe('commitPendingOperation: submit_vat_declaration / submit_agi', () => {
     const vat = vi.fn().mockResolvedValue({
       ok: false, code: 'SKATTEVERKET_SUBMIT_REJECTED', http_status: 400, recoverable: false, error: 'SKV rejected the draft',
     })
-    registerFakeSkatteverket({ commitSubmitVatDeclaration: vat, commitSubmitAgi: vi.fn() })
+    registerFakeSkatteverket({ commitSubmitVatDeclaration: vat })
     const { supabase, enqueue } = createQueuedMockSupabase()
     enqueue({ data: { id: 'op-1' }, error: null })
     enqueue({ data: null, error: null }) // reject update
@@ -156,7 +141,7 @@ describe('commitPendingOperation: submit_vat_declaration / submit_agi', () => {
 
   it('missing params → 400 without resolving the extension service', async () => {
     const vat = vi.fn()
-    registerFakeSkatteverket({ commitSubmitVatDeclaration: vat, commitSubmitAgi: vi.fn() })
+    registerFakeSkatteverket({ commitSubmitVatDeclaration: vat })
     const { supabase, enqueue } = createQueuedMockSupabase()
     enqueue({ data: { id: 'op-1' }, error: null })
     enqueue({ data: null, error: null }) // reject update

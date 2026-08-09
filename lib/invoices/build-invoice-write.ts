@@ -13,7 +13,7 @@ import {
   encryptPersonnummer,
   extractLast4,
   validatePersonnummer,
-} from '@/lib/salary/personnummer'
+} from '@/lib/personnummer'
 
 /**
  * Shared invoice write-builder.

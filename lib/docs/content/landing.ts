@@ -4,7 +4,7 @@ export const LANDING_MD = `# accounted API
 
 > Swedish double-entry bookkeeping as a public REST API for agents and integrations. API version \`${API_V1_VERSION}\`.
 
-The accounted API covers the financial workflows an integration needs: create invoices, ingest bank transactions, file VAT declarations, run payroll, and subscribe to webhooks for state changes. Every endpoint is designed for autonomous agents first: machine-readable schemas, dry-run previews, idempotent retries, and inline audit blocks on every write. (A few dashboard-only steps remain, e.g. generating salary payment files and sending payslips, and each cookbook calls out where one applies.)
+The accounted API covers the financial workflows an integration needs: create invoices, ingest bank transactions, file VAT declarations, and subscribe to webhooks for state changes. Every endpoint is designed for autonomous agents first: machine-readable schemas, dry-run previews, idempotent retries, and inline audit blocks on every write.
 
 If you've used [Stripe's API](https://docs.stripe.com/api), the shape will feel familiar: bearer-token auth, dated API versions, webhook signature verification, idempotency keys. The accounting concepts are Swedish (BAS chart, BFL retention, K2/K3, momsdeklaration) but the surface is built for the same kind of integrator.
 
@@ -22,7 +22,7 @@ Create keys in the accounted dashboard at **/settings/api**. Two key prefixes ar
 - \`gnubok_sk_live_*\`: hits real customer data. Use in production.
 - \`gnubok_sk_test_*\`: bound to deterministic sandbox companies. Safe for evals, demos, and agent learning. Same surface, different blast radius.
 
-Each key carries one or more **scopes** (\`invoices:read\`, \`invoices:write\`, \`payroll:write\`, \`webhooks:manage\`, ...) that gate which endpoints it can call. Scopes are listed on every endpoint reference page.
+Each key carries one or more **scopes** (\`invoices:read\`, \`invoices:write\`, \`webhooks:manage\`, ...) that gate which endpoints it can call. Scopes are listed on every endpoint reference page.
 
 Rate limit: 100 requests per minute per key.
 

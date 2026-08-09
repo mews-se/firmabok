@@ -37,13 +37,6 @@ jobs:
         # silently drifting out of sync. No DB needed: reads files + manifest.
         run: npm run skills:check
 
-      - name: Verify taxonomy registry is in sync with the element lists
-        # Fails if dev_docs/bokslut/taxonomi/** changed without regenerating
-        # lib/bokslut/ixbrl/taxonomy/generated/ (npm run taxonomy:generate).
-        # The iXBRL generator emits facts strictly from the generated registry,
-        # so drift here means filings tagged against a stale concept set.
-        run: npm run taxonomy:check
-
       - name: Lint ratchet (no new ESLint errors)
         # `npm run lint` was never wired into CI, so ~60 legacy errors
         # accumulated. This ratchet (sibling of check:guards) fails only when

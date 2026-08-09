@@ -12,9 +12,9 @@ export const CAPABILITY = {
   ai: 'ai',
   /** Bank sync / PSD2 (Enable Banking). Freeze-and-retain: tokens are NOT revoked on downgrade. */
   bank_sync: 'bank_sync',
-  /** Skatteverket filing/sync (VAT, AGI, skattekonto) via BankID. */
+  /** Skatteverket filing/sync (VAT, skattekonto) via BankID. */
   skatteverket: 'skatteverket',
-  /** Outbound transactional email: invoices, reminders, payslips (Resend). Auth/account email is never gated. */
+  /** Outbound transactional email: invoices and reminders (Resend). Auth/account email is never gated. */
   email_send: 'email_send',
   /** Org-number lookup / enrichment (TIC). NOT gated: identity/lookup is always free. */
   org_lookup: 'org_lookup',
@@ -26,8 +26,6 @@ export const CAPABILITY = {
   cloud_backup: 'cloud_backup',
   /** Migration import from other systems (Fortnox/Visma/Bokio/BL/Briox). Kept open so new payers can migrate IN. */
   migration: 'migration',
-  /** Bolagsverket iXBRL årsredovisning filing. Reserved (extension not yet enabled). */
-  bolagsverket: 'bolagsverket',
   /** Stripe Connect: auto payment links on invoices + payment/payout sync. */
   stripe_payments: 'stripe_payments',
   /** WooCommerce store sync: orders/refunds imported as a transaction feed. */
@@ -48,7 +46,7 @@ export type CapabilityKey = (typeof CAPABILITY)[keyof typeof CAPABILITY]
  * Internal bookkeeping is always fully usable on the manual tier.
  *
  * NOTE: bank_sync and skatteverket stay PAID even though their flows use BankID
- * as an auth step: what's charged for is the bank data sync and the VAT/AGI
+ * as an auth step: what's charged for is the bank data sync and the VAT
  * filing service, not the identity check.
  */
 export const PAID_CAPABILITIES: readonly CapabilityKey[] = [
@@ -64,8 +62,8 @@ export const PAID_CAPABILITIES: readonly CapabilityKey[] = [
  * Paid MCP tools → required capability. The MCP/agent path is a paid chokepoint
  * just like the HTTP routes, so the dispatcher gates these the same way it gates
  * API-key scope (see mcp-server `tools/call`). External-service WRITE tools
- * appear here: send_invoice (email) and the two Skatteverket submissions. The
- * read/local SKV tools (generate_agi, vat_declaration_validate/status, agi_status)
+ * appear here: send_invoice (email) and the Skatteverket submission. The
+ * read/local SKV tools (vat_declaration_validate/status)
  * stay free: the §4 carve-out forbids blocking a statutory filing obligation.
  *
  * The document upload tools invoke AI (Bedrock document OCR via
@@ -77,7 +75,6 @@ export const PAID_CAPABILITIES: readonly CapabilityKey[] = [
 export const MCP_TOOL_CAPABILITY_MAP: Readonly<Partial<Record<string, CapabilityKey>>> = {
   gnubok_send_invoice: CAPABILITY.email_send,
   gnubok_vat_declaration_submit: CAPABILITY.skatteverket,
-  gnubok_agi_submit: CAPABILITY.skatteverket,
   // AI document OCR (Bedrock): the inbox's paid extraction, reachable via MCP.
   gnubok_create_document_upload: CAPABILITY.ai,
   gnubok_complete_document_upload: CAPABILITY.ai,
@@ -95,7 +92,6 @@ export const MCP_TOOL_CAPABILITY_MAP: Readonly<Partial<Record<string, Capability
 export const PAID_OPERATION_CAPABILITY_MAP: Readonly<Partial<Record<string, CapabilityKey>>> = {
   send_invoice: CAPABILITY.email_send,
   submit_vat_declaration: CAPABILITY.skatteverket,
-  submit_agi: CAPABILITY.skatteverket,
 } as const
 
 /**

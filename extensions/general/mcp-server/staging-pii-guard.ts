@@ -3,9 +3,9 @@
  *
  * pending_operations.params and .preview_data are persisted verbatim and
  * rendered in approval UIs, so no staging payload may carry a plaintext
- * personnummer. The one tool that legitimately receives one
- * (gnubok_create_employee) encrypts at staging time and stores only
- * `personnummer_encrypted` / `personnummer_last4` / `personnummer_masked`.
+ * personnummer. A tool that legitimately receives one must encrypt at staging
+ * time and store only `personnummer_encrypted` / `personnummer_last4` /
+ * `personnummer_masked`.
  * This guard runs inside stagePendingOperation, so every current and FUTURE
  * staging tool inherits the rule: a tool that forgets to encrypt fails loudly
  * at staging instead of silently persisting PII.
@@ -70,7 +70,7 @@ export function assertNoPlaintextPersonnummer(
     throw new Error(
       `Staging blocked: ${label} contains plaintext PII key "${hit}". ` +
         'pending_operations must never persist a plaintext personnummer; ' +
-        'encrypt at staging time (see gnubok_create_employee: personnummer_encrypted + personnummer_last4).',
+        'encrypt at staging time (store personnummer_encrypted + personnummer_last4).',
     )
   }
 }

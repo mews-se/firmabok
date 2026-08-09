@@ -67,8 +67,6 @@ import {
   // Report query schemas
   VatDeclarationQuerySchema,
   PaginationQuerySchema,
-  // Employee schemas
-  CreateEmployeeSchema,
 } from '../schemas'
 
 // ============================================================
@@ -2650,72 +2648,6 @@ describe('Integration with test helpers', () => {
     }
     const result = CreateSupplierInvoiceSchema.safeParse(supplierInvoiceData)
     expect(result.success).toBe(true)
-  })
-})
-
-// ============================================================
-// Employee bank-account validation (CreateEmployeeSchema)
-// ============================================================
-
-describe('CreateEmployeeSchema bank details', () => {
-  const baseEmployee = {
-    first_name: 'Anna',
-    last_name: 'Andersson',
-    personnummer: '199001011234',
-    employment_type: 'employee' as const,
-    employment_start: '2026-01-01',
-    salary_type: 'monthly' as const,
-    monthly_salary: 30000,
-    f_skatt_status: 'a_skatt' as const,
-    is_sidoinkomst: false,
-    tax_table_number: 33,
-    tax_municipality: 'Stockholm',
-  }
-
-  it('accepts an employee with no bank details', () => {
-    const result = CreateEmployeeSchema.safeParse(baseEmployee)
-    expect(result.success).toBe(true)
-  })
-
-  it('accepts a valid clearing + account pair', () => {
-    const result = CreateEmployeeSchema.safeParse({
-      ...baseEmployee,
-      clearing_number: '6000',
-      bank_account_number: '1234567',
-    })
-    expect(result.success).toBe(true)
-  })
-
-  it('accepts a 5-digit Swedbank clearing', () => {
-    const result = CreateEmployeeSchema.safeParse({
-      ...baseEmployee,
-      clearing_number: '83279',
-      bank_account_number: '1234567',
-    })
-    expect(result.success).toBe(true)
-  })
-
-  it('rejects a malformed clearing number', () => {
-    const result = CreateEmployeeSchema.safeParse({
-      ...baseEmployee,
-      clearing_number: '12',
-      bank_account_number: '1234567',
-    })
-    expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues.some((i) => i.path.includes('clearing_number'))).toBe(true)
-    }
-  })
-
-  it('rejects a clearing without an account', () => {
-    const result = CreateEmployeeSchema.safeParse({
-      ...baseEmployee,
-      clearing_number: '6000',
-    })
-    expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues.some((i) => i.path.includes('bank_account_number'))).toBe(true)
-    }
   })
 })
 

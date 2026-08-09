@@ -1,11 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { generateVacationLiability } from '@/lib/reports/vacation-liability'
-import { generateTrialBalance } from '@/lib/reports/trial-balance'
 import type { AccrualProposal, AccrualsProposal } from './types'
-
-/** Sociala avgifter on accrued salary/vacation (K3 BFNAR 2012:1 ch.19,
- *  K2 BFNAR 2016:10 ch.16). Same rate as the regular AGI calculation. */
-export const AVGIFTER_RATE_ON_ACCRUED = 0.3142
 
 /**
  * Compute the next-day ISO date for auto-reversal. The accrual is reversed
@@ -15,119 +9,6 @@ function nextDayIso(closingDate: string): string {
   const d = new Date(closingDate + 'T00:00:00Z')
   d.setUTCDate(d.getUTCDate() + 1)
   return d.toISOString().slice(0, 10)
-}
-
-/**
- * Propose an adjustment of semesterlöneskuld (vacation pay liability).
- *
- * Two correctness rules drive this entry (per BFNAR 2016:10 ch.16 and the
- * vacation-liability report):
- *
- *   1. The delta is anchored against the **current closing balance** of
- *      2920 (after any mid-year partial accruals / reversals), not the
- *      opening balance. Anchoring on opening would over- or understate the
- *      adjustment by the sum of in-period movements.
- *
- *   2. Semesterlöneskuld is a balance-sheet carry-forward (2920 / 2940
- *      persist until the vacation is actually paid). The bokslut delta is
- *      a normal posting that does NOT reverse on Jan 1: reversing would
- *      zero the liability on day 1 of the new year, which is a known
- *      Swedish bookkeeping error. Hence `reverses_on` is empty for this
- *      proposal; the wizard / UI suppresses the reversal badge accordingly.
- *
- * Returns null when delta is zero (no entry to propose).
- */
-export async function proposeVacationLiabilityChange(
-  supabase: SupabaseClient,
-  companyId: string,
-  fiscalPeriodId: string,
-  options: { closingDate: string },
-): Promise<AccrualProposal | null> {
-  const closingYear = parseInt(options.closingDate.slice(0, 4), 10)
-  if (Number.isNaN(closingYear)) {
-    throw new Error(`Invalid closing date: ${options.closingDate}`)
-  }
-
-  const [report, tb] = await Promise.all([
-    generateVacationLiability(supabase, companyId, closingYear),
-    // Reads 2920 (class 2), which no resultatavslut touches.
-    generateTrialBalance(supabase, companyId, fiscalPeriodId, { closingEntry: 'include' }),
-  ])
-
-  // Current closing balance (what 2920 should be at year-end)
-  const targetLiability = Math.round(report.totals.accruedAmount)
-  // Anchor on the CURRENT closing balance, not opening: captures any
-  // mid-year accruals / reversals that have already touched 2920.
-  const row2920 = tb.rows.find((r) => r.account_number === '2920')
-  const currentLiability = row2920
-    ? Math.round((row2920.closing_credit - row2920.closing_debit) * 100) / 100
-    : 0
-
-  const deltaLiability = targetLiability - currentLiability
-  if (Math.abs(deltaLiability) < 1) {
-    return null
-  }
-
-  // Round each side to whole krona so the entry stays balanced after
-  // rounding. Compute avgifter on the same rounded delta.
-  const deltaInt = Math.round(deltaLiability)
-  const avgifterDelta = Math.round(deltaInt * AVGIFTER_RATE_ON_ACCRUED)
-
-  // Positive delta = more vacation liability accrued → debit 7090 expense.
-  // Negative delta = vacation taken / liability released → credit 7090.
-  const isIncrease = deltaInt > 0
-  const lines = [
-    {
-      account_number: '7090',
-      debit_amount: isIncrease ? Math.abs(deltaInt) : 0,
-      credit_amount: isIncrease ? 0 : Math.abs(deltaInt),
-      line_description: 'Förändring av semesterlöneskuld',
-    },
-    {
-      account_number: '2920',
-      debit_amount: isIncrease ? 0 : Math.abs(deltaInt),
-      credit_amount: isIncrease ? Math.abs(deltaInt) : 0,
-      line_description: 'Upplupna semesterlöner',
-    },
-    {
-      account_number: '7519',
-      debit_amount: isIncrease ? Math.abs(avgifterDelta) : 0,
-      credit_amount: isIncrease ? 0 : Math.abs(avgifterDelta),
-      line_description: 'Sociala avgifter på upplupen semester (31,42 %)',
-    },
-    {
-      account_number: '2940',
-      debit_amount: isIncrease ? 0 : Math.abs(avgifterDelta),
-      credit_amount: isIncrease ? Math.abs(avgifterDelta) : 0,
-      line_description: 'Upplupna sociala avgifter på semester',
-    },
-  ]
-
-  const totalAmount = Math.abs(deltaInt) + Math.abs(avgifterDelta)
-
-  return {
-    kind: 'vacation_liability_change',
-    label: isIncrease
-      ? `Ökning av semesterlöneskuld (${Math.abs(deltaInt)} kr + avgifter)`
-      : `Minskning av semesterlöneskuld (${Math.abs(deltaInt)} kr + avgifter)`,
-    description:
-      'Justering av 2920 mot 7090 plus 31,42 % sociala avgifter på 2940 mot 7519. Saldot på 2920 rullas vidare till nästa år (ingen vändning).',
-    amount: totalAmount,
-    lines,
-    // null (not '') = no reversal. The future accrual-reversal cron will
-    // filter `reverses_on IS NOT NULL` and an empty string would silently
-    // match that.
-    reverses_on: null,
-    warnings: [],
-    computation: {
-      current_2920: currentLiability,
-      closing_target: targetLiability,
-      delta: deltaInt,
-      avgifter_rate: AVGIFTER_RATE_ON_ACCRUED,
-      avgifter_delta: avgifterDelta,
-      employee_rows: report.rows.length,
-    },
-  }
 }
 
 export interface AuditFeeInput {
@@ -400,10 +281,10 @@ export function proposeAccruedUtility(input: AccruedUtilityInput): AccrualPropos
 
 /**
  * Build a snapshot of automatically-detectable accrual proposals for the
- * wizard's preflight. Today this is just the vacation-liability delta;
- * future versions can add salary-accrued-but-unpaid, supplier-invoice-period
- * detection, etc. Manual prepaid/accrued cards are added via the UI form
- * (the API endpoint accepts them but they're not in the auto-proposal).
+ * wizard's preflight. No auto-detectors ship today; future versions can add
+ * supplier-invoice-period detection etc. Manual prepaid/accrued cards are
+ * added via the UI form (the API endpoint accepts them but they're not in
+ * the auto-proposal).
  */
 export async function buildAccrualsProposal(
   supabase: SupabaseClient,
@@ -419,11 +300,6 @@ export async function buildAccrualsProposal(
   if (error || !period) throw new Error('Fiscal period not found')
 
   const proposals: AccrualProposal[] = []
-
-  const vacation = await proposeVacationLiabilityChange(supabase, companyId, fiscalPeriodId, {
-    closingDate: period.period_end,
-  })
-  if (vacation) proposals.push(vacation)
 
   return {
     fiscalPeriod: period,

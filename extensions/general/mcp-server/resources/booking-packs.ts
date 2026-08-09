@@ -41,7 +41,7 @@ export const bookingPacksResource: McpResource = {
 
     if (errors.length) {
       // Surface rather than silently return a partial catalogue: an agent that
-      // sees 12 of 26 templates will confidently conclude the other 14 do not
+      // sees half the templates will confidently conclude the rest do not
       // exist and hand-roll accounts for them.
       return {
         error: 'Pack catalogue failed to load; treat this list as unavailable, not as empty.',

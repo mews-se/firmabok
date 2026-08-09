@@ -1,5 +1,5 @@
 import { createLogger } from '@/lib/logger'
-import { decryptPersonnummer, encryptPersonnummer } from '@/lib/salary/personnummer'
+import { decryptPersonnummer, encryptPersonnummer } from '@/lib/personnummer'
 import {
   UNDECRYPTABLE_PERSONAL_NUMBER_MASK,
   maskCustomerPersonalNumber,

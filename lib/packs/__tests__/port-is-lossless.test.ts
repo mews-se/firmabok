@@ -33,15 +33,18 @@ interface Divergence {
   reason: string
 }
 
+/**
+ * Seeded templates whose packs were deliberately removed with the payroll
+ * module. The seeded fixture predates the removal (migrations are immutable),
+ * so these names are excluded from the lossless comparison.
+ */
+const INTENTIONAL_REMOVALS = new Set([
+  'Löneutbetalning',
+  'Arbetsgivaravgifter',
+  'Arbetsgivaravgifter via skattekonto',
+])
+
 const INTENTIONAL_DIVERGENCES: Record<string, Divergence> = {
-  loneutbetalning: {
-    seededName: 'Löneutbetalning',
-    reason:
-      'Seeded version debited 2710 @0.3 + 2920 @0.12 + 7010 @1.0 against a single 1.0 credit, ' +
-    'so it totalled 1.42x the amount and could never post. Rebuilt per the swedish-payroll ' +
-    'skill: Debit 7010 gross, Credit 2710 tax, Credit 1930 net. The 2920 semesterlöneskuld ' +
-    'line moved out because vacation accrual is its own verifikat (7290/2920).',
-  },
   'periodiseringsfond-avsattning-ab': {
     seededName: 'Periodiseringsfond avsättning (AB)',
     reason:
@@ -104,7 +107,7 @@ describe('pack catalogue is a lossless port of the seeded system templates', () 
 
     const fromPacks = unchanged.map((p) => canonical(packToLibraryRow(p.pack))).sort()
     const fromDb = (seeded as SeededTemplate[])
-      .filter((t) => !changedNames.has(t.name))
+      .filter((t) => !changedNames.has(t.name) && !INTENTIONAL_REMOVALS.has(t.name))
       .map(canonical)
       .sort()
 
@@ -127,9 +130,9 @@ describe('pack catalogue is a lossless port of the seeded system templates', () 
     }
   })
 
-  it('covers all 26 seeded templates, none added and none dropped', () => {
-    expect(packs).toHaveLength((seeded as SeededTemplate[]).length)
-    expect(packs).toHaveLength(26)
+  it('covers all seeded templates except the removed payroll ones', () => {
+    expect(packs).toHaveLength((seeded as SeededTemplate[]).length - INTENTIONAL_REMOVALS.size)
+    expect(packs).toHaveLength(23)
   })
 
   it('preserves shipped Swedish text verbatim, em dashes included', () => {

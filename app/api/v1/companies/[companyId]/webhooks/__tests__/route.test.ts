@@ -152,7 +152,7 @@ beforeEach(() => {
     companyId: COMPANY_ID,
     apiKeyId: 'ak_1',
     apiKeyName: 'CI key',
-    scopes: ['webhooks:manage', 'payroll:read'],
+    scopes: ['webhooks:manage'],
     mode: 'live',
   })
   // Default URL validation: always ok. Tests override per-case.
@@ -253,41 +253,6 @@ describe('POST /api/v1/companies/:companyId/webhooks', () => {
     const body = await res.json()
     expect(body.error.code).toBe('VALIDATION_ERROR')
     expect(body.error.details.reason).toBe('private_address')
-  })
-
-  it('requires payroll:read for salary_run.* event types (elevated-scope gate)', async () => {
-    // Key has webhooks:manage but NOT payroll:read.
-    mockValidate.mockResolvedValueOnce({
-      userId: USER_ID,
-      companyId: COMPANY_ID,
-      apiKeyId: 'ak_1',
-      apiKeyName: 'CI key',
-      scopes: ['webhooks:manage'],
-      mode: 'live',
-    })
-    mockServiceClient.mockReturnValue(
-      makeFlexibleSupabase({
-        company_members: { data: { company_id: COMPANY_ID, role: 'owner' }, error: null },
-      }),
-    )
-
-    const res = await createWebhook(
-      makeRequest(`https://x.test/api/v1/companies/${COMPANY_ID}/webhooks`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          event_type: 'salary_run.booked',
-          webhook_url: 'https://example.com/hooks',
-          name: 'payroll',
-        }),
-      }),
-      companyParams(COMPANY_ID),
-    )
-
-    expect(res.status).toBe(403)
-    const body = await res.json()
-    expect(body.error.code).toBe('INSUFFICIENT_SCOPE')
-    expect(body.error.details.required_scope).toBe('payroll:read')
   })
 
   it('returns 401 UNAUTHORIZED when no Bearer token is supplied', async () => {

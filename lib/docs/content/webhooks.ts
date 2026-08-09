@@ -1,6 +1,6 @@
 export const WEBHOOKS_MD = `# Webhooks
 
-> Receive HMAC-signed POST notifications when state changes in Accounted: invoices paid, journal entries committed, periods locked, salary runs booked, AGI files generated. At-least-once delivery with exponential backoff over ~87 hours (about 3.6 days).
+> Receive HMAC-signed POST notifications when state changes in Accounted: invoices paid, journal entries committed, periods locked. At-least-once delivery with exponential backoff over ~87 hours (about 3.6 days).
 
 If you've used [Stripe webhooks](https://docs.stripe.com/webhooks), the model is identical: subscribe a URL to an event type, Accounted POSTs each event with a signed JSON body, your receiver returns 2xx to acknowledge. The signature header format and retry policy are the same. The event types are gnubok-specific.
 
@@ -14,7 +14,7 @@ If you've used [Stripe webhooks](https://docs.stripe.com/webhooks), the model is
 
 ## Event types
 
-The following event types are deliverable as webhooks. Subscribing to a type that requires elevated scope (\`salary_run.*\` and \`agi.*\` need \`payroll:read\`) returns \`INSUFFICIENT_SCOPE\` at registration time.
+The following event types are deliverable as webhooks.
 
 **Invoicing**
 - \`invoice.created\`: draft invoice created
@@ -46,12 +46,6 @@ The following event types are deliverable as webhooks. Subscribing to a type tha
 - \`period.locked\`: fiscal period closed for writes
 - \`period.unlocked\`: fiscal period reopened
 - \`period.year_closed\`: full year-end procedure complete
-
-**Payroll** *(requires \`payroll:read\` scope alongside \`webhooks:manage\`)*
-- \`salary_run.created\`
-- \`salary_run.approved\`
-- \`salary_run.booked\`: journal entries posted
-- \`agi.generated\`: AGI XML produced
 
 **Documents**
 - \`document.uploaded\`
@@ -235,7 +229,7 @@ Re-enable with [\`PATCH /api/v1/companies/{companyId}/webhooks/{webhookId}\`](/d
 
 Webhook delivery rows are *behandlingshistorik* (a system-event log) per BFNAR 2013:2 kap 8 §: they are immutable once they reach a terminal state (\`delivered\` or \`dead\`) so the audit trail of who-was-notified-when stays intact. The underlying *räkenskapsinformation* (the verifikation, the faktura, the AGI XML itself) lives in its own table with its own BFL 7 kap retention: webhook delivery rows are NOT räkenskapsinformation and the 7-year retention applies to the underlying record, not to the delivery envelope.
 
-For accounting-event delivery rows (\`journal_entry.*\`, \`period.*\`, \`salary_run.booked\`, \`agi.generated\`, \`invoice.paid\`, \`supplier_invoice.paid\`), Accounted keeps the delivery rows for 7 years. **This is a voluntary operational audit-trail policy Accounted chose because the duration aligns conveniently with BFL 7 kap retention on the underlying records: it is NOT itself a statutory obligation.** The 7-year statutory retention under BFL 7 kap 1 § applies to the underlying verifikation / faktura / AGI XML in its own table, not to the delivery envelope. The integrator's own retention obligations likewise attach to the underlying records you receive (and any local copies you persist), not to the delivery-row metadata.
+For accounting-event delivery rows (\`journal_entry.*\`, \`period.*\`, \`invoice.paid\`, \`supplier_invoice.paid\`), Accounted keeps the delivery rows for 7 years. **This is a voluntary operational audit-trail policy Accounted chose because the duration aligns conveniently with BFL 7 kap retention on the underlying records: it is NOT itself a statutory obligation.** The 7-year statutory retention under BFL 7 kap 1 § applies to the underlying verifikation / faktura in its own table, not to the delivery envelope. The integrator's own retention obligations likewise attach to the underlying records you receive (and any local copies you persist), not to the delivery-row metadata.
 
 Deleting a webhook does not delete its delivery history; the FK is \`ON DELETE SET NULL\` so the audit trail survives.
 `

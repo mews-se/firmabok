@@ -6,7 +6,7 @@ This is the operational companion to the [Webhooks concept page](/docs/api/webho
 
 ## What you'll need
 
-- A test API key with \`webhooks:manage\` scope (and \`payroll:read\` if you intend to subscribe to payroll events).
+- A test API key with \`webhooks:manage\` scope.
 - A receiver URL that Accounted can POST to. For local development use [smee.io](https://smee.io) or \`ngrok\`: Accounted refuses webhook URLs that resolve to private IPs (SSRF protection), so localhost won't work directly.
 - HTTPS only: \`http://\` URLs are rejected at registration.
 

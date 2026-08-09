@@ -101,20 +101,6 @@ export const RECOMMENDED_WORKFLOW_LOADOUTS: readonly WorkflowLoadout[] = [
       'gnubok_approve_pending_operation',
     ],
   },
-  {
-    workflow: 'payroll_month',
-    description: 'Run monthly payroll and generate the AGI.',
-    skill: 'payroll-monthly',
-    tools: [
-      'gnubok_list_employees',
-      'gnubok_create_salary_run',
-      'gnubok_calculate_salary_run',
-      'gnubok_get_salary_run',
-      'gnubok_book_salary_run',
-      'gnubok_generate_agi',
-      'gnubok_approve_pending_operation',
-    ],
-  },
 ]
 
 /**

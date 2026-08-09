@@ -1,8 +1,8 @@
 /**
  * Every statement generator, run against one closed fiscal year.
  *
- * This is the test that would have caught the INK2R and NE-bilaga bugs on
- * 2026-07-23, when the same two defects were fixed in the årsredovisning and
+ * This is the test that would have caught the NE-bilaga bug on
+ * 2026-07-23, when the same defect was fixed in the årsredovisning and
  * nowhere else. The old per-generator suites all exercised an OPEN period, the
  * one state in which a generator that forgets the resultatavslut happens to
  * work. Declarations are filed AFTER bokslut, so the untested state was the
@@ -24,7 +24,6 @@ import { generateTrialBalance } from '@/lib/reports/trial-balance'
 import { loadTaxAdjustmentSnapshot } from '@/lib/bokslut/tax-provision/tax-adjustment-service'
 import { generateIncomeStatement } from '../income-statement'
 import { generateResultatrapport } from '../resultatrapport'
-import { generateINK2Declaration } from '../ink2/ink2-engine'
 import { generateNEDeclaration } from '../ne-bilaga/ne-engine'
 import {
   CLOSED_ROWS,
@@ -40,7 +39,7 @@ const PERIOD_ID = 'period-1'
 
 /**
  * Minimal chainable stub. Every generator in the table needs the fiscal period
- * and most need company_settings; INK2 also probes the closing entry's status.
+ * and most need company_settings.
  */
 function makeSupabase(entityType: 'aktiebolag' | 'enskild_firma') {
   const period = {
@@ -124,14 +123,6 @@ const GENERATORS: GeneratorCase[] = [
     expectedNetResult: EXPECTED.resultAfterFinancial,
   },
   {
-    name: 'INK2R (räkenskapsschema)',
-    entityType: 'aktiebolag',
-    run: (s) => generateINK2Declaration(s, COMPANY_ID, PERIOD_ID),
-    revenue: (r) => (r as { ink2r: Record<string, number> }).ink2r['7410'],
-    netResult: (r) => (r as { ink2r: Record<string, number> }).ink2r['7450'],
-    expectedNetResult: EXPECTED.netResult,
-  },
-  {
     name: 'NE-bilaga',
     entityType: 'enskild_firma',
     run: (s) => generateNEDeclaration(s, COMPANY_ID, PERIOD_ID),
@@ -196,32 +187,6 @@ describe('statement generators against a closed fiscal year', () => {
   it('covers every generator that reports a resultaträkning', () => {
     // A tripwire for the next person: this count is the checklist length.
     // Raising it without adding a row means a generator went untested.
-    expect(GENERATORS).toHaveLength(4)
-  })
-})
-
-describe('balance sheet presentation against a closed fiscal year', () => {
-  it('INK2R keeps årets resultat in fritt eget kapital exactly once', async () => {
-    const result = await generateINK2Declaration(makeSupabase('aktiebolag'), COMPANY_ID, PERIOD_ID)
-
-    // 2099 carries it in the closed books, so the engine must NOT add the
-    // computed result on top.
-    expect(result.ink2r['7302']).toBe(EXPECTED.netResult)
-    expect(result.totals.totalAssets).toBe(result.totals.totalEquityLiabilities)
-  })
-
-  it('INK2R presents a credit skattekonto as a liability, not a negative asset', async () => {
-    const result = await generateINK2Declaration(makeSupabase('aktiebolag'), COMPANY_ID, PERIOD_ID)
-
-    // 2512 − 2518 = 10 000, plus the reclassified 1630 credit.
-    expect(result.ink2r['7368']).toBe(10_000 + EXPECTED.taxAccountCredit)
-    expect(result.ink2r['7261']).toBeGreaterThanOrEqual(0)
-  })
-
-  it('INK2R presents an input-VAT debit as a receivable, not a negative liability', async () => {
-    const result = await generateINK2Declaration(makeSupabase('aktiebolag'), COMPANY_ID, PERIOD_ID)
-
-    expect(result.ink2r['7261']).toBe(EXPECTED.inputVatDebit)
-    expect(result.ink2r['7369']).toBe(0)
+    expect(GENERATORS).toHaveLength(3)
   })
 })

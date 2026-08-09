@@ -60,10 +60,6 @@ const PUBLIC_WEBHOOK_EVENTS = new Set<CoreEventType>([
   'period.locked',
   'period.unlocked',
   'period.year_closed',
-  'salary_run.created',
-  'salary_run.approved',
-  'salary_run.booked',
-  'agi.generated',
   'document.uploaded',
 ])
 

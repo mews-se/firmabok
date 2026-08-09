@@ -134,11 +134,10 @@ export const V1_ENDPOINT_SCOPES: Record<string, ApiKeyScope> = {
   // Phase 5 PR-3: Reports + import async. Reports are read-only over
   // existing lib/reports/* generators; imports are async over the Phase 4
   // PR-2 operations substrate.
-  // JSON reports: all share `reports:read` (or `payroll:read` for the
-  // salary-scoped ones). kpi, audit-trail, periodisk-sammanstallning,
-  // ne-bilaga, and ink2 are deferred to a follow-up PR: kpi composes
-  // multiple lib generators rather than wrapping one; audit-trail lives in
-  // lib/core/audit/ rather than lib/reports/; ne-bilaga + ink2 + periodisk
+  // JSON reports: all share `reports:read`. kpi, audit-trail,
+  // periodisk-sammanstallning, and ne-bilaga are deferred to a follow-up PR:
+  // kpi composes multiple lib generators rather than wrapping one; audit-trail
+  // lives in lib/core/audit/ rather than lib/reports/; ne-bilaga + periodisk
   // each have their own lib subdir structure that needs more care.
   'GET /api/v1/companies/:companyId/reports/trial-balance': 'reports:read',
   'GET /api/v1/companies/:companyId/reports/balance-sheet': 'reports:read',
@@ -150,63 +149,13 @@ export const V1_ENDPOINT_SCOPES: Record<string, ApiKeyScope> = {
   'GET /api/v1/companies/:companyId/reports/ar-ledger': 'reports:read',
   'GET /api/v1/companies/:companyId/reports/supplier-ledger': 'reports:read',
   'GET /api/v1/companies/:companyId/reports/continuity-check': 'reports:read',
-  'GET /api/v1/companies/:companyId/reports/salary-journal': 'payroll:read',
-  'GET /api/v1/companies/:companyId/reports/avgifter-basis': 'payroll:read',
-  'GET /api/v1/companies/:companyId/reports/vacation-liability': 'payroll:read',
-  // Binary report: SIE4 text/plain export. JSON variants of INK2 / NE-bilaga
-  // are deferred (see above).
+  // Binary report: SIE4 text/plain export. The JSON variant of NE-bilaga
+  // is deferred (see above).
   'GET /api/v1/companies/:companyId/reports/sie-export': 'reports:read',
   // Imports: async via the Phase 4 PR-2 operations substrate. Multipart
   // uploads (the file is the request body).
   'POST /api/v1/companies/:companyId/imports/sie': 'bookkeeping:write',
   'POST /api/v1/companies/:companyId/imports/bank': 'transactions:write',
-
-  // Phase 5 PR-1: Payroll vertical (employees + salary-runs + lifecycle verbs).
-  // Reuses the pre-existing `payroll:read` / `payroll:write` scopes already
-  // defined for the MCP tool surface (gnubok_list_employees, gnubok_create_salary_run, ...).
-  // Employees (soft-delete via is_active: no archived_at column).
-  'GET /api/v1/companies/:companyId/employees': 'payroll:read',
-  'GET /api/v1/companies/:companyId/employees/:id': 'payroll:read',
-  'POST /api/v1/companies/:companyId/employees': 'payroll:write',
-  'PATCH /api/v1/companies/:companyId/employees/:id': 'payroll:write',
-  'DELETE /api/v1/companies/:companyId/employees/:id': 'payroll:write',
-  // Salary runs (state machine: draft → review → approved → paid → booked).
-  'GET /api/v1/companies/:companyId/salary-runs': 'payroll:read',
-  'GET /api/v1/companies/:companyId/salary-runs/:id': 'payroll:read',
-  'POST /api/v1/companies/:companyId/salary-runs': 'payroll:write',
-  'PATCH /api/v1/companies/:companyId/salary-runs/:id': 'payroll:write',
-  'DELETE /api/v1/companies/:companyId/salary-runs/:id': 'payroll:write',
-  // Salary-run lifecycle verbs: v1 :calculate collapses internal /calculate
-  // (math) + /review (state advance) so an agent has one verb per logical step.
-  'POST /api/v1/companies/:companyId/salary-runs/:id/calculate': 'payroll:write',
-  'POST /api/v1/companies/:companyId/salary-runs/:id/approve': 'payroll:write',
-  'POST /api/v1/companies/:companyId/salary-runs/:id/mark-paid': 'payroll:write',
-  'POST /api/v1/companies/:companyId/salary-runs/:id/book': 'payroll:write',
-  'POST /api/v1/companies/:companyId/salary-runs/:id/generate-agi': 'payroll:write',
-  // Payroll gap-closure 1.1: per-employee payslip reads. Personnummer is
-  // masked on all payslip-shaped responses (GDPR Art.5(1)(c)); the employee
-  // detail endpoint is the identity drill-in.
-  'GET /api/v1/companies/:companyId/salary-runs/:id/employees': 'payroll:read',
-  'GET /api/v1/companies/:companyId/salary-runs/:id/employees/:employeeId': 'payroll:read',
-  'GET /api/v1/companies/:companyId/salary-runs/:id/payslips/:employeeId/pdf': 'payroll:read',
-  // Payroll gap-closure 1.2: payslip line writes (draft runs only).
-  'POST /api/v1/companies/:companyId/salary-runs/:id/employees/:employeeId/lines': 'payroll:write',
-  'PATCH /api/v1/companies/:companyId/salary-runs/:id/lines/:lineId': 'payroll:write',
-  'DELETE /api/v1/companies/:companyId/salary-runs/:id/lines/:lineId': 'payroll:write',
-  // Payroll gap-closure 1.3: run roster attach/remove (draft runs only).
-  'POST /api/v1/companies/:companyId/salary-runs/:id/employees': 'payroll:write',
-  'DELETE /api/v1/companies/:companyId/salary-runs/:id/employees/:employeeId': 'payroll:write',
-  // Payroll gap-closure 1.4: absence (frånvaro) per-day register via ranges.
-  'GET /api/v1/companies/:companyId/employees/:id/absence': 'payroll:read',
-  'PUT /api/v1/companies/:companyId/employees/:id/absence': 'payroll:write',
-  'DELETE /api/v1/companies/:companyId/employees/:id/absence': 'payroll:write',
-  // Payroll gap-closure 2.3: cutover opening balances (mid-year migration).
-  'GET /api/v1/companies/:companyId/employees/:id/opening-balances': 'payroll:read',
-  'PUT /api/v1/companies/:companyId/employees/:id/opening-balances': 'payroll:write',
-  'PUT /api/v1/companies/:companyId/employees/opening-balances': 'payroll:write',
-  // Payroll gap-closure 3.4: vacation ledger + year close.
-  'GET /api/v1/companies/:companyId/employees/:id/vacation-balance': 'payroll:read',
-  'POST /api/v1/companies/:companyId/salary/vacation-year-close': 'payroll:write',
 
   // Dimensions (kostnadsställe/projekt): dimensions PR2. Reads ride
   // reports:read (registry data feeds report filters/pickers); value creation

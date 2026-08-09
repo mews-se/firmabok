@@ -16,7 +16,7 @@ vi.mock('@/lib/reports/vat-declaration', () => ({
   resolvePeriodDates: (...a: unknown[]) => mockResolvePeriodDates(...a),
 }))
 
-import { buildMomsuppgift, buildAgiUnderlag, resolveRedovisare } from '../lib/declaration-prep'
+import { buildMomsuppgift, resolveRedovisare } from '../lib/declaration-prep'
 import { rutorToMomsuppgift } from '../lib/mappers'
 
 const READ_KEYS = [
@@ -109,44 +109,5 @@ describe('buildMomsuppgift', () => {
     })
 
     expect(result.redovisningsperiod).toBe('202512')
-  })
-})
-
-describe('buildAgiUnderlag', () => {
-  it('loads the latest XML and formats arbetsgivare + period', async () => {
-    const { supabase, enqueue } = createQueuedMockSupabase()
-    enqueue({ data: { status: 'booked' } }) // salary_runs status guard
-    enqueue({ data: { org_number: '5560000000', entity_type: 'aktiebolag' } }) // resolveRedovisare
-    enqueue({ data: { xml_content: '<agi/>', period_year: 2026, period_month: 3 } }) // agi_declarations
-
-    const result = await buildAgiUnderlag(supabase as never, 'company-1', 'sr-1')
-
-    expect(result).toMatchObject({
-      arbetsgivare: '165560000000',
-      period: '202603',
-      salaryRunId: 'sr-1',
-      xml: '<agi/>',
-      periodYear: 2026,
-      periodMonth: 3,
-    })
-  })
-
-  it('throws when the salary run is not past draft', async () => {
-    const { supabase, enqueue } = createQueuedMockSupabase()
-    enqueue({ data: { status: 'draft' } })
-    await expect(buildAgiUnderlag(supabase as never, 'company-1', 'sr-1')).rejects.toThrow(/efter granskning/)
-  })
-
-  it('throws when salaryRunId is missing', async () => {
-    const { supabase } = createQueuedMockSupabase()
-    await expect(buildAgiUnderlag(supabase as never, 'company-1', '')).rejects.toThrow(/salaryRunId/)
-  })
-
-  it('throws when no AGI XML exists', async () => {
-    const { supabase, enqueue } = createQueuedMockSupabase()
-    enqueue({ data: { status: 'booked' } })
-    enqueue({ data: { org_number: '5560000000', entity_type: 'aktiebolag' } })
-    enqueue({ data: { xml_content: null, period_year: 2026, period_month: 3 } })
-    await expect(buildAgiUnderlag(supabase as never, 'company-1', 'sr-1')).rejects.toThrow(/AGI-XML saknas/)
   })
 })

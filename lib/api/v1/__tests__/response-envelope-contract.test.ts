@@ -87,16 +87,16 @@ describe('v1 response envelope contract', () => {
       return s instanceof z.ZodObject && (s as z.ZodObject<z.ZodRawShape>).shape.data instanceof z.ZodArray
     })
 
-    // The 10 cursor-paginated list endpoints (companies, customers, suppliers,
-    // invoices, supplier-invoices, journal-entries, transactions, employees,
-    // salary-runs, webhook deliveries). accounts/fiscal-periods/webhooks nest
-    // their array under a named key inside `data`, so they use dataEnvelope and
-    // are intentionally NOT counted here. A drop below this floor means a
-    // paginated endpoint silently lost its `data: [...]` shape.
+    // The 8 cursor-paginated list endpoints (companies, customers, suppliers,
+    // invoices, supplier-invoices, journal-entries, transactions, webhook
+    // deliveries). accounts/fiscal-periods/webhooks nest their array under a
+    // named key inside `data`, so they use dataEnvelope and are intentionally
+    // NOT counted here. A drop below this floor means a paginated endpoint
+    // silently lost its `data: [...]` shape.
     expect(
       arrayDataEndpoints.length,
       `expected the known paginated list endpoints to keep data: z.array(...); found only ${arrayDataEndpoints.length}`,
-    ).toBeGreaterThanOrEqual(10)
+    ).toBeGreaterThanOrEqual(8)
 
     for (const ep of arrayDataEndpoints) {
       const shape = (ep.response.success as z.ZodObject<z.ZodRawShape>).shape

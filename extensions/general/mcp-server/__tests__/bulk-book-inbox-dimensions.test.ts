@@ -12,8 +12,8 @@ import { eventBus } from '@/lib/events/bus'
 
 const bulkBookInbox = tools.find((t) => t.name === 'gnubok_bulk_book_inbox_items')!
 
-/** Per-table mock capturing insert payloads (same pattern as the payroll
- * staged-tool tests). A single queued entry repeats for subsequent reads. */
+/** Per-table mock capturing insert payloads. A single queued entry repeats
+ * for subsequent reads. */
 function makeCapturingSupabase(byTable: Record<string, { data?: unknown; error?: unknown } | Array<{ data?: unknown; error?: unknown }>>) {
   const queues = new Map<string, Array<{ data?: unknown; error?: unknown }>>()
   for (const [t, val] of Object.entries(byTable)) {

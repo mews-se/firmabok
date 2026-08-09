@@ -46,9 +46,6 @@ export const capabilitiesResource: McpResource = {
             ? 'Company-wide bookkeeping lock is in effect'
             : null,
       'invoices:write': periodMissing ? 'No fiscal period covers today\'s date' : null,
-      'payroll:write': !settings?.pays_salaries
-        ? 'Company is not configured to pay salaries (settings.pays_salaries=false)'
-        : null,
     }
 
     const capabilities: Capability[] = Object.entries(TOOL_SCOPE_MAP).map(

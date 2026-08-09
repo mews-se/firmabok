@@ -316,7 +316,6 @@ export default async function DashboardLayout({
           <DashboardNav
             companyName={settings?.company_name || 'Min verksamhet'}
             entityType={entityType}
-            paysSalaries={paysSalaries}
             dimensionsEnabled={dimensionsEnabled}
             isSandbox={isSandbox}
             extensionNavItems={getExtensionNavItems()}

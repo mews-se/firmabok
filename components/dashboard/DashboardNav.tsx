@@ -27,7 +27,6 @@ import {
   Wallet,
   TrendingUp,
   ClipboardCheck,
-  HandCoins,
   Package,
   Tag,
   Tags,
@@ -40,7 +39,6 @@ import {
   CalendarRange,
   FileCheck,
   FileSpreadsheet,
-  ScrollText,
   PanelLeft,
   PanelLeftClose,
   Library,
@@ -73,13 +71,9 @@ interface ExtensionNavItem {
 interface DashboardNavProps {
   companyName: string
   entityType: EntityType
-  // Whether the company has registered as an employer (company_settings.
-  // pays_salaries). Drives visibility of the payroll (Personal) section for
-  // non-aktiebolag, notably an enskild firma that hires staff. See #782.
-  paysSalaries?: boolean
   // Whether the dimensions register (company_settings.dimensions_enabled) is
   // switched on. Drives visibility of the Kostnadsställen & projekt row:
-  // same mechanism as paysSalaries: fetched by the dashboard layout.
+  // fetched by the dashboard layout.
   dimensionsEnabled?: boolean
   isSandbox?: boolean
   extensionNavItems?: ExtensionNavItem[]
@@ -113,15 +107,11 @@ type NavLabelKey =
   | 'assets'
   | 'reports'
   | 'import'
-  | 'salary'
-  | 'mileage'
-  | 'employees'
   | 'vat_declaration'
   | 'skattekonto'
   | 'deadlines'
   | 'periodiseringar'
   | 'year_end'
-  | 'annual_report'
   | 'income_declaration'
   | 'help'
   | 'settings'
@@ -154,10 +144,6 @@ interface NavItem {
   // When set, the item renders inside this fold (consecutive items with the
   // same fold key form one fold block at that position in the group).
   fold?: FoldKey
-  // Payroll surfaces: visible only to employers: every aktiebolag (unchanged
-  // behaviour) plus any company that has registered as an employer via
-  // company_settings.pays_salaries (e.g. an enskild firma with staff). #782
-  employerOnly?: boolean
   // Dimension surfaces: visible only when the company has opted in via
   // company_settings.dimensions_enabled (UI-visibility gate only; the pages
   // and APIs work regardless, dimensions plan §2).
@@ -185,26 +171,21 @@ const navItems: NavItem[] = [
   { href: '/chat', labelKey: 'assistant', icon: Sparkles, group: 'top' },
   // Arbeta: everything the user produces, bookkeeping funnel first
   // (Bokföring · Underlag · Transaktioner · Granskning), then the
-  // transactional flows. employerOnly: aktiebolag or pays_salaries. #782
+  // transactional flows.
   { href: '/bookkeeping', labelKey: 'bookkeeping', icon: BookOpen, group: 'arbeta' },
   { href: '/e/general/invoice-inbox', labelKey: 'invoice_inbox', icon: Inbox, group: 'arbeta', requiredCapability: EXTENSION_REQUIRED_CAPABILITY['general/invoice-inbox'] },
   { href: '/transactions', labelKey: 'transactions', icon: ArrowLeftRight, group: 'arbeta' },
   { href: '/pending', labelKey: 'review', icon: ClipboardCheck, group: 'arbeta' },
   { href: '/invoices', labelKey: 'invoices', icon: ReceiptText, group: 'arbeta' },
   { href: '/supplier-invoices', labelKey: 'supplier_invoices', icon: Wallet, group: 'arbeta' },
-  { href: '/salary', labelKey: 'salary', icon: HandCoins, group: 'arbeta', employerOnly: true },
-  // Körjournal is deliberately hidden from the nav; the /mileage route stays live.
-  // { href: '/mileage', labelKey: 'mileage', icon: Car, group: 'arbeta' },
   // Analys: read the numbers.
   { href: '/kpi', labelKey: 'kpi', icon: TrendingUp, group: 'analys' },
   { href: '/reports', labelKey: 'reports', icon: BarChart3, group: 'analys' },
   // Data: the Register fold (master data) + Importera/exportera as its own
-  // row. Anställda is a register (you edit an employee rarely, you run
-  // payroll monthly), so it lives here while Löner stays in Arbeta.
+  // row.
   { href: '/customers', labelKey: 'customers', icon: Users, group: 'data', fold: 'register' },
   { href: '/suppliers', labelKey: 'suppliers', icon: Building2, group: 'data', fold: 'register' },
   { href: '/articles', labelKey: 'articles', icon: Tag, group: 'data', fold: 'register' },
-  { href: '/salary/employees', labelKey: 'employees', icon: Users, group: 'data', fold: 'register', employerOnly: true },
   { href: '/assets', labelKey: 'assets', icon: Package, group: 'data', fold: 'register' },
   { href: '/chart-of-accounts', labelKey: 'chart_of_accounts', icon: ListTree, group: 'data', fold: 'register' },
   { href: '/dimensions', labelKey: 'dimensions', icon: Tags, group: 'data', fold: 'register', requiresDimensions: true },
@@ -218,8 +199,6 @@ const navItems: NavItem[] = [
   { href: '/deadlines', labelKey: 'deadlines', icon: CalendarClock, group: 'skatt' },
   { href: '/bookkeeping/periodiseringar', labelKey: 'periodiseringar', icon: CalendarRange, group: 'skatt', fold: 'bokslut' },
   { href: '/bookkeeping/year-end', labelKey: 'year_end', icon: FileCheck, group: 'skatt', fold: 'bokslut' },
-  { href: '/bookkeeping/year-end/arsredovisning', labelKey: 'annual_report', icon: ScrollText, group: 'skatt', fold: 'bokslut', entityOnly: 'aktiebolag' },
-  { href: '/reports/ink2-declaration', labelKey: 'income_declaration', icon: FileSpreadsheet, group: 'skatt', fold: 'bokslut', entityOnly: 'aktiebolag' },
   { href: '/reports/ne-declaration', labelKey: 'income_declaration', icon: FileSpreadsheet, group: 'skatt', fold: 'bokslut', entityOnly: 'enskild_firma' },
 ]
 
@@ -268,7 +247,7 @@ const groupLabelKey: Record<Exclude<GroupKey, 'top'>, string> = {
   skatt: 'group_tax',
 }
 
-export default function DashboardNav({ companyName: _companyName, entityType, paysSalaries = false, dimensionsEnabled = false, isSandbox = false, extensionNavItems = [], userName = null, userEmail = null, initialUiState }: DashboardNavProps) {
+export default function DashboardNav({ companyName: _companyName, entityType, dimensionsEnabled = false, isSandbox = false, extensionNavItems = [], userName = null, userEmail = null, initialUiState }: DashboardNavProps) {
   const pathname = usePathname()
   const router = useRouter()
   const supabase = useRealtimeSupabase()
@@ -367,9 +346,6 @@ export default function DashboardNav({ companyName: _companyName, entityType, pa
   const isActive = (href: string) => {
     if (href === '/') {
       return pathname === '/'
-    }
-    if (href === '/salary') {
-      return pathname === '/salary' || pathname.startsWith('/salary/runs')
     }
     // Routes with their own rows under Skatt & bokslut (Bokslut, Moms,
     // Periodiseringar, Årsredovisning, Inkomstdeklaration) are carved out
@@ -474,14 +450,9 @@ export default function DashboardNav({ companyName: _companyName, entityType, pa
     return <Icon className={className} />
   }
 
-  const isEmployer = entityType === 'aktiebolag' || paysSalaries
-
   const filteredItems = navItems.filter(item => {
     if (item.hidden) return false
     if (hiddenNavHrefs.has(item.href)) return false
-    // Payroll (employerOnly) is hidden until the company is an employer, an
-    // aktiebolag, or any entity that has flagged pays_salaries. #782
-    if (item.employerOnly && !isEmployer) return false
     // Dimension surfaces are hidden until the company opts in via the
     // bookkeeping settings toggle (company_settings.dimensions_enabled).
     if (item.requiresDimensions && !dimensionsEnabled) return false

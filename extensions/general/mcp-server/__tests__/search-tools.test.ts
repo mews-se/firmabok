@@ -147,7 +147,6 @@ describe('gnubok_search_tools', () => {
     expect(names).not.toContain('gnubok_create_invoice')         // invoices:write
     expect(names).not.toContain('gnubok_get_trial_balance')      // reports:read
     expect(names).not.toContain('gnubok_list_uncategorized_transactions') // transactions:read
-    expect(names).not.toContain('gnubok_create_salary_run')      // payroll:write
     expect(names).not.toContain('gnubok_close_period')           // bookkeeping:write
 
     // Sanity: every returned tool truly is unscoped.

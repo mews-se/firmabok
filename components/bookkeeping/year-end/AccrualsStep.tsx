@@ -3,13 +3,10 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ArrowRight, Loader2, Plus, Trash2 } from 'lucide-react'
-import { formatCurrency } from '@/lib/utils'
 import { useToast } from '@/components/ui/use-toast'
 import type { AccrualsProposal } from '@/lib/bokslut/accruals/types'
 import { getErrorMessage as getUserErrorMessage } from '@/lib/errors/get-error-message'
@@ -18,10 +15,6 @@ interface AccrualsStepProps {
   periodId: string
   onBack: () => void
   onContinue: () => void
-}
-
-interface AutoState {
-  vacation: { accept: boolean }
 }
 
 interface ManualEntry {
@@ -44,7 +37,6 @@ export function AccrualsStep({ periodId, onBack, onContinue }: AccrualsStepProps
   const [proposal, setProposal] = useState<AccrualsProposal | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [auto, setAuto] = useState<AutoState>({ vacation: { accept: true } })
   const [manual, setManual] = useState<ManualEntry[]>([])
   const [posting, setPosting] = useState(false)
 
@@ -102,9 +94,6 @@ export function AccrualsStep({ periodId, onBack, onContinue }: AccrualsStepProps
     setPosting(true)
     try {
       const items: unknown[] = []
-      if (proposal.proposals.find((p) => p.kind === 'vacation_liability_change') && auto.vacation.accept) {
-        items.push({ kind: 'vacation_liability_change' })
-      }
       for (const m of manual) {
         const amount = parseFloat(m.amount)
         if (!Number.isFinite(amount) || amount <= 0) continue
@@ -157,7 +146,7 @@ export function AccrualsStep({ periodId, onBack, onContinue }: AccrualsStepProps
     } finally {
       setPosting(false)
     }
-  }, [proposal, auto, manual, periodId, onContinue, toast])
+  }, [proposal, manual, periodId, onContinue, toast])
 
   if (loading) {
     return (
@@ -180,8 +169,6 @@ export function AccrualsStep({ periodId, onBack, onContinue }: AccrualsStepProps
 
   if (!proposal) return null
 
-  const vacation = proposal.proposals.find((p) => p.kind === 'vacation_liability_change')
-
   return (
     <div className="space-y-6">
       <Card>
@@ -194,43 +181,6 @@ export function AccrualsStep({ periodId, onBack, onContinue }: AccrualsStepProps
           </p>
         </CardHeader>
       </Card>
-
-      {vacation && (
-        <Card>
-          <CardHeader>
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex-1">
-                <CardTitle className="text-base">{vacation.label}</CardTitle>
-                <p className="text-sm text-muted-foreground mt-1">{vacation.description}</p>
-                {vacation.reverses_on ? (
-                  <Badge variant="outline" className="mt-2">
-                    Vänds {vacation.reverses_on}
-                  </Badge>
-                ) : (
-                  <Badge variant="outline" className="mt-2">
-                    Rullas vidare (ingen vändning)
-                  </Badge>
-                )}
-              </div>
-              <p className="font-display text-2xl tabular-nums shrink-0">
-                {formatCurrency(vacation.amount)}
-              </p>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="accept-vacation"
-                checked={auto.vacation.accept}
-                onCheckedChange={(c) => setAuto({ vacation: { accept: Boolean(c) } })}
-              />
-              <Label htmlFor="accept-vacation" className="text-sm cursor-pointer select-none">
-                Boka denna justering
-              </Label>
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       <Card>
         <CardHeader>

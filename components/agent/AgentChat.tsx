@@ -1263,7 +1263,6 @@ const TOOL_BADGE_LABELS: Record<string, string> = {
   gnubok_propose_accruals: 'Räknar fram periodiseringar…',
   gnubok_propose_annual_depreciation: 'Beräknar avskrivningar…',
   gnubok_propose_dispositioner: 'Förbereder dispositioner…',
-  gnubok_preview_arsredovisning: 'Förhandsgranskar årsredovisning…',
   gnubok_preview_ef_declaration: 'Förbereder NE-bilaga…',
   gnubok_post_annual_depreciation: 'Bokar avskrivningar…',
   // Memory

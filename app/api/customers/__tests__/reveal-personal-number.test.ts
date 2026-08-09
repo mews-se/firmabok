@@ -15,7 +15,7 @@
 import { NextResponse } from 'next/server'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMockRequest, parseJsonResponse } from '@/tests/helpers'
-import { encryptPersonnummer } from '@/lib/salary/personnummer'
+import { encryptPersonnummer } from '@/lib/personnummer'
 
 let queryResult: { data: unknown; error: unknown } = { data: null, error: null }
 

@@ -4,7 +4,7 @@ import {
   parseJsonResponse,
   createQueuedMockSupabase,
 } from '@/tests/helpers'
-import { encryptPersonnummer } from '@/lib/salary/personnummer'
+import { encryptPersonnummer } from '@/lib/personnummer'
 
 const { supabase: mockSupabase, enqueue, reset } = createQueuedMockSupabase()
 vi.mock('@/lib/supabase/server', () => ({

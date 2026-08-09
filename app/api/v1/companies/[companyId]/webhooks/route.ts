@@ -20,7 +20,6 @@ import { v1ErrorResponse, v1ErrorResponseFromCode } from '@/lib/api/v1/errors'
 import { generateWebhookSecret } from '@/lib/webhooks/signing'
 import { validateWebhookUrl } from '@/lib/webhooks/url-guard'
 import { API_V1_VERSION } from '@/lib/api/v1/version'
-import { hasScope } from '@/lib/auth/api-keys'
 
 const WEBHOOK_EVENT_TYPES = z.enum([
   'invoice.created',
@@ -42,10 +41,6 @@ const WEBHOOK_EVENT_TYPES = z.enum([
   'period.locked',
   'period.unlocked',
   'period.year_closed',
-  'salary_run.created',
-  'salary_run.approved',
-  'salary_run.booked',
-  'agi.generated',
   'document.uploaded',
 ])
 
@@ -237,29 +232,6 @@ export const POST = withApiV1<{ params: Promise<{ companyId: string }> }>(
       })
     }
     const body = parsed.data
-
-    // Elevated-scope check for high-sensitivity payloads. Subscribing to
-    // salary_run.* or agi.generated routes personnummer + lönesummor +
-    // skatteavdrag to an external receiver: a payroll-grade exposure.
-    // Require BOTH webhooks:manage AND payroll:read so a key minted only
-    // for webhook management can't reach the payroll surface. The same
-    // pattern will extend to other sensitive event families when they
-    // ship (e.g. document.uploaded with PII payloads).
-    const PAYROLL_SENSITIVE = /^(salary_run\.|agi\.)/
-    if (PAYROLL_SENSITIVE.test(body.event_type) && !hasScope(ctx.scopes, 'payroll:read')) {
-      return v1ErrorResponseFromCode('INSUFFICIENT_SCOPE', ctx.log, {
-        requestId: ctx.requestId,
-        // Art.5(1)(f): don't echo the API key's granted_scopes set back to
-        // the caller. The required_scope alone tells them what to add;
-        // surfacing the full grant leaks the key's capability surface
-        // both to the caller (acceptable) and to any log path that
-        // captures the error envelope (not acceptable).
-        details: {
-          required_scope: 'payroll:read',
-          reason: `Subscribing to ${body.event_type} requires payroll:read in addition to webhooks:manage.`,
-        },
-      })
-    }
 
     // SSRF guard: resolve hostname, reject private/loopback/link-local/CGNAT/
     // metadata addresses. Runs BEFORE the secret is generated and BEFORE

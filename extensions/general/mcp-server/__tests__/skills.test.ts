@@ -244,7 +244,6 @@ describe('gnubok_list_skills tool', () => {
     }
     const slugs = result.skills.map((s) => s.slug)
     expect(slugs).not.toContain('year-end-close') // AB-only
-    expect(slugs).not.toContain('payroll-monthly') // requires employees
     expect(slugs).toContain('month-end-close')
     expect(slugs).toContain('invoicing-rules')
     expect(slugs).toContain('quarterly-vat-review') // vat_registered=true

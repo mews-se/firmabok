@@ -1,28 +1,19 @@
 /**
- * WHERE sign reclassification applies, pinned in both directions.
+ * WHERE sign reclassification applies: the account-oriented surfaces
+ * deliberately do NOT reclassify.
  *
  * A skattekonto (1630) with a credit balance is money owed to Skatteverket, and
  * a momsavräkningskonto (2641) with a debit balance is money owed back. ÅRL 3
- * kap. and K2 present a post by the substance of its balance, so the STATUTORY
- * surfaces move them. The ACCOUNT-ORIENTED surfaces deliberately do not.
- *
- * Both halves are asserted here on purpose:
- *
- *   - The statutory half stops the reclassification silently disappearing from
- *     one surface again. It shipped in the K2 mapper on 2026-07-23 and was
- *     missing from INK2R until 2026-07-29, which is exactly how a customer came
- *     to be comparing two of our own reports against each other.
- *
- *   - The operational half stops a future sweep "fixing" Balansräkning and
- *     Balansrapport into disagreeing with their own documented contract. Those
- *     two are organised BY ACCOUNT NUMBER under BAS-prefix headings, and
- *     balansrapport.ts states an invariant that depends on every row staying
- *     debit-positive where it was booked: moving konto 1630 into a liability
- *     section would break the add-the-rows-to-verify-the-balance property and
- *     hide the account from anyone looking for it by number.
+ * kap. and K2 present a post by the substance of its balance, so STATUTORY
+ * surfaces move them. Balansräkning and Balansrapport are organised BY ACCOUNT
+ * NUMBER under BAS-prefix headings, and balansrapport.ts states an invariant
+ * that depends on every row staying debit-positive where it was booked: moving
+ * konto 1630 into a liability section would break the
+ * add-the-rows-to-verify-the-balance property and hide the account from anyone
+ * looking for it by number.
  *
  * See DECISIONS.md for the scope decision. If a new STATUTORY presentation is
- * added, it belongs in the first half of this file.
+ * added, its sign reclassification belongs in a test beside this one.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
@@ -32,8 +23,7 @@ vi.mock('@/lib/reports/trial-balance', () => ({
 
 import { generateTrialBalance } from '@/lib/reports/trial-balance'
 import { generateBalanceSheet } from '../balance-sheet'
-import { mapTrialBalancesToK2 } from '@/lib/bokslut/ixbrl/k2-mapper'
-import { CLOSED_ROWS, EXPECTED, PRE_CLOSING_ROWS, rowsForMode } from './closed-year-fixture'
+import { EXPECTED, rowsForMode } from './closed-year-fixture'
 
 const COMPANY_ID = 'company-1'
 const PERIOD_ID = 'period-1'
@@ -58,22 +48,6 @@ beforeEach(() => {
     totalCredit: 0,
     isBalanced: true,
   }))
-})
-
-describe('statutory surfaces reclassify by sign', () => {
-  it('the K2 årsredovisning moves a credit 1630 into Skatteskulder', () => {
-    const k2 = mapTrialBalancesToK2({ full: CLOSED_ROWS, preClosing: PRE_CLOSING_ROWS }, null)
-
-    expect(k2.br['Skatteskulder'].current).toBe(10_000 + EXPECTED.taxAccountCredit)
-    expect(k2.br['OvrigaFordringarKortfristiga'].current).toBe(EXPECTED.inputVatDebit)
-  })
-
-  it('and says so in a warning rather than moving money silently', () => {
-    const k2 = mapTrialBalancesToK2({ full: CLOSED_ROWS, preClosing: PRE_CLOSING_ROWS }, null)
-
-    expect(k2.warnings.some((w) => w.includes('1630-1659'))).toBe(true)
-    expect(k2.warnings.some((w) => w.includes('2610-2659'))).toBe(true)
-  })
 })
 
 describe('account-oriented surfaces deliberately do NOT reclassify', () => {

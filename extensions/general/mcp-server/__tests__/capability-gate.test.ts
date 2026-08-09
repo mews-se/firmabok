@@ -1,8 +1,8 @@
 /**
  * Tests for the capability paywall gate in the MCP dispatcher.
  *
- * The paid external-service tools (send_invoice → email_send, the two
- * Skatteverket submissions → skatteverket) must be blocked server-side when the
+ * The paid external-service tools (send_invoice → email_send, the
+ * Skatteverket submission → skatteverket) must be blocked server-side when the
  * company isn't entitled: BEFORE tool.execute() runs, so no pending op is
  * staged. The gate sits right after the API-key scope check and mirrors its
  * shape, so the test key holds the required SCOPE but the company may lack the
@@ -59,7 +59,7 @@ vi.mock('@/lib/auth/api-keys', async (importOriginal) => {
       userId: 'user-1',
       companyId: '11111111-1111-4111-8111-111111111111',
       // Holds the SCOPES for every paid tool under test (send_invoice →
-      // invoices:write, agi_submit → skatteverket:write, document uploads →
+      // invoices:write, vat_declaration_submit → skatteverket:write, document uploads →
       // transactions:write) so the scope gate passes and the CAPABILITY gate is
       // what we exercise.
       scopes: ['invoices:write', 'skatteverket:write', 'reports:read', 'transactions:write'],
@@ -141,10 +141,10 @@ describe('MCP capability gate', () => {
     expect(event.latencyMs).toBe(0)
   })
 
-  it('blocks gnubok_agi_submit when skatteverket is not entitled', async () => {
+  it('blocks gnubok_vat_declaration_submit when skatteverket is not entitled', async () => {
     mockHasCapability.mockResolvedValue(false)
 
-    const response = await handleMcpRequest(mcpToolCall('gnubok_agi_submit', { salary_run_id: 'sr-1' }))
+    const response = await handleMcpRequest(mcpToolCall('gnubok_vat_declaration_submit', { period_type: 'monthly', year: 2025, period: 3 }))
     const { isError, payload } = await parsedToolResult(response)
 
     expect(isError).toBe(true)

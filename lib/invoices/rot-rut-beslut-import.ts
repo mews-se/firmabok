@@ -1,7 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { z } from 'zod'
 import type { RotRutBeslutFileSchema } from '@/lib/api/schemas'
-import { decryptPersonnummer } from '@/lib/salary/personnummer'
+import { decryptPersonnummer } from '@/lib/personnummer'
 
 /**
  * Import of Skatteverkets beslutsfil for rot/rut (the decision JSON the user

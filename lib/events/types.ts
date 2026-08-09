@@ -130,21 +130,6 @@ export type CoreEvent =
   | { type: 'supplier_invoice.received'; payload: { inboxItem: InvoiceInboxItem; userId: string; companyId: string } }
   | { type: 'supplier_invoice.extracted'; payload: { inboxItem: InvoiceInboxItem; confidence: number; userId: string; companyId: string } }
   | { type: 'supplier_invoice.confirmed'; payload: { inboxItem: InvoiceInboxItem; supplierInvoice: SupplierInvoice; userId: string; companyId: string } }
-  // Salary
-  | { type: 'salary_run.created'; payload: { salaryRunId: string; periodYear: number; periodMonth: number; userId: string; companyId: string } }
-  | { type: 'salary_run.approved'; payload: { salaryRunId: string; approvedBy: string; userId: string; companyId: string } }
-  | { type: 'salary_run.approval_reverted'; payload: { salaryRunId: string; revertedBy: string; deletedAgiDeclarationId: string | null; userId: string; companyId: string } }
-  | { type: 'salary_run.booked'; payload: { salaryRunId: string; entryIds: string[]; userId: string; companyId: string } }
-  | { type: 'agi.generated'; payload: { agiId: string; periodYear: number; periodMonth: number; userId: string; companyId: string } }
-  | { type: 'agi.submitted'; payload: { salaryRunId: string; periodYear: number; periodMonth: number; userId: string; companyId: string } }
-  // Bolagsverket: digital inlämning av årsredovisning. Status values follow
-  // GUIDE §5.2.2 (arsred_inkommen → … → arsred_registrerad). `uploaded` fires
-  // when the iXBRL lands in eget utrymme; the undertecknare then signs the
-  // fastställelseintyg at Bolagsverket and the webhook drives the rest.
-  | { type: 'arsredovisning.uploaded'; payload: { submissionId: string; fiscalPeriodId: string; idnummer: string; environment: 'test' | 'accept' | 'prod'; userId: string; companyId: string } }
-  | { type: 'arsredovisning.status_changed'; payload: { submissionId: string; fiscalPeriodId: string | null; previousStatus: string; status: string; bolagsverketStatus: string; userId: string; companyId: string } }
-  | { type: 'arsredovisning.registered'; payload: { submissionId: string; fiscalPeriodId: string | null; userId: string; companyId: string } }
-  | { type: 'arsredovisning.forelagd'; payload: { submissionId: string; fiscalPeriodId: string | null; userId: string; companyId: string } }
   // Skatteverket: Skattekonto sync
   | { type: 'skattekonto.synced'; payload: { booked: number; upcoming: number; balanceSkv: number; balanceKfm: number; userId: string; companyId: string } }
   | { type: 'skattekonto.balance.changed'; payload: { previousBalance: number; currentBalance: number; userId: string; companyId: string } }

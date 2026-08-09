@@ -48,10 +48,6 @@ const PeriodiskSammanstallningView = dynamic(() =>
   import('./PeriodiskSammanstallningView').then((module) => ({ default: module.PeriodiskSammanstallningView })),
   { loading: ReportViewLoading },
 )
-const INK2DeclarationView = dynamic(() =>
-  import('./INK2DeclarationView').then((module) => ({ default: module.INK2DeclarationView })),
-  { loading: ReportViewLoading },
-)
 const BankReconciliationView = dynamic(() =>
   import('./BankReconciliationView').then((module) => ({ default: module.BankReconciliationView })),
   { loading: ReportViewLoading },
@@ -241,8 +237,6 @@ function FocusedView({
       return <PeriodiskSammanstallningView />
     case 'ne-declaration':
       return isEnskildFirma ? <NEDeclarationView periodId={periodId} /> : null
-    case 'ink2-declaration':
-      return isAktiebolag ? <INK2DeclarationView periodId={periodId} /> : null
     case 'huvudbok':
       return <GeneralLedgerView periodId={periodId} initialAccountFilter={accountFilter} dimensionFilter={dimensionFilter} dateRange={dateRange} />
     case 'grundbok':

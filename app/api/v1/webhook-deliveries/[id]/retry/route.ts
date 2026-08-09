@@ -26,7 +26,6 @@ import { v1ErrorResponse, v1ErrorResponseFromCode } from '@/lib/api/v1/errors'
 import { kickWebhookDispatch } from '@/lib/webhooks/dispatch-kick'
 import { minimisePayload } from '@/lib/webhooks/handler'
 import { validateWebhookUrl } from '@/lib/webhooks/url-guard'
-import { hasScope } from '@/lib/auth/api-keys'
 
 registerEndpoint({
   operation: 'webhook_deliveries.retry',
@@ -117,23 +116,6 @@ export const POST = withApiV1<{ params: Promise<{ id: string }> }>(
         details: {
           field: 'status',
           message: `Only dead or delivered deliveries can be retried (current: ${o.status}).`,
-        },
-      })
-    }
-
-    // Mirror the create-route elevated-scope gate. A key with only
-    // webhooks:manage must NOT be able to re-emit a salary_run.* / agi.*
-    // payload: those carry personnummer, lönesummor, skatteavdrag, and
-    // the original create call required webhooks:manage AND payroll:read.
-    // Retry checks the SAME pair against the CALLING key's scopes (which
-    // may differ from the key that created the webhook in the first place).
-    const PAYROLL_SENSITIVE = /^(salary_run\.|agi\.)/
-    if (PAYROLL_SENSITIVE.test(o.event_type) && !hasScope(ctx.scopes, 'payroll:read')) {
-      return v1ErrorResponseFromCode('INSUFFICIENT_SCOPE', ctx.log, {
-        requestId: ctx.requestId,
-        details: {
-          required_scope: 'payroll:read',
-          reason: `Retrying ${o.event_type} requires payroll:read in addition to webhooks:manage.`,
         },
       })
     }

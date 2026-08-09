@@ -29,7 +29,7 @@ describe('assertNoPlaintextPersonnummer', () => {
     ).toThrow(/preview_data contains plaintext PII key "ssn"/)
   })
 
-  it('allows the encrypted/masked derivatives that create_employee stages', () => {
+  it('allows the encrypted/masked derivatives that staging tools store', () => {
     expect(() =>
       assertNoPlaintextPersonnummer(
         {

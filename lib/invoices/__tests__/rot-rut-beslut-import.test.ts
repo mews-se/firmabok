@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { createQueuedMockSupabase } from '@/tests/helpers'
-import { encryptPersonnummer } from '@/lib/salary/personnummer'
+import { encryptPersonnummer } from '@/lib/personnummer'
 import { importRotRutBeslutFile, type RotRutBeslutFile } from '../rot-rut-beslut-import'
 import type { SupabaseClient } from '@supabase/supabase-js'
 

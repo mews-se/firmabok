@@ -12,7 +12,6 @@ import {
   proposeManualAccrued,
   proposeManualPrepaid,
   proposeRevenueDeferral,
-  proposeVacationLiabilityChange,
 } from '@/lib/bokslut/accruals/accrual-detector'
 import { detectPeriodisering } from '@/lib/bokslut/accruals/auto-detect'
 import type { AccrualProposal } from '@/lib/bokslut/accruals/types'
@@ -60,7 +59,6 @@ const EXPENSE_ACCOUNT_RE = /^[5-8]\d{3}$/
 const REVENUE_ACCOUNT_RE = /^3\d{3}$/
 
 const PostItemSchema = z.discriminatedUnion('kind', [
-  z.object({ kind: z.literal('vacation_liability_change') }),
   z.object({
     kind: z.literal('audit_fee'),
     amount: z.number().positive(),
@@ -150,11 +148,6 @@ export const POST = withRouteContext(
 
         let proposal: AccrualProposal | null = null
         switch (item.kind) {
-          case 'vacation_liability_change':
-            proposal = await proposeVacationLiabilityChange(supabase, companyId, id, {
-              closingDate: period.period_end,
-            })
-            break
           case 'audit_fee':
             proposal = proposeAuditFee({
               amount: item.amount,
@@ -214,10 +207,6 @@ export const POST = withRouteContext(
         // bookkeepers (and a future cron) can spot the periodisering. The
         // accrual_reversals cron is follow-up infra: once it lands, the
         // entry's source_type or a metadata column can drive the auto-flip.
-        //
-        // Vacation-liability adjustments deliberately have empty reverses_on
-        // since 2920 carries forward: emit a different description in that
-        // case so future readers don't expect a Jan 1 reversal.
         const description = proposal.reverses_on
           ? `Periodisering: ${proposal.label} (vänds ${proposal.reverses_on})`
           : `Bokslutsjustering: ${proposal.label}`
@@ -260,9 +249,6 @@ async function findExistingAccrualEntry(
 ): Promise<string | null> {
   let pattern: string
   switch (item.kind) {
-    case 'vacation_liability_change':
-      pattern = '%semesterlöneskuld%'
-      break
     case 'audit_fee': {
       const account = item.liability_account ?? '2992'
       pattern = account === '2991' ? '%arvode för bokslut%' : '%arvode för revision%'

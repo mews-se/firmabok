@@ -100,9 +100,10 @@ const UNRESOLVED_CEILING = 375
  * to the scanner or to the client wrappers stops resolving chains, this fails
  * instead of the net silently going slack.
  *
- * Baseline 2026-07-26: 13 734.
+ * Baseline 2026-07-26: 13 734. Re-baselined 2026-08-09 after the payroll and
+ * AB-only year-end modules were removed: 12 303.
  */
-const RESOLVED_COLUMN_FLOOR = 13_500
+const RESOLVED_COLUMN_FLOOR = 12_000
 
 let schema: SchemaModel
 let scan: ScanResult

@@ -19,7 +19,6 @@ export type ReportCategory =
   | 'tax_vat'
   | 'ledgers'
   | 'reconciliation'
-  | 'payroll'
   | 'export'
 
 /**
@@ -56,7 +55,7 @@ export interface ReportDescriptor {
   route?: string
   /**
    * Hidden from the legacy desktop rail; surfaced only on the library landing.
-   * Used for reports that were never in the nav (KPI, payroll, archive…).
+   * Used for reports that were never in the nav (KPI, archive…).
    */
   libraryOnly?: boolean
   /**
@@ -100,7 +99,6 @@ export const LIBRARY_CATEGORIES: ReportCategory[] = [
   'tax_vat',
   'ledgers',
   'reconciliation',
-  'payroll',
   'export',
 ]
 
@@ -111,7 +109,6 @@ export const CATEGORY_LABEL_KEY: Record<ReportCategory, string> = {
   tax_vat: 'group_tax_vat',
   ledgers: 'group_ledgers',
   reconciliation: 'group_reconciliation',
-  payroll: 'group_payroll',
   export: 'group_export',
 }
 
@@ -201,16 +198,6 @@ export const REPORT_CATALOG: ReportDescriptor[] = [
     params: 'fiscal',
     route: '/reports/kassaflodesanalys',
   },
-  {
-    slug: 'arsredovisning',
-    labelKey: 'name_arsredovisning',
-    descKey: 'desc_arsredovisning',
-    category: 'year_end',
-    entityType: 'aktiebolag',
-    params: 'fiscal',
-    route: '/bookkeeping/year-end/arsredovisning',
-  },
-
   // --- Skatt & moms (tax & VAT) ---
   {
     slug: 'vat-declaration',
@@ -238,15 +225,6 @@ export const REPORT_CATALOG: ReportDescriptor[] = [
     entityType: 'enskild_firma',
     params: 'fiscal',
   },
-  {
-    slug: 'ink2-declaration',
-    labelKey: 'name_ink2_declaration',
-    descKey: 'desc_ink2_declaration',
-    category: 'tax_vat',
-    entityType: 'aktiebolag',
-    params: 'fiscal',
-  },
-
   // --- Huvudböcker (ledgers) ---
   {
     slug: 'huvudbok',

@@ -137,16 +137,6 @@ export function ResultStep({ result }: ResultStepProps) {
                 Generera rapporter
               </Link>
             </Button>
-            <Button asChild disabled={!acknowledged}>
-              <Link
-                href={`/bookkeeping/year-end/arsredovisning?period=${result.closingEntry.fiscal_period_id}`}
-                aria-disabled={!acknowledged}
-                tabIndex={acknowledged ? undefined : -1}
-                className={!acknowledged ? 'pointer-events-none opacity-50' : ''}
-              >
-                Skapa årsredovisning
-              </Link>
-            </Button>
           </div>
       </section>
     </div>

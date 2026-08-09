@@ -81,42 +81,6 @@ import '@/app/api/v1/companies/[companyId]/supplier-invoices/[id]/approve/route'
 import '@/app/api/v1/companies/[companyId]/supplier-invoices/[id]/mark-paid/route'
 import '@/app/api/v1/companies/[companyId]/supplier-invoices/[id]/credit/route'
 
-// Phase 5 PR-1: Payroll registers: employees + salary-runs CRUD.
-import '@/app/api/v1/companies/[companyId]/employees/route'
-import '@/app/api/v1/companies/[companyId]/employees/[id]/route'
-import '@/app/api/v1/companies/[companyId]/salary-runs/route'
-import '@/app/api/v1/companies/[companyId]/salary-runs/[id]/route'
-
-// Phase 5 PR-2: Payroll lifecycle verbs. The /calculate orchestration was
-// extracted into lib/salary/run-calculation.ts; the AGI orchestration into
-// lib/salary/agi/generate-declaration.ts. Both the internal dashboard
-// routes and these v1 routes call the same helpers.
-import '@/app/api/v1/companies/[companyId]/salary-runs/[id]/calculate/route'
-import '@/app/api/v1/companies/[companyId]/salary-runs/[id]/approve/route'
-import '@/app/api/v1/companies/[companyId]/salary-runs/[id]/mark-paid/route'
-import '@/app/api/v1/companies/[companyId]/salary-runs/[id]/book/route'
-import '@/app/api/v1/companies/[companyId]/salary-runs/[id]/generate-agi/route'
-
-// Payroll gap-closure 1.1: per-employee payslip reads (list + detail + PDF).
-import '@/app/api/v1/companies/[companyId]/salary-runs/[id]/employees/route'
-import '@/app/api/v1/companies/[companyId]/salary-runs/[id]/employees/[employeeId]/route'
-import '@/app/api/v1/companies/[companyId]/salary-runs/[id]/payslips/[employeeId]/pdf/route'
-
-// Payroll gap-closure 1.2: payslip line writes (draft runs only).
-import '@/app/api/v1/companies/[companyId]/salary-runs/[id]/employees/[employeeId]/lines/route'
-import '@/app/api/v1/companies/[companyId]/salary-runs/[id]/lines/[lineId]/route'
-
-// Payroll gap-closure 1.4: absence (frånvaro) range endpoints.
-import '@/app/api/v1/companies/[companyId]/employees/[id]/absence/route'
-
-// Payroll gap-closure 2.3: cutover opening balances (single + atomic bulk).
-import '@/app/api/v1/companies/[companyId]/employees/[id]/opening-balances/route'
-import '@/app/api/v1/companies/[companyId]/employees/opening-balances/route'
-
-// Payroll gap-closure 3.4: vacation ledger + year close.
-import '@/app/api/v1/companies/[companyId]/employees/[id]/vacation-balance/route'
-import '@/app/api/v1/companies/[companyId]/salary/vacation-year-close/route'
-
 // Phase 5 PR-3: Reports + import async. All reports wrap existing
 // lib/reports/* generators. Imports run inline today but record their
 // progress on the `operations` table for consistent polling-shape. KPI,
@@ -132,9 +96,6 @@ import '@/app/api/v1/companies/[companyId]/reports/monthly-breakdown/route'
 import '@/app/api/v1/companies/[companyId]/reports/ar-ledger/route'
 import '@/app/api/v1/companies/[companyId]/reports/supplier-ledger/route'
 import '@/app/api/v1/companies/[companyId]/reports/continuity-check/route'
-import '@/app/api/v1/companies/[companyId]/reports/salary-journal/route'
-import '@/app/api/v1/companies/[companyId]/reports/avgifter-basis/route'
-import '@/app/api/v1/companies/[companyId]/reports/vacation-liability/route'
 import '@/app/api/v1/companies/[companyId]/reports/sie-export/route'
 import '@/app/api/v1/companies/[companyId]/imports/sie/route'
 import '@/app/api/v1/companies/[companyId]/imports/bank/route'

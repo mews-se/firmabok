@@ -162,42 +162,6 @@ describe('POST /api/v1/webhook-deliveries/:id/retry', () => {
     expect(body.data.status).toBe('pending')
   })
 
-  it('requires payroll:read for salary_run.* / agi.* retries (elevated-scope gate)', async () => {
-    // Caller has webhooks:manage but NOT payroll:read. Original create
-    // would have rejected the subscription; retry must reject the
-    // re-emission identically so a stripped-down key can't replay payroll
-    // payloads to its receiver.
-    mockValidate.mockResolvedValueOnce({
-      userId: USER_ID,
-      companyId: COMPANY_ID,
-      apiKeyId: 'ak_1',
-      apiKeyName: 'CI key',
-      scopes: ['webhooks:manage'],
-      mode: 'live',
-    })
-    mockServiceClient.mockReturnValue(
-      makeFlexibleSupabase({
-        webhook_deliveries: {
-          data: { ...DEAD_DELIVERY, event_type: 'salary_run.booked' },
-          error: null,
-        },
-        company_members: { data: { company_id: COMPANY_ID }, error: null },
-      }),
-    )
-
-    const res = await retryDelivery(
-      makeRequest(`https://x.test/api/v1/webhook-deliveries/${DELIVERY_ID}/retry`, {
-        method: 'POST',
-      }),
-      idParams(DELIVERY_ID),
-    )
-
-    expect(res.status).toBe(403)
-    const body = await res.json()
-    expect(body.error.code).toBe('INSUFFICIENT_SCOPE')
-    expect(body.error.details.required_scope).toBe('payroll:read')
-  })
-
   it('refuses to retry a live delivery (pending/in_flight/failed)', async () => {
     mockServiceClient.mockReturnValue(
       makeFlexibleSupabase({

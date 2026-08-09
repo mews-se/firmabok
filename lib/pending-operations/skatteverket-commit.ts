@@ -10,7 +10,7 @@
  * contract without core ever importing the extension.
  */
 
-/** Result returned by the extension's commitSubmitVatDeclaration / commitSubmitAgi. */
+/** Result returned by the extension's commitSubmitVatDeclaration. */
 export type SkvSubmitResult =
   | ({
       ok: true
@@ -32,15 +32,9 @@ export type SkvSubmitResult =
       error: string
     }
 
-/** The two functions a fully-wired skatteverket extension exposes on `services`. */
+/** The function a fully-wired skatteverket extension exposes on `services`. */
 export interface SkatteverketCommitServices {
   commitSubmitVatDeclaration: (
-    supabase: unknown,
-    userId: string,
-    companyId: string,
-    params: Record<string, unknown>,
-  ) => Promise<SkvSubmitResult>
-  commitSubmitAgi: (
     supabase: unknown,
     userId: string,
     companyId: string,

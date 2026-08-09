@@ -1,5 +1,5 @@
 import type { Invoice, InvoiceItem } from '@/types'
-import { decryptPersonnummer } from '@/lib/salary/personnummer'
+import { decryptPersonnummer } from '@/lib/personnummer'
 import { deductionSekConverter, type DeductionType } from './rot-rut-rules'
 
 /**

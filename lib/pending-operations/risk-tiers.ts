@@ -139,43 +139,6 @@ export const OPERATION_RISK_TIERS: Record<string, RiskLevel> = {
   correct_entry: 'high',
   reverse_entry: 'high',
 
-  // ── Payroll ────────────────────────────────────────────────────────
-  // Salary run creation materialises a draft + per-employee base lines. The
-  // run is reversible while still draft, so 'medium' aligns with other
-  // create-draft operations. AGI generation produces the Skatteverket
-  // underlag (XML, BFL 7-year retention): statutory artifact, always
-  // staged.
-  create_salary_run: 'medium',
-  generate_agi: 'high',
-  // Payslip line edits are draft-run-only (BFL: once the run advances its
-  // numbers feed a verifikation) and re-editable until then, but they change
-  // a pay outcome: human review at medium, never silent.
-  update_payslip_line: 'medium',
-  // Absence rows drive sjuklön math and the statutory AGI Frånvarouppgift.
-  // Reversible via delete, but not audit-free: medium.
-  register_absence: 'medium',
-  // Employee master data carries PII (personnummer, encrypted at staging
-  // time: pending_operations.params never holds the plaintext) plus bank
-  // payment-routing fields: same BEC rationale as create_supplier.
-  create_employee: 'medium',
-  update_employee: 'medium',
-  // Cutover state for mid-year migrations (YTD, vacation balances, karens
-  // adjustment). Editable until the employee has a booked run; wrong values
-  // skew payslips and the vacation-liability report, so human review.
-  set_employee_opening_balances: 'medium',
-  // Booking a salary run posts 2-4 immutable verifikationer via the engine
-  // (net, tax, avgifter, vacation accrual) and advances the run through
-  // approved/paid on the way. Same irreversible tier as create_voucher.
-  book_salary_run: 'high',
-  // Deleting absence days is the inverse of register_absence and changes
-  // sjuklön/karens math for any draft run covering the range: same tier.
-  delete_absence: 'medium',
-  // Semesterårsavslut: closes every employee's vacation year, rolls sparade
-  // dagar (5-year expiry -> forced payout), and may post a 2920/2940
-  // adjustment verifikation. Irreversible in practice (no reopen flow):
-  // never auto-committed.
-  vacation_year_close: 'high',
-
   // ── Multi-tx flows (PRs #603/#606/#608/#610) ───────────────────────
   // Allocate 1 bank tx across N customer or supplier invoices into one
   // combined verifikat. Reversible via storno + invoice_payments delete,
@@ -198,22 +161,11 @@ export const OPERATION_RISK_TIERS: Record<string, RiskLevel> = {
   // both attach an existing booking to a different entity.
   link_transaction_journal_entry: 'medium',
 
-  // ── Körjournal (mileage) ───────────────────────────────────────────
-  // A trip row is pure travel documentation: no booking impact until a
-  // separate book operation. Same tier as create_customer.
-  log_mileage_trip: 'low',
-  // Books one verifikat with fixed lines derived from logged trips (7331 +
-  // whitelisted counter account) at the DB-configured schablon rate: not the
-  // arbitrary-line surface that makes create_voucher 'high'. Reversible via
-  // storno: same tier as post_annual_depreciation.
-  book_mileage_period: 'medium',
-
   // ── Skatteverket filing (PR5) ──────────────────────────────────────
   // External + irreversible once signed. Commit sends the declaration for
   // BankID signing; the user's signature in the browser is the filing act.
   // (getRiskLevel already defaults unknown → 'high'; explicit for intent.)
   submit_vat_declaration: 'high',
-  submit_agi: 'high',
 }
 
 /**

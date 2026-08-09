@@ -2,7 +2,7 @@ import { randomUUID } from 'crypto'
 import { describe, expect, it } from 'vitest'
 import { seedCompany } from '@/tests/pg/fixtures'
 import { getPool } from '@/tests/pg/setup'
-import { decryptPersonnummer, encryptPersonnummer } from '@/lib/salary/personnummer'
+import { decryptPersonnummer, encryptPersonnummer } from '@/lib/personnummer'
 
 /**
  * customers_personal_number_check after 20260726110000.

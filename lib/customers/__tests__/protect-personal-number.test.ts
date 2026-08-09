@@ -14,7 +14,7 @@
  *      must degrade to a placeholder mask for that one row instead.
  */
 import { describe, it, expect } from 'vitest'
-import { encryptPersonnummer } from '@/lib/salary/personnummer'
+import { encryptPersonnummer } from '@/lib/personnummer'
 import {
   encryptCustomerPersonalNumber,
   maskCustomerRow,

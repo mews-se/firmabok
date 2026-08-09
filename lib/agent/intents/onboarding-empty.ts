@@ -74,6 +74,5 @@ function deriveSubject(route: string | null): string | null {
   if (route.startsWith('/bookkeeping')) return 'bokföring'
   if (route.startsWith('/assets')) return 'anläggningstillgångar'
   if (route.startsWith('/reports')) return 'rapporter'
-  if (route.startsWith('/salary')) return 'löner'
   return null
 }

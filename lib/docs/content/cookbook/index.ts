@@ -1,13 +1,11 @@
 /**
- * Cookbook recipe registry. All six recipes ship live as of Phase 6 PR-3:
+ * Cookbook recipe registry. All recipes ship live as of Phase 6 PR-3:
  *   - quickstart: send your first invoice (high-leverage onboarding path)
  *   - webhooks: end-to-end webhook setup with sig verification + retry handling
  *   - ingest-bank-transactions: bank file → categorised + invoice-matched
  *   - file-vat-declaration: compute rutor 05-62, reconcile against GL,
  *     manual submission to Skatteverket (includes 2026-04-01 livsmedel
  *     12% → 6% rate-change transition)
- *   - run-payroll-and-agi: draft → calculate → approve → mark-paid →
- *     book → generate-agi state machine
  *   - year-end-closing: IB/UB continuity per BFL 5 kap, year-end procedures,
  *     irreversible close per BFL 5 kap 8 §
  */
@@ -16,7 +14,6 @@ import { QUICKSTART_MD } from './quickstart'
 import { COOKBOOK_WEBHOOKS_MD } from './webhooks'
 import { COOKBOOK_INGEST_BANK_MD } from './ingest-bank-transactions'
 import { COOKBOOK_VAT_DECLARATION_MD } from './file-vat-declaration'
-import { COOKBOOK_PAYROLL_AGI_MD } from './run-payroll-and-agi'
 import { COOKBOOK_YEAR_END_MD } from './year-end-closing'
 
 interface CookbookEntry {
@@ -65,12 +62,6 @@ export const COOKBOOK: CookbookEntry[] = [
     title: 'Compute and review a VAT declaration',
     markdown: COOKBOOK_VAT_DECLARATION_MD,
     description: 'Compute momsdeklaration rutor 05-62 and reconcile against the GL before manual submission to Skatteverket. Includes the 2026-04-01 livsmedel 12% → 6% rate-change transition.',
-  },
-  {
-    slug: 'run-payroll-and-agi',
-    title: 'Run payroll and generate the AGI XML',
-    markdown: COOKBOOK_PAYROLL_AGI_MD,
-    description: 'Calculate, approve, mark paid, book, generate the AGI XML for manual submission to Skatteverket Mina Sidor.',
   },
   {
     slug: 'year-end-closing',

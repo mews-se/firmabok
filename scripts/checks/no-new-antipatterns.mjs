@@ -202,9 +202,6 @@ const LEDGER_SCAN_SANCTIONED = new Set([
   'lib/reports/vat-settlement.ts',
   'lib/reports/vat-declaration.ts',
   'lib/reports/periodisk-sammanstallning.ts',
-  'lib/reports/avgifter-basis.ts',
-  'lib/reports/salary-journal.ts',
-  'lib/reports/vacation-liability.ts',
 ])
 
 const LEDGER_SCAN_RE =

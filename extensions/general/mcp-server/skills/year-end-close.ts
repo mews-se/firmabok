@@ -9,7 +9,6 @@ The annual close. Irreversible. Legally significant. Always staged for human app
 - "Run year-end" / "Bokslut för [år]"
 - "Close FY[year]"
 - After all monthly closes are done and the last period is locked
-- Before årsredovisning filing to Bolagsverket (AB) or NE-bilaga (enskild firma)
 
 **Do not run year-end during the year.** It zeros result accounts (3xxx-8xxx) into 2099 (årets resultat): only correct at the end of the räkenskapsår.
 
@@ -54,7 +53,7 @@ If the company has open foreign-currency receivables/payables (1510/2440 in EUR/
 
 ## Tax provisions to compute (AB)
 
-After year-end JE but before filing INK2:
+After the year-end JE:
 
 - **Bolagsskatt 20.6 %** of skattemässigt resultat (since 2021). Posted to 8910 → 2510.
 - **Periodiseringsfond:** max 25 % of överskott **before this year's avsättning** (IL 30 kap.). 6-year mandatory reversal; oldest fond reversed first to avoid statutory return.

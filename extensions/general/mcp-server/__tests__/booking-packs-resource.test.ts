@@ -34,7 +34,7 @@ describe('booking packs MCP resource', () => {
 
   it('exposes every template with its slug, the lookup key an agent names', async () => {
     const { templates } = await read()
-    expect(templates.length).toBe(26)
+    expect(templates.length).toBe(23)
     for (const t of templates) {
       expect(t.slug, `${t.name} has no slug`).toMatch(/^[a-z0-9]+(-[a-z0-9]+)*$/)
       expect(t.lines.length).toBeGreaterThanOrEqual(2)

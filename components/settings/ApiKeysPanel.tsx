@@ -89,12 +89,6 @@ const SCOPE_GROUPS: ScopeGroup[] = [
     write: { scope: 'bookkeeping:write', labelKey: 'scope_bookkeeping_write', tools: 11 },
   },
   {
-    domain: 'payroll',
-    labelKey: 'group_payroll',
-    read: { scope: 'payroll:read', labelKey: 'scope_payroll_read', tools: 3 },
-    write: { scope: 'payroll:write', labelKey: 'scope_payroll_write', tools: 3 },
-  },
-  {
     domain: 'pending_operations',
     labelKey: 'group_pending_operations',
     read: { scope: 'pending_operations:read', labelKey: 'scope_pending_operations_read', tools: 1 },

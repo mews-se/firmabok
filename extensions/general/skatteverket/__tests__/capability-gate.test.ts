@@ -21,11 +21,6 @@ const GATED: Array<{ method: string; path: string }> = [
   { method: 'POST', path: '/declaration/draft' },
   { method: 'POST', path: '/declaration/submit' },
   { method: 'PUT', path: '/declaration/lock' },
-  { method: 'POST', path: '/agi/submit' },
-  { method: 'POST', path: '/agi/spara' },
-  { method: 'POST', path: '/agi/las' },
-  { method: 'POST', path: '/agi/kontrollera/hu' },
-  { method: 'POST', path: '/agi/kontrollera/iu' },
   { method: 'POST', path: '/skattekonto/sync' },
 ]
 
@@ -79,7 +74,6 @@ describe('skatteverket paywall gate', () => {
   // what it locked while entitled (draft recovery, never data hostage).
   it.each([
     { method: 'DELETE', path: '/declaration/lock' },
-    { method: 'POST', path: '/agi/lasUpp' },
   ])('$method $path (unlock) is NOT paywall-gated', async ({ method, path }) => {
     vi.mocked(requireCapability).mockResolvedValue(
       capabilityBlockedResponse(CAPABILITY.skatteverket),

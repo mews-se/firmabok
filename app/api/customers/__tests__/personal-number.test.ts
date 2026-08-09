@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { eventBus } from '@/lib/events'
 import { createMockRequest, parseJsonResponse } from '@/tests/helpers'
-import { decryptPersonnummer, encryptPersonnummer } from '@/lib/salary/personnummer'
+import { decryptPersonnummer, encryptPersonnummer } from '@/lib/personnummer'
 
 const captured: { insert: unknown[]; update: unknown[] } = { insert: [], update: [] }
 let queryResult: { data: unknown; error: unknown } = { data: null, error: null }

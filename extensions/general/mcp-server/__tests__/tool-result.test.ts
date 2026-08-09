@@ -29,10 +29,10 @@ describe('toToolError', () => {
 
   it('extracts attempted scope from "Insufficient scope:" message', () => {
     const result = toToolError(
-      new Error('Insufficient scope: this API key does not have the "payroll:write" scope')
+      new Error('Insufficient scope: this API key does not have the "skatteverket:write" scope')
     )
     expect(result.error.code).toBe('INSUFFICIENT_SCOPE')
-    expect(result.error.remediation?.description).toContain('"payroll:write"')
+    expect(result.error.remediation?.description).toContain('"skatteverket:write"')
   })
 
   it('handles non-Error throws', () => {

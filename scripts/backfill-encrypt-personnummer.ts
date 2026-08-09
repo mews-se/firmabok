@@ -24,7 +24,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { config as dotenv } from 'dotenv'
 import { resolve } from 'node:path'
-import { encryptPersonnummer } from '@/lib/salary/personnummer'
+import { encryptPersonnummer } from '@/lib/personnummer'
 
 dotenv({ path: resolve(process.cwd(), '.env.local') })
 

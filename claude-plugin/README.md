@@ -3,7 +3,7 @@
 The official plugin for [Accounted](https://app.accounted.se), the open-source Swedish bookkeeping platform. Installing it gives Claude two things at once:
 
 1. **The connection**: the Accounted MCP server (90+ bookkeeping tools, resources, and loadable skills) via OAuth. No API key needed.
-2. **The flows**: seven short workflow skills that follow the Swedish bookkeeping rhythm. Each one grounds itself in your company's live data, loads the product's Swedish accounting knowledge when it needs it, and stages every write for your approval. Nothing is ever booked without you saying yes.
+2. **The flows**: six short workflow skills that follow the Swedish bookkeeping rhythm. Each one grounds itself in your company's live data, loads the product's Swedish accounting knowledge when it needs it, and stages every write for your approval. Nothing is ever booked without you saying yes.
 
 ## Install
 
@@ -23,10 +23,9 @@ Then run `/mcp` and authenticate with Accounted (OAuth consent screen; read-only
 | `/accounted:check` | Read-only health check with a prioritized fix list |
 | `/accounted:month-close` | Close the month against the product's checklist |
 | `/accounted:vat` | Prepare and reconcile the momsdeklaration |
-| `/accounted:payroll` | Monthly salary run and AGI underlag |
 | `/accounted:year-end` | Bokslut, readiness-gated |
 
-The skills are deliberately thin: the deep procedural and regulatory content (month-end checklist, VAT rutor, payroll rules, bokslut law) lives server-side in Accounted and is loaded at need via `accounted_load_skill`, so it is always in sync with the product and tailored to your company. `accounted_list_skills` shows everything available.
+The skills are deliberately thin: the deep procedural and regulatory content (month-end checklist, VAT rutor, bokslut law) lives server-side in Accounted and is loaded at need via `accounted_load_skill`, so it is always in sync with the product and tailored to your company. `accounted_list_skills` shows everything available.
 
 ## How writes work
 

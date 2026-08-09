@@ -1,7 +1,6 @@
 import type { CreateJournalEntryLineInput } from '@/types'
 
 export type AccrualKind =
-  | 'vacation_liability_change'
   | 'audit_fee'
   | 'social_fees_on_accrued_salary'
   | 'manual_prepaid_expense'
@@ -26,8 +25,7 @@ export interface AccrualProposal {
   /** Final voucher lines if the user accepts. Already balanced. */
   lines: CreateJournalEntryLineInput[]
   /** Date the entry should be reversed on (typically Jan 1 of next FY), or
-   *  null for accruals that intentionally do NOT reverse (e.g. semesterlöne-
-   *  skuld carries forward, see proposeVacationLiabilityChange). Phase 4
+   *  null for accruals that intentionally do NOT reverse. Phase 4
    *  ships this as metadata; the actual auto-reversal cron is follow-up
    *  infra. Using null instead of an empty string keeps the future cron's
    *  filter (`reverses_on IS NOT NULL`) unambiguous. */

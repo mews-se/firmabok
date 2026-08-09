@@ -180,39 +180,19 @@ curl -X POST "https://app.gnubok.se/api/v1/companies/$COMPANY_ID/fiscal-periods/
 
 It returns \`CONFLICT\` (\`already_closed\`) if the period is already closed, \`PERIOD_NOT_LOCKED\` if it was never locked, and \`CONFLICT\` (\`year_end_not_executed\`) if no closing entry exists yet.
 
-## 8. Assemble the årsredovisning (aktiebolag only)
+## 8. Generate the NE-bilaga for the tax declaration
 
-For an AB, the annual report (årsredovisning) is filed with Bolagsverket within 7 months of the fiscal-year end. A single \`/reports/annual-report\` endpoint is **not yet exposed in v1**: assemble the K2/K3 source figures from the report endpoints that do exist, then typeset and submit via Bolagsverket Mina Sidor.
-
-\`\`\`bash
-# Resultaträkning
-curl "https://app.gnubok.se/api/v1/companies/$COMPANY_ID/reports/income-statement?period_id=$PERIOD_ID" \\
-  -H "Authorization: Bearer gnubok_sk_test_..."
-
-# Balansräkning
-curl "https://app.gnubok.se/api/v1/companies/$COMPANY_ID/reports/balance-sheet?period_id=$PERIOD_ID" \\
-  -H "Authorization: Bearer gnubok_sk_test_..."
-\`\`\`
-
-The resultaträkning and balansräkning come from those two reports; the noter and förvaltningsberättelse are assembled from the GL on your side. The signing flow (every styrelseledamot must sign) is outside the API surface.
-
-## 9. Generate INK2 / NE for the tax declaration
-
-The tax declaration (INK2 for AB, NE-bilaga for enskild firma) is due in March/May depending on entity type and fiscal-year shape. The endpoints:
+The tax declaration (NE-bilaga for enskild firma) is due in May. The endpoint:
 
 \`\`\`bash
-# Aktiebolag: INK2
-curl "https://app.gnubok.se/api/v1/companies/$COMPANY_ID/reports/ink2?year=2025" \\
-  -H "Authorization: Bearer gnubok_sk_test_..."
-
 # Enskild firma: NE-bilaga
 curl "https://app.gnubok.se/api/v1/companies/$COMPANY_ID/reports/ne-bilaga?year=2025" \\
   -H "Authorization: Bearer gnubok_sk_test_..."
 \`\`\`
 
-These produce **two files**: \`INFO.SRU\` (metadata header) plus \`BLANKETTER.SRU\` (the declaration body), uploaded together as a single submission to Skatteverket. **The SRU format is plain text encoded in ISO 8859-1 (NOT XML)**: a tagged record-line shape per Skatteverket's SRU specification. A single-file upload is rejected by Skatteverket's validation. This is a separate artefact from Bolagsverket's digital årsredovisning filing, which uses **iXBRL** (an XML-based standard). SRU goes to Skatteverket for INK2/INK2R/INK2S declarations; iXBRL goes to Bolagsverket for the public annual report. Don't conflate them.
+This produces **two files**: \`INFO.SRU\` (metadata header) plus \`BLANKETTER.SRU\` (the declaration body), uploaded together as a single submission to Skatteverket. **The SRU format is plain text encoded in ISO 8859-1 (NOT XML)**: a tagged record-line shape per Skatteverket's SRU specification. A single-file upload is rejected by Skatteverket's validation.
 
-> **Note:** \`/reports/ink2\` and \`/reports/ne-bilaga\` are not part of the v1 report surface yet: see the API changelog for current availability. Until they ship, generate the inputs via \`/reports/trial-balance?period_id=<uuid>\` and feed your tax-software of choice.
+> **Note:** \`/reports/ne-bilaga\` is not part of the v1 report surface yet: see the API changelog for current availability. Until it ships, generate the inputs via \`/reports/trial-balance?period_id=<uuid>\` and feed your tax-software of choice.
 
 ## Brutet räkenskapsår (off-calendar year)
 

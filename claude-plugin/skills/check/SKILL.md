@@ -16,9 +16,9 @@ A read-only pass over the books that ends in a short prioritized list. This flow
    - Unreconciled bank transactions in the active period.
    - Overdue customer invoices and unpaid supplier invoices.
    - Unapproved pending operations waiting on the user (`accounted_list_pending_operations`).
-   - Upcoming deadlines: moms, AGI, F-skatt, bokslut. Use dates from the product, not memorized ones.
+   - Upcoming deadlines: moms, F-skatt, bokslut. Use dates from the product, not memorized ones.
    - Period status: is a period that should be closed still open?
-4. Present a short table in the user's language: finding, severity, and which flow fixes it (`/accounted:bookkeep`, `/accounted:month-close`, `/accounted:vat`, `/accounted:payroll`, `/accounted:year-end`).
+4. Present a short table in the user's language: finding, severity, and which flow fixes it (`/accounted:bookkeep`, `/accounted:month-close`, `/accounted:vat`, `/accounted:year-end`).
 5. If everything is clean, say so plainly and state the next deadline.
 
 ## Rules

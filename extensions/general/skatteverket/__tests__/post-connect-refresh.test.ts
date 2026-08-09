@@ -28,10 +28,6 @@ vi.mock('../lib/skattekonto-sync', () => ({
   syncSkattekonto: vi.fn(),
 }))
 
-vi.mock('../lib/agi-kvittens-reconcile', () => ({
-  reconcileAgiDeclaration: vi.fn(),
-}))
-
 // Real SkatteverketAuthError shape (message, code) without dragging the full
 // api-client module (and its fetch plumbing) into the test.
 vi.mock('../lib/api-client', () => ({
@@ -55,36 +51,17 @@ import { hasCapability } from '@/lib/entitlements/has-capability'
 import { syncSkattekonto } from '../lib/skattekonto-sync'
 import { SkatteverketAuthError } from '../lib/api-client'
 import { markNeedsReconsent } from '../lib/token-store'
-import { reconcileAgiDeclaration } from '../lib/agi-kvittens-reconcile'
 
 const mockCreateExtensionContext = vi.mocked(createExtensionContext)
 const mockHasCapability = vi.mocked(hasCapability)
 const mockSyncSkattekonto = vi.mocked(syncSkattekonto)
 const mockMarkNeedsReconsent = vi.mocked(markNeedsReconsent)
-const mockReconcile = vi.mocked(reconcileAgiDeclaration)
 
 const USER = 'user-1'
 const COMPANY = 'company-1'
 
-function pendingDecl(id: string) {
-  return {
-    id,
-    company_id: COMPANY,
-    salary_run_id: null,
-    period_year: 2026,
-    period_month: 5,
-  }
-}
-
-/** Thenable select chain for the agi_declarations pending lookup. */
-function makeSupabase(result: { data: unknown; error?: unknown }) {
-  const chain: any = {}
-  for (const method of ['select', 'eq', 'order', 'limit']) {
-    chain[method] = vi.fn(() => chain)
-  }
-  chain.then = (resolve: (v: unknown) => void) =>
-    resolve({ data: result.data, error: result.error ?? null })
-  return { from: vi.fn(() => chain) } as any
+function makeSupabase() {
+  return { from: vi.fn() } as any
 }
 
 describe('runPostConnectRefresh', () => {
@@ -101,53 +78,45 @@ describe('runPostConnectRefresh', () => {
     } as any)
   })
 
-  it('syncs and reconciles pending declarations on the happy path', async () => {
-    const supabase = makeSupabase({ data: [pendingDecl('d-1'), pendingDecl('d-2')] })
-    mockReconcile
-      .mockResolvedValueOnce({ status: 'signed', kvittensnummer: 'uuid-1' })
-      .mockResolvedValueOnce({ status: 'still_pending' })
+  it('syncs on the happy path', async () => {
+    const supabase = makeSupabase()
 
     const result = await runPostConnectRefresh(supabase, USER, COMPANY)
 
-    expect(result).toEqual({ synced: true, reconciled: 1 })
+    expect(result).toEqual({ synced: true })
     expect(mockCreateExtensionContext).toHaveBeenCalledWith(supabase, USER, COMPANY, 'skatteverket')
     expect(mockSyncSkattekonto).toHaveBeenCalledWith({ stub: 'ctx' })
-    expect(mockReconcile).toHaveBeenCalledTimes(2)
-    expect(mockReconcile).toHaveBeenCalledWith(supabase, pendingDecl('d-1'), {
-      reconciledBy: 'post-connect',
-      userId: USER,
-    })
   })
 
   it('does nothing when the skatteverket capability is not entitled', async () => {
     mockHasCapability.mockResolvedValueOnce(false)
-    const supabase = makeSupabase({ data: [pendingDecl('d-1')] })
+    const supabase = makeSupabase()
 
     const result = await runPostConnectRefresh(supabase, USER, COMPANY)
 
-    expect(result).toEqual({ synced: false, reconciled: 0 })
+    expect(result).toEqual({ synced: false })
     expect(mockSyncSkattekonto).not.toHaveBeenCalled()
-    expect(mockReconcile).not.toHaveBeenCalled()
   })
 
-  it('still reconciles kvittenser when the sync fails', async () => {
+  it('reports synced=false and logs when the sync fails', async () => {
     mockSyncSkattekonto.mockRejectedValueOnce(new Error('SKV timeout'))
-    const supabase = makeSupabase({ data: [pendingDecl('d-1')] })
-    mockReconcile.mockResolvedValueOnce({ status: 'signed', kvittensnummer: 'uuid-1' })
+    const supabase = makeSupabase()
 
     const result = await runPostConnectRefresh(supabase, USER, COMPANY)
 
-    expect(result).toEqual({ synced: false, reconciled: 1 })
+    expect(result).toEqual({ synced: false })
     // A plain network/timeout failure is transient: it must not flag the
     // freshly granted token as needing re-consent.
     expect(mockMarkNeedsReconsent).not.toHaveBeenCalled()
+    const warned = warnRecorder.mock.calls.map(c => String(c[0]))
+    expect(warned.some(m => m.includes('skattekonto sync failed'))).toBe(true)
   })
 
   it('persists needs_reconsent when the sync hits a terminal auth error (MISSING_SCOPE)', async () => {
     mockSyncSkattekonto.mockRejectedValueOnce(
       new SkatteverketAuthError('The required scopes are not authorized', 'MISSING_SCOPE'),
     )
-    const supabase = makeSupabase({ data: [] })
+    const supabase = makeSupabase()
 
     const result = await runPostConnectRefresh(supabase, USER, COMPANY)
 
@@ -159,7 +128,7 @@ describe('runPostConnectRefresh', () => {
     mockSyncSkattekonto.mockRejectedValueOnce(
       new SkatteverketAuthError('temporary auth hiccup', 'NOT_CONNECTED'),
     )
-    const supabase = makeSupabase({ data: [] })
+    const supabase = makeSupabase()
 
     const result = await runPostConnectRefresh(supabase, USER, COMPANY)
 
@@ -167,61 +136,13 @@ describe('runPostConnectRefresh', () => {
     expect(mockMarkNeedsReconsent).not.toHaveBeenCalled()
   })
 
-  it('continues with remaining declarations when one reconcile throws', async () => {
-    const supabase = makeSupabase({ data: [pendingDecl('d-1'), pendingDecl('d-2')] })
-    mockReconcile
-      .mockRejectedValueOnce(new Error('SESSION_EXPIRED'))
-      .mockResolvedValueOnce({ status: 'signed', kvittensnummer: 'uuid-2' })
-
-    const result = await runPostConnectRefresh(supabase, USER, COMPANY)
-
-    expect(result).toEqual({ synced: true, reconciled: 1 })
-    expect(mockReconcile).toHaveBeenCalledTimes(2)
-  })
-
   it('never throws when the capability check itself fails', async () => {
     mockHasCapability.mockRejectedValueOnce(new Error('db down'))
-    const supabase = makeSupabase({ data: [] })
+    const supabase = makeSupabase()
 
     const result = await runPostConnectRefresh(supabase, USER, COMPANY)
 
-    expect(result).toEqual({ synced: false, reconciled: 0 })
+    expect(result).toEqual({ synced: false })
     expect(mockSyncSkattekonto).not.toHaveBeenCalled()
-  })
-
-  it('handles an empty pending lookup', async () => {
-    const supabase = makeSupabase({ data: null })
-
-    const result = await runPostConnectRefresh(supabase, USER, COMPANY)
-
-    expect(result).toEqual({ synced: true, reconciled: 0 })
-    expect(mockReconcile).not.toHaveBeenCalled()
-  })
-
-  it('logs a failed pending lookup instead of treating it as no rows', async () => {
-    const supabase = makeSupabase({ data: null, error: { message: 'connection reset' } })
-
-    const result = await runPostConnectRefresh(supabase, USER, COMPANY)
-
-    expect(result).toEqual({ synced: true, reconciled: 0 })
-    expect(mockReconcile).not.toHaveBeenCalled()
-    const warned = warnRecorder.mock.calls.map(c => String(c[0]))
-    expect(warned.some(m => m.includes('kvittens lookup failed'))).toBe(true)
-  })
-
-  it('logs non-throw error outcomes from the reconciler', async () => {
-    const supabase = makeSupabase({ data: [pendingDecl('d-1'), pendingDecl('d-2')] })
-    mockReconcile
-      .mockResolvedValueOnce({ status: 'error', error: 'SKV svarade 500' })
-      .mockResolvedValueOnce({ status: 'signed', kvittensnummer: 'uuid-2' })
-
-    const result = await runPostConnectRefresh(supabase, USER, COMPANY)
-
-    expect(result).toEqual({ synced: true, reconciled: 1 })
-    const errorWarn = warnRecorder.mock.calls.find(c =>
-      String(c[0]).includes('reconcile returned error'),
-    )
-    expect(errorWarn).toBeDefined()
-    expect(errorWarn?.[1]).toMatchObject({ declarationId: 'd-1', message: 'SKV svarade 500' })
   })
 })

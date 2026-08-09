@@ -19,8 +19,6 @@ export const API_KEY_SCOPES = {
   'suppliers:write':    { label: 'Leverantörer: skriv', description: 'Skapa leverantörer; godkänn, kreditera, betal-länka och hantera leverantörsfakturor (6 verktyg)' },
   'reports:read':       { label: 'Rapporter: läs',      description: 'Kontoplan, huvudbok, balansräkning, resultaträkning, moms, KPI, reskontra, perioder, bankavstämning, SIE-export (12 verktyg)' },
   'bookkeeping:write':  { label: 'Bokföring: skriv',    description: 'Stänga/låsa perioder, ingående balans, bokslut, SIE-import, voucher-gap-förklaringar, kontoplan (skapa/ändra konton), verifikat-anteckningar' },
-  'payroll:read':       { label: 'Löner: läs',          description: 'Lista anställda, lönekörningar, lönejournal, körjournal' },
-  'payroll:write':      { label: 'Löner: skriv',        description: 'Skapa lönekörning, beräkna, generera AGI, logga körjournalresor' },
   // v1 REST API: added Phase 1
   'companies:read':     { label: 'Företag: läs',        description: 'Lista och visa företagsprofiler som API-nyckeln har tillgång till' },
   'companies:write':    { label: 'Företag: skriv',      description: 'Uppdatera företagsinställningar via stagade verktyg eller REST-endpointen PATCH /api/v1/companies/{companyId}/settings' },
@@ -29,8 +27,8 @@ export const API_KEY_SCOPES = {
   'operations:read':    { label: 'Operationer: läs',    description: 'Hämta status för långkörande operationer (importer, bokslut, omvärdering)' },
   'documents:read':     { label: 'Dokument: läs',       description: 'Lista och hämta dokumentbilagor' },
   'documents:write':    { label: 'Dokument: skriv',     description: 'Ladda upp och koppla dokument till verifikationer' },
-  'compliance:read':    { label: 'Compliance: läs',     description: 'Pre-flight-kontroller: momsstängning, bokslutsberedskap, voucher-gap, IB/UB-kontinuitet; Skatteverket-status (moms + AGI)' },
-  'skatteverket:write': { label: 'Skatteverket: skriv', description: 'Lämna momsdeklaration och arbetsgivardeklaration (AGI) till Skatteverket (stagas; signeras med BankID)' },
+  'compliance:read':    { label: 'Compliance: läs',     description: 'Pre-flight-kontroller: momsstängning, bokslutsberedskap, voucher-gap, IB/UB-kontinuitet; Skatteverket-status (moms)' },
+  'skatteverket:write': { label: 'Skatteverket: skriv', description: 'Lämna momsdeklaration till Skatteverket (stagas; signeras med BankID)' },
   'agent:read':         { label: 'Agent: läs',          description: 'Specialiserad bokföringsassistent: profil, laddade specialister/atomer, minnen (briefing + skill-katalog)' },
   'agent:write':        { label: 'Agent: skriv',        description: 'Spara och ta bort agentens minnen om företaget (remember_fact, forget_fact)' },
   'pending_operations:read':    { label: 'Stagade operationer: läs',     description: 'Lista pending_operations (staged writes awaiting approval)' },
@@ -84,7 +82,6 @@ export const DEFAULT_OAUTH_SCOPES: ApiKeyScope[] = [
   'operations:read',
   'documents:read',
   'compliance:read',
-  'payroll:read',
   'pending_operations:read',
 ]
 
@@ -118,10 +115,9 @@ export const STAGING_SCOPES: ApiKeyScope[] = [
   'invoices:write',
   'suppliers:write',
   'bookkeeping:write',
-  'payroll:write',
   'documents:write',
   'companies:write',
-  // Skatteverket submit tools stage submit_vat_declaration / submit_agi, so a
+  // The Skatteverket submit tool stages submit_vat_declaration, so a
   // key holding both this and pending_operations:approve is a SoD conflict:
   // findStageApproveConflict picks it up automatically from this list.
   'skatteverket:write',
@@ -153,7 +149,6 @@ export const SCOPE_GROUPS = [
   { domain: 'suppliers',           label: 'Leverantörer',         read: 'suppliers:read' as const,           write: 'suppliers:write' as const },
   { domain: 'reports',             label: 'Rapporter',            read: 'reports:read' as const,             write: null },
   { domain: 'bookkeeping',         label: 'Bokföring',            read: null,                                 write: 'bookkeeping:write' as const },
-  { domain: 'payroll',             label: 'Löner',                read: 'payroll:read' as const,             write: 'payroll:write' as const },
   { domain: 'pending_operations',  label: 'Stagade operationer',  read: 'pending_operations:read' as const,  write: 'pending_operations:approve' as const },
   { domain: 'agent',               label: 'Agent',                read: 'agent:read' as const,               write: 'agent:write' as const },
   { domain: 'skatteverket',        label: 'Skatteverket',         read: null,                                 write: 'skatteverket:write' as const },
@@ -241,31 +236,6 @@ export const TOOL_SCOPE_MAP: Record<string, ApiKeyScope> = {
   gnubok_get_document_content:            'transactions:read',
   gnubok_attach_document_to_transaction:  'transactions:write',
   gnubok_link_document_to_voucher:        'bookkeeping:write',
-  // Körjournal (mileage): trip log reads/writes are payroll surface
-  // (milersättning, 7331); booking the verifikat is a journal write.
-  gnubok_list_mileage_trips:              'payroll:read',
-  gnubok_log_mileage_trip:                'payroll:write',
-  gnubok_book_mileage_period:             'bookkeeping:write',
-  // Payroll
-  gnubok_list_employees:                  'payroll:read',
-  gnubok_get_salary_run:                  'payroll:read',
-  gnubok_get_salary_journal:              'payroll:read',
-  gnubok_create_salary_run:               'payroll:write',
-  gnubok_calculate_salary_run:            'payroll:write',
-  gnubok_book_salary_run:                 'payroll:write',
-  gnubok_generate_agi:                    'payroll:write',
-  // Payroll gap-closure: reads + staged writes (1.6-1.8, 2.4)
-  gnubok_get_employee:                    'payroll:read',
-  gnubok_get_payslip:                     'payroll:read',
-  gnubok_list_absence:                    'payroll:read',
-  gnubok_update_payslip_line:             'payroll:write',
-  gnubok_register_absence:                'payroll:write',
-  gnubok_delete_absence:                  'payroll:write',
-  gnubok_create_employee:                 'payroll:write',
-  gnubok_update_employee:                 'payroll:write',
-  gnubok_set_employee_opening_balances:   'payroll:write',
-  gnubok_get_vacation_balance:            'payroll:read',
-  gnubok_close_vacation_year:             'payroll:write',
   // Bookkeeping write (Stream 1 Phase 1): high-risk, always staged
   gnubok_close_period:                    'bookkeeping:write',
   gnubok_lock_period:                     'bookkeeping:write',
@@ -315,13 +285,11 @@ export const TOOL_SCOPE_MAP: Record<string, ApiKeyScope> = {
   gnubok_list_pending_operations:         'pending_operations:read',
   gnubok_approve_pending_operation:       'pending_operations:approve',
   gnubok_reject_pending_operation:        'pending_operations:approve',
-  // Skatteverket filing (PR5). Reads are compliance:read (status of moms/AGI);
-  // the two submit tools require the opt-in skatteverket:write staging scope.
+  // Skatteverket filing (PR5). Reads are compliance:read (moms status);
+  // the submit tool requires the opt-in skatteverket:write staging scope.
   gnubok_vat_declaration_validate:        'compliance:read',
   gnubok_vat_declaration_status:          'compliance:read',
-  gnubok_agi_status:                      'compliance:read',
   gnubok_vat_declaration_submit:          'skatteverket:write',
-  gnubok_agi_submit:                      'skatteverket:write',
 
   // ── Audit retrofit (agent-native audit P0: unmapped = default-allow) ──
   // These tools shipped without a scope mapping, making them callable by ANY
@@ -338,10 +306,6 @@ export const TOOL_SCOPE_MAP: Record<string, ApiKeyScope> = {
   gnubok_propose_dispositioner:                'reports:read',
   gnubok_propose_accruals:                     'reports:read',
   gnubok_propose_annual_depreciation:          'reports:read',
-  gnubok_preview_arsredovisning:               'reports:read',
-  gnubok_validate_arsredovisning:              'reports:read',
-  gnubok_list_arsredovisning_versions:         'reports:read',
-  gnubok_get_arsredovisning_filing_status:     'reports:read',
   gnubok_preview_ef_declaration:               'reports:read',
   // Deliberately UNSCOPED (available to any authenticated key):
   // gnubok_search_tools, gnubok_list_skills, gnubok_load_skill,

@@ -19,7 +19,7 @@ vi.mock('@/lib/supabase/fetch-all', () => ({
 }))
 
 import { GET } from '../route'
-import { encryptPersonnummer } from '@/lib/salary/personnummer'
+import { encryptPersonnummer } from '@/lib/personnummer'
 import { UNDECRYPTABLE_PERSONAL_NUMBER_MASK } from '@/lib/customers/protect-personal-number'
 
 const mockUser = { id: 'user-1', email: 'test@test.se' }

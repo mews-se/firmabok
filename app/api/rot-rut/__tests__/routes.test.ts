@@ -6,7 +6,7 @@ import {
   createQueuedMockSupabase,
   makeInvoice,
 } from '@/tests/helpers'
-import { encryptPersonnummer } from '@/lib/salary/personnummer'
+import { encryptPersonnummer } from '@/lib/personnummer'
 import type { Invoice, InvoiceItem } from '@/types'
 
 const { supabase: mockSupabase, enqueue, reset } = createQueuedMockSupabase()

@@ -9,13 +9,13 @@ import type { SkatteverketMomsuppgift } from '../types'
  *
  * These functions are the single source of truth for what gets filed to
  * Skatteverket. They are shared by the HTTP route handlers
- * (parseDeclarationRequest / loadAGIXml) and the commit-side services
- * (commitSubmitVatDeclaration / commitSubmitAgi) so the numbers and XML
- * computed at preview time match exactly what is filed at commit time.
+ * (parseDeclarationRequest) and the commit-side service
+ * (commitSubmitVatDeclaration) so the numbers computed at preview time match
+ * exactly what is filed at commit time.
  *
  * Compliance-critical: drift between the two paths would mean different
  * figures filed to SKV than the user reviewed. Keep these the only place that
- * computes momsuppgift / loads AGI XML.
+ * computes momsuppgift.
  */
 
 export interface VatDeclarationPrep {
@@ -24,19 +24,10 @@ export interface VatDeclarationPrep {
   momsuppgift: SkatteverketMomsuppgift
 }
 
-export interface AgiUnderlagPrep {
-  arbetsgivare: string
-  period: string // YYYYMM
-  salaryRunId: string
-  xml: string
-  periodYear: number
-  periodMonth: number
-}
-
 /**
  * Resolve a company's 12-digit "redovisare" string from company_settings.
- * Shared by the VAT and AGI paths and by the status tools that only need the
- * identifier (no momsuppgift / XML compute).
+ * Shared by the VAT path and by the status tools that only need the
+ * identifier (no momsuppgift compute).
  */
 export async function resolveRedovisare(
   supabase: SupabaseClient,
@@ -95,71 +86,4 @@ export async function buildMomsuppgift(
   const momsuppgift = rutorToMomsuppgift(declaration.rutor)
 
   return { redovisare, redovisningsperiod, momsuppgift }
-}
-
-/**
- * Load the AGI XML for a salary run from agi_declarations.xml_content
- * (built by app/api/salary/runs/[id]/agi/xml/route.ts via generateAGIXml),
- * alongside the formatted arbetsgivare/period strings used downstream by the
- * granskningsunderlag and kvittenser calls.
- *
- * Body lifted verbatim from the former loadAGIXml: including the salary-run
- * status guard (per BFL 5 kap and SFL 26 kap, AGI must reflect finalised
- * payroll data; submitting from a draft/cancelled run would emit incorrect
- * figures and require a costly rättelse).
- */
-export async function buildAgiUnderlag(
-  supabase: SupabaseClient,
-  companyId: string,
-  salaryRunId: string,
-): Promise<AgiUnderlagPrep> {
-  if (!salaryRunId) {
-    throw new Error('Saknar obligatoriskt fält: salaryRunId')
-  }
-
-  const { data: run, error: runError } = await supabase
-    .from('salary_runs')
-    .select('status')
-    .eq('id', salaryRunId)
-    .eq('company_id', companyId)
-    .single()
-
-  if (runError || !run) {
-    throw new Error('Lönekörning hittades inte')
-  }
-
-  if (!['review', 'approved', 'paid', 'booked'].includes(run.status)) {
-    throw new Error('AGI kan bara skickas till Skatteverket efter granskning')
-  }
-
-  const arbetsgivare = await resolveRedovisare(supabase, companyId)
-
-  // Use the most recent agi_declarations row for this salary run: covers
-  // both new declarations and corrections (which overwrite xml_content
-  // in place per the existing /api/salary/runs/[id]/agi/xml route).
-  const { data: declaration, error: declarationError } = await supabase
-    .from('agi_declarations')
-    .select('xml_content, period_year, period_month')
-    .eq('company_id', companyId)
-    .eq('salary_run_id', salaryRunId)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle()
-
-  if (declarationError || !declaration?.xml_content) {
-    throw new Error(
-      'AGI-XML saknas. Generera AGI-filen först: knappen "Lämna in till Skatteverket" på lönekörningen gör det automatiskt, eller klicka "Ladda ner AGI-fil".',
-    )
-  }
-
-  const period = formatRedovisningsperiod('monthly', declaration.period_year, declaration.period_month)
-
-  return {
-    arbetsgivare,
-    period,
-    salaryRunId,
-    xml: declaration.xml_content,
-    periodYear: declaration.period_year,
-    periodMonth: declaration.period_month,
-  }
 }

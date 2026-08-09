@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { mapCustomer } from '../entity-mapper'
-import { decryptPersonnummer } from '@/lib/salary/personnummer'
+import { decryptPersonnummer } from '@/lib/personnummer'
 import type { CustomerDto, PartyDto } from '@/lib/providers/dto'
 
 /**

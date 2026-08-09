@@ -589,48 +589,4 @@ describe('PUT /api/settings', () => {
 
     expect(status).toBe(404)
   })
-
-  it('blocks a vacation-year basis change while open balances exist', async () => {
-    enqueueMany([
-      { data: { salary_vacation_year_basis: 'calendar', onboarding_complete: true } }, // oldSettings
-      { data: null, count: 2 },                                                            // open-rows count
-    ])
-
-    const request = createMockRequest('/api/settings', {
-      method: 'PUT',
-      body: { salary_vacation_year_basis: 'statutory_apr_mar' },
-    })
-    const response = await PUT(request, { params: Promise.resolve({}) })
-    const { status } = await parseJsonResponse(response)
-
-    expect(status).toBe(400)
-    // The guard consumed the count result and the update never ran.
-    expect(supabase.from.mock.calls.map(([table]) => table)).toEqual([
-      'company_settings',
-      'employee_vacation_balances',
-    ])
-  })
-
-  it('fails closed when the open-balances guard query errors', async () => {
-    enqueueMany([
-      { data: { salary_vacation_year_basis: 'calendar', onboarding_complete: true } }, // oldSettings
-      { data: null, count: null, error: { message: 'connection reset' } },                 // guard query fails
-    ])
-
-    const request = createMockRequest('/api/settings', {
-      method: 'PUT',
-      body: { salary_vacation_year_basis: 'statutory_apr_mar' },
-    })
-    const response = await PUT(request, { params: Promise.resolve({}) })
-    const { status } = await parseJsonResponse(response)
-
-    expect(status).toBe(500)
-    // The 500 must come from the guard, not from company_settings.update()
-    // swallowing the queued error: the guard query ran and no second
-    // company_settings query followed it.
-    expect(supabase.from.mock.calls.map(([table]) => table)).toEqual([
-      'company_settings',
-      'employee_vacation_balances',
-    ])
-  })
 })

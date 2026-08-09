@@ -18,10 +18,6 @@ const TaxSettingsContent = dynamic(() =>
   import('./TaxSettingsContent').then((module) => ({ default: module.TaxSettingsContent })),
   { loading: SettingsLoadingSkeleton },
 )
-const SalarySettingsContent = dynamic(() =>
-  import('./SalarySettingsContent').then((module) => ({ default: module.SalarySettingsContent })),
-  { loading: SettingsLoadingSkeleton },
-)
 const InvoicingSettingsContent = dynamic(() =>
   import('./InvoicingSettingsContent').then((module) => ({ default: module.InvoicingSettingsContent })),
   { loading: SettingsLoadingSkeleton },
@@ -63,7 +59,6 @@ export const SETTINGS_SECTIONS: Record<string, ComponentType> = {
   company: CompanySettingsContent,
   bookkeeping: BookkeepingSettingsContent,
   tax: TaxSettingsContent,
-  salary: SalarySettingsContent,
   invoicing: InvoicingSettingsContent,
   templates: TemplatesSettingsContent,
   banking: BankingSettingsContent,

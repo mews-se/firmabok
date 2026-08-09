@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import type { Invoice, InvoiceItem } from '@/types'
 import { makeInvoice } from '@/tests/helpers'
-import { encryptPersonnummer } from '@/lib/salary/personnummer'
+import { encryptPersonnummer } from '@/lib/personnummer'
 import { proposeSendLines } from '@/lib/bookkeeping/propose-send-lines'
 import {
   buildRotRutFile,

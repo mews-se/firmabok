@@ -3,7 +3,7 @@ import crypto from 'crypto'
 import { isAllowedRedirectUri } from '@/lib/auth/oauth-allowlist'
 import { createServiceClientNoCookies } from '@/lib/auth/api-keys'
 import { checkRateLimit } from '@/lib/auth/rate-limit-http'
-import { truncateIp } from '@/lib/api/v1/with-api-v1'
+import { truncateIp } from '@/lib/api/truncate-ip'
 
 /**
  * RFC 7591: Dynamic Client Registration.

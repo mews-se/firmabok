@@ -119,12 +119,6 @@ const SCOPE_GROUPS: ScopeGroup[] = [
     write: null,
   },
   {
-    domain: 'webhooks',
-    labelKey: 'group_webhooks',
-    read: null,
-    write: { scope: 'webhooks:manage', labelKey: 'scope_webhooks_manage', tools: 0 },
-  },
-  {
     domain: 'operations',
     labelKey: 'group_operations',
     read: { scope: 'operations:read', labelKey: 'scope_operations_read', tools: 0 },
@@ -133,14 +127,8 @@ const SCOPE_GROUPS: ScopeGroup[] = [
   {
     domain: 'compliance',
     labelKey: 'group_compliance',
-    read: { scope: 'compliance:read', labelKey: 'scope_compliance_read', tools: 3 },
+    read: { scope: 'compliance:read', labelKey: 'scope_compliance_read', tools: 0 },
     write: null,
-  },
-  {
-    domain: 'skatteverket',
-    labelKey: 'group_skatteverket',
-    read: null,
-    write: { scope: 'skatteverket:write', labelKey: 'scope_skatteverket_write', tools: 2 },
   },
 ]
 

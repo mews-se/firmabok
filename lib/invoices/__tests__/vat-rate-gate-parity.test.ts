@@ -25,7 +25,6 @@ const WRITE_GATES = [
   'lib/invoices/self-billed-sale.ts',
   'lib/invoices/recurring-schedule-service.ts',
   'lib/pending-operations/commit.ts',
-  'app/api/v1/companies/[companyId]/invoices/bulk-create/route.ts',
   'extensions/general/mcp-server/server.ts',
 ]
 

@@ -14,8 +14,8 @@ describe('legacy-host redirect exclusions', () => {
   })
 
   it('keeps machine surfaces on the legacy host', () => {
-    expect(isRedirectedFromLegacyHost('/api/v1/companies')).toBe(false)
-    expect(isRedirectedFromLegacyHost('/api/extensions/ext/skatteverket/callback')).toBe(false)
+    expect(isRedirectedFromLegacyHost('/api/events')).toBe(false)
+    expect(isRedirectedFromLegacyHost('/api/extensions/ext/mcp-server/mcp')).toBe(false)
     expect(isRedirectedFromLegacyHost('/.well-known/oauth-authorization-server')).toBe(false)
     expect(isRedirectedFromLegacyHost('/_next/static/chunk.js')).toBe(false)
   })

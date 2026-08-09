@@ -172,17 +172,7 @@ import {
   uploadDocument,
   MAX_DOCUMENT_SIZE,
 } from '@/lib/core/documents/document-service'
-import { extractInvoiceFields, ExtractionSchema as InvoiceExtractionSchema, AgentExtractionSchema } from '@/extensions/general/invoice-inbox/lib/extract-invoice-fields'
-// Skatteverket filing tools (PR5). Cross-extension lib import, same sanctioned
-// pattern as invoice-inbox above: the CI guard only checks lib/, app/api/,
-// components/. The two submit tools stage ops whose commit dispatches back into
-// the skatteverket extension via the registry (lib/pending-operations/commit.ts).
-import { skvRequest, SkatteverketAuthError } from '@/extensions/general/skatteverket/lib/api-client'
-import { buildMomsuppgift, resolveRedovisare } from '@/extensions/general/skatteverket/lib/declaration-prep'
-import { writeSkatteverketAudit } from '@/extensions/general/skatteverket/lib/audit'
-import { skvAuthCodeToStructured } from '@/extensions/general/skatteverket/lib/error-map'
-import { formatRedovisningsperiod } from '@/lib/skatteverket/format'
-import { createExtensionContext } from '@/lib/extensions/context-factory'
+import { AgentExtractionSchema } from './agent-extraction'
 import { commitPendingOperation } from '@/lib/pending-operations/commit'
 import { appendProcessingHistory } from '@/lib/processing-history/append'
 import { getUserCompanies } from '@/lib/company/context'
@@ -376,19 +366,10 @@ async function createDocumentInboxItem(
     if (existing) return existing
   }
 
-  const { data: extracted } = await extractInvoiceFields({ buffer, mimeType, fileName })
-
-  let matchedSupplierId: string | null = null
-  if (extracted.supplier.orgNumber) {
-    const { data: supplier } = await supabase
-      .from('suppliers')
-      .select('id')
-      .eq('company_id', companyId)
-      .eq('org_number', extracted.supplier.orgNumber)
-      .limit(1)
-      .maybeSingle()
-    if (supplier) matchedSupplierId = supplier.id
-  }
+  // No server-side extraction in this fork: the item lands with empty
+  // extracted_data and the agent fills it via gnubok_set_inbox_extracted_data.
+  const extracted: Record<string, unknown> = {}
+  const matchedSupplierId: string | null = null
 
   const { data: inbox, error: inboxError } = await supabase
     .from('invoice_inbox_items')
@@ -652,67 +633,6 @@ async function stagePendingOperation(
     )
   }
   return response
-}
-
-// ── Skatteverket filing helpers (PR5) ────────────────────────
-//
-// Direct lib calls bypass the HTTP dispatcher's SKATTEVERKET_ENABLED gate, so
-// every Skatteverket tool gates on it first (before any DB/SKV access).
-// mapSkatteverketError re-attaches a registry code to a SkatteverketAuthError
-// so toToolError/getStructuredError surface the right structured envelope +
-// reconnect remediation (the raw SKV codes aren't registry entries).
-
-function assertSkatteverketEnabled(): void {
-  if (process.env.SKATTEVERKET_ENABLED !== 'true') {
-    const err = new Error('Skatteverket-integrationen är inte aktiverad i denna miljö.') as Error & { code: string }
-    err.code = 'EXTENSION_DISABLED'
-    throw err
-  }
-}
-
-function mapSkatteverketError(err: unknown): Error {
-  if (err instanceof SkatteverketAuthError) {
-    const mapped = skvAuthCodeToStructured(err.code)
-    const out = new Error(err.message) as Error & { code: string }
-    out.code = mapped.code
-    return out
-  }
-  return err instanceof Error ? err : new Error(String(err))
-}
-
-/**
- * Count ERROR-level findings in a /kontrollera response body.
- *
- * Skatteverket wraps them in `kontrollResultat.resultat` (Momsdeklaration
- * v1.0.24 RAML, note SKV's mixed casing); the bare `resultat` fallback exists
- * so an unwrapped body can never silently read as "no errors". Same convention
- * as the shipped filing chain (skatteverket/lib/vat-submit.ts).
- *
- * A green count here means the ARITHMETIC is consistent. It is not a statement
- * about whether the declaration reflects the books: see the module header of
- * lib/reports/vat-declaration-checks.ts.
- */
-function countSkvKontrollErrors(body: unknown): number {
-  if (!body || typeof body !== 'object') return 0
-  const root = body as Record<string, unknown>
-  const wrapped = root.kontrollResultat as Record<string, unknown> | undefined
-  const findings = (wrapped?.resultat ?? root.resultat) as unknown
-  const list = Array.isArray(findings) ? findings : []
-  const errors = list.filter(
-    (f) => (f as { status?: string } | null)?.status === 'ERROR'
-  ).length
-  if (errors > 0) return errors
-  // A top-level status of ERROR with no itemised findings still means rejected.
-  const status = (wrapped?.status ?? root.status) as string | undefined
-  return status === 'ERROR' ? 1 : 0
-}
-
-/** YYYYMM → last day of that month as yyyy-MM-dd (for dateForPeriodCheck). */
-function skvPeriodToEndDate(redovisningsperiod: string): string {
-  const year = Number(redovisningsperiod.slice(0, 4))
-  const month = Number(redovisningsperiod.slice(4, 6))
-  const lastDay = new Date(year, month, 0).getDate()
-  return `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
 }
 
 // ── Journal entry reference resolution ────────────────────────
@@ -1134,7 +1054,6 @@ const STAGED_OPERATION_SCHEMA = {
  */
 const TOOL_PREFLIGHT_MAP: Record<string, string> = {
   gnubok_run_year_end: 'gnubok_year_end_readiness',
-  gnubok_vat_declaration_submit: 'gnubok_vat_declaration_validate',
   gnubok_post_annual_depreciation: 'gnubok_propose_annual_depreciation',
 }
 
@@ -1583,8 +1502,7 @@ export async function computeVatReportWithRutor(
 }
 
 /**
- * Momsdeklaration completeness pre-flight, shared by gnubok_vat_close_check
- * and gnubok_vat_declaration_validate.
+ * Momsdeklaration completeness pre-flight for gnubok_vat_close_check.
  *
  * Runs core's `runVatDeclarationChecks` (period aggregates, proportional) and
  * folds in the per-verifikat FK004 scan through the SAME gate helper the web
@@ -9326,7 +9244,7 @@ export const tools: McpTool[] = [
   {
     name: 'gnubok_complete_document_upload',
     title: 'Complete Document Upload',
-    description: 'Validate and archive bytes sent to the URL from gnubok_create_document_upload, run AI extraction and create the inbox item. Idempotent: safe to retry with the same upload_id.',
+    description: 'Validate and archive bytes sent to the URL from gnubok_create_document_upload and create the inbox item (empty extracted_data: fill it with gnubok_set_inbox_extracted_data). Idempotent: safe to retry with the same upload_id.',
     inputSchema: {
       type: 'object',
       additionalProperties: false,
@@ -9405,7 +9323,7 @@ export const tools: McpTool[] = [
   {
     name: 'gnubok_upload_document',
     title: 'Upload Document to Inbox',
-    description: 'Legacy inline-base64 upload for small files (max 10 MB). Prefer gnubok_create_document_upload so raw bytes bypass the model. Runs AI field extraction: requires the AI capability.',
+    description: 'Legacy inline-base64 upload for small files (max 10 MB). Prefer gnubok_create_document_upload so raw bytes bypass the model. Creates the inbox item with empty extracted_data: fill it with gnubok_set_inbox_extracted_data.',
     inputSchema: {
       type: 'object',
       additionalProperties: false,
@@ -9670,7 +9588,7 @@ export const tools: McpTool[] = [
   {
     name: 'gnubok_create_supplier_invoice_from_inbox',
     title: 'Create Supplier Invoice from Inbox',
-    description: "Atomic: turn an OCR'd inbox item into a staged supplier invoice. Resolves supplier, builds lines from extracted_data, applies VAT + FX + dimension tags, attaches the document. Stages for human review; honors dry_run. Unresolved supplier → staged:false + candidates + next.",
+    description: "Atomic: turn an inbox item into a staged supplier invoice. Resolves supplier, builds lines from extracted_data, applies VAT + FX + dimension tags, attaches the document. Stages for human review; honors dry_run. Unresolved supplier → staged:false + candidates + next.",
     inputSchema: {
       type: 'object',
       additionalProperties: false,
@@ -9678,7 +9596,7 @@ export const tools: McpTool[] = [
         inbox_item_id: { type: 'string', description: 'UUID of the inbox item to convert' },
         supplier_id_override: { type: 'string', description: 'Force this supplier UUID instead of the matched/extracted one' },
         vat_treatment_override: { type: 'string', enum: ['standard_25', 'reduced_12', 'reduced_6', 'reverse_charge', 'export', 'exempt'], description: 'Override extracted VAT treatment' },
-        invoice_date_override: { type: 'string', description: 'Override extracted invoice date (YYYY-MM-DD). Use when OCR misses the date.' },
+        invoice_date_override: { type: 'string', description: 'Override extracted invoice date (YYYY-MM-DD). Use when the extracted date is missing or wrong.' },
         due_date_override: { type: 'string', description: 'Override extracted due date (YYYY-MM-DD)' },
         line_overrides: {
           type: 'array',
@@ -9736,7 +9654,7 @@ export const tools: McpTool[] = [
       }
 
       const extracted = (inbox.extracted_data as Record<string, unknown> | null) ?? null
-      if (!extracted) throw new Error('Inbox item has no extracted_data: re-run extraction first')
+      if (!extracted) throw new Error('Inbox item has no extracted_data: set it with gnubok_set_inbox_extracted_data first')
 
       const supplierExt = extracted.supplier as Record<string, unknown> | undefined
       const invoiceExt = extracted.invoice as Record<string, unknown> | undefined
@@ -9856,7 +9774,7 @@ export const tools: McpTool[] = [
         throw new Error(
           supplierResolution === 'override'
             ? `supplier_id_override ${supplierId} does not match any supplier in this company. Use a supplier_id from preview.candidates or gnubok_list_suppliers.`
-            : `Resolved supplier ${supplierId} no longer exists in this company: re-run extraction or pass supplier_id_override.`,
+            : `Resolved supplier ${supplierId} no longer exists in this company: update extracted_data or pass supplier_id_override.`,
         )
       }
       const supplierDefaultExpenseAccount = resolvedSupplier.default_expense_account ?? null
@@ -10465,231 +10383,6 @@ export const tools: McpTool[] = [
           dateForPeriodCheck: je.entry_date,
         }
       )
-    },
-  },
-
-  // ── PR5: Skatteverket filing (external system, openWorldHint) ──────
-  //
-  // VAT (momsdeklaration) filing from Claude. Reads hit SKV live (and write
-  // BFL audit rows); the submit tool stages a high-risk op whose commit
-  // "sends for BankID signing": the user's signature in the browser is the
-  // irreversible filing act, not the commit.
-
-  {
-    name: 'gnubok_vat_declaration_validate',
-    title: 'Validate VAT Declaration (Momsdeklaration)',
-    description: 'Pre-flight the period momsdeklaration: Skatteverket /kontrollera (read-only, saves nothing) PLUS the local completeness checks. Read arithmetic_ok and completeness_ok separately: Skatteverket only checks that the payload adds up, never that the underlag is complete.',
-    inputSchema: {
-      type: 'object',
-      additionalProperties: false,
-      properties: {
-        period_type: { type: 'string', enum: ['monthly', 'quarterly', 'yearly'], description: 'Period type' },
-        year: { type: 'number', description: 'Year (e.g. 2026)' },
-        period: { type: 'number', description: '1-12 for monthly, 1-4 for quarterly, 1 for yearly' },
-      },
-      required: ['period_type', 'year', 'period'],
-    },
-    outputSchema: SKV_VAT_VALIDATE_OUTPUT_SCHEMA,
-    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
-    async execute(args, companyId, userId, supabase) {
-      assertSkatteverketEnabled()
-      const periodType = args.period_type as VatPeriodType
-      const year = args.year as number
-      const period = args.period as number
-      const ctx = createExtensionContext(supabase, userId, companyId, 'skatteverket')
-
-      // LOCAL pre-flight first, and deliberately outside the SKV try/catch so a
-      // ledger read failure surfaces as itself rather than as a Skatteverket
-      // error. Proxying /kontrollera alone is not a completeness check: SKV
-      // confirms the payload is internally arithmetically consistent and
-      // nothing more (a declaration of all zeros validates fine), so an agent
-      // that treated a green kontrollresultat as "safe to file" could submit a
-      // momsdeklaration missing its beskattningsunderlag (FK004). Same checks,
-      // same gate helper, same verdict as the web filing UI.
-      const declaration = await calculateVatDeclaration(
-        supabase, companyId, periodType, year, period,
-      )
-      // The 2645/2647 pair the declaration carries goes with it, so the RC input
-      // comparison here is the sharp one too: ruta 48 alone would let ordinary
-      // debiterad ingående moms hide a completely missing beräknad ingående moms.
-      const completenessChecks = await runVatCompletenessChecks(
-        supabase, companyId, declaration.rutor, periodType, year, period,
-        rcInputTotalsFromDeclaration(declaration),
-      )
-      const completenessOk = !isFilingBlocked(completenessChecks)
-
-      try {
-        const { redovisare, redovisningsperiod, momsuppgift } =
-          await buildMomsuppgift(supabase, companyId, { periodType, year, period })
-        const res = await skvRequest(
-          supabase, userId, 'POST', `/kontrollera/${redovisare}/${redovisningsperiod}`, momsuppgift,
-        )
-        await writeSkatteverketAudit(ctx, {
-          endpoint: 'kontrollera', agRegistreradId: redovisare, redovisningsperiod,
-          outcome: res.ok ? 'ok' : 'skv_error', responseStatus: res.status,
-        })
-        if (!res.ok) {
-          const text = await res.text().catch(() => '')
-          throw new Error(`Skatteverket svarade med ${res.status}: ${text}`)
-        }
-        const kontrollresultat = await res.json()
-        const skvErrors = countSkvKontrollErrors(kontrollresultat)
-        const arithmeticOk = skvErrors === 0
-        const errorCount = completenessChecks.filter((c) => c.status === 'ERROR').length
-        const warningCount = completenessChecks.length - errorCount
-        return {
-          redovisare,
-          redovisningsperiod,
-          momsuppgift,
-          kontrollresultat,
-          arithmetic_ok: arithmeticOk,
-          completeness_ok: completenessOk,
-          completeness_checks: toCompletenessFindings(completenessChecks),
-          summary: [
-            arithmeticOk
-              ? 'Skatteverket: räknar ihop utan fel (kontrollerar bara summorna, inte underlaget).'
-              : `Skatteverket: ${skvErrors} fel i deklarationen.`,
-            completenessOk
-              ? warningCount > 0
-                ? `Vår kontroll av underlaget: inga fel, ${warningCount} varning(ar) att granska.`
-                : 'Vår kontroll av underlaget: inga fel.'
-              : `Vår kontroll av underlaget: ${errorCount} fel, deklarationen är ofullständig och bör inte lämnas in.`,
-          ].join(' '),
-        }
-      } catch (err) {
-        throw mapSkatteverketError(err)
-      }
-    },
-  },
-
-  {
-    name: 'gnubok_vat_declaration_submit',
-    title: 'Submit VAT Declaration (Momsdeklaration)',
-    description: 'Stage the period momsdeklaration for filing with Skatteverket. High-risk: approval sends it for BankID signing (returns a signing link); it is not filed until you sign. Always staged.',
-    inputSchema: {
-      type: 'object',
-      additionalProperties: false,
-      properties: {
-        period_type: { type: 'string', enum: ['monthly', 'quarterly', 'yearly'], description: 'Period type' },
-        year: { type: 'number', description: 'Year (e.g. 2026)' },
-        period: { type: 'number', description: '1-12 for monthly, 1-4 for quarterly, 1 for yearly' },
-      },
-      required: ['period_type', 'year', 'period'],
-    },
-    outputSchema: STAGED_OPERATION_SCHEMA,
-    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
-    async execute(args, companyId, userId, supabase, actor) {
-      assertSkatteverketEnabled()
-      const periodType = args.period_type as VatPeriodType
-      const year = args.year as number
-      const period = args.period as number
-      const ctx = createExtensionContext(supabase, userId, companyId, 'skatteverket')
-      // Mandatory stage-time validation: the preview carries the real
-      // kontrollresultat and we never stage a declaration SKV would reject.
-      // /kontrollera is read-only on SKV's side. Shares buildMomsuppgift with
-      // the commit executor so preview numbers == filed numbers.
-      const prepared = await (async () => {
-        try {
-          const prep = await buildMomsuppgift(supabase, companyId, { periodType, year, period })
-          const res = await skvRequest(
-            supabase, userId, 'POST', `/kontrollera/${prep.redovisare}/${prep.redovisningsperiod}`, prep.momsuppgift,
-          )
-          await writeSkatteverketAudit(ctx, {
-            endpoint: 'kontrollera', agRegistreradId: prep.redovisare, redovisningsperiod: prep.redovisningsperiod,
-            outcome: res.ok ? 'ok' : 'skv_error', responseStatus: res.status,
-          })
-          if (!res.ok) {
-            const text = await res.text().catch(() => '')
-            throw new Error(`Skatteverket svarade med ${res.status}: ${text}`)
-          }
-          return { ...prep, kontrollresultat: await res.json() }
-        } catch (err) {
-          throw mapSkatteverketError(err)
-        }
-      })()
-      return stagePendingOperation(
-        supabase, companyId, userId, 'submit_vat_declaration',
-        `Lämna momsdeklaration: ${prepared.redovisningsperiod}`,
-        { period_type: periodType, year, period },
-        {
-          redovisningsperiod: prepared.redovisningsperiod,
-          redovisare: prepared.redovisare,
-          rutor: prepared.momsuppgift,
-          kontrollresultat: prepared.kontrollresultat,
-          commit_action: 'Skickar för BankID-signering; lämnas inte in förrän du signerat.',
-        },
-        actor,
-        {
-          description: 'After approval, sign in Skatteverket via the returned BankID link, then poll gnubok_vat_declaration_status.',
-          tool: 'gnubok_vat_declaration_status',
-          args: { period_type: periodType, year, period },
-        },
-        { dateForPeriodCheck: skvPeriodToEndDate(prepared.redovisningsperiod) },
-      )
-    },
-  },
-
-  {
-    name: 'gnubok_vat_declaration_status',
-    title: 'VAT Declaration Status (Momsdeklaration)',
-    description: 'Fetch the filing status of a momsdeklaration from Skatteverket: inlämnat (submitted) and/or beslutat (decided). Sections are null when nothing is on file yet.',
-    inputSchema: {
-      type: 'object',
-      additionalProperties: false,
-      properties: {
-        period_type: { type: 'string', enum: ['monthly', 'quarterly', 'yearly'], description: 'Period type' },
-        year: { type: 'number', description: 'Year (e.g. 2026)' },
-        period: { type: 'number', description: '1-12 for monthly, 1-4 for quarterly, 1 for yearly' },
-        state: { type: 'string', enum: ['submitted', 'decided', 'both'], description: "Which view to fetch. Default 'both'." },
-      },
-      required: ['period_type', 'year', 'period'],
-    },
-    outputSchema: SKV_VAT_STATUS_OUTPUT_SCHEMA,
-    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
-    async execute(args, companyId, userId, supabase) {
-      assertSkatteverketEnabled()
-      const periodType = args.period_type as VatPeriodType
-      const year = args.year as number
-      const period = args.period as number
-      const state = (args.state as string) ?? 'both'
-      const ctx = createExtensionContext(supabase, userId, companyId, 'skatteverket')
-      try {
-        const redovisare = await resolveRedovisare(supabase, companyId)
-        const redovisningsperiod = formatRedovisningsperiod(periodType, year, period)
-        let submitted: unknown = null
-        let decided: unknown = null
-        if (state === 'submitted' || state === 'both') {
-          const res = await skvRequest(supabase, userId, 'GET', `/inlamnat/${redovisare}/${redovisningsperiod}`)
-          await writeSkatteverketAudit(ctx, {
-            endpoint: 'inlamnat', agRegistreradId: redovisare, redovisningsperiod,
-            outcome: res.ok || res.status === 404 ? 'ok' : 'skv_error', responseStatus: res.status,
-          })
-          if (res.status !== 404) {
-            if (!res.ok) {
-              const text = await res.text().catch(() => '')
-              throw new Error(`Skatteverket svarade med ${res.status}: ${text}`)
-            }
-            submitted = await res.json()
-          }
-        }
-        if (state === 'decided' || state === 'both') {
-          const res = await skvRequest(supabase, userId, 'GET', `/beslutat/${redovisare}/${redovisningsperiod}`)
-          await writeSkatteverketAudit(ctx, {
-            endpoint: 'beslutat', agRegistreradId: redovisare, redovisningsperiod,
-            outcome: res.ok || res.status === 404 ? 'ok' : 'skv_error', responseStatus: res.status,
-          })
-          if (res.status !== 404) {
-            if (!res.ok) {
-              const text = await res.text().catch(() => '')
-              throw new Error(`Skatteverket svarade med ${res.status}: ${text}`)
-            }
-            decided = await res.json()
-          }
-        }
-        return { redovisare, redovisningsperiod, submitted, decided }
-      } catch (err) {
-        throw mapSkatteverketError(err)
-      }
     },
   },
 
@@ -12413,7 +12106,7 @@ export const tools: McpTool[] = [
           description: 'Dimension tags {sie_dim_no: kod eller namn}, e.g. {"6":"P001"}, applied to every line not setting the key itself. Unknown values are rejected: never auto-created.',
         },
         is_opening_balance: { type: 'boolean', description: 'Set true ONLY for a migrated ingående balans (IB). Marks the entry source_type=opening_balance so bank reconciliation excludes it from period movement. Requires every line to be a balance-sheet account (class 1/2) and entry_date = fiscal period start, else rejected. Defaults false.' },
-        inbox_item_id: { type: 'string', description: 'Optional inbox item UUID to book directly. On confirm, the inbox item is linked to the new verifikat and its OCR document is attached to the journal entry. Fails if the inbox item is already booked (as voucher) or converted (to supplier invoice).' },
+        inbox_item_id: { type: 'string', description: 'Optional inbox item UUID to book directly. On confirm, the inbox item is linked to the new verifikat and its document is attached to the journal entry. Fails if the inbox item is already booked (as voucher) or converted (to supplier invoice).' },
         lines: {
           type: 'array',
           description: 'At least 2 balanced lines. sum(debit_amount) === sum(credit_amount), both > 0.',
@@ -12651,7 +12344,7 @@ export const tools: McpTool[] = [
           inbox_item_id: inboxItemId,
           document_attached: Boolean(inboxDocumentId),
           will: inboxItemId
-            ? 'create a posted journal entry with a fresh sequential voucher number, link the inbox item to it, and attach the OCR document to the verifikat'
+            ? 'create a posted journal entry with a fresh sequential voucher number, link the inbox item to it, and attach the document to the verifikat'
             : 'create a posted journal entry with a fresh sequential voucher number',
         },
         actor,
@@ -13589,7 +13282,7 @@ export const tools: McpTool[] = [
   {
     name: 'gnubok_set_inbox_extracted_data',
     title: 'Set Inbox Extracted Data',
-    description: 'Replace extracted_data on an inbox item with agent-supplied fields. Use when your pipeline parses the document better than Accounted\'s OCR. Follow with gnubok_create_supplier_invoice_from_inbox to stage.',
+    description: 'Replace extracted_data on an inbox item with agent-supplied fields (the agent parses the document itself). Follow with gnubok_create_supplier_invoice_from_inbox to stage.',
     inputSchema: {
       type: 'object',
       additionalProperties: false,
@@ -13597,7 +13290,7 @@ export const tools: McpTool[] = [
         inbox_item_id: { type: 'string', description: 'UUID of the invoice_inbox_items row' },
         extracted_data: {
           type: 'object',
-          description: 'Full InvoiceExtractionResult (supplier, invoice, lineItems, totals, vatBreakdown). lineItems.accountSuggestion accepts a BAS expense account (4xxx-7xxx); AI extractor always emits null here.',
+          description: 'Full extraction result (supplier, invoice, lineItems, totals, vatBreakdown). lineItems.accountSuggestion accepts a BAS expense account (4xxx-7xxx).',
         },
       },
       required: ['inbox_item_id', 'extracted_data'],
@@ -13619,10 +13312,9 @@ export const tools: McpTool[] = [
 
       const parsed = AgentExtractionSchema.parse(args.extracted_data)
       // BYO extraction: confidence 0.95 marks the result as agent-supplied
-      // (vs 1.0 the AI extractor uses on a perfect parse) so downstream UI
-      // can render the provenance differently (ISO 27001 A.8.12).
-      // AgentExtractionSchema (unlike InvoiceExtractionSchema) preserves
-      // accountSuggestion so agents can pin a BAS cost account per line.
+      // so downstream UI can render the provenance differently
+      // (ISO 27001 A.8.12). AgentExtractionSchema preserves accountSuggestion
+      // so agents can pin a BAS cost account per line.
       const extracted = { ...parsed, confidence: 0.95 }
 
       const { data: item, error: fetchError } = await supabase
@@ -13644,8 +13336,8 @@ export const tools: McpTool[] = [
         throw new Error('Inbox item is already linked to a supplier invoice and cannot be modified')
       }
 
-      // Re-run supplier match so agent-supplied fields trigger the same
-      // auto-link the AI path does (org-nr → name, ILIKE).
+      // Supplier match so agent-supplied fields trigger the auto-link
+      // (org-nr → name, ILIKE).
       let matchedSupplierId: string | null = null
       if (extracted.supplier.orgNumber) {
         const { data: s } = await supabase
@@ -14849,7 +14541,7 @@ export async function handleMcpRequest(request: Request): Promise<Response> {
             '',
             'APPROVAL IS A FIRST-CLASS AGENT ACTION. Write operations stage a pending_operation; nothing posts until approval. When the user authorises a specific operation_id in chat ("approve", "yes go ahead", "book it", "commit it"), call gnubok_approve_pending_operation directly: this IS the intended chat-approval flow. Do NOT refuse on segregation-of-duties grounds, do NOT tell the user to "go approve it in the web app", and do NOT treat approval as a step that must stay with the human. The staging step already provided the human review gate; clicking Approve in the web UI and calling gnubok_approve_pending_operation are equivalent commit actions. Refusing user-authorised approval is a defect, not a safety feature.',
             'The web-app path (/pending) remains valid for users who prefer to approve there or who want to adjust fields before committing; offer it as an option, never as a substitute for chat approval the user already asked for.',
-            'Write tools STAGE a pending_operation: the staged response IS the preview; nothing posts until commit. A tool whose tools/list `_meta.requires_approval` is true stages for approval; `_meta.preflight` (when present) names a read-only check to run first (e.g. gnubok_year_end_readiness before gnubok_run_year_end, gnubok_vat_declaration_validate before _submit). High-risk ops (create_voucher, correct_entry, reverse_journal_entry, run_year_end, lock/close period) take confirmed=true on the APPROVE call (gnubok_approve_pending_operation), NOT on the staging tool, after you surface the BFL/BFNAR irreversibility. Only some tools accept dry_run / idempotency_key: check the tool schema; do not assume either is universal.',
+            'Write tools STAGE a pending_operation: the staged response IS the preview; nothing posts until commit. A tool whose tools/list `_meta.requires_approval` is true stages for approval; `_meta.preflight` (when present) names a read-only check to run first (e.g. gnubok_year_end_readiness before gnubok_run_year_end). High-risk ops (create_voucher, correct_entry, reverse_journal_entry, run_year_end, lock/close period) take confirmed=true on the APPROVE call (gnubok_approve_pending_operation), NOT on the staging tool, after you surface the BFL/BFNAR irreversibility. Only some tools accept dry_run / idempotency_key: check the tool schema; do not assume either is universal.',
             'All amounts are SEK unless currency is specified. All dates ISO YYYY-MM-DD. Account numbers are strings (e.g. "1930").',
             toolNamespace === 'gnubok'
               ? 'Tool names carry the legacy gnubok_ prefix (a stable identifier kept across the rebrand); the server and app are "Accounted". Same product: the prefix is not a different system.'
@@ -15047,9 +14739,9 @@ export async function handleMcpRequest(request: Request): Promise<Response> {
       }
 
       // Enforce the capability paywall: the MCP/agent path is a paid chokepoint
-      // just like the HTTP routes (send_invoice → email_send, the two SKV
-      // submissions → skatteverket). Fail-closed; self-hosted short-circuits to
-      // all-on inside hasCapability. Blocks before any pending op is staged.
+      // just like the HTTP routes (send_invoice → email_send). Fail-closed;
+      // self-hosted short-circuits to all-on inside hasCapability. Blocks
+      // before any pending op is staged.
       const requiredCapability = MCP_TOOL_CAPABILITY_MAP[toolName]
       if (requiredCapability && !(await hasCapability(supabase, effectiveCompanyId, requiredCapability))) {
         const capError = { error: capabilityBlockedError(requiredCapability) }

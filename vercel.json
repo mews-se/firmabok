@@ -1,5 +1,7 @@
 {
-  "regions": ["arn1"],
+  "regions": [
+    "arn1"
+  ],
   "crons": [
     {
       "path": "/api/deadlines/status/cron",
@@ -18,18 +20,6 @@
       "schedule": "0 0 * * *"
     },
     {
-      "path": "/api/extensions/enable-banking/sync/cron",
-      "schedule": "0 5 * * *"
-    },
-    {
-      "path": "/api/extensions/stripe/transactions/cron",
-      "schedule": "30 3 * * *"
-    },
-    {
-      "path": "/api/extensions/woocommerce/orders/cron",
-      "schedule": "45 3 * * *"
-    },
-    {
       "path": "/api/documents/verify/cron",
       "schedule": "0 3 * * *"
     },
@@ -38,36 +28,12 @@
       "schedule": "0 2 * * *"
     },
     {
-      "path": "/api/extensions/cloud-backup/auto-sync/cron",
-      "schedule": "0 * * * *"
-    },
-    {
       "path": "/api/idempotency/cleanup/cron",
       "schedule": "30 * * * *"
     },
     {
       "path": "/api/pending-operations/expire/cron",
       "schedule": "30 2 * * *"
-    },
-    {
-      "path": "/api/extensions/skatteverket/skattekonto/sync/cron",
-      "schedule": "0 4 * * *"
-    },
-    {
-      "path": "/api/extensions/skatteverket/vat/kvittenser/cron",
-      "schedule": "30 */2 * * *"
-    },
-    {
-      "path": "/api/webhooks/dispatch/cron",
-      "schedule": "* * * * *"
-    },
-    {
-      "path": "/api/extensions/whatsapp-inbox/sweep/cron",
-      "schedule": "* * * * *"
-    },
-    {
-      "path": "/api/extensions/whatsapp-inbox/retention/cron",
-      "schedule": "15 4 * * *"
     },
     {
       "path": "/api/bookkeeping/accruals/post-due/cron",

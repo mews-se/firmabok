@@ -160,12 +160,6 @@ export const OPERATION_RISK_TIERS: Record<string, RiskLevel> = {
   // invoice_payments row: sits next to link_invoice_voucher semantically;
   // both attach an existing booking to a different entity.
   link_transaction_journal_entry: 'medium',
-
-  // ── Skatteverket filing (PR5) ──────────────────────────────────────
-  // External + irreversible once signed. Commit sends the declaration for
-  // BankID signing; the user's signature in the browser is the filing act.
-  // (getRiskLevel already defaults unknown → 'high'; explicit for intent.)
-  submit_vat_declaration: 'high',
 }
 
 /**

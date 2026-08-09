@@ -62,23 +62,10 @@ export const PAID_CAPABILITIES: readonly CapabilityKey[] = [
  * Paid MCP tools → required capability. The MCP/agent path is a paid chokepoint
  * just like the HTTP routes, so the dispatcher gates these the same way it gates
  * API-key scope (see mcp-server `tools/call`). External-service WRITE tools
- * appear here: send_invoice (email) and the Skatteverket submission. The
- * read/local SKV tools (vat_declaration_validate/status)
- * stay free: the §4 carve-out forbids blocking a statutory filing obligation.
- *
- * The document upload tools invoke AI (Bedrock document OCR via
- * extractInvoiceFields), so they are gated on CAPABILITY.ai: the same paywall
- * the HTTP inbox upload/attach/retry paths enforce. Without these entries a
- * free-tier API key could trigger paid AI extraction. bank_sync has no MCP
- * tool (bank sync is cron/HTTP only).
+ * appear here: send_invoice (email).
  */
 export const MCP_TOOL_CAPABILITY_MAP: Readonly<Partial<Record<string, CapabilityKey>>> = {
   gnubok_send_invoice: CAPABILITY.email_send,
-  gnubok_vat_declaration_submit: CAPABILITY.skatteverket,
-  // AI document OCR (Bedrock): the inbox's paid extraction, reachable via MCP.
-  gnubok_create_document_upload: CAPABILITY.ai,
-  gnubok_complete_document_upload: CAPABILITY.ai,
-  gnubok_upload_document: CAPABILITY.ai,
 } as const
 
 /**
@@ -91,7 +78,6 @@ export const MCP_TOOL_CAPABILITY_MAP: Readonly<Partial<Record<string, Capability
  */
 export const PAID_OPERATION_CAPABILITY_MAP: Readonly<Partial<Record<string, CapabilityKey>>> = {
   send_invoice: CAPABILITY.email_send,
-  submit_vat_declaration: CAPABILITY.skatteverket,
 } as const
 
 /**
@@ -100,15 +86,10 @@ export const PAID_OPERATION_CAPABILITY_MAP: Readonly<Partial<Record<string, Capa
  * paid service should not just 403 its writes but be hidden from the sidebar and
  * blocked at the page so a non-payer never lands on a dead workspace.
  *
- * invoice-inbox is fully gated on `ai`: its reason to exist is the AI field
- * extraction (extractInvoiceFields / gnubok_upload_document), already the paid
- * chokepoint on every other surface (HTTP upload/attach/retry, the MCP tool).
  * Both the sidebar item and the /e/[sector]/[slug] page read this map so the two
  * surfaces can never drift apart.
  */
-export const EXTENSION_REQUIRED_CAPABILITY: Readonly<Partial<Record<string, CapabilityKey>>> = {
-  'general/invoice-inbox': CAPABILITY.ai,
-} as const
+export const EXTENSION_REQUIRED_CAPABILITY: Readonly<Partial<Record<string, CapabilityKey>>> = {} as const
 
 /** Which paid capability (if any) an extension workspace requires to be usable. */
 export function requiredCapabilityForExtension(

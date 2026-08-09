@@ -3,7 +3,6 @@ import { setContextFactory } from '@/lib/extensions/registry'
 import { createExtensionContext } from '@/lib/extensions/context-factory'
 import { registerSupplierInvoiceHandler } from '@/lib/bookkeeping/handlers/supplier-invoice-handler'
 import { registerEventLogHandler } from '@/lib/events/handlers/event-log-handler'
-import { registerWebhookHandler } from '@/lib/webhooks/handler'
 import { registerObservabilitySink } from '@/lib/observability'
 import { postHogSink } from '@/lib/analytics/posthog-observability'
 import { isAnalyticsEnabled } from '@/lib/analytics/enabled'
@@ -22,28 +21,14 @@ const REQUIRED_CORE_VARS = [
 ] as const
 
 // Each entry is one logical requirement; if multiple names are listed, the
-// requirement is satisfied when ANY of them is set. Mirrors the runtime
-// fallback in extensions/general/enable-banking/lib/jwt.ts (_PRODUCTION ||
-// base) so Vercel prod (which only sets the _PRODUCTION variants) doesn't
-// warn on every cold start.
-// AI features run Claude via AWS Bedrock (see lib/agent/composer/client.ts and
-// extensions/general/invoice-inbox/lib/extract-invoice-fields.ts), so the
-// static AWS keys are what actually gates them. The assistant's client can
-// fall back to the AWS credential provider chain (instance profile, IRSA),
-// but document extraction requires both static keys, so this log-only warning
-// stays useful even on AWS infrastructure.
+// requirement is satisfied when ANY of them is set.
+// AI features run Claude via AWS Bedrock (see lib/agent/composer/client.ts),
+// so the static AWS keys are what actually gates them. The assistant's client
+// can fall back to the AWS credential provider chain (instance profile, IRSA),
+// so this stays a log-only warning.
 const REQUIRED_EXTENSION_VARS: ReadonlyArray<readonly string[]> = [
-  ['ENABLE_BANKING_APP_ID_PRODUCTION', 'ENABLE_BANKING_APP_ID'],
-  ['ENABLE_BANKING_PRIVATE_KEY_PRODUCTION', 'ENABLE_BANKING_PRIVATE_KEY'],
   ['AWS_ACCESS_KEY_ID'],
   ['AWS_SECRET_ACCESS_KEY'],
-  // whatsapp-inbox extension (Meta Cloud API + phone PII at rest)
-  ['WHATSAPP_ACCESS_TOKEN'],
-  ['WHATSAPP_PHONE_NUMBER_ID'],
-  ['WHATSAPP_APP_SECRET'],
-  ['WHATSAPP_VERIFY_TOKEN'],
-  ['WHATSAPP_PHONE_HASH_KEY'],
-  ['WHATSAPP_PHONE_ENCRYPTION_KEY'],
 ] as const
 
 function validateEnvironment(): void {
@@ -95,7 +80,6 @@ export function ensureInitialized(): void {
   if (isAnalyticsEnabled()) registerObservabilitySink(postHogSink)
   registerSupplierInvoiceHandler()
   registerEventLogHandler()
-  registerWebhookHandler()
   loadExtensions()
 
   initialized = true

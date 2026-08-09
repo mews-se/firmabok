@@ -184,8 +184,8 @@ describe('session expiry', () => {
 
 describe('API exclusions', () => {
   it('only lets bearer-authenticated machine surfaces bypass timeouts', () => {
-    expect(apiRequestSkipsSessionTimeout('/api/v1/companies/c1/invoices', true)).toBe(true)
-    expect(apiRequestSkipsSessionTimeout('/api/v1/companies/c1/invoices', false)).toBe(false)
+    expect(apiRequestSkipsSessionTimeout('/api/extensions/ext/mcp-server/mcp', true)).toBe(true)
+    expect(apiRequestSkipsSessionTimeout('/api/extensions/ext/mcp-server/mcp', false)).toBe(false)
     expect(apiRequestSkipsSessionTimeout('/api/invoices', true)).toBe(false)
     expect(apiRequestSkipsSessionTimeout('/api/mcp-oauth/token', false)).toBe(true)
     expect(apiRequestSkipsSessionTimeout('/api/health', false)).toBe(true)

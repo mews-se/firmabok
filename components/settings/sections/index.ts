@@ -42,10 +42,6 @@ const BillingSettingsContent = dynamic(() =>
   import('./BillingSettingsContent').then((module) => ({ default: module.BillingSettingsContent })),
   { loading: SettingsLoadingSkeleton },
 )
-const WhatsAppSettingsContent = dynamic(() =>
-  import('./WhatsAppSettingsContent').then((module) => ({ default: module.WhatsAppSettingsContent })),
-  { loading: SettingsLoadingSkeleton },
-)
 
 /**
  * Single source of truth mapping a settings section id to the component that
@@ -65,7 +61,6 @@ export const SETTINGS_SECTIONS: Record<string, ComponentType> = {
   assistant: AssistantSettingsContent,
   api: ApiSettingsContent,
   billing: BillingSettingsContent,
-  whatsapp: WhatsAppSettingsContent,
 }
 
 export type SettingsSectionId = keyof typeof SETTINGS_SECTIONS

@@ -34,17 +34,7 @@ import path from 'node:path'
  * Routes that predate the enablement-gate requirement. Remove an entry once
  * its route checks `extensionRegistry.get('<id>')`; never add one.
  */
-export const UNGATED_EXTENSION_ROUTES = new Set([
-  'app/api/extensions/cloud-backup/auto-sync/cron/route.ts',
-  'app/api/extensions/enable-banking/callback/route.ts',
-  'app/api/extensions/enable-banking/sync/cron/route.ts',
-  'app/api/extensions/skatteverket/skattekonto/drift/route.ts',
-  'app/api/extensions/skatteverket/skattekonto/sync/cron/route.ts',
-  'app/api/extensions/skatteverket/vat/kvittenser/cron/route.ts',
-  'app/api/extensions/stripe/callback/route.ts',
-  'app/api/extensions/stripe/sync/cron/route.ts',
-  'app/api/extensions/stripe/transactions/cron/route.ts',
-])
+export const UNGATED_EXTENSION_ROUTES = new Set([])
 
 const EXTENSION_IMPORT_RE = /from\s+['"]@\/extensions\/[^/'"]+\/([^/'"]+)\//g
 

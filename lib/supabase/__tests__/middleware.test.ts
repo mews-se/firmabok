@@ -230,7 +230,7 @@ describe('updateSession redirect destinations', () => {
       }
 
       expect((await run('/api/invoices', { headers })).status).toBe(401)
-      expect((await run('/api/v1/companies/c1/invoices', { headers })).status).toBe(200)
+      expect((await run('/api/extensions/ext/mcp-server/mcp', { headers })).status).toBe(200)
     })
 
     it('starts a new timeout window when the Supabase session changes', async () => {

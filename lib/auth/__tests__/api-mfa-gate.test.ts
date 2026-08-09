@@ -3,7 +3,6 @@ import { apiPathSkipsMfaGate } from '@/lib/auth/api-mfa-gate'
 
 describe('apiPathSkipsMfaGate', () => {
   it('skips the gate only on Bearer-auth surfaces when an Authorization header is present', () => {
-    expect(apiPathSkipsMfaGate('/api/v1/companies/abc/invoices', true)).toBe(true)
     expect(apiPathSkipsMfaGate('/api/extensions/ext/mcp-server/mcp', true)).toBe(true)
   })
 
@@ -14,11 +13,10 @@ describe('apiPathSkipsMfaGate', () => {
     expect(apiPathSkipsMfaGate('/api/reports/full-archive', true)).toBe(false)
     expect(apiPathSkipsMfaGate('/api/salary/employees/1', true)).toBe(false)
     // Non-MCP extension routes authenticate via cookies in the dispatcher.
-    expect(apiPathSkipsMfaGate('/api/extensions/ext/invoice-inbox/custom-domain', true)).toBe(false)
+    expect(apiPathSkipsMfaGate('/api/extensions/ext/other-extension/data', true)).toBe(false)
   })
 
   it('does not skip Bearer-auth surfaces without an Authorization header', () => {
-    expect(apiPathSkipsMfaGate('/api/v1/companies/abc/invoices', false)).toBe(false)
     expect(apiPathSkipsMfaGate('/api/extensions/ext/mcp-server/mcp', false)).toBe(false)
   })
 

@@ -34,7 +34,6 @@ import {
   Clock,
   Sparkles,
   Percent,
-  Landmark,
   CalendarClock,
   CalendarRange,
   FileCheck,
@@ -93,7 +92,6 @@ type NavLabelKey =
   | 'assistant'
   | 'agent_knowledge'
   | 'kpi'
-  | 'invoice_inbox'
   | 'invoices'
   | 'customers'
   | 'articles'
@@ -108,7 +106,6 @@ type NavLabelKey =
   | 'reports'
   | 'import'
   | 'vat_declaration'
-  | 'skattekonto'
   | 'deadlines'
   | 'periodiseringar'
   | 'year_end'
@@ -173,7 +170,6 @@ const navItems: NavItem[] = [
   // (Bokföring · Underlag · Transaktioner · Granskning), then the
   // transactional flows.
   { href: '/bookkeeping', labelKey: 'bookkeeping', icon: BookOpen, group: 'arbeta' },
-  { href: '/e/general/invoice-inbox', labelKey: 'invoice_inbox', icon: Inbox, group: 'arbeta', requiredCapability: EXTENSION_REQUIRED_CAPABILITY['general/invoice-inbox'] },
   { href: '/transactions', labelKey: 'transactions', icon: ArrowLeftRight, group: 'arbeta' },
   { href: '/pending', labelKey: 'review', icon: ClipboardCheck, group: 'arbeta' },
   { href: '/invoices', labelKey: 'invoices', icon: ReceiptText, group: 'arbeta' },
@@ -195,7 +191,6 @@ const navItems: NavItem[] = [
   // lives in the Bokslut fold in workflow order; the last two are
   // entity-gated because the surface only exists for one company form.
   { href: '/reports/vat-declaration', labelKey: 'vat_declaration', icon: Percent, group: 'skatt' },
-  { href: '/skattekonto', labelKey: 'skattekonto', icon: Landmark, group: 'skatt' },
   { href: '/deadlines', labelKey: 'deadlines', icon: CalendarClock, group: 'skatt' },
   { href: '/bookkeeping/periodiseringar', labelKey: 'periodiseringar', icon: CalendarRange, group: 'skatt', fold: 'bokslut' },
   { href: '/bookkeeping/year-end', labelKey: 'year_end', icon: FileCheck, group: 'skatt', fold: 'bokslut' },
@@ -234,9 +229,7 @@ function segmentItems(items: NavItem[]): NavSegment[] {
 
 // Map known extension hrefs to nav translation keys so sidebar labels translate.
 // Extensions whose manifest label happens to be English-ready can stay null.
-function extensionLabelKey(href: string): string | null {
-  if (href === '/e/general/tic') return 'ext_tic'
-  if (href === '/e/general/invoice-inbox') return 'ext_invoice_inbox'
+function extensionLabelKey(_href: string): string | null {
   return null
 }
 

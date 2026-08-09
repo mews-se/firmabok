@@ -6,7 +6,6 @@ import { MCP_TOOL_CAPABILITY_MAP } from '@/lib/entitlements/keys'
 const mocks = vi.hoisted(() => ({
   createPendingDocumentUpload: vi.fn(),
   completePendingDocumentUpload: vi.fn(),
-  extractInvoiceFields: vi.fn(),
 }))
 
 vi.mock('@/lib/core/documents/document-service', async (importOriginal) => {
@@ -16,13 +15,6 @@ vi.mock('@/lib/core/documents/document-service', async (importOriginal) => {
     createPendingDocumentUpload: mocks.createPendingDocumentUpload,
     completePendingDocumentUpload: mocks.completePendingDocumentUpload,
   }
-})
-
-vi.mock('@/extensions/general/invoice-inbox/lib/extract-invoice-fields', async (importOriginal) => {
-  const actual = await importOriginal<
-    typeof import('@/extensions/general/invoice-inbox/lib/extract-invoice-fields')
-  >()
-  return { ...actual, extractInvoiceFields: mocks.extractInvoiceFields }
 })
 
 import { tools } from '../server'
@@ -65,12 +57,6 @@ describe('MCP model-free document upload tools', () => {
       }),
       buffer: new TextEncoder().encode('%PDF-1.4\n%%EOF\n').buffer,
     })
-    mocks.extractInvoiceFields.mockResolvedValue({
-      data: {
-        supplier: { name: 'Synthetic Supplier AB', orgNumber: null },
-        invoice: { number: 'INV-1' },
-      },
-    })
   })
 
   it('returns an unauthenticated PUT URL without accepting file bytes', async () => {
@@ -105,10 +91,8 @@ describe('MCP model-free document upload tools', () => {
       makeQueryBuilder({ data: null, error: null }),
       inboxInsert,
     ]
-    const supplier = makeQueryBuilder({ data: null, error: null })
     const from = vi.fn((table: string) => {
       if (table === 'invoice_inbox_items') return invoiceLookups.shift()
-      if (table === 'suppliers') return supplier
       throw new Error(`Unexpected table: ${table}`)
     })
 
@@ -135,10 +119,9 @@ describe('MCP model-free document upload tools', () => {
       inbox_item_id: uploadId,
       status: 'received',
     })
-    expect(mocks.extractInvoiceFields).toHaveBeenCalledOnce()
   })
 
-  it('returns an already completed inbox item without downloading or extracting again', async () => {
+  it('returns an already completed inbox item without downloading again', async () => {
     const existing = makeQueryBuilder({
       data: {
         id: uploadId,
@@ -158,17 +141,16 @@ describe('MCP model-free document upload tools', () => {
 
     expect(result).toMatchObject({ document_id: uploadId, inbox_item_id: uploadId })
     expect(mocks.completePendingDocumentUpload).not.toHaveBeenCalled()
-    expect(mocks.extractInvoiceFields).not.toHaveBeenCalled()
   })
 
-  it('keeps scope and AI capability gates aligned across all upload paths', () => {
+  it('keeps the upload paths on the transactions:write scope and free of capability gates', () => {
     for (const name of [
       'gnubok_create_document_upload',
       'gnubok_complete_document_upload',
       'gnubok_upload_document',
     ]) {
       expect(TOOL_SCOPE_MAP[name]).toBe('transactions:write')
-      expect(MCP_TOOL_CAPABILITY_MAP[name]).toBe('ai')
+      expect(MCP_TOOL_CAPABILITY_MAP[name]).toBeUndefined()
     }
   })
 })

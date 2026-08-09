@@ -59,10 +59,9 @@ vi.mock('@/lib/auth/api-keys', async (importOriginal) => {
       userId: 'user-1',
       companyId: '11111111-1111-4111-8111-111111111111',
       // Holds the SCOPES for every paid tool under test (send_invoice →
-      // invoices:write, vat_declaration_submit → skatteverket:write, document uploads →
-      // transactions:write) so the scope gate passes and the CAPABILITY gate is
+      // invoices:write) so the scope gate passes and the CAPABILITY gate is
       // what we exercise.
-      scopes: ['invoices:write', 'skatteverket:write', 'reports:read', 'transactions:write'],
+      scopes: ['invoices:write', 'reports:read', 'transactions:write'],
       apiKeyId: 'key-1',
       apiKeyName: 'Test Key',
     }),
@@ -139,42 +138,6 @@ describe('MCP capability gate', () => {
     expect(event.success).toBe(false)
     // The gate exits before tool.execute(), exactly like scope denial.
     expect(event.latencyMs).toBe(0)
-  })
-
-  it('blocks gnubok_vat_declaration_submit when skatteverket is not entitled', async () => {
-    mockHasCapability.mockResolvedValue(false)
-
-    const response = await handleMcpRequest(mcpToolCall('gnubok_vat_declaration_submit', { period_type: 'monthly', year: 2025, period: 3 }))
-    const { isError, payload } = await parsedToolResult(response)
-
-    expect(isError).toBe(true)
-    expect((payload.error as Record<string, unknown>).capability).toBe('skatteverket')
-    expect(mockHasCapability).toHaveBeenCalledWith(expect.anything(), '11111111-1111-4111-8111-111111111111', 'skatteverket')
-  })
-
-  it.each([
-    ['gnubok_create_document_upload', { file_name: 'faktura.pdf' }],
-    [
-      'gnubok_complete_document_upload',
-      {
-        upload_id: '33333333-3333-4333-8333-333333333333',
-        file_name: 'faktura.pdf',
-        mime_type: 'application/pdf',
-      },
-    ],
-    ['gnubok_upload_document', { file_name: 'faktura.pdf', file_content_base64: 'JVBERi0=' }],
-  ])('blocks %s when ai is not entitled', async (toolName, args) => {
-    // The central dispatch map is the paywall for every MCP document-upload
-    // step, so a free-tier connector key can never reach the paid OCR flow.
-    mockHasCapability.mockResolvedValue(false)
-
-    const response = await handleMcpRequest(mcpToolCall(toolName, args))
-    const { isError, payload } = await parsedToolResult(response)
-
-    expect(isError).toBe(true)
-    expect((payload.error as Record<string, unknown>).capability_blocked).toBe(true)
-    expect((payload.error as Record<string, unknown>).capability).toBe('ai')
-    expect(mockHasCapability).toHaveBeenCalledWith(expect.anything(), '11111111-1111-4111-8111-111111111111', 'ai')
   })
 
   it('lets a free tool through without consulting the capability gate', async () => {

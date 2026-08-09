@@ -6,8 +6,8 @@
  * (lib/supabase/middleware.ts) closes that gap for cookie sessions, but a few
  * request classes must NOT be gated:
  *
- *   - Bearer-authenticated SURFACES (`/api/v1/*` API keys, the MCP endpoint's
- *     OAuth tokens/API keys): the route validates the Authorization credential
+ *   - Bearer-authenticated SURFACES (the MCP endpoint's OAuth tokens/API
+ *     keys): the route validates the Authorization credential
  *     itself and never trusts the cookie session, so a logged-in AAL1 browser
  *     testing its own API key must not be blocked. This is scoped by PATH, not
  *     header presence: the header is attacker-controlled, and an Authorization
@@ -29,7 +29,7 @@
 // Routes whose auth contract IS the Authorization header. Everything else
 // under /api/extensions/ext/ authenticates via requireAuth (cookies) in the
 // dispatcher and must stay behind the gate.
-const BEARER_AUTH_PREFIXES = ['/api/v1/', '/api/extensions/ext/mcp-server/mcp']
+const BEARER_AUTH_PREFIXES = ['/api/extensions/ext/mcp-server/mcp']
 
 export function apiPathSkipsMfaGate(
   pathname: string,

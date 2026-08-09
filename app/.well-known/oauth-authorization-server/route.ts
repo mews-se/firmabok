@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { PUBLIC_OAUTH_METADATA_SCOPES } from '@/lib/auth/api-keys'
-import { resolveDiscoveryBaseUrl } from '@/lib/api/v1/base-url'
+import { resolveDiscoveryBaseUrl } from '@/lib/api/base-url'
 
 /**
  * RFC 8414: OAuth 2.0 Authorization Server Metadata.

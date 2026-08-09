@@ -73,12 +73,6 @@ import { parseSIEFile } from '@/lib/import/sie-parser'
 import { executeSIEImport, undoSIEImport } from '@/lib/import/sie-import'
 import type { AccountMapping } from '@/lib/import/types'
 import { AccountsNotInChartError, isBookkeepingError, ACCOUNTS_NOT_IN_CHART } from '@/lib/bookkeeping/errors'
-import { extensionRegistry } from '@/lib/extensions/registry'
-import {
-  SkatteverketRecoverableError,
-  type SkatteverketCommitServices,
-  type SkvSubmitResult,
-} from '@/lib/pending-operations/skatteverket-commit'
 import { PartialCommitError } from '@/lib/pending-operations/errors'
 import { getEmailService } from '@/lib/email/service'
 import { hasCapability, CAPABILITY_BLOCKED_MESSAGE_SV } from '@/lib/entitlements/has-capability'
@@ -2104,10 +2098,9 @@ async function commitMarkInvoicePaid(
     await clearSettledInvoiceSuggestions(supabase, companyId, 'invoice', invoiceId)
   }
 
-  // Notify subscribers: invoice.paid fans out to registered webhooks
-  // (lib/webhooks/handler.ts). Best-effort: the payment is already committed,
-  // so an emit failure must not fail the operation. Parity with the v1 and
-  // dashboard mark-paid routes, which previously emitted while this path did not.
+  // Notify subscribers on the event bus. Best-effort: the payment is already
+  // committed, so an emit failure must not fail the operation. Parity with the
+  // dashboard mark-paid route.
   try {
     await eventBus.emit({
       type: 'invoice.paid',
@@ -4619,57 +4612,6 @@ async function commitReverseEntry(
   }
 }
 
-// ── Skatteverket filing commit handlers (PR5) ─────────────────────
-//
-// Core cannot import @/extensions (CI guard), so these reach the Skatteverket
-// extension only through the registry-resolved `services` channel. The service
-// runs the SKV chain and returns a SkvSubmitResult (shared shape in
-// ./skatteverket-commit). A recoverable failure throws SkatteverketRecoverable-
-// Error, which the dispatcher catch releases back to 'pending'; a non-recoverable
-// failure becomes a plain { error, status } that rejects the op.
-
-function getSkatteverketServices(): SkatteverketCommitServices {
-  const services = extensionRegistry.get('skatteverket')?.services as
-    | Partial<SkatteverketCommitServices>
-    | undefined
-  if (!services?.commitSubmitVatDeclaration) {
-    // Extension absent or not wired. Recoverable: leave the op pending so a
-    // re-enable + re-approve works without re-staging.
-    throw new SkatteverketRecoverableError(
-      'Skatteverket-integrationen är inte tillgänglig.',
-      'EXTENSION_DISABLED',
-      503,
-    )
-  }
-  return services as SkatteverketCommitServices
-}
-
-function handleSkvSubmitResult(result: SkvSubmitResult): ExecutorResult {
-  if (!result.ok) {
-    if (result.recoverable) {
-      throw new SkatteverketRecoverableError(result.error, result.code, result.http_status)
-    }
-    return { error: result.error, status: result.http_status }
-  }
-  const data: Record<string, unknown> = { ...result, status: 'awaiting_signature' }
-  delete data.ok
-  return { data }
-}
-
-async function commitSubmitVatDeclaration(
-  supabase: SupabaseClient,
-  userId: string,
-  companyId: string,
-  params: Record<string, unknown>,
-): Promise<ExecutorResult> {
-  if (!params.period_type || !params.year || !params.period) {
-    return { error: 'period_type, year och period krävs', status: 400 }
-  }
-  const services = getSkatteverketServices()
-  const result = await services.commitSubmitVatDeclaration(supabase, userId, companyId, params)
-  return handleSkvSubmitResult(result)
-}
-
 // ── Multi-tx commit handlers (PRs #603/#606/#608/#610) ────────────
 //
 // Both wrap their SQL RPC. The RPCs do all the heavy lifting (locking,
@@ -5138,9 +5080,6 @@ async function commitPendingOperationInner(
       case 'link_transaction_journal_entry':
         result = await commitLinkTransactionJournalEntry(supabase, userId, companyId, pendingOp.params)
         break
-      case 'submit_vat_declaration':
-        result = await commitSubmitVatDeclaration(supabase, userId, companyId, pendingOp.params)
-        break
       default:
         return {
           status: 'failed',
@@ -5189,22 +5128,6 @@ async function commitPendingOperationInner(
         http_status: 400,
         code: ACCOUNTS_NOT_IN_CHART,
         account_numbers: err.accountNumbers,
-      }
-    }
-    // Recoverable Skatteverket failure (extension disabled, no connection,
-    // rate-limited, still processing). Same contract as accounts-not-in-chart:
-    // release the claim back to 'pending' so the user can fix the connection/
-    // flag and re-approve the SAME op, and surface the structured code.
-    if (err instanceof SkatteverketRecoverableError) {
-      await supabase
-        .from('pending_operations')
-        .update({ status: 'pending' })
-        .eq('id', pendingOp.id)
-      return {
-        status: 'failed',
-        error: err.message,
-        http_status: err.httpStatus,
-        code: err.code,
       }
     }
     const isBkErr = isBookkeepingError(err)

@@ -1,4 +1,3 @@
-import dynamic from 'next/dynamic'
 import type { ComponentType } from 'react'
 
 /**
@@ -9,20 +8,7 @@ import type { ComponentType } from 'react'
  * panels without directly importing from extension directories.
  */
 
-const SETTINGS_PANELS: Record<string, ComponentType> = {
-  'enable-banking': dynamic(
-    () => import('@/extensions/general/enable-banking/components/BankingSettingsPanel')
-  ),
-  'cloud-backup': dynamic(
-    () => import('@/extensions/general/cloud-backup/components/CloudBackupCard')
-  ),
-  stripe: dynamic(
-    () => import('@/extensions/general/stripe/components/StripeSettingsPanel')
-  ),
-  woocommerce: dynamic(
-    () => import('@/extensions/general/woocommerce/components/WooCommerceSettingsPanel')
-  ),
-}
+const SETTINGS_PANELS: Record<string, ComponentType> = {}
 
 /**
  * Get the settings panel component for an extension.

@@ -65,13 +65,7 @@ import type { BASAccount } from '@/types'
 import { ENABLED_EXTENSION_IDS } from '@/lib/extensions/_generated/enabled-extensions'
 import dynamic from 'next/dynamic'
 import { FiscalYearSelector } from '@/components/common/FiscalYearSelector'
-import CloudBackupCard from '@/extensions/general/cloud-backup/components/CloudBackupCard'
 import BankSyncStatusChip from '@/components/transactions/BankSyncStatusChip'
-
-const MigrationWizard = dynamic(
-  () => import('@/components/extensions/general/ArcimMigrationWorkspace'),
-  { ssr: false, loading: () => <div className="flex items-center gap-3 text-muted-foreground p-6"><Loader2 className="h-5 w-5 animate-spin" />Laddar migreringsverktyg...</div> }
-)
 
 function ImportStepLoading() {
   return (
@@ -2185,11 +2179,6 @@ export default function ImportPage() {
                   />
                 )}
               </div>
-              {hasCloudBackup && cloudOpen && (
-                <div id="cloud-backup" className="mt-6 scroll-mt-24">
-                  <CloudBackupCard />
-                </div>
-              )}
             </div>
           )}
 
@@ -2311,9 +2300,6 @@ export default function ImportPage() {
       {mode === 'bank' && <BankFileImportWizard />}
       {mode === 'sie' && <SIEImportWizard />}
       {mode === 'csv_data' && <CSVDataImportWizard />}
-      {mode === 'migration' && (
-        <MigrationWizard userId={userId} initialProvider={initialProvider ?? undefined} />
-      )}
     </div>
   )
 }

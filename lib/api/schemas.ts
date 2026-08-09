@@ -202,16 +202,8 @@ export const SupplierTypeSchema = z.enum([
   'non_eu_business',
 ])
 
-export const InvoiceStatusSchema = z.enum([
-  'draft', 'sent', 'paid', 'overdue', 'cancelled', 'credited',
-])
-
 export const InvoiceDocumentTypeSchema = z.enum([
   'invoice', 'proforma', 'delivery_note',
-])
-
-export const SupplierInvoiceStatusSchema = z.enum([
-  'registered', 'approved', 'paid', 'partially_paid', 'overdue', 'disputed', 'credited',
 ])
 
 export const VatTreatmentSchema = z.enum([
@@ -1383,21 +1375,6 @@ export const UpdateTransactionTitleSchema = z.object({
   description: z.string().trim().min(1, 'Title cannot be empty').max(500),
 })
 
-export const BookInboxItemDirectlySchema = z.object({
-  fiscal_period_id: uuid,
-  entry_date: isoDate,
-  description: z.string().min(1, 'Beskrivning krävs'),
-  // `.optional()` here carries meaning the route depends on: ABSENT means
-  // "caller has no opinion", so the route may default the notes from the
-  // item's chat context, while an explicit '' means the user cleared the
-  // prefilled note and nothing must be written back onto the verifikat.
-  // Keep it `.optional()`, never `.default('')` or a min(1): both would
-  // collapse those two cases into one.
-  notes: z.string().max(2000).optional(),
-  lines: z.array(CreateJournalEntryLineSchema).min(2, 'Minst två rader krävs för dubbel bokföring'),
-  transaction_id: uuid.optional(),
-})
-
 /**
  * Bulk-book selected Underlag (Dokumentinkorgen) against their matched bank
  * transactions. One shared category + VAT treatment is applied to every
@@ -2071,12 +2048,6 @@ export const VatDeclarationQuerySchema = z.object({
   period: z.coerce.number().int().min(1).max(12),
 })
 
-export const ReportPeriodQuerySchema = z.object({
-  fiscal_period_id: uuid.optional(),
-  year: z.coerce.number().int().min(2000).max(2100).optional(),
-  month: z.coerce.number().int().min(1).max(12).optional(),
-})
-
 export const AccountBalancesQuerySchema = z.object({
   accounts: z
     .string()
@@ -2322,71 +2293,6 @@ const BookingProposalCounterpartyTemplateSchema = z.object({
   credit_account: accountNumber,
   vat_treatment: VatTreatmentSchema.nullable(),
   category: TransactionCategorySchema.nullable(),
-})
-
-// Edit payload: the user's edited version of a booking proposal. Used in
-// the /accept endpoint when the user adjusted accounts/VAT before approving.
-export const EditBookingProposalSchema = z.object({
-  lines: z.array(BookingProposalLineSchema).min(2),
-  vat_treatment: VatTreatmentSchema.nullable(),
-  default_private: z.boolean(),
-  counterparty_template_proposal: BookingProposalCounterpartyTemplateSchema.nullable(),
-  fiscal_period_id: uuid,
-  entry_date: isoDate,
-  description: z.string().min(1).max(500),
-})
-
-// For match proposals, editing just means picking a different transaction.
-export const EditMatchProposalSchema = z.object({
-  matched_transaction_id: uuid,
-})
-
-export const AcceptProposalSchema = z.object({
-  version: z.number().int().nonnegative(),
-  edits: z.union([EditBookingProposalSchema, EditMatchProposalSchema]).optional(),
-})
-
-// Change the matched transaction on a pending match proposal without
-// accepting it. Source tells us whether the user picked one of the AI's
-// own alternatives, an AI-regenerated suggestion, or a manually-chosen
-// transaction: kept on edit_diff for learning signal.
-export const ChangeMatchProposalSchema = z.object({
-  version: z.number().int().nonnegative(),
-  matched_transaction_id: uuid,
-  source: z.enum(['user_alternative', 'user_manual', 'ai_regenerated']),
-})
-
-export const RejectProposalSchema = z.object({
-  version: z.number().int().nonnegative(),
-  reason: z.string().max(500).optional(),
-})
-
-export const BatchAcceptSchema = z.object({
-  proposal_ids: z.array(uuid).min(1).max(50),
-})
-
-export const ResolveRequestSchema = z.object({
-  response: z.record(z.string(), z.unknown()).optional(),
-})
-
-export const StartBackfillSchema = z.object({}).strict()
-
-export const RememberLearningSchema = z.object({
-  proposal_id: uuid,
-  counterparty_name: z.string().min(1).max(200),
-  debit_account: accountNumber,
-  credit_account: accountNumber,
-  vat_treatment: VatTreatmentSchema.nullable(),
-  category: TransactionCategorySchema.nullable(),
-})
-
-export const ListProposalsQuerySchema = z.object({
-  status: z
-    .enum(['pending', 'accepted', 'rejected', 'skipped', 'invalidated'])
-    .optional(),
-  step_type: z.enum(['match', 'booking']).optional(),
-  limit: z.coerce.number().int().min(1).max(100).default(20),
-  offset: z.coerce.number().int().min(0).default(0),
 })
 
 export const AttachDocumentSchema = z.object({

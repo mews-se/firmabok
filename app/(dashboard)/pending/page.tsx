@@ -118,8 +118,6 @@ const OPERATION_LABEL_KEYS: Record<string, string> = {
   update_employee: 'type_update_employee',
   set_employee_opening_balances: 'type_set_employee_opening_balances',
   vacation_year_close: 'type_vacation_year_close',
-  submit_vat_declaration: 'type_submit_vat_declaration',
-  submit_agi: 'type_submit_agi',
 }
 
 // Fallback for an operation_type with no entry above (e.g. a newly added op

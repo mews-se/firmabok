@@ -9,17 +9,14 @@
 
 import { NextResponse } from 'next/server'
 import { skills } from '@/extensions/general/mcp-server/skills'
-import { API_V1_VERSION } from '@/lib/api/v1/version'
-import { withPublicSecurityHeaders } from '@/lib/api/v1/security-headers'
-import { getCanonicalBaseUrl } from '@/lib/api/v1/base-url'
+import { withPublicSecurityHeaders } from '@/lib/api/security-headers'
+import { getCanonicalBaseUrl } from '@/lib/api/base-url'
 
 export async function GET(_request: Request) {
   const base = getCanonicalBaseUrl()
 
   const catalogue = {
     schema_version: '1',
-    api_version: API_V1_VERSION,
-    docs_url: `${base}/docs/api`,
     mcp_endpoint: `${base}/api/extensions/ext/mcp-server/mcp`,
     skills: skills.map((s) => ({
       slug: s.slug,

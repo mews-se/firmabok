@@ -7,7 +7,7 @@ import { shouldEnforceMfa } from '@/lib/auth/mfa'
 import { requireCompanyId } from '@/lib/company/context'
 import { getBranding } from '@/lib/branding/service'
 import { isAllowedRedirectUri } from '@/lib/auth/oauth-allowlist'
-import { resolveDiscoveryBaseUrl } from '@/lib/api/v1/base-url'
+import { resolveDiscoveryBaseUrl } from '@/lib/api/base-url'
 import {
   ALL_SCOPES,
   API_KEY_SCOPES,

@@ -63,19 +63,6 @@ describe('commitPendingOperation: capability gate', () => {
     expect(mockHasCapability).toHaveBeenCalledWith(supabase, 'company-1', 'email_send')
   })
 
-  it('blocks submit_vat_declaration when skatteverket is not entitled', async () => {
-    mockHasCapability.mockResolvedValue(false)
-    const { supabase } = createQueuedMockSupabase()
-
-    const op = makePendingOp({ operation_type: 'submit_vat_declaration', params: { period_type: 'monthly', year: 2025, period: 3 } })
-    const result = await commitPendingOperation(supabase as never, 'user-1', 'company-1', op)
-
-    expect(result.status).toBe('failed')
-    expect(result.http_status).toBe(403)
-    expect(result.code).toBe('capability_blocked')
-    expect(mockHasCapability).toHaveBeenCalledWith(supabase, 'company-1', 'skatteverket')
-  })
-
   it('does NOT consult the gate for a free operation type', async () => {
     mockHasCapability.mockResolvedValue(false)
     const { supabase, enqueue } = createQueuedMockSupabase()

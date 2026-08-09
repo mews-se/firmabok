@@ -89,15 +89,12 @@ export const RECOMMENDED_WORKFLOW_LOADOUTS: readonly WorkflowLoadout[] = [
   },
   {
     workflow: 'vat_declaration',
-    description: 'Compute, review, and file the VAT declaration.',
+    description: 'Compute and review the VAT declaration.',
     skill: 'quarterly-vat-review',
     tools: [
       'gnubok_get_vat_report',
       'gnubok_vat_close_check',
       'gnubok_get_general_ledger',
-      'gnubok_vat_declaration_validate',
-      'gnubok_vat_declaration_submit',
-      'gnubok_vat_declaration_status',
       'gnubok_approve_pending_operation',
     ],
   },

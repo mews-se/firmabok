@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { resolveDiscoveryBaseUrl } from '@/lib/api/v1/base-url'
+import { resolveDiscoveryBaseUrl } from '@/lib/api/base-url'
 
 /**
  * RFC 9728: Protected Resource Metadata.

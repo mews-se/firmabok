@@ -321,10 +321,7 @@ export function apiRequestSkipsSessionTimeout(
     return true
   }
 
-  return hasAuthorizationHeader && (
-    pathname.startsWith('/api/v1/') ||
-    pathname.startsWith('/api/extensions/ext/mcp-server/mcp')
-  )
+  return hasAuthorizationHeader && pathname.startsWith('/api/extensions/ext/mcp-server/mcp')
 }
 
 export { SESSION_TIMEOUT_COOKIE }

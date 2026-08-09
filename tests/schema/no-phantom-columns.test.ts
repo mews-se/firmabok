@@ -101,9 +101,11 @@ const UNRESOLVED_CEILING = 375
  * instead of the net silently going slack.
  *
  * Baseline 2026-07-26: 13 734. Re-baselined 2026-08-09 after the payroll and
- * AB-only year-end modules were removed: 12 303.
+ * AB-only year-end modules were removed: 12 303. Re-baselined again the same
+ * day after the REST v1 surface, webhooks, and the disabled extensions were
+ * removed: 9 395.
  */
-const RESOLVED_COLUMN_FLOOR = 12_000
+const RESOLVED_COLUMN_FLOOR = 9_000
 
 let schema: SchemaModel
 let scan: ScanResult

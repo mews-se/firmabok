@@ -97,12 +97,6 @@ export const EXCLUDED_PATHS: Readonly<Record<string, string>> = {}
  *    cadence also sat in crontab.hosted, which is not a small box (the two
  *    files were byte-identical), so it cannot have been a self-hosted
  *    concession. Treated as drift and realigned to daily.
- *  - /api/webhooks/dispatch/cron at "* * * * *" is 1440 requests/day that
- *    self-hosted was not making before. Left at parity anyway: the retry
- *    ladder in lib/webhooks/dispatcher.ts opens with a 60-second first retry,
- *    which a coarser tick would silently stretch, and each tick is one indexed
- *    query that returns immediately when nothing is due. See the load note in
- *    the generated file header.
  */
 export const SCHEDULE_OVERRIDES: Readonly<
   Record<CrontabVariant, Readonly<Record<string, string>>>
@@ -160,13 +154,6 @@ function buildHeader(variant: CrontabVariant): string[] {
     "# image's preset does not enable. Each answers 200 with a no-op body when",
     '# its extension is unconfigured, so an unused one costs a single cheap',
     '# request, and enabling it later needs no crontab change.',
-    '#',
-    '# Load note: /api/webhooks/dispatch/cron runs every minute, 1440 requests a',
-    '# day. Each tick is one indexed query that returns immediately when no',
-    '# delivery is due, and the per-minute cadence is what makes the dispatcher',
-    '# 60-second first retry actually happen after 60 seconds. Change it only',
-    '# through SCHEDULE_OVERRIDES in scripts/generate-crontabs.ts, never by',
-    '# editing this file.',
     '',
   ]
 }

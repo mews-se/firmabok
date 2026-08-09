@@ -13,7 +13,7 @@ import { requireCompanyId } from '@/lib/company/context'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { getErrorMessage as getUserErrorMessage } from '@/lib/errors/get-error-message'
 import { errorResponseFromCode } from '@/lib/errors/get-structured-error'
-import { minimisePayload } from '@/lib/webhooks/handler'
+import { minimisePayload } from '@/lib/events/minimise-payload'
 import { createLogger } from '@/lib/logger'
 
 const log = createLogger('api/events')
@@ -39,16 +39,15 @@ interface EventLogRow {
 }
 
 /**
- * Project a stored event payload through the same minimisation the webhook
- * fan-out applies (lib/webhooks/handler.ts `minimisePayload`).
+ * Project a stored event payload through minimisePayload
+ * (lib/events/minimise-payload.ts).
  *
  * The event_log row stores the emit-site payload minus userId/companyId
  * (lib/events/handlers/event-log-handler.ts `stripMetaFields`), which is a
- * different and narrower projection than the webhook one. Routing the polled
- * rows through minimisePayload keeps the pull surface from ever handing out
- * more than the push surface for the same event, and means a future tightening
- * (e.g. stripping personnummer from payroll payloads) lands in one place for
- * both. GDPR Art.5(1)(c) data minimisation.
+ * different and narrower projection. Routing the polled rows through
+ * minimisePayload means a future tightening (e.g. stripping personnummer
+ * from payroll payloads) lands in one place. GDPR Art.5(1)(c) data
+ * minimisation.
  */
 function minimiseEventData(value: unknown): unknown {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return value
@@ -73,8 +72,8 @@ export async function GET(request: Request) {
   // opt-out: the wrapper is cookie-session only and cannot express the API-key
   // branch. The session branch below still goes through requireAuth(), so MFA
   // (AAL2) stays enforced; the key branch runs the same guards the other two
-  // validateApiKey call sites run (lib/api/v1/with-api-v1.ts,
-  // extensions/general/mcp-server): scope, then company membership.
+  // validateApiKey call site runs (extensions/general/mcp-server): scope,
+  // then company membership.
   let userId: string
   let supabase: SupabaseClient
   // When authenticated via an API key, the key is BOUND to a specific company.

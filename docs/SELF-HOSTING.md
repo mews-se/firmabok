@@ -119,7 +119,7 @@ This starts two containers:
 
 | Container | Purpose |
 |-----------|---------|
-| `app` | Next.js application (`ghcr.io/mews-se/accounted:latest`) |
+| `app` | Next.js application (`ghcr.io/mews-se/firmabok:latest`) |
 | `cron` | Scheduled jobs via [supercronic](https://github.com/aptible/supercronic) |
 
 The cron container waits for the app health check to pass before starting.

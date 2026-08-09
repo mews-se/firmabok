@@ -41,7 +41,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: mews-se/accounted
+  IMAGE_NAME: mews-se/firmabok
 
 jobs:
   scan:

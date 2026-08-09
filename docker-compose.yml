@@ -1,6 +1,6 @@
 services:
   app:
-    image: ghcr.io/mews-se/accounted:${IMAGE_TAG:-latest}
+    image: ghcr.io/mews-se/firmabok:${IMAGE_TAG:-latest}
     env_file: .env
     # Bound to loopback by default: put a TLS-terminating reverse proxy in
     # front (see docker-compose.caddy.yml). Override PORT in .env to change

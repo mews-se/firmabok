@@ -102,7 +102,7 @@ overlay from the same Accounted tag or full commit as the base Compose file:
 ```bash
 ACCOUNTED_REF=replace-with-the-same-tag-or-full-commit
 curl -fsSLo docker-compose.resources.yml \
-  "https://raw.githubusercontent.com/mews-se/accounted/${ACCOUNTED_REF}/docker-compose.resources.yml"
+  "https://raw.githubusercontent.com/mews-se/firmabok/${ACCOUNTED_REF}/docker-compose.resources.yml"
 docker compose -f docker-compose.yml -f docker-compose.resources.yml up -d
 ```
 

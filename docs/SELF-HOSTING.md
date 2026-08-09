@@ -354,6 +354,41 @@ flowchart LR
 
 5. **Reverse proxy** in front of both hosts. The app container and the Supabase `kong` container must share an external Docker network so the proxy can route to them by name.
 
+### Trimming the Supabase stack
+
+At runtime this app only needs `db`, `auth`, `rest`, `realtime`, `storage`
+and `kong`. The rest of the stack can be stopped once setup is done
+(measured idle on a 4-core/4 GB VM):
+
+| Compose service | Idle RAM | Why it can go |
+|---|---|---|
+| `studio` | ~270 MB | dashboard UI — use `psql`, or start it on demand |
+| `meta` | ~160 MB | postgres-meta, only serves studio |
+| `supavisor` | ~230 MB | connection pooler — the app connects through kong |
+| `imgproxy` | ~105 MB | image transforms — previews are served by the app |
+| `functions` | ~95 MB | edge functions, unused by this app |
+
+```bash
+cd <your-supabase-dir>
+docker compose stop studio meta supavisor imgproxy functions
+```
+
+That frees roughly 850 MB, leaving the Supabase side around 1.1 GB. A plain
+`docker compose up -d` (after an upgrade, for instance) starts the trimmed
+services again — repeat the stop afterwards, or bring the stack up with an
+explicit service list.
+
+Kong runs four nginx workers by default; a single worker is plenty for one
+app and shaves off some more. Add to the `kong` service environment:
+
+```bash
+KONG_NGINX_WORKER_PROCESSES=1
+```
+
+With the trim in place, 4 cores/4 GB runs the whole thing comfortably and
+2 cores/3 GB is workable. Building images needs more than that — build
+elsewhere and pull (see Updating above).
+
 ### Synology DSM and Xpenology notes
 
 Run Accounted and Supabase as two separate Container Manager Projects with two

@@ -17,7 +17,8 @@ ensureInitialized()
  * The status CHECK (migration 20260504180000) allows received | error, and
  * nothing in this fork writes 'error' anymore (the extraction pipeline is
  * gone), so 'error' doubles as the parked/dismissed state:
- *   dismiss: received -> error (refused once a terminal link exists)
+ *   dismiss: received -> error (refused once a terminal link exists,
+ *            including the trigger-maintained linked_journal_entry_id)
  *   restore: error -> received
  * Status is the only column written: error_message is left as-is so a legacy
  * failure note survives a dismiss/restore round trip.
@@ -36,6 +37,7 @@ interface InboxItemRow {
   matched_transaction_id: string | null
   created_supplier_invoice_id: string | null
   created_journal_entry_id: string | null
+  linked_journal_entry_id: string | null
   channel_context: Record<string, unknown> | null
 }
 
@@ -50,7 +52,8 @@ export const GET = withRouteContext<{ params: Promise<{ id: string }> }>(
       .select(
         'id, status, source, created_at, document_id, extracted_data, extraction_skipped, ' +
           'error_message, matched_supplier_id, matched_transaction_id, ' +
-          'created_supplier_invoice_id, created_journal_entry_id, channel_context',
+          'created_supplier_invoice_id, created_journal_entry_id, linked_journal_entry_id, ' +
+          'channel_context',
       )
       .eq('id', id)
       .eq('company_id', companyId)
@@ -103,14 +106,25 @@ export const PATCH = withRouteContext<{ params: Promise<{ id: string }> }>(
     if (!validation.success) return validation.response
     const { action } = validation.data
 
-    const { data: item, error } = await supabase
+    const { data, error } = await supabase
       .from('invoice_inbox_items')
       .select(
-        'id, status, created_supplier_invoice_id, created_journal_entry_id, matched_transaction_id',
+        'id, status, created_supplier_invoice_id, created_journal_entry_id, ' +
+          'matched_transaction_id, linked_journal_entry_id',
       )
       .eq('id', id)
       .eq('company_id', companyId)
       .maybeSingle()
+
+    const item = data as unknown as Pick<
+      InboxItemRow,
+      | 'id'
+      | 'status'
+      | 'created_supplier_invoice_id'
+      | 'created_journal_entry_id'
+      | 'matched_transaction_id'
+      | 'linked_journal_entry_id'
+    > | null
 
     if (error) {
       log.error('inbox item fetch failed', error)
@@ -123,7 +137,8 @@ export const PATCH = withRouteContext<{ params: Promise<{ id: string }> }>(
     const handled = !!(
       item.created_supplier_invoice_id ||
       item.created_journal_entry_id ||
-      item.matched_transaction_id
+      item.matched_transaction_id ||
+      item.linked_journal_entry_id
     )
     if (action === 'dismiss' && handled) {
       return errorResponseFromCode('INBOX_ITEM_ALREADY_HANDLED', log, {
@@ -132,6 +147,7 @@ export const PATCH = withRouteContext<{ params: Promise<{ id: string }> }>(
           created_supplier_invoice_id: item.created_supplier_invoice_id,
           created_journal_entry_id: item.created_journal_entry_id,
           matched_transaction_id: item.matched_transaction_id,
+          linked_journal_entry_id: item.linked_journal_entry_id,
         },
       })
     }
@@ -162,10 +178,15 @@ export const PATCH = withRouteContext<{ params: Promise<{ id: string }> }>(
 )
 
 /**
- * DELETE /api/inbox/[id]: permanently remove an inbox item together with its
- * document. Only for items that never became bookkeeping: a terminal-linked
- * item refuses here, and a document attached to a verifikat refuses inside
- * deleteDocument (räkenskapsinformation, BFL 7 kap 2 §). The document goes
+ * DELETE /api/inbox/[id]: permanently remove an inbox item. A document that
+ * never went anywhere dies with the item; a document that reached the
+ * bookkeeping (linked to a verifikat at document or line level) survives —
+ * deleting an inbox row is inbox cleanup, and removing räkenskapsinformation
+ * stays an explicit act in the archive. Items whose CREATED-record pointers
+ * are set refuse here (delete the created record instead). The trigger-
+ * maintained linked_journal_entry_id deliberately does NOT refuse: the row
+ * produced nothing, the verifikat's provenance lives on the surviving
+ * document, so removing the row is plain inbox cleanup. The document goes
  * first so a refusal leaves the item intact and visible.
  */
 export const DELETE = withRouteContext<{ params: Promise<{ id: string }> }>(
@@ -208,9 +229,19 @@ export const DELETE = withRouteContext<{ params: Promise<{ id: string }> }>(
     }
 
     if (item.document_id) {
-      const result = await deleteDocument(supabase, companyId, item.document_id)
-      if (!result.ok && result.reason !== 'not_found') {
-        return NextResponse.json({ error: result.message }, { status: result.status })
+      const { data: doc } = await supabase
+        .from('document_attachments')
+        .select('journal_entry_id, journal_entry_line_id')
+        .eq('id', item.document_id)
+        .eq('company_id', companyId)
+        .maybeSingle()
+
+      const linked = !!(doc && (doc.journal_entry_id || doc.journal_entry_line_id))
+      if (!linked) {
+        const result = await deleteDocument(supabase, companyId, item.document_id)
+        if (!result.ok && result.reason !== 'not_found') {
+          return NextResponse.json({ error: result.message }, { status: result.status })
+        }
       }
     }
 

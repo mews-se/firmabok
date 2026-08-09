@@ -2932,6 +2932,7 @@
     "status_supplier_invoice": "Leverantörsfaktura",
     "status_booked": "Bokförd",
     "status_matched": "Kopplad till transaktion",
+    "status_linked": "Kopplad till verifikat",
     "action_preview": "Förhandsgranska",
     "action_link_voucher": "Koppla till verifikat",
     "action_create_supplier_invoice": "Skapa leverantörsfaktura",

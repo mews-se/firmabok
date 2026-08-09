@@ -138,10 +138,7 @@ export default function InboxDocumentPicker({ open, onClose, journalEntryId, onL
       const res = await fetch(`/api/documents/${item.document_id}/link`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          journal_entry_id: journalEntryId,
-          inbox_item_id: item.inbox_item_id,
-        }),
+        body: JSON.stringify({ journal_entry_id: journalEntryId }),
       })
       if (!res.ok) {
         const json = (await res.json().catch(() => ({}))) as {

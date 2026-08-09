@@ -2932,6 +2932,7 @@
     "status_supplier_invoice": "Supplier invoice",
     "status_booked": "Booked",
     "status_matched": "Matched to transaction",
+    "status_linked": "Linked to voucher",
     "action_preview": "Preview",
     "action_link_voucher": "Link to voucher",
     "action_create_supplier_invoice": "Create supplier invoice",

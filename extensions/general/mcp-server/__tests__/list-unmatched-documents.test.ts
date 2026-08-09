@@ -62,6 +62,9 @@ describe('gnubok_list_unmatched_documents', () => {
     const isCalls = inboxChain.calls.filter((c) => c.method === 'is')
     expect(isCalls).toContainEqual({ method: 'is', args: ['created_supplier_invoice_id', null] })
     expect(isCalls).toContainEqual({ method: 'is', args: ['created_journal_entry_id', null] })
+    expect(isCalls).toContainEqual({ method: 'is', args: ['linked_journal_entry_id', null] })
+    const eqCalls = inboxChain.calls.filter((c) => c.method === 'eq')
+    expect(eqCalls).toContainEqual({ method: 'eq', args: ['status', 'received'] })
     expect(result).toEqual({ items: [], count: 0 })
   })
 

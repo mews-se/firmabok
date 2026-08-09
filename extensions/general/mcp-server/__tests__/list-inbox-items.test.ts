@@ -201,6 +201,66 @@ describe('gnubok_list_inbox_items', () => {
     })
   })
 
+  it('counts a document-level verifikat link as processed and hides it from unprocessed_only', async () => {
+    const { supabase, enqueue } = createQueuedMockSupabase()
+    enqueue({
+      data: [
+        makeInboxItem({ linked_journal_entry_id: 'je-1' }),
+        makeInboxItem({
+          id: '22222222-2222-4222-8222-222222222222',
+          created_at: '2026-07-01T11:00:00Z',
+        }),
+      ],
+      error: null,
+    })
+
+    const result = (await tool.execute(
+      { unprocessed_only: true },
+      'company-1',
+      'user-1',
+      supabase as never,
+    )) as { items: Array<{ id: string }>; count: number }
+
+    expect(result.count).toBe(1)
+    expect(result.items[0].id).toBe('22222222-2222-4222-8222-222222222222')
+  })
+
+  it('exposes linked_journal_entry_id and processed on list rows', async () => {
+    const { supabase, enqueue } = createQueuedMockSupabase()
+    enqueue({ data: [makeInboxItem({ linked_journal_entry_id: 'je-1' })], error: null })
+
+    const result = (await tool.execute({}, 'company-1', 'user-1', supabase as never)) as {
+      items: Array<{ linked_journal_entry_id: string | null; processed: boolean }>
+    }
+
+    expect(result.items[0].linked_journal_entry_id).toBe('je-1')
+    expect(result.items[0].processed).toBe(true)
+  })
+
+  it('hides dismissed items from unprocessed_only', async () => {
+    const { supabase, enqueue } = createQueuedMockSupabase()
+    enqueue({
+      data: [
+        makeInboxItem({ status: 'error' }),
+        makeInboxItem({
+          id: '33333333-3333-4333-8333-333333333333',
+          created_at: '2026-07-01T10:00:00Z',
+        }),
+      ],
+      error: null,
+    })
+
+    const result = (await tool.execute(
+      { unprocessed_only: true },
+      'company-1',
+      'user-1',
+      supabase as never,
+    )) as { items: Array<{ id: string }>; count: number }
+
+    expect(result.count).toBe(1)
+    expect(result.items[0].id).toBe('33333333-3333-4333-8333-333333333333')
+  })
+
   it('supports the legacy timestamp-only cursor form', async () => {
     const query = makeRecordingChain({ data: [], error: null })
     const supabase = { from: vi.fn().mockReturnValue(query.proxy) }

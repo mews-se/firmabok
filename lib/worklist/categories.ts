@@ -98,6 +98,7 @@ export async function countInboxDocuments(
     .is('created_supplier_invoice_id', null)
     .is('created_journal_entry_id', null)
     .is('matched_transaction_id', null)
+    .is('linked_journal_entry_id', null)
     .limit(INBOX_SCAN_CAP)
   if (error) return logAndZero('inbox_document', companyId, error)
 

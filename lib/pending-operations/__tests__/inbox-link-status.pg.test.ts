@@ -242,3 +242,92 @@ describe('commitCreateSupplierInvoiceFromInbox inbox link', () => {
     expect(row.status).toBe('received')
   })
 })
+
+// Migration 20260809220000: document-level linking resolves the inbox row via
+// the sync_inbox_linked_journal_entry trigger on document_attachments, not
+// via app-side stamps. This locks the trigger contract.
+describe('sync_inbox_linked_journal_entry trigger', () => {
+  async function insertDocument(userId: string, companyId: string): Promise<string> {
+    const id = randomUUID()
+    await getPool().query(
+      `INSERT INTO public.document_attachments
+         (id, user_id, company_id, storage_path, file_name, sha256_hash)
+       VALUES ($1, $2, $3, $4, 'underlag.pdf', $5)`,
+      [id, userId, companyId, `documents/${userId}/${id}.pdf`, 'a'.repeat(64)],
+    )
+    return id
+  }
+
+  async function readLinked(inboxId: string): Promise<string | null> {
+    const res = await getPool().query<{ linked_journal_entry_id: string | null }>(
+      `SELECT linked_journal_entry_id FROM public.invoice_inbox_items WHERE id = $1`,
+      [inboxId],
+    )
+    return res.rows[0]!.linked_journal_entry_id
+  }
+
+  it('stamps the inbox row when its document is linked to a verifikat', async () => {
+    const { userId, companyId, fiscalPeriodId } = await seedCompany()
+    const entryId = await insertDraftJournalEntry({ userId, companyId, fiscalPeriodId })
+    const docId = await insertDocument(userId, companyId)
+    const inboxId = await insertInboxItem({ userId, companyId, documentId: docId })
+
+    await getPool().query(
+      `UPDATE public.document_attachments SET journal_entry_id = $1 WHERE id = $2`,
+      [entryId, docId],
+    )
+    expect(await readLinked(inboxId)).toBe(entryId)
+  })
+
+  it('stamps two rows against the same verifikat (non-unique pointer)', async () => {
+    // created_journal_entry_id could not be reused for this: its UNIQUE
+    // constraint (book-direct race guard) breaks on the second document.
+    const { userId, companyId, fiscalPeriodId } = await seedCompany()
+    const entryId = await insertDraftJournalEntry({ userId, companyId, fiscalPeriodId })
+
+    const docA = await insertDocument(userId, companyId)
+    const docB = await insertDocument(userId, companyId)
+    const inboxA = await insertInboxItem({ userId, companyId, documentId: docA })
+    const inboxB = await insertInboxItem({ userId, companyId, documentId: docB })
+
+    await getPool().query(
+      `UPDATE public.document_attachments SET journal_entry_id = $1 WHERE id IN ($2, $3)`,
+      [entryId, docA, docB],
+    )
+    expect(await readLinked(inboxA)).toBe(entryId)
+    expect(await readLinked(inboxB)).toBe(entryId)
+  })
+
+  it('clears the pointer when the link is detached under the delete carve-out', async () => {
+    const { userId, companyId, fiscalPeriodId } = await seedCompany()
+    const entryId = await insertDraftJournalEntry({ userId, companyId, fiscalPeriodId })
+    const docId = await insertDocument(userId, companyId)
+    const inboxId = await insertInboxItem({ userId, companyId, documentId: docId })
+
+    await getPool().query(
+      `UPDATE public.document_attachments SET journal_entry_id = $1 WHERE id = $2`,
+      [entryId, docId],
+    )
+    expect(await readLinked(inboxId)).toBe(entryId)
+
+    // delete_voucher detaches documents via UPDATE under gnubok.allow_delete;
+    // the trigger must hand the row back to "needs action".
+    const client = await getPool().connect()
+    try {
+      await client.query('BEGIN')
+      await client.query(`SELECT set_config('gnubok.allow_delete', 'true', true)`)
+      await client.query(
+        `UPDATE public.document_attachments SET journal_entry_id = NULL WHERE id = $1`,
+        [docId],
+      )
+      const inTxn = await client.query<{ linked_journal_entry_id: string | null }>(
+        `SELECT linked_journal_entry_id FROM public.invoice_inbox_items WHERE id = $1`,
+        [inboxId],
+      )
+      expect(inTxn.rows[0]!.linked_journal_entry_id).toBeNull()
+      await client.query('ROLLBACK')
+    } finally {
+      client.release()
+    }
+  })
+})

@@ -17,9 +17,10 @@ import { cn, formatDate } from '@/lib/utils'
 import { BookOpen, Loader2, Search } from 'lucide-react'
 
 // Pick an existing verifikat and link the inbox item's document to it via
-// POST /api/documents/[id]/link, which also stamps
-// invoice_inbox_items.created_journal_entry_id so the item leaves the active
-// inbox (the route's existing inbox_item_id lifecycle).
+// POST /api/documents/[id]/link. The DB sync trigger on
+// document_attachments.journal_entry_id stamps
+// invoice_inbox_items.linked_journal_entry_id, so the item leaves the active
+// inbox without this client doing anything inbox-specific.
 
 interface VoucherRow {
   id: string
@@ -81,10 +82,7 @@ export default function InboxLinkVoucherDialog({ open, item, onClose, onLinked }
       const res = await fetch(`/api/documents/${item.document_id}/link`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          journal_entry_id: entry.id,
-          inbox_item_id: item.id,
-        }),
+        body: JSON.stringify({ journal_entry_id: entry.id }),
       })
       if (!res.ok) {
         const json = await res.json().catch(() => null)

@@ -11,23 +11,24 @@ ensureInitialized()
 /**
  * POST /api/documents/[id]/link: link a document to a journal entry.
  *
- * Body: { journal_entry_id: string, journal_entry_line_id?: string, inbox_item_id?: string, transaction_id?: string }
+ * Body: { journal_entry_id: string, journal_entry_line_id?: string, transaction_id?: string }
  *
- * When `inbox_item_id` is supplied (the "choose from inbox" flow), the inbox
- * item is stamped with the verifikat id after a successful link so it drops out
- * of the active inbox into "Bokförda": reusing the inbox's own
- * created_journal_entry_id lifecycle. The document link is the legally-relevant
- * write and happens first; the inbox stamp is operational housekeeping, so a
- * stamp failure is logged but does not fail the request (the doc is correctly
- * attached and the DB immutability trigger still blocks any double-link).
+ * The inbox side needs no work here: the sync trigger on
+ * document_attachments.journal_entry_id (migration 20260809220000) stamps
+ * invoice_inbox_items.linked_journal_entry_id atomically with the link, so
+ * the owning inbox item drops out of the active inbox regardless of which
+ * caller performed the link. (The route used to stamp
+ * created_journal_entry_id itself when the client passed inbox_item_id, but
+ * that pointer is UNIQUE for the book-direct race guard and rejected the
+ * second document linked to the same verifikat.)
  *
  * When `transaction_id` is supplied (booking-flow callers that link underlag
  * right after booking a bank transaction), the doc is also pinned to the
  * transaction row (transactions.document_id) so the /transactions list shows
  * the underlag indicator. Only set when the tx has no pin yet: first linked
  * doc wins, and an existing räkenskapsinformation pin is never swapped (which
- * would trip the immutability trigger). Same best-effort posture as the inbox
- * stamp: a failure is logged but does not fail the request.
+ * would trip the immutability trigger). Best-effort: a pin failure is logged
+ * but does not fail the request (the doc link is the legally-relevant write).
  */
 export const POST = withRouteContext(
   'document.link',
@@ -58,34 +59,6 @@ export const POST = withRouteContext(
         body.journal_entry_id,
         body.journal_entry_line_id,
       )
-
-      if (body.inbox_item_id) {
-        const { data: stamped, error: inboxError } = await supabase
-          .from('invoice_inbox_items')
-          .update({ created_journal_entry_id: body.journal_entry_id })
-          .eq('id', body.inbox_item_id)
-          .eq('company_id', companyId!)
-          // Only stamp the inbox item that actually owns this document: a
-          // mismatched pairing becomes a safe no-op rather than mis-marking an
-          // unrelated item as consumed.
-          .eq('document_id', id)
-          .select('id')
-        if (inboxError) {
-          // Non-fatal: the verifikat ↔ underlag link already succeeded.
-          opLog.warn('inbox item stamp after link failed', {
-            inboxItemId: body.inbox_item_id,
-            reason: getUserErrorMessage(inboxError),
-          })
-        } else if (!stamped || stamped.length === 0) {
-          // Zero rows updated means the supplied inbox_item_id / document_id
-          // pairing did not match (wrong company, wrong document, or a stale
-          // id). The doc link itself still succeeded; surface the cross-resource
-          // mismatch as an observable warning rather than silently ignoring it.
-          opLog.warn('inbox item stamp matched no rows (cross-resource mismatch)', {
-            inboxItemId: body.inbox_item_id,
-          })
-        }
-      }
 
       if (body.transaction_id) {
         const { error: pinError } = await supabase

@@ -7306,13 +7306,13 @@ export const tools: McpTool[] = [
   {
     name: 'gnubok_list_inbox_items',
     title: 'List Inbox Items',
-    description: 'List document inbox items, including each original file_name. `processed` covers all terminal links (transaction, supplier invoice, journal entry); booked receipts count as done. unprocessed_only=true returns docs still needing handling.',
+    description: 'List document inbox items, including each original file_name. `processed` covers every terminal link (transaction, supplier invoice, journal entry — created or document-linked). unprocessed_only=true returns docs still needing handling; dismissed items excluded.',
     inputSchema: {
       type: 'object',
       additionalProperties: false,
       properties: {
-        status: { type: 'string', enum: ['received', 'error'], description: 'Filter by status' },
-        unprocessed_only: { type: 'boolean', description: 'When true, only return items with no terminal link yet (not matched to a transaction, supplier invoice, or journal entry), i.e. documents that still need handling. Default false.' },
+        status: { type: 'string', enum: ['received', 'error'], description: 'Filter by status (error doubles as the dismissed/parked state)' },
+        unprocessed_only: { type: 'boolean', description: 'When true, only return items with no terminal link yet (not matched to a transaction, supplier invoice, or journal entry, and not linked to a verifikat at document level) that are not dismissed, i.e. documents that still need handling. Default false.' },
         limit: { type: 'number', description: 'Max results (default 20, max 50)' },
         cursor: {
           type: 'string',
@@ -7383,7 +7383,8 @@ export const tools: McpTool[] = [
         .select(`
           id, status, source, created_at, extracted_data, matched_supplier_id,
           matched_transaction_id, created_supplier_invoice_id, created_journal_entry_id,
-          email_from, email_subject, error_message, document_attachments(file_name)
+          linked_journal_entry_id, email_from, email_subject, error_message,
+          document_attachments(file_name)
         `)
         .eq('company_id', companyId)
         .order('created_at', { ascending: false })
@@ -7420,14 +7421,17 @@ export const tools: McpTool[] = [
         }
 
         // An item is "processed" once it has ANY terminal link: matched to a
-        // bank transaction, converted to a supplier invoice, or booked
-        // directly to a journal entry. Surfacing only the supplier fields
-        // (as before) made receipts booked against bank transactions look
-        // loose: and risked the agent flagging them as duplicates.
+        // bank transaction, converted to a supplier invoice, booked directly
+        // to a journal entry, or its document linked to an existing verifikat
+        // (the trigger-maintained linked_journal_entry_id). Surfacing only
+        // the supplier fields (as before) made receipts booked against bank
+        // transactions look loose: and risked the agent flagging them as
+        // duplicates.
         const processed = !!(
           item.matched_transaction_id ||
           item.created_supplier_invoice_id ||
-          item.created_journal_entry_id
+          item.created_journal_entry_id ||
+          item.linked_journal_entry_id
         )
 
         return {
@@ -7444,13 +7448,18 @@ export const tools: McpTool[] = [
           matched_transaction_id: item.matched_transaction_id,
           created_supplier_invoice_id: item.created_supplier_invoice_id,
           created_journal_entry_id: item.created_journal_entry_id,
+          linked_journal_entry_id: item.linked_journal_entry_id,
           email_from: item.email_from,
           email_subject: item.email_subject,
           error_message: item.error_message,
         }
       })
 
-      const filtered = unprocessedOnly ? mapped.filter((i) => !i.processed) : mapped
+      // Dismissed items (status='error') are parked by the user: needing no
+      // handling is the whole point of dismissing.
+      const filtered = unprocessedOnly
+        ? mapped.filter((i) => !i.processed && i.status !== 'error')
+        : mapped
       const items = filtered.slice(0, limit)
 
       // A full returned page continues after its last item. When client-side
@@ -7912,19 +7921,22 @@ export const tools: McpTool[] = [
         }
       }
 
-      // Pull recent inbox items with a document, no supplier invoice and no
-      // direct journal entry yet (both are terminal links per the same
-      // "processed" semantics gnubok_list_inbox_items uses), then filter out
-      // those whose document is already pinned to a transaction.
+      // Pull recent non-dismissed inbox items with a document, no supplier
+      // invoice, no direct journal entry and no document-level verifikat link
+      // yet (all are terminal links per the same "processed" semantics
+      // gnubok_list_inbox_items uses), then filter out those whose document
+      // is already pinned to a transaction.
       // Two-step query because PostgREST doesn't expose anti-joins.
       const fetchSize = limit * 2
       let inboxQuery = supabase
         .from('invoice_inbox_items')
         .select('id, document_id, source, email_from, email_subject, email_received_at, extracted_data, created_at')
         .eq('company_id', companyId)
+        .eq('status', 'received')
         .not('document_id', 'is', null)
         .is('created_supplier_invoice_id', null)
         .is('created_journal_entry_id', null)
+        .is('linked_journal_entry_id', null)
         .order('created_at', { ascending: false })
         .order('id', { ascending: false })
         .limit(fetchSize)

@@ -25,7 +25,12 @@ vi.mock('@/lib/init', () => ({
   ensureInitialized: vi.fn(),
 }))
 
-import { GET, PATCH } from '../route'
+const deleteDocumentMock = vi.fn()
+vi.mock('@/lib/core/documents/document-service', () => ({
+  deleteDocument: (...args: unknown[]) => deleteDocumentMock(...args),
+}))
+
+import { GET, PATCH, DELETE } from '../route'
 
 const mockUser = { id: 'user-1', email: 'test@test.se' }
 const routeParams = createMockRouteParams({ id: 'inbox-1' })
@@ -51,6 +56,7 @@ function makeItem(overrides: Record<string, unknown> = {}) {
     matched_transaction_id: null,
     created_supplier_invoice_id: null,
     created_journal_entry_id: null,
+    linked_journal_entry_id: null,
     channel_context: null,
     ...overrides,
   }
@@ -132,6 +138,17 @@ describe('PATCH /api/inbox/[id]', () => {
     expect(body.error.code).toBe('INBOX_ITEM_ALREADY_HANDLED')
   })
 
+  it('refuses to dismiss an item whose document is linked to a verifikat', async () => {
+    enqueue({ data: makeItem({ linked_journal_entry_id: 'je-1' }) })
+    const res = await PATCH(
+      createMockRequest('/api/inbox/inbox-1', { method: 'PATCH', body: { action: 'dismiss' } }),
+      routeParams,
+    )
+    const { status, body } = await parseJsonResponse<{ error: { code: string } }>(res)
+    expect(status).toBe(409)
+    expect(body.error.code).toBe('INBOX_ITEM_ALREADY_HANDLED')
+  })
+
   it('dismiss parks the item as status=error', async () => {
     enqueue({ data: makeItem() })
     enqueue({ data: { id: 'inbox-1', status: 'error' } })
@@ -174,5 +191,80 @@ describe('PATCH /api/inbox/[id]', () => {
     expect(status).toBe(200)
     expect(body.data.status).toBe('error')
     expect(findCalls('invoice_inbox_items', 'update')).toEqual([])
+  })
+})
+
+describe('DELETE /api/inbox/[id]', () => {
+  const del = () =>
+    DELETE(createMockRequest('/api/inbox/inbox-1', { method: 'DELETE' }), routeParams)
+
+  it('returns 404 when the item does not exist', async () => {
+    enqueue({ data: null })
+    const res = await del()
+    const { status, body } = await parseJsonResponse<{ error: { code: string } }>(res)
+    expect(status).toBe(404)
+    expect(body.error.code).toBe('INBOX_ITEM_NOT_FOUND')
+    expect(deleteDocumentMock).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    ['created_supplier_invoice_id', { created_supplier_invoice_id: 'si-1' }],
+    ['created_journal_entry_id', { created_journal_entry_id: 'je-1' }],
+    ['matched_transaction_id', { matched_transaction_id: 'tx-1' }],
+  ])('refuses when %s is set', async (_label, overrides) => {
+    enqueue({ data: makeItem(overrides) })
+    const res = await del()
+    const { status, body } = await parseJsonResponse<{ error: { code: string } }>(res)
+    expect(status).toBe(409)
+    expect(body.error.code).toBe('INBOX_ITEM_ALREADY_HANDLED')
+    expect(deleteDocumentMock).not.toHaveBeenCalled()
+  })
+
+  it('deletes the row and its never-used document', async () => {
+    enqueue({ data: makeItem() })
+    enqueue({ data: { journal_entry_id: null, journal_entry_line_id: null } }) // doc link check
+    enqueue({ data: null }) // row delete
+    deleteDocumentMock.mockResolvedValue({ ok: true, document: { id: 'doc-1', file_name: 'x.pdf' } })
+
+    const res = await del()
+    const { status, body } = await parseJsonResponse<{ data: { deleted: boolean } }>(res)
+
+    expect(status).toBe(200)
+    expect(body.data.deleted).toBe(true)
+    expect(deleteDocumentMock).toHaveBeenCalledWith(expect.anything(), 'company-1', 'doc-1')
+  })
+
+  it('deletes the row but preserves a verifikat-linked document', async () => {
+    // Trigger-maintained linked_journal_entry_id does not refuse: the row is
+    // inbox cleanup, the document lives on as räkenskapsinformation.
+    enqueue({ data: makeItem({ linked_journal_entry_id: 'je-1' }) })
+    enqueue({ data: { journal_entry_id: 'je-1', journal_entry_line_id: null } }) // doc link check
+    enqueue({ data: null }) // row delete
+
+    const res = await del()
+    const { status, body } = await parseJsonResponse<{ data: { deleted: boolean } }>(res)
+
+    expect(status).toBe(200)
+    expect(body.data.deleted).toBe(true)
+    expect(deleteDocumentMock).not.toHaveBeenCalled()
+  })
+
+  it('keeps the item when the document refuses deletion', async () => {
+    // Race: the document got linked between the route's check and the delete;
+    // deleteDocument's own guard still refuses and the row must survive.
+    enqueue({ data: makeItem() })
+    enqueue({ data: { journal_entry_id: null, journal_entry_line_id: null } }) // doc link check
+    deleteDocumentMock.mockResolvedValue({
+      ok: false,
+      reason: 'linked_to_entry',
+      status: 409,
+      message: 'Underlaget är knutet till en verifikation och utgör räkenskapsinformation.',
+    })
+
+    const res = await del()
+    const { status } = await parseJsonResponse(res)
+
+    expect(status).toBe(409)
+    expect(findCalls('invoice_inbox_items', 'delete')).toEqual([])
   })
 })

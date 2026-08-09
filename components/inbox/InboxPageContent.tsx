@@ -59,6 +59,7 @@ export interface InboxListItem {
   matched_transaction_id: string | null
   created_supplier_invoice_id: string | null
   created_journal_entry_id: string | null
+  linked_journal_entry_id: string | null
   supplier_name: string | null
   amount: number | null
   currency: string | null
@@ -240,6 +241,9 @@ export default function InboxPageContent() {
     if (item.matched_transaction_id) {
       return <span className="text-xs text-muted-foreground">{t('status_matched')}</span>
     }
+    if (item.linked_journal_entry_id) {
+      return <span className="text-xs text-muted-foreground">{t('status_linked')}</span>
+    }
     if (item.status === 'error') {
       return (
         <Badge variant="outline" className="font-normal" title={item.error_message ?? undefined}>
@@ -258,7 +262,8 @@ export default function InboxPageContent() {
     item.status === 'received' &&
     !item.created_supplier_invoice_id &&
     !item.created_journal_entry_id &&
-    !item.matched_transaction_id
+    !item.matched_transaction_id &&
+    !item.linked_journal_entry_id
 
   return (
     <div className="space-y-8">
@@ -349,7 +354,8 @@ export default function InboxPageContent() {
               {items.map((item) => {
                 const pending = isPending(item)
                 const dismissed = item.status === 'error' && !item.created_supplier_invoice_id &&
-                  !item.created_journal_entry_id && !item.matched_transaction_id
+                  !item.created_journal_entry_id && !item.matched_transaction_id &&
+                  !item.linked_journal_entry_id
                 const primaryLabel =
                   item.supplier_name || item.file_name || t('no_document')
                 const busy = actioningId === item.id

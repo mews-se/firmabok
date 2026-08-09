@@ -1938,7 +1938,6 @@ export const AttachDocumentSchema = z.object({
 export const LinkDocumentSchema = z.object({
   journal_entry_id: uuid,
   journal_entry_line_id: uuid.optional(),
-  inbox_item_id: uuid.optional(),
   transaction_id: uuid.optional(),
 })
 

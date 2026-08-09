@@ -16,10 +16,14 @@ ensureInitialized()
  * Status model (see migration 20260504180000): the status CHECK allows
  * received | error. An item is HANDLED once any terminal link is set
  * (created_supplier_invoice_id, created_journal_entry_id,
- * matched_transaction_id): the same "processed" semantics the MCP server's
- * gnubok_list_inbox_items uses. status='error' doubles as the parked/dismissed
- * state: nothing in this fork writes 'error' anymore (the extraction pipeline
- * was removed), so the human dismiss action reuses it via PATCH /api/inbox/[id].
+ * matched_transaction_id, linked_journal_entry_id): the same "processed"
+ * semantics the MCP server's gnubok_list_inbox_items uses.
+ * linked_journal_entry_id is trigger-maintained (migration 20260809220000):
+ * it follows document_attachments.journal_entry_id, so linking the item's
+ * document to a verifikat through ANY path resolves the row. status='error'
+ * doubles as the parked/dismissed state: nothing in this fork writes 'error'
+ * anymore (the extraction pipeline was removed), so the human dismiss action
+ * reuses it via PATCH /api/inbox/[id].
  *
  * Query params:
  *   status: 'pending' (default) | 'handled' | 'all'
@@ -39,6 +43,7 @@ interface InboxRow {
   matched_transaction_id: string | null
   created_supplier_invoice_id: string | null
   created_journal_entry_id: string | null
+  linked_journal_entry_id: string | null
 }
 
 interface DocRow {
@@ -51,7 +56,7 @@ interface DocRow {
 const INBOX_COLUMNS =
   'id, status, source, created_at, document_id, extracted_data, extraction_skipped, ' +
   'error_message, matched_supplier_id, matched_transaction_id, ' +
-  'created_supplier_invoice_id, created_journal_entry_id'
+  'created_supplier_invoice_id, created_journal_entry_id, linked_journal_entry_id'
 
 export const GET = withRouteContext('inbox.list', async (request, ctx) => {
   const { supabase, companyId, log, requestId } = ctx
@@ -77,11 +82,13 @@ export const GET = withRouteContext('inbox.list', async (request, ctx) => {
       .is('created_supplier_invoice_id', null)
       .is('created_journal_entry_id', null)
       .is('matched_transaction_id', null)
+      .is('linked_journal_entry_id', null)
   } else if (statusFilter === 'handled') {
     // Complement of pending: any terminal link, or parked/dismissed.
     query = query.or(
       'status.eq.error,created_supplier_invoice_id.not.is.null,' +
-        'created_journal_entry_id.not.is.null,matched_transaction_id.not.is.null',
+        'created_journal_entry_id.not.is.null,matched_transaction_id.not.is.null,' +
+        'linked_journal_entry_id.not.is.null',
     )
   }
 
@@ -128,6 +135,7 @@ export const GET = withRouteContext('inbox.list', async (request, ctx) => {
       matched_transaction_id: row.matched_transaction_id,
       created_supplier_invoice_id: row.created_supplier_invoice_id,
       created_journal_entry_id: row.created_journal_entry_id,
+      linked_journal_entry_id: row.linked_journal_entry_id,
       // Optional extraction summary; null for documents that are not
       // invoice-shaped (contracts, letters) or not yet extracted.
       supplier_name: ex?.supplier?.name ?? null,

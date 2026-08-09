@@ -92,10 +92,9 @@ describe('POST /api/documents/[id]/link', () => {
     expect(mockSupabase.from).not.toHaveBeenCalled()
   })
 
-  it('links the document and stamps the inbox item when inbox_item_id is given', async () => {
+  it('links the document without touching invoice_inbox_items (the DB trigger owns the pointer)', async () => {
     enqueue({ data: { id: 'je-1' } }) // journal entry company check
     enqueue({ data: { id: 'doc-1', journal_entry_id: 'je-1', file_name: 'x.pdf' } }) // link update
-    enqueue({ data: null }) // inbox stamp update
 
     const res = await POST(
       makeReq({ journal_entry_id: JE_ID, inbox_item_id: INBOX_ID }),
@@ -106,7 +105,9 @@ describe('POST /api/documents/[id]/link', () => {
     expect(status).toBe(200)
     expect(body.data.id).toBe('doc-1')
     expect(mockSupabase.from).toHaveBeenCalledWith('document_attachments')
-    expect(mockSupabase.from).toHaveBeenCalledWith('invoice_inbox_items')
+    // inbox_item_id is an unknown field now: zod strips it, and the
+    // sync_inbox_linked_journal_entry trigger stamps the row instead.
+    expect(mockSupabase.from).not.toHaveBeenCalledWith('invoice_inbox_items')
   })
 
   it('does not touch the inbox when no inbox_item_id is given', async () => {

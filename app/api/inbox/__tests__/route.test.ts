@@ -119,6 +119,7 @@ describe('GET /api/inbox', () => {
     expect(isCalls).toContainEqual(['created_supplier_invoice_id', null])
     expect(isCalls).toContainEqual(['created_journal_entry_id', null])
     expect(isCalls).toContainEqual(['matched_transaction_id', null])
+    expect(isCalls).toContainEqual(['linked_journal_entry_id', null])
   })
 
   it('skips the pending predicate for status=all', async () => {

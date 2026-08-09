@@ -91,6 +91,7 @@ type NavLabelKey =
   | 'articles'
   | 'supplier_invoices'
   | 'suppliers'
+  | 'invoice_inbox'
   | 'review'
   | 'bookkeeping'
   | 'chart_of_accounts'
@@ -161,6 +162,7 @@ const navItems: NavItem[] = [
   // Arbeta: everything the user produces, bookkeeping funnel first
   // (Bokföring · Underlag · Granskning), then the transactional flows.
   { href: '/bookkeeping', labelKey: 'bookkeeping', icon: BookOpen, group: 'arbeta' },
+  { href: '/inbox', labelKey: 'invoice_inbox', icon: Inbox, group: 'arbeta' },
   { href: '/pending', labelKey: 'review', icon: ClipboardCheck, group: 'arbeta' },
   { href: '/invoices', labelKey: 'invoices', icon: ReceiptText, group: 'arbeta' },
   { href: '/supplier-invoices', labelKey: 'supplier_invoices', icon: Wallet, group: 'arbeta' },

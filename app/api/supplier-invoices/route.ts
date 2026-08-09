@@ -19,7 +19,8 @@ import {
 } from '@/lib/currency/supplier-invoice-rate'
 import { roundOre } from '@/lib/money'
 import { linkToJournalEntry } from '@/lib/core/documents/document-service'
-import type { SupplierInvoice, SupplierInvoiceItem } from '@/types'
+import { renderChannelContextNotes } from '@/lib/documents/channel-context-notes'
+import type { InboxChannelContext, SupplierInvoice, SupplierInvoiceItem } from '@/types'
 import { getErrorMessage as getUserErrorMessage } from '@/lib/errors/get-error-message'
 
 ensureInitialized()
@@ -76,11 +77,50 @@ export const POST = withRouteContext(
     const body = validation.data
     const paidPrivately = body.paid_with_private_funds === true
 
-    if (body.document_id) {
+    // Inbox conversion (the core Underlag flow, mirroring the removed
+    // extension's convert route and the MCP create_supplier_invoice_from_inbox
+    // executor): the document comes from the inbox item, and the item is
+    // stamped with created_supplier_invoice_id after a successful create.
+    interface InboxConversionRow {
+      id: string
+      document_id: string | null
+      created_supplier_invoice_id: string | null
+      channel_context: InboxChannelContext | null
+    }
+    let inboxItem: InboxConversionRow | null = null
+    if (body.inbox_item_id) {
+      const { data: inboxRow, error: inboxError } = await supabase
+        .from('invoice_inbox_items')
+        .select('id, document_id, created_supplier_invoice_id, channel_context')
+        .eq('id', body.inbox_item_id)
+        .eq('company_id', companyId)
+        .maybeSingle()
+
+      if (inboxError) {
+        log.error('supplier invoice inbox item lookup failed', inboxError)
+        return errorResponse(inboxError, log, { requestId })
+      }
+      if (!inboxRow) {
+        return errorResponseFromCode('INBOX_ITEM_NOT_FOUND', log, { requestId })
+      }
+      if (inboxRow.created_supplier_invoice_id) {
+        return errorResponseFromCode('INBOX_ITEM_ALREADY_HANDLED', log, {
+          requestId,
+          details: { created_supplier_invoice_id: inboxRow.created_supplier_invoice_id },
+        })
+      }
+      inboxItem = inboxRow as unknown as InboxConversionRow
+    }
+
+    // Effective underlag: an explicitly supplied document wins; the inbox
+    // item's document fills in for the conversion flow.
+    const documentId = body.document_id || inboxItem?.document_id || null
+
+    if (documentId) {
       const { data: document, error: documentError } = await supabase
         .from('document_attachments')
         .select('id, journal_entry_id')
-        .eq('id', body.document_id)
+        .eq('id', documentId)
         .eq('company_id', companyId)
         .maybeSingle()
 
@@ -95,7 +135,7 @@ export const POST = withRouteContext(
         .from('supplier_invoices')
         .select('id')
         .eq('company_id', companyId)
-        .eq('document_id', body.document_id)
+        .eq('document_id', documentId)
         .limit(1)
         .maybeSingle()
 
@@ -188,8 +228,8 @@ export const POST = withRouteContext(
 
     // Resolve the exchange rate BEFORE the arrival-number sequence is touched:
     // a foreign invoice we cannot translate must not burn an ankomstnummer.
-    // Shared with the v1 REST route and the inbox convert route so all three
-    // write paths apply the same currency policy (lib/currency/supplier-invoice-rate.ts).
+    // Shared with the MCP conversion executor so both write paths apply the
+    // same currency policy (lib/currency/supplier-invoice-rate.ts).
     const fx = await resolveSupplierInvoiceExchangeRate(supabase, {
       currency: body.currency,
       invoiceDate: body.invoice_date,
@@ -307,7 +347,7 @@ export const POST = withRouteContext(
         user_id: user.id,
         company_id: companyId,
         supplier_id: body.supplier_id,
-        document_id: body.document_id || null,
+        document_id: documentId,
         arrival_number: arrivalNum,
         supplier_invoice_number: body.supplier_invoice_number,
         invoice_date: body.invoice_date,
@@ -332,7 +372,14 @@ export const POST = withRouteContext(
         paid_amount: paidPrivately ? totalRounded : 0,
         remaining_amount: paidPrivately ? 0 : totalRounded,
         paid_at: paidPrivately ? new Date().toISOString() : null,
-        notes: body.notes || null,
+        // Chat-sourced inbox items: when the request carries NO notes field at
+        // all, default to the rendered chat context so verified human answers
+        // reach the leverantörsfaktura. Presence decides, not truthiness:
+        // notes: "" is an explicit clear (same rule as the old convert route).
+        notes:
+          body.notes === undefined
+            ? (inboxItem ? renderChannelContextNotes(inboxItem.channel_context) : null)
+            : body.notes.trim() || null,
         // Display-only öresavrundning override; null = off (no retroactive rounding).
         ore_rounding: body.ore_rounding ?? null,
         // Dimensions PR7: invoice-level bag; generators apply it to every line.
@@ -581,23 +628,52 @@ export const POST = withRouteContext(
     }
 
     const primaryJournalEntryId = paymentJournalEntryId || registrationJournalEntryId
-    if (body.document_id && primaryJournalEntryId) {
+    if (documentId && primaryJournalEntryId) {
       try {
         await linkToJournalEntry(
           supabase,
           companyId,
-          body.document_id,
+          documentId,
           primaryJournalEntryId,
         )
       } catch (err) {
         log.warn('supplier invoice document could not be linked to journal entry', {
-          documentId: body.document_id,
+          documentId,
           journalEntryId: primaryJournalEntryId,
           error: err instanceof Error ? err.message : String(err),
         })
         warnings.push({
           code: 'DOCUMENT_LINK_FAILED',
           message: 'Fakturan registrerades, men underlaget kunde inte kopplas till verifikationen.',
+        })
+      }
+    }
+
+    if (inboxItem) {
+      // Stamp AFTER the invoice (and its booking) exists so a rollback above
+      // never leaves a consumed-looking inbox item. Only the link column is
+      // written: the status CHECK allows received | error, so writing a
+      // "confirmed" status would reject the whole UPDATE (see
+      // lib/pending-operations/commit.ts). The .is-null guard makes a
+      // concurrent conversion lose cleanly instead of overwriting.
+      const { data: stamped, error: stampError } = await supabase
+        .from('invoice_inbox_items')
+        .update({ created_supplier_invoice_id: invoice.id })
+        .eq('id', inboxItem.id)
+        .eq('company_id', companyId)
+        .is('created_supplier_invoice_id', null)
+        .select('id')
+
+      if (stampError || !stamped || stamped.length === 0) {
+        log.warn('inbox item stamp after supplier invoice create failed', {
+          inboxItemId: inboxItem.id,
+          supplierInvoiceId: invoice.id,
+          error: stampError?.message ?? 'no rows updated',
+        })
+        warnings.push({
+          code: 'INBOX_LINK_FAILED',
+          message:
+            'Fakturan registrerades, men underlaget kunde inte markeras som hanterat i inkorgen.',
         })
       }
     }

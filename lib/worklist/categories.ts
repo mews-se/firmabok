@@ -91,6 +91,9 @@ export async function countInboxDocuments(
     .from('invoice_inbox_items')
     .select('id, document_id')
     .eq('company_id', companyId)
+    // status='error' is the parked/dismissed state (nothing produces real
+    // errors in this fork); dismissed items must not count as "att göra".
+    .eq('status', 'received')
     .not('document_id', 'is', null)
     .is('created_supplier_invoice_id', null)
     .is('created_journal_entry_id', null)

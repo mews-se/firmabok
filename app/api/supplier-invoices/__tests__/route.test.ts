@@ -7,7 +7,7 @@ import {
   makeSupplier,
 } from '@/tests/helpers'
 
-const { supabase: mockSupabase, enqueue, reset } = createQueuedMockSupabase()
+const { supabase: mockSupabase, enqueue, reset, findCall } = createQueuedMockSupabase()
 vi.mock('@/lib/supabase/server', () => ({
   createClient: () => Promise.resolve(mockSupabase),
 }))
@@ -1140,5 +1140,139 @@ describe('POST /api/supplier-invoices: exchange rate + SEK amounts', () => {
 
     expect(status).toBe(200)
     expect(supplierInvoiceInsert()!.exchange_rate).toBe(99999.99)
+  })
+})
+
+describe('POST /api/supplier-invoices: inbox conversion (inbox_item_id)', () => {
+  const mockUser = { id: 'user-1', email: 'test@test.se' }
+  const INBOX_UUID = '550e8400-e29b-41d4-a716-446655440099'
+
+  function body(overrides: Record<string, unknown> = {}) {
+    return {
+      supplier_id: VALID_UUID,
+      inbox_item_id: INBOX_UUID,
+      supplier_invoice_number: 'LF-INBOX',
+      invoice_date: '2024-06-01',
+      due_date: '2024-07-01',
+      items: [
+        { description: 'Material', amount: 1000, account_number: '4010', vat_rate: 0.25 },
+      ],
+      ...overrides,
+    }
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    reset()
+    eventBus.clear()
+    mockSupabase.auth.getUser.mockResolvedValue({ data: { user: mockUser } })
+  })
+
+  it('returns 404 when the inbox item does not exist', async () => {
+    enqueue({ data: null }) // inbox item lookup
+
+    const response = await POST(
+      createMockRequest('/api/supplier-invoices', { method: 'POST', body: body() }),
+    )
+    const { status, body: resBody } = await parseJsonResponse<{ error: { code: string } }>(response)
+
+    expect(status).toBe(404)
+    expect(resBody.error.code).toBe('INBOX_ITEM_NOT_FOUND')
+  })
+
+  it('returns 409 when the inbox item is already converted', async () => {
+    enqueue({
+      data: {
+        id: INBOX_UUID,
+        document_id: 'doc-1',
+        created_supplier_invoice_id: 'si-old',
+        channel_context: null,
+      },
+    })
+
+    const response = await POST(
+      createMockRequest('/api/supplier-invoices', { method: 'POST', body: body() }),
+    )
+    const { status, body: resBody } = await parseJsonResponse<{ error: { code: string } }>(response)
+
+    expect(status).toBe(409)
+    expect(resBody.error.code).toBe('INBOX_ITEM_ALREADY_HANDLED')
+  })
+
+  it('sources the document from the item and stamps it after a successful create', async () => {
+    // Inbox item lookup
+    enqueue({
+      data: {
+        id: INBOX_UUID,
+        document_id: 'doc-1',
+        created_supplier_invoice_id: null,
+        channel_context: null,
+      },
+    })
+    // Document validity check (unlinked, current)
+    enqueue({ data: { id: 'doc-1', journal_entry_id: null } })
+    // No supplier invoice already uses the document
+    enqueue({ data: null })
+    // Supplier lookup
+    enqueue({ data: makeSupplier({ id: VALID_UUID }), error: null })
+    // get_next_arrival_number
+    enqueue({ data: 9 })
+    // Insert invoice
+    enqueue({ data: makeSupplierInvoice({ id: 'si-new' }), error: null })
+    // Insert items
+    enqueue({ data: [], error: null })
+    // Company settings: cash method, no registration JE
+    enqueue({ data: { accounting_method: 'cash' }, error: null })
+    // Inbox stamp update
+    enqueue({ data: [{ id: INBOX_UUID }], error: null })
+
+    const response = await POST(
+      createMockRequest('/api/supplier-invoices', { method: 'POST', body: body() }),
+    )
+    const { status, body: resBody } = await parseJsonResponse<{
+      data: { id: string }
+      warnings?: Array<{ code: string }>
+    }>(response)
+
+    expect(status).toBe(200)
+    expect(resBody.data).toBeTruthy()
+    expect(resBody.warnings ?? []).toEqual([])
+
+    // The invoice carries the inbox item's document.
+    const invoiceInsert = findCall('supplier_invoices', 'insert')
+    expect((invoiceInsert?.[0] as { document_id: string }).document_id).toBe('doc-1')
+
+    // The item is marked handled via created_supplier_invoice_id only
+    // (the status CHECK allows received | error, so status is untouched).
+    const stamp = findCall('invoice_inbox_items', 'update')
+    expect(stamp).toEqual([{ created_supplier_invoice_id: 'si-new' }])
+  })
+
+  it('surfaces a warning when the inbox stamp fails (invoice still created)', async () => {
+    enqueue({
+      data: {
+        id: INBOX_UUID,
+        document_id: null,
+        created_supplier_invoice_id: null,
+        channel_context: null,
+      },
+    })
+    // No document on the item: no document checks. Supplier lookup next.
+    enqueue({ data: makeSupplier({ id: VALID_UUID }), error: null })
+    enqueue({ data: 9 }) // arrival number
+    enqueue({ data: makeSupplierInvoice({ id: 'si-new' }), error: null }) // insert invoice
+    enqueue({ data: [], error: null }) // insert items
+    enqueue({ data: { accounting_method: 'cash' }, error: null }) // settings
+    enqueue({ data: [], error: null }) // stamp matches no rows (lost race)
+
+    const response = await POST(
+      createMockRequest('/api/supplier-invoices', { method: 'POST', body: body() }),
+    )
+    const { status, body: resBody } = await parseJsonResponse<{
+      warnings?: Array<{ code: string }>
+    }>(response)
+
+    expect(status).toBe(200)
+    expect(resBody.warnings?.some((w) => w.code === 'INBOX_LINK_FAILED')).toBe(true)
   })
 })

@@ -3,9 +3,8 @@
  *
  * Every surface that creates a `supplier_invoices` row goes through here:
  *
- *   - POST /api/supplier-invoices                              (cookie session)
- *   - POST /api/v1/companies/{id}/supplier-invoices            (API key / agents)
- *   - POST /api/extensions/ext/invoice-inbox/items/{id}/convert (inbox)
+ *   - POST /api/supplier-invoices          (cookie session, incl. inbox conversion)
+ *   - the MCP create_supplier_invoice_from_inbox executor (staged, API key)
  *
  * Sharing ONE resolver is what keeps them in agreement: the currency policy,
  * the SEK column arithmetic and the "no rate" refusal are defined once, so a

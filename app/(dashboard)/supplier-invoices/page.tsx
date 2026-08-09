@@ -108,7 +108,7 @@ export default function SupplierInvoicesPage() {
   // refresh the list in place.
   const handleCreated = (invoiceId?: string) => {
     if (inboxItemId) {
-      router.push('/e/general/invoice-inbox')
+      router.push('/inbox')
       return
     }
     if (invoiceId) {

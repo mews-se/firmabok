@@ -1014,6 +1014,11 @@ export const CreateSupplierInvoiceSchema = z.object({
   // Optional invoice PDF/image already stored in the WORM document archive.
   // The route verifies company ownership and that the document is unused.
   document_id: uuid.optional(),
+  // Optional document-inbox item this invoice is created from. The route
+  // sources the document from the item, and stamps
+  // created_supplier_invoice_id on it after a successful create so the item
+  // leaves the active inbox (same lifecycle as the MCP conversion path).
+  inbox_item_id: uuid.optional(),
   supplier_invoice_number: z.string().min(1, 'Supplier invoice number is required'),
   invoice_date: isoDate,
   due_date: isoDate,
@@ -1935,6 +1940,12 @@ export const LinkDocumentSchema = z.object({
   journal_entry_line_id: uuid.optional(),
   inbox_item_id: uuid.optional(),
   transaction_id: uuid.optional(),
+})
+
+// PATCH /api/inbox/[id]: dismiss puts an unhandled item aside, restore brings
+// it back. Status-only transitions; the DB CHECK allows received | error.
+export const InboxItemActionSchema = z.object({
+  action: z.enum(['dismiss', 'restore']),
 })
 
 // ============================================================

@@ -14,8 +14,6 @@ import { useFormat } from '@/lib/hooks/use-format'
 import { isAnalyticsEnabled } from '@/lib/analytics/enabled'
 import { checklistNumbers, type VatDeadlineLine } from '@/lib/onboarding/checklist'
 import { ENABLED_EXTENSION_IDS } from '@/lib/extensions/_generated/enabled-extensions'
-import { useCapability } from '@/contexts/CompanyContext'
-import { CAPABILITY } from '@/lib/entitlements/keys'
 import type { InitialSetupPath, InitialSetupState } from '@/types'
 
 interface NewUserChecklistProps {
@@ -70,7 +68,6 @@ export default function NewUserChecklist({
   const router = useRouter()
   const showError = useErrorToast()
   const { formatDateLong } = useFormat()
-  const hasAi = useCapability(CAPABILITY.ai)
   const [state, setState] = useState(initialState)
   const [saving, setSaving] = useState<InitialSetupPath | 'dismiss' | 'complete' | null>(null)
 
@@ -151,7 +148,8 @@ export default function NewUserChecklist({
   }
   const goReceipts = () => {
     captureSetup('onboarding_setup_step_started', { step: 'receipts' })
-    router.push(hasAi ? '/e/general/invoice-inbox' : '/settings/billing')
+    // The document inbox is core now (no AI capability gate): see /inbox.
+    router.push('/inbox')
   }
   const dismiss = () =>
     void persist({ dismissed: true }, 'dismiss').then((updated) => {

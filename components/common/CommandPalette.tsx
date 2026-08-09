@@ -65,7 +65,7 @@ const PAGE_ENTRIES: Entry[] = [
   { id: 'rapport-kundreskontra', label: 'Visa rapport: Kundreskontra', icon: Users, href: '/reports/kundreskontra', keywords: 'rapport kundreskontra ar kundfordringar' },
   { id: 'importera', label: 'Importera', icon: Upload, href: '/import' },
   { id: 'granskning', label: 'Granskning', icon: ClipboardCheck, href: '/pending', keywords: 'pending review' },
-  { id: 'dokumentinkorg', label: 'Dokumentinkorg', icon: Inbox, href: '/e/general/invoice-inbox' },
+  { id: 'underlag', label: 'Underlag', icon: Inbox, href: '/inbox', keywords: 'underlag dokumentinkorg inkorg dokument kvitton inbox' },
   { id: 'nyckeltal', label: 'Nyckeltal', icon: TrendingUp, href: '/kpi' },
   { id: 'inställningar', label: 'Inställningar', icon: Settings, href: '/settings' },
   { id: 'hjälp', label: 'Hjälp', icon: HelpCircle, href: '/help' },

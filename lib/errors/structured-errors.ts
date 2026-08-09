@@ -1959,6 +1959,25 @@ const DOCUMENT: Record<string, StructuredErrorEntry> = {
   },
 }
 
+// Document inbox (invoice_inbox_items): the core Underlag surface.
+const INBOX: Record<string, StructuredErrorEntry> = {
+  INBOX_ITEM_NOT_FOUND: {
+    httpStatus: 404,
+    message_sv: 'Underlaget kunde inte hittas i inkorgen.',
+    message_en: 'Inbox item not found.',
+  },
+  INBOX_ITEM_ALREADY_HANDLED: {
+    httpStatus: 409,
+    message_sv: 'Underlaget är redan hanterat.',
+    message_en: 'Inbox item is already handled (linked to a supplier invoice, voucher, or transaction).',
+  },
+  INBOX_ITEM_CREATE_FAILED: {
+    httpStatus: 500,
+    message_sv: 'Underlaget laddades upp men kunde inte läggas i inkorgen.',
+    message_en: 'The document was stored but the inbox item could not be created.',
+  },
+}
+
 const CUSTOMER: Record<string, StructuredErrorEntry> = {
   CUSTOMER_NOT_FOUND: {
     httpStatus: 404,
@@ -3322,6 +3341,7 @@ const REGISTRY: Record<string, StructuredErrorEntry> = {
   ...REGISTER_IMPORT,
   ...PROVIDER_MIGRATION,
   ...DOCUMENT,
+  ...INBOX,
   ...CUSTOMER,
   ...ARTICLE,
   ...SUPPLIER,

@@ -49,6 +49,9 @@ export const GET = withRouteContext('document.inbox_available', async (_request,
     .from('invoice_inbox_items')
     .select('id, document_id, source, created_at, extracted_data')
     .eq('company_id', companyId)
+    // status='error' is the parked/dismissed state (see PATCH /api/inbox/[id]);
+    // a dismissed document should not be offered as attachable underlag.
+    .eq('status', 'received')
     .not('document_id', 'is', null)
     .is('created_supplier_invoice_id', null)
     .is('created_journal_entry_id', null)

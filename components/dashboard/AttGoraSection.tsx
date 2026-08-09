@@ -331,7 +331,7 @@ export default function AttGoraSection({
                     )}
                     {showInboxDocuments && (
                       <WorklistRow
-                        href="/e/general/invoice-inbox"
+                        href="/inbox"
                         icon={Inbox}
                         label={t('row_inbox_documents')}
                         detail={t('row_inbox_documents_detail')}

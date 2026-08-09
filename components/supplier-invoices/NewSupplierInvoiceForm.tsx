@@ -263,7 +263,7 @@ const EMPTY_NEW_SUPPLIER: NewSupplierForm = {
 }
 
 export interface NewSupplierInvoiceFormProps {
-  /** Invoice-inbox item to convert; prefills the form from its AI extraction. */
+  /** Document-inbox item to convert; prefills the form from its extracted_data. */
   inboxItemId?: string | null
   /**
    * Render without page chrome (back button + h1) for use inside
@@ -300,7 +300,7 @@ export default function NewSupplierInvoiceForm({
   // invoice id, otherwise the list).
   const afterCreate = (invoiceId?: string) =>
     inboxItemId
-      ? '/e/general/invoice-inbox'
+      ? '/inbox'
       : invoiceId
         ? `/supplier-invoices/${invoiceId}`
         : '/supplier-invoices'
@@ -478,13 +478,15 @@ export default function NewSupplierInvoiceForm({
 
     ;(async () => {
       try {
-        const res = await fetch(`/api/extensions/ext/invoice-inbox/items/${inboxItemId}`)
+        const res = await fetch(`/api/inbox/${inboxItemId}`)
         const json = await res.json()
         if (cancelled) return
         if (!res.ok) {
           toast({
             title: t('inbox_load_failed_title'),
-            description: json?.error || t('inbox_load_failed_description'),
+            description:
+              getErrorMessage(json, { statusCode: res.status }) ||
+              t('inbox_load_failed_description'),
             variant: 'destructive',
           })
           setIsLoadingInbox(false)
@@ -1071,6 +1073,9 @@ export default function NewSupplierInvoiceForm({
       : data.due_date
     return {
       supplier_id: data.supplier_id,
+      // Inbox conversions send inbox_item_id: the API sources the document
+      // from the item and stamps it as handled after a successful create.
+      ...(inboxItemId ? { inbox_item_id: inboxItemId } : {}),
       ...(!inboxItemId && uploadedDocumentId ? { document_id: uploadedDocumentId } : {}),
       supplier_invoice_number: data.supplier_invoice_number,
       invoice_date: data.invoice_date,
@@ -1114,58 +1119,17 @@ export default function NewSupplierInvoiceForm({
     }
   }
 
-  // Persist user edits back into the inbox item's extracted_data so the
-  // inbox stays in sync with what was actually booked. Best-effort: a
-  // failed PATCH never blocks the registration.
-  async function patchInboxFieldsIfChanged(data: FormData) {
-    if (!inboxItemId || !originalExtracted) return
-    const supplierField: Record<string, unknown> = {}
-    const invoiceField: Record<string, unknown> = {}
-
-    if (originalExtracted.invoice?.invoiceNumber !== data.supplier_invoice_number) {
-      invoiceField.invoiceNumber = data.supplier_invoice_number || null
-    }
-    if (originalExtracted.invoice?.invoiceDate !== data.invoice_date) {
-      invoiceField.invoiceDate = data.invoice_date || null
-    }
-    if (originalExtracted.invoice?.dueDate !== data.due_date) {
-      invoiceField.dueDate = data.due_date || null
-    }
-    if ((originalExtracted.invoice?.paymentReference || null) !== (data.payment_reference || null)) {
-      invoiceField.paymentReference = data.payment_reference || null
-    }
-    if (originalExtracted.invoice?.currency !== data.currency) {
-      invoiceField.currency = data.currency
-    }
-
-    if (Object.keys(supplierField).length === 0 && Object.keys(invoiceField).length === 0) return
-
-    try {
-      await fetch(`/api/extensions/ext/invoice-inbox/items/${inboxItemId}/fields`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...(Object.keys(supplierField).length ? { supplier: supplierField } : {}),
-          ...(Object.keys(invoiceField).length ? { invoice: invoiceField } : {}),
-        }),
-      })
-    } catch {
-      // Best-effort sync; don't block registration on this.
-    }
-  }
-
-  // Single submit endpoint chooser: convert when we came from inbox, plain
-  // POST otherwise. Both endpoints validate the same CreateSupplierInvoiceSchema
-  // and return the same canonical error envelope ({ error: { code, message,
-  // details } }): including the recoverable duplicate-number 409.
+  // Single submit endpoint: POST /api/supplier-invoices handles both the
+  // plain create and the inbox conversion (inbox_item_id travels in the
+  // payload, see buildPayload). Same CreateSupplierInvoiceSchema, same
+  // canonical error envelope ({ error: { code, message, details } }):
+  // including the recoverable duplicate-number 409.
   async function postCreate(data: FormData): Promise<{
     ok: boolean
     status: number
     result: CreateResult
   }> {
-    const url = inboxItemId
-      ? `/api/extensions/ext/invoice-inbox/items/${inboxItemId}/convert`
-      : '/api/supplier-invoices'
+    const url = '/api/supplier-invoices'
 
     const res = await fetch(url, {
       method: 'POST',
@@ -1285,7 +1249,6 @@ export default function NewSupplierInvoiceForm({
   // here too and skip auto-approve since they're already in status='paid'.
   async function handleDirectSubmit(data: FormData) {
     setIsSubmitting(true)
-    await patchInboxFieldsIfChanged(data)
     const { ok, status, result } = await postCreate(data)
 
     if (!ok) {
@@ -1337,7 +1300,6 @@ export default function NewSupplierInvoiceForm({
   async function handleConfirm() {
     if (!pendingData) return
     setIsSubmitting(true)
-    await patchInboxFieldsIfChanged(pendingData)
     const { ok, status, result } = await postCreate(pendingData)
 
     if (ok && result.data) {
@@ -1360,9 +1322,9 @@ export default function NewSupplierInvoiceForm({
   }
 
   // Detect the recoverable duplicate-supplier-invoice-number conflict and open
-  // the resolution dialog. Both the inbox `convert` route and the plain create
-  // route return the same structured 409 envelope, so this works for every
-  // submit path. Returns true when handled (caller should skip the error toast).
+  // the resolution dialog. Inbox conversions and plain creates go through the
+  // same route and 409 envelope, so this works for every submit path.
+  // Returns true when handled (caller should skip the error toast).
   function tryHandleDuplicateConflict(status: number, result: CreateResult): boolean {
     const err = result.error
     if (
@@ -1472,7 +1434,7 @@ export default function NewSupplierInvoiceForm({
   function handleCancel() {
     void discardUploadedDocument().finally(() => {
       if (onCancel) onCancel()
-      else router.push(inboxItemId ? '/e/general/invoice-inbox' : '/supplier-invoices')
+      else router.push(inboxItemId ? '/inbox' : '/supplier-invoices')
     })
   }
 
@@ -1484,7 +1446,7 @@ export default function NewSupplierInvoiceForm({
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => router.push(inboxItemId ? '/e/general/invoice-inbox' : '/supplier-invoices')}
+            onClick={() => router.push(inboxItemId ? '/inbox' : '/supplier-invoices')}
             aria-label={inboxItemId ? t('back_aria_inbox') : t('back_aria')}
           >
             <ArrowLeft className="h-5 w-5" />

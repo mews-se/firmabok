@@ -7,11 +7,10 @@ import type { SupabaseClient } from '@supabase/supabase-js'
  * rest of the app already hits, and works without extra env vars on Vercel
  * and Docker self-hosters alike.
  *
- * Both windows are per-company:
- *   - MINUTE_MAX: a real user could only ever hit this with a script or by
- *     holding the upload button. The defense is against burst floods.
- *   - DAY_MAX: the backstop against slow drip abuse. A legitimate end-of-
- *     month batch is well under this number.
+ * Both windows are per-company. On a single-user install the only real
+ * client is the owner or their MCP agent, and an agent batch-importing a
+ * folder of documents is legitimate traffic, so the ceilings sit far above
+ * any honest workload and only stop runaway loops.
  */
 export interface InboxLimitResult {
   ok: boolean
@@ -19,8 +18,8 @@ export interface InboxLimitResult {
   scope?: 'minute' | 'day'
 }
 
-const MINUTE_MAX = 30
-const DAY_MAX = 500
+const MINUTE_MAX = 600
+const DAY_MAX = 20000
 
 export async function checkInboxUploadRateLimit(
   supabase: SupabaseClient,

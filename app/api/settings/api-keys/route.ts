@@ -113,6 +113,10 @@ export const POST = withRouteContext(
         name,
         scopes,
         mode,
+        // Single-user install: an MCP agent batch-processing documents makes
+        // several calls per item, so the DB default of 100 rpm throttles
+        // legitimate work.
+        rate_limit_rpm: 1000,
         ...(sodAcknowledgedAt
           ? { sod_acknowledged_at: sodAcknowledgedAt, sod_acknowledged_by: user.id }
           : {}),

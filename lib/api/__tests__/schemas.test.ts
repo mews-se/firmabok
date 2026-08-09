@@ -37,11 +37,8 @@ import {
   // Journal entry schemas
   CreateJournalEntryLineSchema,
   CreateJournalEntrySchema,
-  // Transaction schemas
-  CategorizeTransactionSchema,
-  BookTransactionSchema,
-  MatchInvoiceSchema,
-  MatchSupplierInvoiceSchema,
+  // Invoice payment link schemas
+  LinkInvoiceToVoucherSchema,
   // Settings schemas
   UpdateSettingsSchema,
   // Fiscal period schemas
@@ -53,10 +50,6 @@ import {
   // Account schemas
   CreateAccountSchema,
   UpdateAccountSchema,
-  // Reconciliation schemas
-  BankLinkSchema,
-  BankUnlinkSchema,
-  RunReconciliationSchema,
   // Update schemas
   UpdateCustomerSchema,
   UpdateSupplierSchema,
@@ -1140,152 +1133,6 @@ describe('CreateJournalEntryLineSchema', () => {
 // Transaction schemas
 // ============================================================
 
-describe('CategorizeTransactionSchema', () => {
-  it('accepts minimal categorization (private)', () => {
-    const result = CategorizeTransactionSchema.safeParse({ is_business: false })
-    expect(result.success).toBe(true)
-  })
-
-  it('accepts business categorization with details', () => {
-    const result = CategorizeTransactionSchema.safeParse({
-      is_business: true,
-      category: 'expense_office',
-      vat_treatment: 'standard_25',
-    })
-    expect(result.success).toBe(true)
-  })
-
-  it('accepts account override', () => {
-    const result = CategorizeTransactionSchema.safeParse({
-      is_business: true,
-      category: 'expense_equipment',
-      account_override: '1250',
-    })
-    expect(result.success).toBe(true)
-  })
-
-  it('rejects missing is_business', () => {
-    const result = CategorizeTransactionSchema.safeParse({ category: 'private' })
-    expect(result.success).toBe(false)
-  })
-
-  it('rejects non-boolean is_business', () => {
-    const result = CategorizeTransactionSchema.safeParse({ is_business: 'yes' })
-    expect(result.success).toBe(false)
-  })
-
-  it('rejects invalid category', () => {
-    const result = CategorizeTransactionSchema.safeParse({
-      is_business: true,
-      category: 'food',
-    })
-    expect(result.success).toBe(false)
-  })
-
-  it('rejects invalid account_override format', () => {
-    const result = CategorizeTransactionSchema.safeParse({
-      is_business: true,
-      account_override: '12',
-    })
-    expect(result.success).toBe(false)
-  })
-})
-
-describe('BookTransactionSchema', () => {
-  it('accepts valid booking', () => {
-    const result = BookTransactionSchema.safeParse({
-      fiscal_period_id: validUuid,
-      entry_date: '2025-03-15',
-      description: 'Office supplies',
-      lines: [
-        { account_number: '6100', debit_amount: 800, credit_amount: 0 },
-        { account_number: '2641', debit_amount: 200, credit_amount: 0 },
-        { account_number: '1930', debit_amount: 0, credit_amount: 1000 },
-      ],
-    })
-    expect(result.success).toBe(true)
-  })
-
-  it('rejects empty description', () => {
-    const result = BookTransactionSchema.safeParse({
-      fiscal_period_id: validUuid,
-      entry_date: '2025-03-15',
-      description: '',
-      lines: [validJournalEntryLine()],
-    })
-    expect(result.success).toBe(false)
-  })
-
-  it('rejects empty lines', () => {
-    const result = BookTransactionSchema.safeParse({
-      fiscal_period_id: validUuid,
-      entry_date: '2025-03-15',
-      description: 'Test',
-      lines: [],
-    })
-    expect(result.success).toBe(false)
-  })
-})
-
-describe('MatchInvoiceSchema', () => {
-  it('accepts valid invoice_id', () => {
-    const result = MatchInvoiceSchema.safeParse({ invoice_id: validUuid })
-    expect(result.success).toBe(true)
-  })
-
-  it('rejects missing invoice_id', () => {
-    const result = MatchInvoiceSchema.safeParse({})
-    expect(result.success).toBe(false)
-  })
-
-  it('rejects non-UUID invoice_id', () => {
-    const result = MatchInvoiceSchema.safeParse({ invoice_id: 'INV-001' })
-    expect(result.success).toBe(false)
-  })
-
-  // manual_exchange_rate lands in invoice_payments.payment_exchange_rate,
-  // whose CHECK is `> 0 AND < 100000`. The old `.max(100000)` was inclusive:
-  // exactly 100000 passed Zod and then violated the constraint.
-  it('rejects exactly 100000 for manual_exchange_rate (exclusive CHECK)', () => {
-    const result = MatchInvoiceSchema.safeParse({
-      invoice_id: validUuid,
-      manual_exchange_rate: 100000,
-    })
-    expect(result.success).toBe(false)
-  })
-
-  it('accepts 99999.99 for manual_exchange_rate', () => {
-    const result = MatchInvoiceSchema.safeParse({
-      invoice_id: validUuid,
-      manual_exchange_rate: 99999.99,
-    })
-    expect(result.success).toBe(true)
-  })
-
-  it('rejects a zero or negative manual_exchange_rate', () => {
-    expect(MatchInvoiceSchema.safeParse({
-      invoice_id: validUuid,
-      manual_exchange_rate: 0,
-    }).success).toBe(false)
-    expect(MatchInvoiceSchema.safeParse({
-      invoice_id: validUuid,
-      manual_exchange_rate: -11.5,
-    }).success).toBe(false)
-  })
-})
-
-describe('MatchSupplierInvoiceSchema', () => {
-  it('accepts valid supplier_invoice_id', () => {
-    const result = MatchSupplierInvoiceSchema.safeParse({ supplier_invoice_id: validUuid })
-    expect(result.success).toBe(true)
-  })
-
-  it('rejects missing supplier_invoice_id', () => {
-    const result = MatchSupplierInvoiceSchema.safeParse({})
-    expect(result.success).toBe(false)
-  })
-})
-
 // ============================================================
 // Settings schemas
 // ============================================================
@@ -1983,34 +1830,6 @@ describe('CreateAccountSchema', () => {
 // Bank reconciliation schemas
 // ============================================================
 
-describe('BankLinkSchema', () => {
-  it('accepts valid link', () => {
-    const result = BankLinkSchema.safeParse({
-      transaction_id: validUuid,
-      journal_entry_id: validUuid,
-    })
-    expect(result.success).toBe(true)
-  })
-
-  it('rejects missing transaction_id', () => {
-    const result = BankLinkSchema.safeParse({ journal_entry_id: validUuid })
-    expect(result.success).toBe(false)
-  })
-
-  it('rejects missing journal_entry_id', () => {
-    const result = BankLinkSchema.safeParse({ transaction_id: validUuid })
-    expect(result.success).toBe(false)
-  })
-
-  it('rejects non-UUID values', () => {
-    const result = BankLinkSchema.safeParse({
-      transaction_id: 'txn-123',
-      journal_entry_id: 'je-456',
-    })
-    expect(result.success).toBe(false)
-  })
-})
-
 // ============================================================
 // Report query schemas
 // ============================================================
@@ -2292,54 +2111,6 @@ describe('UpdateAccountSchema', () => {
 // Bank reconciliation new schemas
 // ============================================================
 
-describe('BankUnlinkSchema', () => {
-  it('accepts valid transaction_id', () => {
-    const result = BankUnlinkSchema.safeParse({ transaction_id: validUuid })
-    expect(result.success).toBe(true)
-  })
-
-  it('rejects missing transaction_id', () => {
-    const result = BankUnlinkSchema.safeParse({})
-    expect(result.success).toBe(false)
-  })
-
-  it('rejects non-UUID transaction_id', () => {
-    const result = BankUnlinkSchema.safeParse({ transaction_id: 'txn-123' })
-    expect(result.success).toBe(false)
-  })
-})
-
-describe('RunReconciliationSchema', () => {
-  it('accepts empty object (all optional)', () => {
-    const result = RunReconciliationSchema.safeParse({})
-    expect(result.success).toBe(true)
-  })
-
-  it('accepts full options', () => {
-    const result = RunReconciliationSchema.safeParse({
-      date_from: '2025-01-01',
-      date_to: '2025-03-31',
-      dry_run: true,
-    })
-    expect(result.success).toBe(true)
-  })
-
-  it('accepts dry_run false', () => {
-    const result = RunReconciliationSchema.safeParse({ dry_run: false })
-    expect(result.success).toBe(true)
-  })
-
-  it('rejects invalid date_from format', () => {
-    const result = RunReconciliationSchema.safeParse({ date_from: '2025/01/01' })
-    expect(result.success).toBe(false)
-  })
-
-  it('rejects non-boolean dry_run', () => {
-    const result = RunReconciliationSchema.safeParse({ dry_run: 'yes' })
-    expect(result.success).toBe(false)
-  })
-})
-
 // ============================================================
 // Correct journal entry schema
 // ============================================================
@@ -2522,11 +2293,7 @@ describe('Cross-schema consistency', () => {
         validInvoice({ customer_id: id })
       ).success).toBe(false)
 
-      expect(MatchInvoiceSchema.safeParse({ invoice_id: id }).success).toBe(false)
-
-      expect(BankLinkSchema.safeParse({
-        transaction_id: id, journal_entry_id: validUuid,
-      }).success).toBe(false)
+      expect(LinkInvoiceToVoucherSchema.safeParse({ journal_entry_id: id }).success).toBe(false)
     }
   })
 })

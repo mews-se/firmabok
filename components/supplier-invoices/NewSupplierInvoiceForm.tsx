@@ -26,7 +26,6 @@ import { cn, formatCurrency } from '@/lib/utils'
 import { getDisplayTotal } from '@/lib/invoices/rounding'
 import { useUnsavedChanges } from '@/lib/hooks/use-unsaved-changes'
 import { useCanWrite } from '@/lib/hooks/use-can-write'
-import BankTransactionPicker from '@/components/transactions/BankTransactionPicker'
 import AccrualPeriodControl from '@/components/bookkeeping/AccrualPeriodControl'
 import LineDimensionFields from '@/components/dimensions/LineDimensionFields'
 import DocumentUploadZone, { type UploadedFile } from '@/components/bookkeeping/DocumentUploadZone'
@@ -38,7 +37,7 @@ import {
   findReverseChargeAccountWarningRows,
   findUnflaggedForeignZeroVatRows,
 } from '@/lib/vat/supplier-invoice-line-checks'
-import { ArrowLeft, Plus, Trash2, ChevronDown, Loader2, Lock, AlertCircle, AlertTriangle, MessageCircle, Link2, CalendarClock, Tags, Paperclip } from 'lucide-react'
+import { ArrowLeft, Plus, Trash2, ChevronDown, Loader2, Lock, AlertCircle, AlertTriangle, MessageCircle, CalendarClock, Tags, Paperclip } from 'lucide-react'
 import type { Supplier, BASAccount, VatTreatment, EntityType, InvoiceExtractionResult, FiscalPeriod } from '@/types'
 
 interface LineItem {
@@ -349,15 +348,6 @@ export default function NewSupplierInvoiceForm({
   const [hasMatchedSupplier, setHasMatchedSupplier] = useState(false)
   const [isLoadingInbox, setIsLoadingInbox] = useState(!!inboxItemId)
   const [hasPrefilled, setHasPrefilled] = useState(false)
-
-  // Match-on-create state
-  const [showBankPicker, setShowBankPicker] = useState(false)
-  const [pendingTransactionId, setPendingTransactionId] = useState<string | null>(null)
-  // The button's onClick and the form's onSubmit run in the same React event
-  // batch, so a `useState`-backed submitMode would still hold the previous
-  // render's value when onSubmit reads it. A ref bridges the two synchronous
-  // handlers; the matching state mirror only drives the review-dialog UI.
-  const submitModeRef = useRef<'register' | 'register_and_match'>('register')
 
   // Conflict state for duplicate-supplier-invoice-number
   const [conflict, setConflict] = useState<{
@@ -1279,14 +1269,6 @@ export default function NewSupplierInvoiceForm({
       return
     }
 
-    if (submitModeRef.current === 'register_and_match') {
-      // Open the bank-transaction picker; actual create happens on pick.
-      // For AB the review dialog is shown after a transaction is picked.
-      setPendingData(data)
-      setShowBankPicker(true)
-      return
-    }
-
     // Privately-paid skips the AB review dialog: the toggle itself is the
     // explicit user intent, and the resulting verifikat is just expense + VAT
     // against the owner account (2893/2018). Same path for EF.
@@ -1351,8 +1333,7 @@ export default function NewSupplierInvoiceForm({
     setIsSubmitting(false)
   }
 
-  // AB: create after review dialog. If a bank transaction was picked first
-  // (register-and-match flow), also match the new invoice to it.
+  // AB: create after review dialog.
   async function handleConfirm() {
     if (!pendingData) return
     setIsSubmitting(true)
@@ -1366,31 +1347,7 @@ export default function NewSupplierInvoiceForm({
       // Clear dirty state: see comment in handleDirectSubmit.
       reset(pendingData)
 
-      if (pendingTransactionId) {
-        const matchRes = await fetch(`/api/transactions/${pendingTransactionId}/match-supplier-invoice`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ supplier_invoice_id: invoiceId }),
-        })
-        const matchResult = await matchRes.json()
-        setPendingTransactionId(null)
-        submitModeRef.current = 'register'
-
-        if (matchRes.ok) {
-          toast({
-            title: t('invoice_registered_and_matched_title'),
-            description: t('invoice_registered_and_matched_description', { number: arrivalNumber }),
-          })
-        } else {
-          toast({
-            title: t('invoice_registered_match_failed_title'),
-            description: getErrorMessage(matchResult, { context: 'supplier_invoice', statusCode: matchRes.status }),
-            variant: 'destructive',
-          })
-        }
-      } else {
-        toast({ title: t('invoice_registered_title'), description: t('arrival_number_label', { number: arrivalNumber }) })
-      }
+      toast({ title: t('invoice_registered_title'), description: t('arrival_number_label', { number: arrivalNumber }) })
 
       finishCreate(invoiceId)
     } else {
@@ -1517,65 +1474,6 @@ export default function NewSupplierInvoiceForm({
       if (onCancel) onCancel()
       else router.push(inboxItemId ? '/e/general/invoice-inbox' : '/supplier-invoices')
     })
-  }
-
-  // Match-on-create: register the invoice, then match the picked transaction.
-  // EF goes straight through (auto-approve included). AB stores the picked
-  // transaction and routes through the same review dialog as the plain
-  // register flow: handleConfirm picks up the match step on confirmation.
-  async function handlePickTransaction(transactionId: string) {
-    if (!pendingData) return
-    setShowBankPicker(false)
-
-    if (!isEF) {
-      setPendingTransactionId(transactionId)
-      setShowReview(true)
-      return
-    }
-
-    setIsSubmitting(true)
-    await patchInboxFieldsIfChanged(pendingData)
-    const { ok, status, result } = await postCreate(pendingData)
-
-    if (!ok || !result.data) {
-      if (!tryHandleDuplicateConflict(status, result)) {
-        handleCreateError(status, result)
-      }
-      setIsSubmitting(false)
-      return
-    }
-
-    const invoiceId = result.data.id
-    const arrivalNumber = result.data.arrival_number
-
-    // Auto-approve before matching, so the invoice is in the 'approved' state
-    // that match-supplier-invoice expects (it accepts registered too, but
-    // EF's expectation is fully-booked).
-    await fetch(`/api/supplier-invoices/${invoiceId}/approve`, { method: 'POST' })
-
-    const matchRes = await fetch(`/api/transactions/${transactionId}/match-supplier-invoice`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ supplier_invoice_id: invoiceId }),
-    })
-    const matchResult = await matchRes.json()
-    setIsSubmitting(false)
-    submitModeRef.current = 'register'
-
-    if (matchRes.ok) {
-      toast({
-        title: t('invoice_registered_and_matched_title'),
-        description: t('invoice_registered_and_matched_description', { number: arrivalNumber }),
-      })
-    } else {
-      toast({
-        title: t('invoice_registered_match_failed_title'),
-        description: getErrorMessage(matchResult, { context: 'supplier_invoice', statusCode: matchRes.status }),
-        variant: 'destructive',
-      })
-    }
-    reset(pendingData)
-    finishCreate(invoiceId)
   }
 
   return (
@@ -2311,24 +2209,10 @@ export default function NewSupplierInvoiceForm({
           >
             {t('cancel')}
           </Button>
-          {!watchedPaidPrivately && (
-            <Button
-              type="submit"
-              variant="outline"
-              className="w-full sm:w-auto"
-              disabled={isSubmitting || documentUploadInProgress || !canWrite || showNoPeriodWarning}
-              onClick={() => { submitModeRef.current = 'register_and_match' }}
-              title={!canWrite ? t('viewer_disabled_tooltip') : undefined}
-            >
-              <Link2 className="mr-2 h-4 w-4" />
-              {t('register_and_mark_paid')}
-            </Button>
-          )}
           <Button
             type="submit"
             disabled={isSubmitting || documentUploadInProgress || !canWrite || showNoPeriodWarning}
             className="w-full sm:w-auto"
-            onClick={() => { submitModeRef.current = 'register' }}
             title={!canWrite ? t('viewer_disabled_tooltip') : undefined}
           >
             {isSubmitting ? (
@@ -2352,8 +2236,7 @@ export default function NewSupplierInvoiceForm({
         </div>
       </form>
 
-      {/* Review dialog (AB only: also shown after a bank transaction is picked
-          in the register-and-match flow). */}
+      {/* Review dialog (AB only). */}
       {pendingData && !isEF && showReview && (() => {
         const selectedSupplier = suppliers.find((s) => s.id === pendingData.supplier_id)
         if (!selectedSupplier) return null
@@ -2385,21 +2268,6 @@ export default function NewSupplierInvoiceForm({
           </ConfirmationDialog>
         )
       })()}
-
-      {/* Bank transaction picker for "Registrera & markera som betald" */}
-      <BankTransactionPicker
-        open={showBankPicker}
-        onOpenChange={(open) => {
-          setShowBankPicker(open)
-          if (!open) {
-            submitModeRef.current = 'register'
-            setPendingTransactionId(null)
-          }
-        }}
-        targetAmount={total}
-        targetCurrency={watchedCurrency}
-        onPick={handlePickTransaction}
-      />
 
       {/* New supplier dialog */}
       <Dialog open={showNewSupplier} onOpenChange={setShowNewSupplier}>

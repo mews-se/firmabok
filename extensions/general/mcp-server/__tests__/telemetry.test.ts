@@ -468,11 +468,11 @@ describe('mcp.resource_read telemetry', () => {
     const eventPromise = captureNextResourceReadEvent()
 
     await handleMcpRequest(
-      mcpRequest('resources/read', { uri: 'ui://receipt-matcher/app.html' })
+      mcpRequest('resources/read', { uri: 'ui://vat-review/app.html' })
     )
 
     const event = await eventPromise
-    expect(event.uri).toBe('ui://receipt-matcher/app.html')
+    expect(event.uri).toBe('ui://vat-review/app.html')
     expect(event.kind).toBe('widget')
     expect(event.success).toBe(true)
     expect(event.errorCode).toBeNull()

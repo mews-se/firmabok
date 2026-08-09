@@ -1089,24 +1089,3 @@ describe('validateVoucherForSupplierInvoiceLink: foreign-currency invoices', () 
 // ============================================================
 // The shared rule itself
 // ============================================================
-
-describe('ledgerLineSideAmountIn contract as used here', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  it('is the same helper bank reconciliation uses', async () => {
-    // The promotion to lib/bookkeeping/ledger-line-amount.ts must not have left
-    // bank-reconciliation.ts without its export: a second implementation of
-    // this rule is how the two sides drift apart again.
-    const promoted = await import('@/lib/bookkeeping/ledger-line-amount')
-    const reexported = await import('@/lib/reconciliation/bank-reconciliation')
-    expect(reexported.ledgerLineAmountIn).toBe(promoted.ledgerLineAmountIn)
-  })
-
-  it('unused queued mock helper stays importable', () => {
-    // Guards against the shared fixture factory drifting out from under the
-    // sibling suites in this directory.
-    expect(typeof createQueuedMockSupabase).toBe('function')
-  })
-})

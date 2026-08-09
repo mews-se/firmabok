@@ -12,7 +12,6 @@ import {
   Home,
   ReceiptText,
   Users,
-  ArrowLeftRight,
   BookOpen,
   ListTree,
   BarChart3,
@@ -98,7 +97,6 @@ type NavLabelKey =
   | 'supplier_invoices'
   | 'suppliers'
   | 'review'
-  | 'transactions'
   | 'bookkeeping'
   | 'chart_of_accounts'
   | 'dimensions'
@@ -167,10 +165,8 @@ const navItems: NavItem[] = [
   { href: '/', labelKey: 'home', icon: Home, group: 'top' },
   { href: '/chat', labelKey: 'assistant', icon: Sparkles, group: 'top' },
   // Arbeta: everything the user produces, bookkeeping funnel first
-  // (Bokföring · Underlag · Transaktioner · Granskning), then the
-  // transactional flows.
+  // (Bokföring · Underlag · Granskning), then the transactional flows.
   { href: '/bookkeeping', labelKey: 'bookkeeping', icon: BookOpen, group: 'arbeta' },
-  { href: '/transactions', labelKey: 'transactions', icon: ArrowLeftRight, group: 'arbeta' },
   { href: '/pending', labelKey: 'review', icon: ClipboardCheck, group: 'arbeta' },
   { href: '/invoices', labelKey: 'invoices', icon: ReceiptText, group: 'arbeta' },
   { href: '/supplier-invoices', labelKey: 'supplier_invoices', icon: Wallet, group: 'arbeta' },
@@ -259,7 +255,6 @@ export default function DashboardNav({ companyName: _companyName, entityType, di
   // put two head-count queries on the critical path of every dashboard
   // navigation for numbers nobody needs before first paint.
   const {
-    uncategorized: uncategorizedCount,
     pendingOperations: pendingOpsCount,
     refresh: refreshBadges,
   } = useWorklistBadges(company?.id)
@@ -395,16 +390,6 @@ export default function DashboardNav({ companyName: _companyName, entityType, di
         {
           event: '*',
           schema: 'public',
-          table: 'transactions',
-          filter: `company_id=eq.${company.id}`,
-        },
-        queueRefresh,
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
           table: 'pending_operations',
           filter: `company_id=eq.${company.id}`,
         },
@@ -489,7 +474,7 @@ export default function DashboardNav({ companyName: _companyName, entityType, di
   const allMobileNavItems: { href: string; labelKey: NavLabelKey; icon: typeof LayoutDashboard }[] = [
     { href: '/', labelKey: 'home', icon: Home },
     { href: '/chat', labelKey: 'assistant', icon: Sparkles },
-    { href: '/transactions', labelKey: 'transactions', icon: ArrowLeftRight },
+    { href: '/bookkeeping', labelKey: 'bookkeeping', icon: BookOpen },
   ]
   // Same gate as the sidebar: no Assistent tab until the agent is built.
   const mobileNavItems = allMobileNavItems.filter(
@@ -508,11 +493,7 @@ export default function DashboardNav({ companyName: _companyName, entityType, di
   }
 
   const badgeFor = (href: string): number | null =>
-    href === '/transactions' && uncategorizedCount > 0
-      ? uncategorizedCount
-      : href === '/pending' && pendingOpsCount > 0
-        ? pendingOpsCount
-        : null
+    href === '/pending' && pendingOpsCount > 0 ? pendingOpsCount : null
 
   const countBubble = (badge: number) => (
     <span data-ph-mask className="ml-auto min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-primary/15 text-primary text-[10px] font-semibold px-1">
@@ -875,9 +856,7 @@ export default function DashboardNav({ companyName: _companyName, entityType, di
           {mobileNavItems.map((item) => {
             const active = isActive(item.href)
             const enabled = isItemEnabled(item.href)
-            const badge = item.href === '/transactions' && uncategorizedCount > 0
-              ? uncategorizedCount
-              : null
+            const badge: number | null = null
 
             const content = (
               <>
@@ -1034,11 +1013,9 @@ export default function DashboardNav({ companyName: _companyName, entityType, di
                       const Icon = item.icon
                       const active = isActive(item.href)
                       const enabled = isItemEnabled(item.href) && !item.comingSoon
-                      const badge = item.href === '/transactions' && uncategorizedCount > 0
-                        ? uncategorizedCount
-                        : item.href === '/pending' && pendingOpsCount > 0
-                          ? pendingOpsCount
-                          : null
+                      const badge = item.href === '/pending' && pendingOpsCount > 0
+                        ? pendingOpsCount
+                        : null
                       const decorBadge = renderBadge(item, 'mobile')
                       const content = (
                         <>

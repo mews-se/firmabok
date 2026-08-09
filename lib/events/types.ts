@@ -9,7 +9,6 @@ import type {
   DocumentAttachment,
   Receipt,
   CreditNote,
-  ReconciliationMethod,
   InvoiceInboxItem,
   SupplierInvoice,
 } from '@/types'
@@ -50,10 +49,6 @@ export type CoreEvent =
       userId: string
       companyId: string
     } }
-  // Banking
-  | { type: 'transaction.synced'; payload: { transactions: Transaction[]; userId: string; companyId: string } }
-  | { type: 'transaction.categorized'; payload: { transaction: Transaction; account: string; taxCode: string; userId: string; companyId: string } }
-  | { type: 'transaction.reconciled'; payload: { transaction: Transaction; journalEntryId: string; method: ReconciliationMethod; userId: string; companyId: string } }
   // Bank connection lifecycle: consent + account selection are the
   // GDPR/PSD2 audit points; emitted to event_log for compliance trail.
   | { type: 'bank_connection.consent_granted'; payload: { connectionId: string; bankName: string | null; accountCount: number; consentExpiresAt: string | null; userId: string; companyId: string } }

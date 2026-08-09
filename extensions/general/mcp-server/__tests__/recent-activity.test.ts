@@ -28,15 +28,6 @@ const REAL_COLUMNS: Record<string, Set<string>> = {
      default_dimensions payment_link_url stripe_payment_link_id payment_link_auto
      creation_complete`.split(/\s+/)
   ),
-  transactions: new Set(
-    `id user_id bank_connection_id external_id date description amount currency amount_sek
-     exchange_rate exchange_rate_date category is_business invoice_id potential_invoice_id
-     journal_entry_id mcc_code merchant_name receipt_id notes created_at updated_at
-     supplier_invoice_id import_source reference reconciliation_method
-     potential_supplier_invoice_id company_id document_id counterparty_iban
-     counterparty_account is_ignored original_description title_edited_at cash_account_id
-     enrichment`.split(/\s+/)
-  ),
 }
 
 type TableResult = { data?: unknown; error?: { message: string } }
@@ -82,7 +73,6 @@ describe('Accounted://recent-activity', () => {
     expect(Object.keys(selects).sort()).toEqual([
       'invoices',
       'journal_entries',
-      'transactions',
     ])
 
     for (const [table, columns] of Object.entries(selects)) {
@@ -102,16 +92,10 @@ describe('Accounted://recent-activity', () => {
     expect(invoiceColumns).not.toContain('total_amount')
   })
 
-  it('returns the rows and counts uncategorized transactions', async () => {
+  it('returns the rows', async () => {
     const { supabase } = createRecordingSupabase({
       journal_entries: { data: [{ id: 'je-1', voucher_number: 1 }] },
       invoices: { data: [{ id: 'inv-1', invoice_number: '1', total: 1250, currency: 'SEK' }] },
-      transactions: {
-        data: [
-          { id: 't-1', journal_entry_id: 'je-1' },
-          { id: 't-2', journal_entry_id: null },
-        ],
-      },
     })
 
     const result = (await recentActivityResource.read(
@@ -120,14 +104,11 @@ describe('Accounted://recent-activity', () => {
       limit: number
       journal_entries: unknown[]
       invoices: Array<{ total: number }>
-      transactions: unknown[]
-      uncategorized_transaction_count: number
     }
 
     expect(result.limit).toBe(5)
     expect(result.journal_entries).toHaveLength(1)
     expect(result.invoices[0].total).toBe(1250)
-    expect(result.uncategorized_transaction_count).toBe(1)
   })
 
   it('surfaces a query failure instead of reporting zero invoices', async () => {
@@ -140,19 +121,12 @@ describe('Accounted://recent-activity', () => {
     )
   })
 
-  it('surfaces journal entry and transaction failures too', async () => {
+  it('surfaces journal entry failures too', async () => {
     const jeFail = createRecordingSupabase({
       journal_entries: { error: { message: 'boom' } },
     })
     await expect(recentActivityResource.read(ctx(jeFail.supabase))).rejects.toThrow(
       /Failed to read recent journal entries/
-    )
-
-    const txFail = createRecordingSupabase({
-      transactions: { error: { message: 'boom' } },
-    })
-    await expect(recentActivityResource.read(ctx(txFail.supabase))).rejects.toThrow(
-      /Failed to read recent transactions/
     )
   })
 })

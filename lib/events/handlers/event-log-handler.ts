@@ -20,9 +20,6 @@ const PERSISTED_EVENT_TYPES: CoreEventType[] = [
   'invoice.draft_deleted',
   'invoice.sent',
   'credit_note.created',
-  'transaction.synced',
-  'transaction.categorized',
-  'transaction.reconciled',
   'period.locked',
   'period.year_closed',
   'customer.created',
@@ -210,27 +207,6 @@ export function registerEventLogHandler(): (() => void)[] {
         // would make the row invisible to the company_id-scoped SELECT RLS policy.
         if (typeof companyId !== 'string' || companyId.length === 0) {
           log.error(`Event ${eventType} missing companyId; skipping persistence`)
-          return
-        }
-
-        // transaction.synced carries an array: batch insert
-        if (eventType === 'transaction.synced' && Array.isArray(rawPayload.transactions)) {
-          const transactions = rawPayload.transactions as Array<Record<string, unknown>>
-          if (transactions.length === 0) return
-
-          const rows = transactions.map(tx => ({
-            user_id: userId,
-            company_id: companyId,
-            event_type: eventType,
-            entity_id: typeof tx.id === 'string' ? tx.id : null,
-            data: { transaction: tx },
-          }))
-
-          const supabase = createServiceClientNoCookies()
-          const { error } = await supabase.from('event_log').insert(rows)
-          if (error) {
-            log.error(`Failed to persist batch transaction.synced:`, error.message)
-          }
           return
         }
 

@@ -1,7 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { CoreEvent } from '@/lib/events/types'
 import { eventBus } from '@/lib/events/bus'
-import { ingestTransactions } from '@/lib/transactions/ingest'
 import { listForCompany as cashAccountsList, getPrimary as cashAccountsGetPrimary } from '@/lib/cash-accounts/service'
 import { createLogger } from '@/lib/logger'
 import type {
@@ -116,7 +115,6 @@ function createStorage(supabase: SupabaseClient): ExtensionStorage {
  */
 function createServices(): ExtensionServices {
   return {
-    ingestTransactions,
     getCashAccounts: (supabase, companyId, opts) => cashAccountsList(supabase, companyId, opts),
     getPrimaryCashAccount: (supabase, companyId, currency) =>
       cashAccountsGetPrimary(supabase, companyId, currency),

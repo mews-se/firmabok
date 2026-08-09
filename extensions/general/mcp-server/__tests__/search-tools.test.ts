@@ -50,7 +50,7 @@ describe('gnubok_search_tools', () => {
   })
 
   it('detail=full returns inputSchema and outputSchema', async () => {
-    const result = await call({ detail: 'full', query: 'list_uncategorized', limit: 5 })
+    const result = await call({ detail: 'full', query: 'list_invoices', limit: 5 })
     expect(result.tools.length).toBeGreaterThan(0)
     const tool = result.tools[0]
     expect(tool).toHaveProperty('inputSchema')

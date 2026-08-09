@@ -194,7 +194,7 @@ describe('MCP spec revision 2026-07-28', () => {
       const mismatch = await readBody(
         mcpRequest(
           'resources/read',
-          { uri: 'ui://receipt-matcher/app.html' },
+          { uri: 'ui://pending-operations/app.html' },
           { 'Mcp-Name': 'ui://vat-review/app.html' }
         )
       )
@@ -204,8 +204,8 @@ describe('MCP spec revision 2026-07-28', () => {
       const match = await readBody(
         mcpRequest(
           'resources/read',
-          { uri: 'ui://receipt-matcher/app.html' },
-          { 'Mcp-Name': 'ui://receipt-matcher/app.html' }
+          { uri: 'ui://pending-operations/app.html' },
+          { 'Mcp-Name': 'ui://pending-operations/app.html' }
         )
       )
       expect(match.error).toBeUndefined()

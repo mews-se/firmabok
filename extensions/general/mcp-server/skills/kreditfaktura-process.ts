@@ -66,9 +66,9 @@ This stages a pending_operation: the user approves before any DB write.
 If the original invoice was already paid:
 
 - The credit posts to 1510 (kundfordring): the customer balance is now negative (we owe them).
-- Issue an outbound bank payment for the refund amount. When the bank shows
-  the outgoing transaction, categorize it via \`gnubok_categorize_transaction\`
-  to debit 1510 and clear the customer balance.
+- Issue an outbound bank payment for the refund amount, then book it as a
+  manual voucher via \`gnubok_create_voucher\` (debit 1510, credit 19xx) to
+  clear the customer balance.
 
 If the original was unpaid, no refund: the credit just zeroes the AR balance.
 
@@ -111,7 +111,7 @@ misread.
 - \`gnubok_list_invoices\`: find the original
 - \`gnubok_credit_invoice\`: the main tool, stages the kreditfaktura
 - \`gnubok_send_invoice\`: deliver the credit note to the customer
-- \`gnubok_categorize_transaction\` / \`gnubok_match_transaction_to_invoice\`: book the refund payment (if any)
+- \`gnubok_create_voucher\`: book the refund payment (if any)
 - \`gnubok_get_ar_ledger\` / \`gnubok_get_vat_report\`: verification
 `
 

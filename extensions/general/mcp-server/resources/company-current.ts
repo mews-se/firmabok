@@ -26,7 +26,6 @@ export const companyCurrentResource: McpResource = {
       supplierCountRes,
       openInvoiceCountRes,
       openSupplierInvoiceCountRes,
-      uncategorizedTxCountRes,
       voucherSequencesRes,
       lastCategorizationRes,
       lastInvoiceSentRes,
@@ -86,13 +85,6 @@ export const companyCurrentResource: McpResource = {
         .select('id', { count: 'exact', head: true })
         .eq('company_id', companyId)
         .in('status', ['registered', 'approved', 'overdue', 'partially_paid']),
-
-      // Uncategorized bank transactions awaiting a journal entry.
-      supabase
-        .from('transactions')
-        .select('id', { count: 'exact', head: true })
-        .eq('company_id', companyId)
-        .is('journal_entry_id', null),
 
       // Voucher-series state across open fiscal periods. Scoped by company_id:
       // the table also carries user_id, but a multi-company user would otherwise
@@ -229,7 +221,6 @@ export const companyCurrentResource: McpResource = {
         suppliers: supplierCountRes.count ?? 0,
         open_invoices: openInvoiceCountRes.count ?? 0,
         open_supplier_invoices: openSupplierInvoiceCountRes.count ?? 0,
-        uncategorized_transactions: uncategorizedTxCountRes.count ?? 0,
       },
       voucher_series: voucherSeries,
       recent: {

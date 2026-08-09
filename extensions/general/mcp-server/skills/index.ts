@@ -4,7 +4,6 @@ import { monthEndCloseSkill } from './month-end-close'
 import { quarterlyVatReviewSkill } from './quarterly-vat-review'
 import { yearEndCloseSkill } from './year-end-close'
 import { invoicingRulesSkill } from './invoicing-rules'
-import { bankReconciliationSkill } from './bank-reconciliation'
 import { kreditfakturaProcessSkill } from './kreditfaktura-process'
 import { customerOnboardingSkill } from './customer-onboarding'
 import { loadAtomsAsSkills, loadReferenceById } from './atoms'
@@ -15,7 +14,6 @@ export const workflowSkills: Skill[] = [
   quarterlyVatReviewSkill,
   yearEndCloseSkill,
   invoicingRulesSkill,
-  bankReconciliationSkill,
   kreditfakturaProcessSkill,
   customerOnboardingSkill,
 ]

@@ -2,13 +2,12 @@ import { describe, it, expect } from 'vitest'
 import { prompts, findPrompt } from '../prompts'
 
 describe('mcp prompt registry', () => {
-  it('exposes the five single-action prompts', () => {
-    expect(prompts).toHaveLength(5)
+  it('exposes the four single-action prompts', () => {
+    expect(prompts).toHaveLength(4)
     const names = prompts.map((p) => p.name).sort()
     expect(names).toEqual([
       'cash_today',
       'last_month_result',
-      'uncategorized_count',
       'vat_due',
       'whats_overdue',
     ])

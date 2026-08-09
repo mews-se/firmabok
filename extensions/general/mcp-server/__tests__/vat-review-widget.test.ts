@@ -92,10 +92,10 @@ describe('VAT review widget', () => {
       expect(widget?.html).toContain('Momsdeklaration')
     })
 
-    it('uiWidgets contains both receipt-matcher and vat-review', () => {
+    it('uiWidgets contains both vat-review and pending-operations', () => {
       const uris = uiWidgets.map((w) => w.uri)
-      expect(uris).toContain('ui://receipt-matcher/app.html')
       expect(uris).toContain('ui://vat-review/app.html')
+      expect(uris).toContain('ui://pending-operations/app.html')
     })
   })
 
@@ -117,7 +117,7 @@ describe('VAT review widget', () => {
   })
 
   describe('protocol: resources/list', () => {
-    it('lists the vat-review widget alongside the receipt-matcher widget', async () => {
+    it('lists the vat-review widget alongside the pending-operations widget', async () => {
       const res = await handleMcpRequest(mcpRequest('resources/list'))
       const result = await parseResult(res)
 
@@ -132,7 +132,7 @@ describe('VAT review widget', () => {
       })
 
       const uris = result.resources.map((r: { uri: string }) => r.uri)
-      expect(uris).toContain('ui://receipt-matcher/app.html')
+      expect(uris).toContain('ui://pending-operations/app.html')
       expect(uris).toContain('ui://vat-review/app.html')
     })
   })

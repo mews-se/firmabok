@@ -3,14 +3,6 @@ import { createExtensionContext } from '../context-factory'
 import { eventBus } from '@/lib/events/bus'
 import { createMockSupabase } from '@/tests/helpers'
 
-vi.mock('@/lib/transactions/ingest', () => ({
-  ingestTransactions: vi.fn().mockResolvedValue({
-    imported: 0, duplicates: 0, reconciled: 0,
-    auto_categorized: 0, auto_matched_invoices: 0, errors: 0,
-    transaction_ids: [],
-  }),
-}))
-
 vi.mock('@/lib/logger', () => ({
   createLogger: (module: string) => {
     const prefix = `[${module}]`
@@ -156,10 +148,10 @@ describe('createExtensionContext', () => {
     expect(typeof url).toBe('string')
   })
 
-  it('services.ingestTransactions is a function', () => {
+  it('services.getCashAccounts is a function', () => {
     const { supabase } = createMockSupabase()
     const ctx = createExtensionContext(supabase as never, 'user-1', 'company-1', 'test-ext')
 
-    expect(typeof ctx.services.ingestTransactions).toBe('function')
+    expect(typeof ctx.services.getCashAccounts).toBe('function')
   })
 })

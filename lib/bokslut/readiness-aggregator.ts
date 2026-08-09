@@ -1,7 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { validateYearEndReadiness } from '@/lib/core/bookkeeping/year-end-service'
-import { getReconciliationStatus } from '@/lib/reconciliation/bank-reconciliation'
-import { resolveCashAccountScope } from '@/lib/reconciliation/cash-account-scope'
 import { generateARReconciliation } from '@/lib/reports/ar-reconciliation'
 import { generateReconciliation as generateAPReconciliation } from '@/lib/reports/supplier-reconciliation'
 import { collectKontantmetodCutoff } from '@/lib/core/bookkeeping/kontantmetod-cutoff'
@@ -69,8 +67,6 @@ export interface BokslutReadinessReport {
  *
  * Wraps validateYearEndReadiness (which owns the legally-required checks) and
  * layers on:
- *   - bank reconciliation snapshot for the period (informational warning if
- *     unmatched transactions exist: not a legal blocker)
  *   - soft reminders for Phase 2+ features that ship later (depreciation,
  *     accruals, tax provision). These tell the user what's manual today.
  *
@@ -109,56 +105,11 @@ export async function buildBokslutReadinessReport(
     ((settingsResult.data as { accounting_method?: string | null } | null)?.accounting_method ??
       'accrual')
 
-  // Bank reconciliation snapshot for the period. Run after period fetch so we
-  // know the date range. Failure here must not break the report: fall back
-  // to null so the UI degrades gracefully.
-  let reconciliation: BokslutReadinessReport['reconciliation'] = null
-  try {
-    // Scope to the company's bank account. A 4-arg call leaves cashAccountId
-    // undefined and the bank side then sums every SEK cash account while the GL
-    // side stays on 1930 alone: the wizard surfaced that as "Bankavstämningen
-    // visar en differens" with nothing to match (#1290).
-    //
-    // resolveCashAccountScope fails CLOSED on a lookup error, so the catch below
-    // turns a failed lookup into "no reconciliation snapshot" rather than into
-    // the unscoped pooling path that produced the phantom difference.
-    const scope = await resolveCashAccountScope(supabase, companyId)
-    const status = await getReconciliationStatus(
-      supabase,
-      companyId,
-      period.period_start,
-      period.period_end,
-      scope.accountNumber,
-      scope.currency,
-      scope.cashAccountId,
-      scope.includeUnassigned,
-    )
-    reconciliation = {
-      is_reconciled: status.is_reconciled,
-      unmatched_transaction_count: status.unmatched_transaction_count,
-      unmatched_gl_line_count: status.unmatched_gl_line_count,
-      difference: status.difference,
-    }
-  } catch {
-    reconciliation = null
-  }
+  // No bank feed in this build: the report's reconciliation snapshot is
+  // always null and the UI degrades gracefully.
+  const reconciliation: BokslutReadinessReport['reconciliation'] = null
 
   const reminders: BokslutReminder[] = []
-
-  if (reconciliation && !reconciliation.is_reconciled) {
-    reminders.push({
-      code: 'bank_reconciliation_incomplete',
-      severity: 'warning',
-      message:
-        reconciliation.unmatched_transaction_count > 0
-          ? `${reconciliation.unmatched_transaction_count} banktransaktioner är inte matchade. Avstäm banken innan bokslut.`
-          : `Bankavstämningen visar en differens på ${reconciliation.difference.toFixed(2)} kr.`,
-      // Bankavstämning's real route: the earlier '/reconciliation/bank' href
-      // pointed at a page that has never existed, so the wizard's "Öppna"
-      // link 404ed.
-      href: '/reports/bank-reconciliation',
-    })
-  }
 
   // AR/AP tie-outs: Phase 1 avstämningar per the bokslut process, open
   // sub-ledger vs konto 1510 / 2440. Accrual companies only: under

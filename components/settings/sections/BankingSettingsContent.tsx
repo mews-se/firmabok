@@ -10,7 +10,6 @@ import { useToast } from '@/components/ui/use-toast'
 import { AlertTriangle, CreditCard, ExternalLink } from 'lucide-react'
 import { getSettingsPanel } from '@/lib/extensions/settings-panel-registry'
 import { ENABLED_EXTENSION_IDS } from '@/lib/extensions/_generated/enabled-extensions'
-import BankSyncStatusChip from '@/components/transactions/BankSyncStatusChip'
 import { SettingsSectionHeader } from '@/components/settings/SettingsRows'
 
 const BankingPanel = getSettingsPanel('enable-banking')
@@ -104,9 +103,6 @@ export function BankingSettingsContent() {
                 </a>
               </p>
             )}
-            <p className="text-muted-foreground">
-              {t('import_fallback_text')}<Link href="/import?mode=bank" className="underline underline-offset-2 hover:text-foreground">{t('import_fallback_link')}</Link>{t('import_fallback_suffix')}
-            </p>
           </div>
           <button
             onClick={() => {
@@ -124,14 +120,7 @@ export function BankingSettingsContent() {
       )}
 
       {hasBankingExtension && BankingPanel ? (
-        <>
-          {/* The chip renders null when there are no connections; empty:hidden
-              keeps its margin from leaving a stray gap in that case. */}
-          <div className="mt-6 empty:hidden">
-            <BankSyncStatusChip />
-          </div>
-          <BankingPanel />
-        </>
+        <BankingPanel />
       ) : (
         <div className="pt-8">
           <EmptyState

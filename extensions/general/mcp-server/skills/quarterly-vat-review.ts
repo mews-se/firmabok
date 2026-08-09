@@ -26,7 +26,7 @@ Weekend/holiday → next business day. Payment must reach Skattekontot by deadli
 
 ### Step 1: Verify the quarter is fully booked
 
-Run the month-end-close skill for each month in the quarter. Critically: zero uncategorized business transactions in the date range, and bank reconciliation difference = 0.
+Run the month-end-close skill for each month in the quarter. Critically: every affärshändelse in the date range must have a posted verifikat.
 
 ### Step 2: Generate the report
 
@@ -87,8 +87,6 @@ File via Skatteverket e-tjänst (or skatteverket extension if enabled). After fi
 - \`gnubok_get_vat_report\`: generate momsdeklaration data
 - \`gnubok_vat_review_widget\`: interactive review widget
 - \`gnubok_get_general_ledger\`: drill into 26xx accounts
-- \`gnubok_list_uncategorized_transactions\`: verify nothing missing
-- \`gnubok_get_reconciliation_status\`: bank vs ledger sanity check
 `
 
 export const quarterlyVatReviewSkill: Skill = {

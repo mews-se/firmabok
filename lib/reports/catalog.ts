@@ -18,7 +18,6 @@ export type ReportCategory =
   | 'year_end'
   | 'tax_vat'
   | 'ledgers'
-  | 'reconciliation'
   | 'export'
 
 /**
@@ -89,7 +88,6 @@ export const NAV_CATEGORIES: ReportCategory[] = [
   'year_end',
   'tax_vat',
   'ledgers',
-  'reconciliation',
 ]
 
 /** All categories shown on the library landing, in order. */
@@ -98,7 +96,6 @@ export const LIBRARY_CATEGORIES: ReportCategory[] = [
   'year_end',
   'tax_vat',
   'ledgers',
-  'reconciliation',
   'export',
 ]
 
@@ -108,7 +105,6 @@ export const CATEGORY_LABEL_KEY: Record<ReportCategory, string> = {
   year_end: 'group_year_end',
   tax_vat: 'group_tax_vat',
   ledgers: 'group_ledgers',
-  reconciliation: 'group_reconciliation',
   export: 'group_export',
 }
 
@@ -263,20 +259,6 @@ export const REPORT_CATALOG: ReportDescriptor[] = [
     category: 'ledgers',
     params: 'fiscal',
     exports: ['pdf', 'xlsx'],
-  },
-
-  // --- Avstämning (reconciliation) ---
-  {
-    slug: 'bank-reconciliation',
-    labelKey: 'name_bank_reconciliation',
-    descKey: 'desc_bank_reconciliation',
-    category: 'reconciliation',
-    // Period-scoped like the ledgers: the report page's räkenskapsår selector
-    // drives the reconciliation window (issue #751). Was 'none' (periodless),
-    // which left the view to host its OWN fiscal-year selector inside a
-    // loading-gated action bar: a render deadlock that hung the page on a
-    // permanent skeleton (#771).
-    params: 'fiscal',
   },
 
   // --- Export & arkiv: library-only ---

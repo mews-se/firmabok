@@ -47,8 +47,6 @@ export const OPERATION_RISK_TIERS: Record<string, RiskLevel> = {
   set_voucher_note: 'low',
 
   // ── Medium: reversible booking ─────────────────────────────────────
-  categorize_transaction: 'medium',
-  match_transaction_invoice: 'medium',
   // Link an existing posted verifikat as payment for an invoice. Reversible by
   // deleting the invoice_payments row and reverting invoice status; no journal
   // entry is created or modified. Sits next to match_transaction_invoice
@@ -74,7 +72,6 @@ export const OPERATION_RISK_TIERS: Record<string, RiskLevel> = {
   // escalates these two to 'high' when it can see that param.
   create_recurring_schedule: 'medium',
   update_recurring_schedule: 'medium',
-  create_transaction: 'medium', // ingests an uncategorized row; reversible by delete
   // Supplier master data carries payment-routing fields (IBAN, BIC, bankgiro,
   // bank_account) that drive outgoing payment files and supplier invoice
   // postings. A wrong account or org_number can enable supplier-fraud / BEC
@@ -85,11 +82,6 @@ export const OPERATION_RISK_TIERS: Record<string, RiskLevel> = {
   // invoices. Treat changes like supplier payment-routing data: reversible,
   // but never eligible for silent low-risk auto-commit.
   update_company_settings: 'medium',
-  // Pinning a doc to a tx is reversible while pre-categorization, but the link
-  // becomes part of the verifikation underlag (BFL 5 kap 6 §) once categorize
-  // propagates it. A wrong attachment requires a rättelse, so require human
-  // approval rather than auto-commit.
-  attach_document_to_transaction: 'medium',
   // Linking a doc to a posted verifikation is part of räkenskapsinformation
   // (BFL 5 kap 6 §) and becomes immutable once the JE is posted. Medium so a
   // human confirms the doc-to-verifikat pairing before it locks.
@@ -120,7 +112,6 @@ export const OPERATION_RISK_TIERS: Record<string, RiskLevel> = {
   // Same destructive reach as replace_sie_import; never auto-commit.
   undo_sie_import: 'high',
   explain_voucher_gap: 'medium',
-  uncategorize_transaction: 'medium',
   approve_supplier_invoice: 'high',
   credit_supplier_invoice: 'high',
   // Create supplier invoice from inbox: stages a `registered` supplier invoice
@@ -138,28 +129,6 @@ export const OPERATION_RISK_TIERS: Record<string, RiskLevel> = {
   create_voucher: 'high',
   correct_entry: 'high',
   reverse_entry: 'high',
-
-  // ── Multi-tx flows (PRs #603/#606/#608/#610) ───────────────────────
-  // Allocate 1 bank tx across N customer or supplier invoices into one
-  // combined verifikat. Reversible via storno + invoice_payments delete,
-  // so 'medium' (same tier as match_transaction_invoice: its single-
-  // invoice counterpart).
-  match_batch_allocate: 'medium',
-  // Bulk-book N bank txs into 1 verifikat. The create-new branch posts
-  // a verifikat with caller-supplied lines (template-expanded or manual),
-  // the same compliance-critical surface as create_voucher. 'high'.
-  bulk_book_transactions: 'high',
-  // Bulk-book N selected Underlag (Dokumentinkorgen): one posted verifikat per
-  // matched bank transaction, each with VAT (incl. reverse charge) derived from
-  // a shared category. Posting N verifikat at once is the same compliance-
-  // critical surface as bulk_book_transactions, so 'high': never auto-commit;
-  // approval requires confirmed=true.
-  bulk_book_inbox_items: 'high',
-  // Link a single bank tx to an already-posted verifikat (no new JE created).
-  // Reversible by clearing transactions.journal_entry_id and deleting any
-  // invoice_payments row: sits next to link_invoice_voucher semantically;
-  // both attach an existing booking to a different entity.
-  link_transaction_journal_entry: 'medium',
 }
 
 /**

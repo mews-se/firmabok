@@ -191,7 +191,7 @@ describe('MCP namespace compatibility', () => {
       )
     )
     const structured = loaded.structuredContent as { body: string }
-    expect(structured.body).toContain('accounted_list_uncategorized_transactions')
-    expect(structured.body).not.toContain('gnubok_list_uncategorized_transactions')
+    expect(structured.body).toContain('accounted_create_voucher')
+    expect(structured.body).not.toContain('gnubok_create_voucher')
   })
 })

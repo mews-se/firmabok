@@ -18,9 +18,7 @@ export const prompts: McpPrompt[] = [
     description: 'Visa banksaldo just nu',
     text:
       'Hur mycket pengar har jag på företagskontot just nu? Anropa gnubok_get_balance_sheet ' +
-      'för dagens datum och rapportera saldot på konto 1930. Visa även de senaste 5 transaktionerna ' +
-      'via gnubok_list_uncategorized_transactions (limit=5, sortera nyast först: men inkludera även ' +
-      'kategoriserade om verktyget tillåter). Svara kort på svenska.',
+      'för dagens datum och rapportera saldot på konto 1930. Svara kort på svenska.',
   },
   {
     name: 'last_month_result',
@@ -37,14 +35,6 @@ export const prompts: McpPrompt[] = [
       'Vad är min momsskuld eller momsfordran för innevarande momsperiod? Anropa gnubok_get_vat_report ' +
       'och rapportera enbart ruta 49 (att betala / att få tillbaka) samt deadline för deklarationen. ' +
       'Ingen analys.',
-  },
-  {
-    name: 'uncategorized_count',
-    description: 'Okontrerade transaktioner',
-    text:
-      'Hur många banktransaktioner är okontrerade? Anropa gnubok_list_uncategorized_transactions ' +
-      'och svara på svenska med tre uppgifter: antal, datum för äldsta transaktion, totalbelopp. ' +
-      'Inga åtgärdsförslag.',
   },
 ]
 

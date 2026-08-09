@@ -7,8 +7,8 @@ const REFRESH_TOKEN_PREFIX = 'gnubok_rt_'
 // ── API Key Scopes ──────────────────────────────────────────
 
 export const API_KEY_SCOPES = {
-  'transactions:read':  { label: 'Transaktioner: läs',  description: 'Lista transaktioner, mallförslag, kategoriförslag (3 verktyg)' },
-  'transactions:write': { label: 'Transaktioner: skriv', description: 'Kategorisera, av-kategorisera, kvittomatchning, koppling mot faktura (4 verktyg)' },
+  'transactions:read':  { label: 'Underlag: läs',  description: 'Lista och hämta underlag i dokumentinkorgen, verifikat utan underlag (5 verktyg)' },
+  'transactions:write': { label: 'Underlag: skriv', description: 'Ladda upp dokument till dokumentinkorgen (3 verktyg)' },
   'customers:read':     { label: 'Kunder: läs',         description: 'Lista kunder (1 verktyg)' },
   'customers:write':    { label: 'Kunder: skriv',       description: 'Skapa och uppdatera kunder (2 verktyg)' },
   'articles:read':      { label: 'Artiklar: läs',       description: 'Lista artiklar i artikelregistret (1 verktyg)' },
@@ -153,20 +153,6 @@ export const TOOL_SCOPE_MAP: Record<string, ApiKeyScope> = {
   gnubok_list_companies:                  'companies:read',
   gnubok_get_company_settings:            'companies:read',
   gnubok_update_company_settings:         'companies:write',
-  // Transactions
-  gnubok_list_uncategorized_transactions:     'transactions:read',
-  gnubok_list_transactions_without_documents: 'transactions:read',
-  gnubok_create_transactions:                 'transactions:write',
-  gnubok_categorize_transaction:              'transactions:write',
-  gnubok_receipt_matcher:                     'transactions:write',
-  gnubok_get_counterparty_templates:          'transactions:read',
-  gnubok_suggest_categories:                  'transactions:read',
-  gnubok_match_transaction_to_invoice:        'transactions:write',
-  gnubok_link_transaction_to_journal_entry:   'transactions:write',
-  gnubok_match_batch_allocate:                'transactions:write',
-  gnubok_bulk_book_transactions:              'transactions:write',
-  gnubok_bulk_book_inbox_items:               'transactions:write',
-  gnubok_auto_match_period:                   'transactions:write',
   // Customers
   gnubok_list_customers:                  'customers:read',
   gnubok_create_customer:                 'customers:write',
@@ -209,7 +195,6 @@ export const TOOL_SCOPE_MAP: Record<string, ApiKeyScope> = {
   gnubok_get_ar_ledger:                   'reports:read',
   gnubok_get_supplier_ledger:             'reports:read',
   gnubok_list_fiscal_periods:             'reports:read',
-  gnubok_get_reconciliation_status:       'reports:read',
   gnubok_list_accrual_schedules:          'reports:read',
   // Dimensions (kostnadsställe/projekt) registry: reads next to the report
   // tools; the staged value-create is a bookkeeping write (dimensions PR3).
@@ -227,7 +212,6 @@ export const TOOL_SCOPE_MAP: Record<string, ApiKeyScope> = {
   gnubok_get_inbox_item:                  'transactions:read',
   gnubok_list_unmatched_documents:        'transactions:read',
   gnubok_get_document_content:            'transactions:read',
-  gnubok_attach_document_to_transaction:  'transactions:write',
   gnubok_link_document_to_voucher:        'bookkeeping:write',
   // Bookkeeping write (Stream 1 Phase 1): high-risk, always staged
   gnubok_close_period:                    'bookkeeping:write',
@@ -239,8 +223,6 @@ export const TOOL_SCOPE_MAP: Record<string, ApiKeyScope> = {
   gnubok_run_currency_revaluation:        'bookkeeping:write',
   gnubok_explain_voucher_gap:             'bookkeeping:write',
   gnubok_list_voucher_gaps:               'reports:read',
-  // Transaction reversal (medium-risk)
-  gnubok_uncategorize_transaction:        'transactions:write',
   // SIE export (read-only) + import (write)
   gnubok_export_sie:                      'reports:read',
   gnubok_audit_package:                   'reports:read',

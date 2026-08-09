@@ -95,9 +95,8 @@ describe('Pending operations widget', () => {
       expect(widget?.html).toContain('Att godkänna')
     })
 
-    it('uiWidgets contains all three widgets', () => {
+    it('uiWidgets contains both widgets', () => {
       const uris = uiWidgets.map((w) => w.uri)
-      expect(uris).toContain('ui://receipt-matcher/app.html')
       expect(uris).toContain('ui://vat-review/app.html')
       expect(uris).toContain('ui://pending-operations/app.html')
     })

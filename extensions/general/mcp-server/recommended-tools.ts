@@ -25,7 +25,7 @@
 import { workflowSkills } from './skills'
 
 export interface WorkflowLoadout {
-  /** Stable snake_case workflow key (e.g. "categorize_month"). */
+  /** Stable snake_case workflow key (e.g. "close_period"). */
   workflow: string
   /** One-line English description of what the workflow accomplishes. */
   description: string
@@ -37,33 +37,11 @@ export interface WorkflowLoadout {
 
 export const RECOMMENDED_WORKFLOW_LOADOUTS: readonly WorkflowLoadout[] = [
   {
-    workflow: 'categorize_month',
-    description: 'Categorize and book a month of bank transactions.',
-    skill: 'bank-reconciliation',
-    tools: [
-      'gnubok_list_uncategorized_transactions',
-      'gnubok_suggest_categories',
-      'gnubok_categorize_transaction',
-      'gnubok_match_transaction_to_invoice',
-      // For transactions whose affärshändelse is already booked on an existing
-      // verifikat: links without creating new bookkeeping. Categorizing such a
-      // transaction would double-book it.
-      'gnubok_link_transaction_to_journal_entry',
-      // Tagging: check the registry before writing dimensions bags on
-      // categorize calls (resolve-don't-select needs real codes/names).
-      'gnubok_list_dimensions',
-      'gnubok_load_skill',
-      'gnubok_approve_pending_operation',
-    ],
-  },
-  {
     workflow: 'close_period',
-    description: 'Reconcile, document voucher gaps, and lock a fiscal period.',
+    description: 'Document voucher gaps and lock a fiscal period.',
     skill: 'month-end-close',
     tools: [
       'gnubok_list_fiscal_periods',
-      'gnubok_list_uncategorized_transactions',
-      'gnubok_get_reconciliation_status',
       'gnubok_list_voucher_gaps',
       'gnubok_explain_voucher_gap',
       'gnubok_lock_period',

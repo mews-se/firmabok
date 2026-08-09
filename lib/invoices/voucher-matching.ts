@@ -28,7 +28,6 @@ import {
   amountsMatchFuzzy,
   customerNameMatches,
 } from './invoice-matching'
-import { autoReconcileTransactionForLinkedVoucher } from '@/lib/reconciliation/bank-reconciliation'
 import { clearSettledInvoiceSuggestions } from './clear-settled-invoice-suggestions'
 import { documentCurrency, ledgerLineSideAmountIn } from '@/lib/bookkeeping/ledger-line-amount'
 import type { Invoice, Customer } from '@/types'
@@ -781,29 +780,8 @@ export async function linkInvoiceToVoucher(
     }
   }
 
-  // Close the loop on the bank feed: the invoice→voucher link above only
-  // advanced the invoice, so the bank transaction that paid it kept sitting in
-  // the Transactions inbox (journal_entry_id still null). Reconcile it to the
-  // same verifikat when it can be done unambiguously. Best-effort: the invoice
-  // link has already committed, so a failure here must not fail the whole call.
-  let reconciledTransactionId: string | null = null
-  try {
-    const recon = await autoReconcileTransactionForLinkedVoucher(
-      supabase,
-      companyId,
-      userId,
-      params.journalEntryId,
-      { invoiceId: params.invoiceId },
-    )
-    reconciledTransactionId = recon?.linkedTransactionId ?? null
-  } catch (err) {
-    log.warn('auto-reconcile of bank transaction after voucher link failed (non-blocking)', {
-      companyId,
-      invoiceId: params.invoiceId,
-      journalEntryId: params.journalEntryId,
-      reason: err instanceof Error ? err.message : String(err),
-    })
-  }
+  // No bank feed in this build: nothing to reconcile after the link.
+  const reconciledTransactionId: string | null = null
 
   // The invoice is settled, so every transaction still carrying a suggestion
   // pointer at it is dead: retire them (issue #1259). No exceptTransactionId:

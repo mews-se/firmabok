@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { eventBus } from '@/lib/events/bus'
-import { makeTransaction, makeInvoice, makeCustomer, makeFiscalPeriod } from '@/tests/helpers'
+import { makeInvoice, makeCustomer, makeFiscalPeriod } from '@/tests/helpers'
 
 // Mock the service client
 const mockInsert = vi.fn().mockResolvedValue({ error: null })
@@ -86,24 +86,6 @@ describe('event-log-handler', () => {
         entity_id: 'cust-456',
       })
     )
-  })
-
-  it('batch-inserts transaction.synced as individual rows', async () => {
-    const tx1 = makeTransaction({ id: 'tx-1' })
-    const tx2 = makeTransaction({ id: 'tx-2' })
-    const tx3 = makeTransaction({ id: 'tx-3' })
-
-    await eventBus.emit({
-      type: 'transaction.synced',
-      payload: { transactions: [tx1, tx2, tx3], userId: 'user-1', companyId: 'company-1' },
-    })
-
-    expect(mockInsert).toHaveBeenCalledTimes(1)
-    const rows = mockInsert.mock.calls[0][0]
-    expect(rows).toHaveLength(3)
-    expect(rows[0]).toMatchObject({ event_type: 'transaction.synced', entity_id: 'tx-1', company_id: 'company-1' })
-    expect(rows[1]).toMatchObject({ event_type: 'transaction.synced', entity_id: 'tx-2', company_id: 'company-1' })
-    expect(rows[2]).toMatchObject({ event_type: 'transaction.synced', entity_id: 'tx-3', company_id: 'company-1' })
   })
 
   it('does NOT persist journal_entry.drafted (excluded noise event)', async () => {
@@ -261,12 +243,4 @@ describe('event-log-handler', () => {
     expect(mockInsert).not.toHaveBeenCalled()
   })
 
-  it('skips batch insert when companyId is missing from payload', async () => {
-    await eventBus.emit({
-      type: 'transaction.synced',
-      payload: { transactions: [makeTransaction({ id: 'tx-1' })], userId: 'user-1' } as never,
-    })
-
-    expect(mockInsert).not.toHaveBeenCalled()
-  })
 })

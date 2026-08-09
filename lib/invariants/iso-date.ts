@@ -25,7 +25,7 @@ import { parseISO, isValid } from 'date-fns'
  *
  * `isSaneDateString` moved here from `lib/utils.ts`, where it was already
  * documented as "the ONE authoritative date rule shared by the client form and
- * the server-side CreateTransactionSchema". `lib/utils.ts` re-exports it so
+ * the server-side saneIsoDate schema". `lib/utils.ts` re-exports it so
  * existing imports keep working; this module is now its home because the same
  * rule is needed by consumers that must not import UI helpers.
  */

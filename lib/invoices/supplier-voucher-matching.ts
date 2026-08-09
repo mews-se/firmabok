@@ -24,7 +24,6 @@ import {
   amountsMatchFuzzy,
   customerNameMatches,
 } from './invoice-matching'
-import { autoReconcileTransactionForLinkedVoucher } from '@/lib/reconciliation/bank-reconciliation'
 import { clearSettledInvoiceSuggestions } from './clear-settled-invoice-suggestions'
 import { documentCurrency, ledgerLineSideAmountIn } from '@/lib/bookkeeping/ledger-line-amount'
 import type { SupplierInvoice, Supplier } from '@/types'
@@ -679,28 +678,8 @@ export async function linkSupplierInvoiceToVoucher(
     }
   }
 
-  // Close the loop on the bank feed: the link above only advanced the supplier
-  // invoice, leaving the bank transaction that paid it in the Transactions
-  // inbox. Reconcile it to the same verifikat when unambiguous. Best-effort:
-  // the link RPC has already committed.
-  let reconciledTransactionId: string | null = null
-  try {
-    const recon = await autoReconcileTransactionForLinkedVoucher(
-      supabase,
-      companyId,
-      userId,
-      params.journalEntryId,
-      { supplierInvoiceId: params.supplierInvoiceId },
-    )
-    reconciledTransactionId = recon?.linkedTransactionId ?? null
-  } catch (err) {
-    log.warn('auto-reconcile of bank transaction after supplier voucher link failed (non-blocking)', {
-      companyId,
-      supplierInvoiceId: params.supplierInvoiceId,
-      journalEntryId: params.journalEntryId,
-      reason: err instanceof Error ? err.message : String(err),
-    })
-  }
+  // No bank feed in this build: nothing to reconcile after the link.
+  const reconciledTransactionId: string | null = null
 
   // The invoice is settled, so every transaction still carrying a suggestion
   // pointer at it is dead: retire them (issue #1259). No exceptTransactionId:

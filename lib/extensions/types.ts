@@ -1,12 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { CoreEvent, CoreEventType } from '@/lib/events/types'
-import type {
-  CashAccount,
-  EntityType,
-  IngestOptions,
-  IngestResult,
-  RawTransaction,
-} from '@/types'
+import type { CashAccount, EntityType } from '@/types'
 
 // ============================================================
 // Extension Marketplace Types
@@ -172,7 +166,6 @@ export interface ExtensionStorage {
 
 /** Core services exposed to extensions */
 export interface ExtensionServices {
-  ingestTransactions(supabase: SupabaseClient, companyId: string, userId: string, raw: RawTransaction[], options?: IngestOptions): Promise<IngestResult>
   /**
    * List a company's cash accounts (cash_accounts table). Replaces ad-hoc reads
    * of bank_connections.accounts_data for routing decisions. Returns rows

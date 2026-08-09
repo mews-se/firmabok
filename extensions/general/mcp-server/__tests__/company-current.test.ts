@@ -94,7 +94,6 @@ const EXPECTED_QUERIES: { table: string; columns: string[] }[] = [
   { table: 'suppliers', columns: ['id'] },
   { table: 'invoices', columns: ['id'] },
   { table: 'supplier_invoices', columns: ['id'] },
-  { table: 'transactions', columns: ['id'] },
   {
     table: 'voucher_sequences',
     columns: [
@@ -190,9 +189,9 @@ describe('Accounted://company/current query shape', () => {
 describe('Accounted://company/current recency signals', () => {
   it('surfaces the delivery timestamp as last_invoice_sent_at', async () => {
     const results = emptyResults()
-    results[10] = { data: { created_at: '2026-07-20T08:00:00.000Z' } }
-    results[11] = { data: { sent_at: '2026-07-25T13:09:31.130Z' } }
-    results[12] = { data: { last_synced_at: '2026-07-26T04:00:00.000Z' } }
+    results[9] = { data: { created_at: '2026-07-20T08:00:00.000Z' } }
+    results[10] = { data: { sent_at: '2026-07-25T13:09:31.130Z' } }
+    results[11] = { data: { last_synced_at: '2026-07-26T04:00:00.000Z' } }
     const { supabase } = createRecordingSupabase(results)
 
     const result = (await companyCurrentResource.read(ctx(supabase))) as {
@@ -226,7 +225,7 @@ describe('Accounted://company/current recency signals', () => {
 
   it('throws instead of reporting a failed delivery read as "never sent"', async () => {
     const results = emptyResults()
-    results[11] = { error: { code: '42703', message: 'column invoice_deliveries.sent_at does not exist' } }
+    results[10] = { error: { code: '42703', message: 'column invoice_deliveries.sent_at does not exist' } }
     const { supabase } = createRecordingSupabase(results)
 
     await expect(companyCurrentResource.read(ctx(supabase))).rejects.toThrow(
@@ -236,13 +235,13 @@ describe('Accounted://company/current recency signals', () => {
 
   it('throws when the categorization or bank-sync read fails', async () => {
     const categorizationFailed = emptyResults()
-    categorizationFailed[10] = { error: { code: '57014', message: 'statement timeout' } }
+    categorizationFailed[9] = { error: { code: '57014', message: 'statement timeout' } }
     await expect(
       companyCurrentResource.read(ctx(createRecordingSupabase(categorizationFailed).supabase)),
     ).rejects.toThrow(/Failed to read last categorization/)
 
     const bankSyncFailed = emptyResults()
-    bankSyncFailed[12] = { error: { code: '57014', message: 'statement timeout' } }
+    bankSyncFailed[11] = { error: { code: '57014', message: 'statement timeout' } }
     await expect(
       companyCurrentResource.read(ctx(createRecordingSupabase(bankSyncFailed).supabase)),
     ).rejects.toThrow(/Failed to read last bank sync/)
@@ -250,7 +249,7 @@ describe('Accounted://company/current recency signals', () => {
 
   it('treats PGRST116 as no rows, not as a failure', async () => {
     const results = emptyResults()
-    results[11] = { error: { code: 'PGRST116', message: 'no rows returned' } }
+    results[10] = { error: { code: 'PGRST116', message: 'no rows returned' } }
     const { supabase } = createRecordingSupabase(results)
 
     const result = (await companyCurrentResource.read(ctx(supabase))) as {

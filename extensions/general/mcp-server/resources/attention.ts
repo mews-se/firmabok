@@ -28,7 +28,7 @@ export const attentionResource: McpResource = {
   uri: 'Accounted://attention',
   name: 'What Needs Attention',
   description:
-    'One-shot summary of outstanding work for the active company: unbooked transactions, overdue invoices, pending approvals, voucher gaps, upcoming deadlines, bank consent expiry, and period-lock alerts. Each category includes a count, up to 5 sample rows, and a suggested next tool call. Use this at session start to orient before chaining read tools.',
+    'One-shot summary of outstanding work for the active company: overdue invoices, pending approvals, voucher gaps, upcoming deadlines, bank consent expiry, and period-lock alerts. Each category includes a count, up to 5 sample rows, and a suggested next tool call. Use this at session start to orient before chaining read tools.',
   mimeType: 'application/json',
   read: async ({ supabase, companyId }) => {
     const now = new Date()
@@ -37,35 +37,17 @@ export const attentionResource: McpResource = {
     const horizon = horizonDate.toISOString().slice(0, 10)
 
     const [
-      unbookedHead,
-      unbookedSamples,
       overdueRows,
       pendingSupplierHead,
       pendingSupplierSamples,
       pendingOpsHead,
       pendingOpsSamples,
-      unmatchedReceiptsHead,
-      unmatchedReceiptsSamples,
       voucherSeriesRows,
       deadlineRows,
       bankConnRows,
       activePeriodRow,
       companySettingsRow,
     ] = await Promise.all([
-      supabase
-        .from('transactions')
-        .select('id', { count: 'exact', head: true })
-        .eq('company_id', companyId)
-        .is('journal_entry_id', null)
-        .eq('is_business', true),
-      supabase
-        .from('transactions')
-        .select('id, date, amount, currency, description, merchant_name')
-        .eq('company_id', companyId)
-        .is('journal_entry_id', null)
-        .eq('is_business', true)
-        .order('date', { ascending: true })
-        .limit(SAMPLE_LIMIT),
       supabase
         .from('invoices')
         .select('id, invoice_number, customer_id, due_date, total, currency, status')
@@ -97,20 +79,6 @@ export const attentionResource: McpResource = {
         .eq('company_id', companyId)
         .eq('status', 'pending')
         .order('created_at', { ascending: false })
-        .limit(SAMPLE_LIMIT),
-      supabase
-        .from('receipts')
-        .select('id', { count: 'exact', head: true })
-        .eq('company_id', companyId)
-        .eq('status', 'confirmed')
-        .is('matched_transaction_id', null),
-      supabase
-        .from('receipts')
-        .select('id, receipt_date, total_amount, currency, merchant_name')
-        .eq('company_id', companyId)
-        .eq('status', 'confirmed')
-        .is('matched_transaction_id', null)
-        .order('receipt_date', { ascending: false, nullsFirst: false })
         .limit(SAMPLE_LIMIT),
       supabase
         .from('voucher_sequences')
@@ -145,25 +113,6 @@ export const attentionResource: McpResource = {
     ])
 
     const categories: AttentionCategory[] = []
-
-    // ── Unbooked business transactions ──────────────────────────────
-    const unbookedCount = unbookedHead.count ?? 0
-    if (unbookedCount > 0) {
-      const oldest = unbookedSamples.data?.[0]
-      const oldestAgeDays = oldest?.date ? daysBetween(oldest.date, today) : 0
-      categories.push({
-        key: 'unbooked_transactions',
-        label_sv: 'Obokförda affärstransaktioner',
-        severity: oldestAgeDays > 30 ? 'critical' : 'warning',
-        count: unbookedCount,
-        samples: unbookedSamples.data ?? [],
-        next: {
-          description: 'Kategorisera den äldsta obokförda transaktionen.',
-          tool: 'gnubok_categorize_transaction',
-          args: oldest ? { transaction_id: oldest.id } : undefined,
-        },
-      })
-    }
 
     // ── Overdue invoices ────────────────────────────────────────────
     const overdueAll = overdueRows.data ?? []
@@ -218,25 +167,6 @@ export const attentionResource: McpResource = {
           description:
             'Visa kön för användaren. När användaren godkänner en specifik operation_id i chatten, anropa gnubok_approve_pending_operation direkt: /pending är ett alternativ, inte ett krav.',
           tool: 'gnubok_list_pending_operations',
-        },
-      })
-    }
-
-    // ── Unmatched receipts ──────────────────────────────────────────
-    const unmatchedReceiptsCount = unmatchedReceiptsHead.count ?? 0
-    if (unmatchedReceiptsCount > 0) {
-      const samples = unmatchedReceiptsSamples.data ?? []
-      const oldest = samples[samples.length - 1]
-      categories.push({
-        key: 'unmatched_receipts',
-        label_sv: 'Kvitton utan matchad transaktion',
-        severity: 'warning',
-        count: unmatchedReceiptsCount,
-        samples,
-        next: {
-          description: 'Försök matcha kvitto mot bankhändelse.',
-          tool: 'gnubok_receipt_matcher',
-          args: oldest ? { receipt_id: oldest.id } : undefined,
         },
       })
     }

@@ -51,8 +51,6 @@ import type {
 
 import type { ImportExecuteOptions } from '@/components/import/ImportReviewStep'
 import { applyMappingOverride } from '@/lib/import/account-mapper'
-import type { BankFileParseResult, BankFileFormatId, GenericCSVColumnMapping } from '@/lib/import/bank-file/types'
-import type { IngestResult } from '@/lib/transactions/ingest'
 import type {
   ImportWizardStep,
   ParsedSIEFile,
@@ -65,7 +63,6 @@ import type { BASAccount } from '@/types'
 import { ENABLED_EXTENSION_IDS } from '@/lib/extensions/_generated/enabled-extensions'
 import dynamic from 'next/dynamic'
 import { FiscalYearSelector } from '@/components/common/FiscalYearSelector'
-import BankSyncStatusChip from '@/components/transactions/BankSyncStatusChip'
 
 function ImportStepLoading() {
   return (
@@ -75,11 +72,6 @@ function ImportStepLoading() {
   )
 }
 
-const BankFileUploadStep = dynamic(() => import('@/components/import/BankFileUploadStep'), { loading: ImportStepLoading })
-const BankFilePreviewStep = dynamic(() => import('@/components/import/BankFilePreviewStep'), { loading: ImportStepLoading })
-const BankFileColumnMappingStep = dynamic(() => import('@/components/import/BankFileColumnMappingStep'), { loading: ImportStepLoading })
-const BankFileConfirmStep = dynamic(() => import('@/components/import/BankFileConfirmStep'), { loading: ImportStepLoading })
-const BankFileResultStep = dynamic(() => import('@/components/import/BankFileResultStep'), { loading: ImportStepLoading })
 const OpeningBalanceUploadStep = dynamic(() => import('@/components/import/OpeningBalanceUploadStep'), { loading: ImportStepLoading })
 const OpeningBalanceColumnMappingStep = dynamic(() => import('@/components/import/OpeningBalanceColumnMappingStep'), { loading: ImportStepLoading })
 const OpeningBalanceEditStep = dynamic(() => import('@/components/import/OpeningBalanceEditStep'), { loading: ImportStepLoading })
@@ -95,314 +87,6 @@ const SIEPreviewStep = dynamic(() => import('@/components/import/SIEPreviewStep'
 const AccountMappingStep = dynamic(() => import('@/components/import/AccountMappingStep'), { loading: ImportStepLoading })
 const ImportReviewStep = dynamic(() => import('@/components/import/ImportReviewStep'), { loading: ImportStepLoading })
 const ImportResultStep = dynamic(() => import('@/components/import/ImportResultStep'), { loading: ImportStepLoading })
-
-// ============================================================
-// Bank File Import Wizard Steps
-// ============================================================
-
-type BankFileStep = 'upload' | 'preview' | 'column_mapping' | 'confirm' | 'result'
-
-const BANK_STEPS: BankFileStep[] = ['upload', 'preview', 'confirm', 'result']
-const BANK_STEPS_WITH_MAPPING: BankFileStep[] = ['upload', 'column_mapping', 'confirm', 'result']
-
-const BANK_STEP_LABELS: Record<BankFileStep, string> = {
-  upload: 'Ladda upp',
-  preview: 'Förhandsgranskning',
-  column_mapping: 'Kolumnmappning',
-  confirm: 'Bekräfta',
-  result: 'Resultat',
-}
-
-function BankFileImportWizard() {
-  const { toast } = useToast()
-  const tTx = useTranslations('transactions')
-  const { company } = useCompany()
-
-  const [bankStep, setBankStep] = useState<BankFileStep>('upload')
-  const [bankIsLoading, setBankIsLoading] = useState(false)
-  const [bankError, setBankError] = useState<string | null>(null)
-  const [bankErrorTitle, setBankErrorTitle] = useState<string | null>(null)
-
-  // Parse results
-  const [parseResult, setParseResult] = useState<BankFileParseResult | null>(null)
-  const [detectedFormat, setDetectedFormat] = useState<string | null>(null)
-  const [detectedFormatName, setDetectedFormatName] = useState<string | null>(null)
-  const [fileHash, setFileHash] = useState<string>('')
-  const [filename, setFilename] = useState<string>('')
-  const [rawFileContent, setRawFileContent] = useState<string>('')
-
-  // Import result
-  const [ingestResult, setIngestResult] = useState<IngestResult | null>(null)
-
-  // Active PSD2 connections: drives an overlap warning so users don't
-  // accidentally upload a CSV covering periods we already sync nightly.
-  const [activePsd2Banks, setActivePsd2Banks] = useState<string[]>([])
-  useEffect(() => {
-    if (!company?.id) return
-    let cancelled = false
-    const supabase = createClient()
-    supabase
-      .from('bank_connections')
-      .select('bank_name')
-      .eq('company_id', company.id)
-      .eq('status', 'active')
-      .then(({ data }) => {
-        if (cancelled) return
-        const names = Array.from(new Set((data ?? []).map((r) => r.bank_name).filter(Boolean)))
-        setActivePsd2Banks(names)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [company?.id])
-
-  const steps = parseResult?.format === 'generic_csv' ? BANK_STEPS_WITH_MAPPING : BANK_STEPS
-  const currentStepIndex = steps.indexOf(bankStep)
-  const progress = ((currentStepIndex + 1) / steps.length) * 100
-
-  const handleFileSelect = useCallback(async (file: File, formatOverride?: BankFileFormatId) => {
-    setBankError(null)
-    setBankErrorTitle(null)
-    setBankIsLoading(true)
-
-    try {
-      const formData = new FormData()
-      formData.append('file', file)
-      if (formatOverride) {
-        formData.append('format', formatOverride)
-      }
-
-      const res = await fetch('/api/import/bank-file/parse', {
-        method: 'POST',
-        body: formData,
-      })
-
-      const data = await res.json()
-
-      if (!res.ok) {
-        // Structured error envelope: { error: { code, message, message_en, details } }
-        const err = data?.error
-        if (err && typeof err === 'object') {
-          if (err.code === 'BANK_FILE_DUPLICATE') {
-            const importedAt = err.details?.importedAt ? formatDate(err.details.importedAt) : null
-            const count = typeof err.details?.importedCount === 'number' ? err.details.importedCount : null
-            const when = importedAt
-              ? ` ${importedAt}${count !== null ? ` (${count} transaktioner)` : ''}`
-              : ''
-            setBankErrorTitle('Filen är redan importerad')
-            setBankError(
-              `Den här filen är redan importerad${when}. Transaktionerna finns redan under Transaktioner. ` +
-                'Exportera en ny fil från banken om du vill lägga till fler transaktioner.'
-            )
-          } else {
-            setBankError(getErrorMessage(err) || 'Kunde inte läsa filen')
-          }
-        } else {
-          setBankError(typeof err === 'string' ? err : 'Kunde inte läsa filen')
-        }
-        return
-      }
-
-      setParseResult(data.data.parse_result)
-      setDetectedFormat(data.data.detected_format)
-      setDetectedFormatName(data.data.detected_format_name)
-      setFileHash(data.data.file_hash)
-      setFilename(data.data.filename)
-
-      // Read raw file content for CSV preview
-      const text = await file.text()
-      setRawFileContent(text)
-
-      const txCount = data.data.parse_result.transactions.length
-      if (data.data.parse_result.format === 'generic_csv') {
-        // Auto-detect failed or user picked "Annan CSV": always route to manual column mapping.
-        // Default mapping rarely matches, so advance regardless of tx count.
-        setBankStep('column_mapping')
-      } else if (txCount > 0) {
-        setBankStep('preview')
-        toast({
-          title: 'Fil analyserad',
-          description: `${txCount} transaktioner hittades`,
-        })
-      } else {
-        // Format detected but no transactions parsed: parser couldn't extract rows
-        setBankError('Filen kunde läsas men inga transaktioner hittades. Kontrollera att filen innehåller transaktionsdata och inte bara rubriker.')
-      }
-    } catch (err) {
-      setBankError(err instanceof Error ? getErrorMessage(err) : 'Kunde inte läsa filen')
-    } finally {
-      setBankIsLoading(false)
-    }
-  }, [toast])
-
-  const handleColumnMappingConfirm = useCallback(async (mapping: GenericCSVColumnMapping) => {
-    // Re-parse with mapping via the generic CSV parser
-    const { parseGenericCSV } = await import('@/lib/import/bank-file/formats/generic-csv')
-    const result = parseGenericCSV(rawFileContent, mapping)
-    setParseResult(result)
-    setBankStep('confirm')
-  }, [rawFileContent])
-
-  const handleExecuteImport = useCallback(async (options: { skip_duplicates: boolean; auto_categorize: boolean; settlement_account?: string }) => {
-    if (!parseResult) return
-
-    setBankIsLoading(true)
-    setBankError(null)
-
-    try {
-      const res = await fetch('/api/import/bank-file/execute', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          transactions: parseResult.transactions,
-          format: parseResult.format,
-          filename,
-          file_hash: fileHash,
-          ...options,
-        }),
-      })
-
-      const data = await res.json()
-
-      if (!res.ok) {
-        // Map the parsed body plus the status: on the thrown-error path
-        // `data.error` is the canonical envelope OBJECT (withRouteContext),
-        // which must never be stored into a rendered string state.
-        setBankError(getErrorMessage(data, { statusCode: res.status }))
-        return
-      }
-
-      setIngestResult(data.data)
-      setBankStep('result')
-
-      toast({
-        title: 'Import genomförd',
-        description: `${data.data.imported} transaktioner importerades`,
-      })
-    } catch (err) {
-      setBankError(err instanceof Error ? getErrorMessage(err) : 'Importen misslyckades')
-    } finally {
-      setBankIsLoading(false)
-    }
-  }, [parseResult, filename, fileHash, toast])
-
-  const handleNewImport = () => {
-    setBankStep('upload')
-    setParseResult(null)
-    setDetectedFormat(null)
-    setDetectedFormatName(null)
-    setFileHash('')
-    setFilename('')
-    setIngestResult(null)
-    setBankError(null)
-    setBankErrorTitle(null)
-    setRawFileContent('')
-  }
-
-  return (
-    <div className="space-y-6">
-      {/* Status chip for at-a-glance "auto-sync is healthy / stale / needs attention" */}
-      <BankSyncStatusChip />
-
-      {/* Overlap warning: active PSD2 means file import will likely create
-          duplicates of transactions the nightly sync already covers. */}
-      {activePsd2Banks.length > 0 && (
-        <div className="flex items-start gap-3 rounded-lg border border-border bg-muted/30 p-4">
-          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-warning" />
-          <div className="flex-1 text-sm">
-            <p className="font-medium">
-              {tTx('import_psd2_active_warning_title', { bankName: activePsd2Banks.join(', ') })}
-            </p>
-            <p className="mt-1 text-muted-foreground">
-              {tTx('import_psd2_active_warning_body')}
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* Progress */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span className="sm:hidden text-primary font-medium">
-                Steg {currentStepIndex + 1}/{steps.length}: {BANK_STEP_LABELS[bankStep]}
-              </span>
-              {steps.map((s, i) => (
-                <span
-                  key={s}
-                  className={cn(
-                    'hidden sm:inline',
-                    i <= currentStepIndex ? 'text-primary font-medium' : 'text-muted-foreground'
-                  )}
-                >
-                  {BANK_STEP_LABELS[s]}
-                </span>
-              ))}
-            </div>
-            <Progress value={progress} className="h-2" />
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Step content */}
-      {bankStep === 'upload' && (
-        <BankFileUploadStep
-          onFileSelect={handleFileSelect}
-          isLoading={bankIsLoading}
-          error={bankError}
-          errorTitle={bankErrorTitle}
-          detectedFormat={detectedFormat}
-          detectedFormatName={detectedFormatName}
-        />
-      )}
-
-      {bankStep === 'preview' && parseResult && (
-        <BankFilePreviewStep
-          parseResult={parseResult}
-          onContinue={() => {
-            if (parseResult.format === 'generic_csv') {
-              setBankStep('column_mapping')
-            } else {
-              setBankStep('confirm')
-            }
-          }}
-          onBack={() => setBankStep('upload')}
-        />
-      )}
-
-      {bankStep === 'column_mapping' && (
-        <BankFileColumnMappingStep
-          rawFileContent={rawFileContent}
-          onConfirm={handleColumnMappingConfirm}
-          onBack={() => setBankStep('upload')}
-        />
-      )}
-
-      {bankStep === 'confirm' && parseResult && (
-        <BankFileConfirmStep
-          parseResult={parseResult}
-          onExecute={handleExecuteImport}
-          onBack={() => {
-            if (parseResult.format === 'generic_csv') {
-              setBankStep('column_mapping')
-            } else {
-              setBankStep('preview')
-            }
-          }}
-          isLoading={bankIsLoading}
-        />
-      )}
-
-      {bankStep === 'result' && ingestResult && (
-        <BankFileResultStep
-          result={ingestResult}
-          onNewImport={handleNewImport}
-        />
-      )}
-    </div>
-  )
-}
 
 // ============================================================
 // SIE Import Wizard (unchanged, extracted into component)
@@ -834,7 +518,6 @@ function OpeningBalanceFlow() {
   const [obStep, setObStep] = useState<OpeningBalanceStep>('upload')
   const [obIsLoading, setObIsLoading] = useState(false)
   const [obError, setObError] = useState<string | null>(null)
-  const [obBankFormatHint, setObBankFormatHint] = useState<string | null>(null)
   const [obFile, setObFile] = useState<File | null>(null)
   const [parseResult, setParseResult] = useState<OpeningBalanceParseResult | null>(null)
   const [editedRows, setEditedRows] = useState<{
@@ -853,7 +536,6 @@ function OpeningBalanceFlow() {
 
   const handleFileSelect = useCallback(async (file: File) => {
     setObError(null)
-    setObBankFormatHint(null)
     setObIsLoading(true)
     setObFile(file)
 
@@ -879,13 +561,7 @@ function OpeningBalanceFlow() {
       setParseResult(result)
 
       if (result.rows.length === 0) {
-        if (result.detected_bank_format) {
-          // The file is a bank statement uploaded to the wrong importer (#918)
-          setObBankFormatHint(result.detected_bank_format)
-          setObError(`Filen ser ut som ett kontoutdrag från ${result.detected_bank_format}, inte ingående balanser. Kontoutdrag importeras under "Banktransaktioner".`)
-        } else {
-          setObError('Inga konton med belopp hittades i filen. Kontrollera att filen innehåller kontonummer och belopp.')
-        }
+        setObError('Inga konton med belopp hittades i filen. Kontrollera att filen innehåller kontonummer och belopp.')
         return
       }
 
@@ -1007,7 +683,6 @@ function OpeningBalanceFlow() {
     setEditedRows([])
     setExecuteResult(null)
     setObError(null)
-    setObBankFormatHint(null)
   }
 
   return (
@@ -1043,11 +718,6 @@ function OpeningBalanceFlow() {
           onFileSelect={handleFileSelect}
           isLoading={obIsLoading}
           error={obError}
-          errorAction={
-            obBankFormatHint
-              ? { label: 'Importera banktransaktioner', onClick: () => router.push('/import?mode=bank') }
-              : undefined
-          }
         />
       )}
 
@@ -1957,7 +1627,7 @@ const WooCommercePanel = getSettingsPanel('woocommerce')
 // Import Page with Selection Cards
 // ============================================================
 
-type ImportMode = null | 'psd2' | 'stripe' | 'woocommerce' | 'bank' | 'sie' | 'csv_data' | 'migration'
+type ImportMode = null | 'psd2' | 'stripe' | 'woocommerce' | 'sie' | 'csv_data' | 'migration'
 
 export default function ImportPage() {
   const { isSandbox } = useCompany()
@@ -1987,10 +1657,10 @@ export default function ImportPage() {
   useEffect(() => {
     // External imports (provider migration, PSD2 bank connection) need live
     // third-party credentials, so their deep links are ignored in the sandbox.
-    // Manual file-import modes (bank file, CSV/Excel, SIE) stay reachable.
+    // Manual file-import modes (CSV/Excel, SIE) stay reachable.
     const allowedModes = isSandbox
-      ? ['bank', 'sie', 'csv_data']
-      : ['psd2', 'stripe', 'woocommerce', 'bank', 'sie', 'csv_data', 'migration']
+      ? ['sie', 'csv_data']
+      : ['psd2', 'stripe', 'woocommerce', 'sie', 'csv_data', 'migration']
     if (!isSandbox && searchParams.get('migration')) {
       setMode('migration')
     } else {
@@ -2144,11 +1814,6 @@ export default function ImportPage() {
                   />
                 )}
                 <ImportRow
-                  title={t('bankfile_title')}
-                  sub={t('bankfile_description')}
-                  onClick={() => setMode('bank')}
-                />
-                <ImportRow
                   title={t('csv_data_title')}
                   sub={t('csv_data_description')}
                   onClick={() => setMode('csv_data')}
@@ -2256,13 +1921,9 @@ export default function ImportPage() {
             <CardContent className="flex flex-col items-center justify-center py-12 text-center">
               <Landmark className="mb-4 h-10 w-10 text-muted-foreground/40" />
               <p className="mb-1 font-medium">Bankintegration (PSD2) är inte aktiverad</p>
-              <p className="mb-4 max-w-md text-sm text-muted-foreground">
-                Aktivera tillägget Enable Banking för att koppla ditt bankkonto, eller importera
-                transaktioner manuellt via bankfil.
+              <p className="max-w-md text-sm text-muted-foreground">
+                Aktivera tillägget Enable Banking för att koppla ditt bankkonto.
               </p>
-              <Button variant="outline" onClick={() => setMode('bank')}>
-                Importera bankfil istället
-              </Button>
             </CardContent>
           </Card>
         )
@@ -2297,7 +1958,6 @@ export default function ImportPage() {
           </Card>
         )
       )}
-      {mode === 'bank' && <BankFileImportWizard />}
       {mode === 'sie' && <SIEImportWizard />}
       {mode === 'csv_data' && <CSVDataImportWizard />}
     </div>

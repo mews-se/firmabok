@@ -485,9 +485,9 @@ describe('recommended_tools workflow loadouts (issue #1098)', () => {
 
   it('assertRecommendedLoadoutsValid throws on a tool name missing from the registry', () => {
     const known = new Set(tools.map((t) => t.name))
-    known.delete('gnubok_categorize_transaction')
+    known.delete('gnubok_lock_period')
     expect(() => assertRecommendedLoadoutsValid(known)).toThrow(
-      /categorize_month.*unknown tool "gnubok_categorize_transaction"/
+      /close_period.*unknown tool "gnubok_lock_period"/
     )
   })
 

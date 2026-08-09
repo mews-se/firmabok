@@ -1,10 +1,8 @@
 import type { UiWidget } from './types'
-import { receiptMatcherWidget } from './receipt-matcher'
 import { vatReviewWidget } from './vat-review'
 import { pendingOperationsWidget } from './pending-operations'
 
 export const uiWidgets: UiWidget[] = [
-  receiptMatcherWidget,
   vatReviewWidget,
   pendingOperationsWidget,
 ]

@@ -85,8 +85,8 @@ If the user delivered the invoice manually (printed, e-faktura via Peppol, etc.)
 
 When money arrives in 1930:
 
-- **Match to bank transaction** (preferred): \`gnubok_match_transaction_to_invoice({ transaction_id, invoice_id })\`: links the payment, marks invoice paid (or partially_paid), books JE.
-- **Manual mark**: \`gnubok_mark_invoice_as_paid({ invoice_id, payment_date })\`: when payment arrived but isn't in the bank feed yet.
+- **Mark as paid**: \`gnubok_mark_invoice_as_paid({ invoice_id, payment_date })\`: marks the invoice paid and books the payment JE.
+- **Link to an existing verifikat**: \`gnubok_link_invoice_to_voucher\`: when the payment is already booked on a posted verifikat, link instead of double-booking.
 
 ### Step 6: Reverse if needed
 
@@ -133,7 +133,7 @@ Swedish authorities require e-invoices via Peppol BIS Billing 3.0 (Lag 2018:1277
 - \`gnubok_send_invoice\`: email PDF
 - \`gnubok_mark_invoice_as_sent\`: manual delivery
 - \`gnubok_mark_invoice_as_paid\`: manual payment
-- \`gnubok_match_transaction_to_invoice\`: link bank payment
+- \`gnubok_link_invoice_to_voucher\`: link a payment already booked on a verifikat
 - \`gnubok_credit_invoice\`: kreditfaktura (legal undo)
 - \`gnubok_convert_invoice\`: proforma → real invoice
 - \`gnubok_list_invoices\`: find existing invoices

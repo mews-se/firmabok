@@ -23,8 +23,6 @@ const GRANDFATHERED_BARE_ID_PATHS = [
   'gnubok_list_dimension_values.values[]',
   'gnubok_list_dimensions.dimensions[]',
   'gnubok_list_dimensions.dimensions[].values[]',
-  'gnubok_list_transactions_without_documents.transactions[]',
-  'gnubok_list_uncategorized_transactions.transactions[]',
   'gnubok_remember_fact',
 ].sort()
 

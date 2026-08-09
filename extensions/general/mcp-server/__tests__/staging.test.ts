@@ -144,12 +144,6 @@ describe('toToolError: retryable propagation', () => {
     expect(validation.error.retryable).toBe(false)
   })
 
-  it('categorize_transaction accepts idempotency_key so blind retries are replay-safe', () => {
-    const tool = tools.find((t) => t.name === 'gnubok_categorize_transaction')!
-    const schema = tool.inputSchema as { properties: Record<string, unknown> }
-    expect(schema.properties.idempotency_key).toBeDefined()
-  })
-
   it('PERIOD_LOCKED carries a remediation pointing at gnubok_unlock_period', () => {
     const result = toToolError(new Error('locked/closed fiscal period'))
     expect(result.error.code).toBe('PERIOD_LOCKED')

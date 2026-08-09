@@ -29,7 +29,9 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: mews-se/firmabok
+  # Derived from the repository so the personal twin publishes to its own
+  # package without touching this file.
+  IMAGE_NAME: ${{ github.repository }}
 
 jobs:
   build:

@@ -41,7 +41,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: erp-mafia/gnubok
+  IMAGE_NAME: mews-se/accounted
 
 jobs:
   scan:

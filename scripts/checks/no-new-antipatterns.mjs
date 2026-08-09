@@ -35,9 +35,8 @@
  *      Tracked as a file-set. Voucher/line LISTINGS are sanctioned in
  *      LEDGER_SCAN_SANCTIONED: they have no closingEntry decision to make.
  *   4. pinned-dep    : a dependency pinned to an exact version (PINNED_DEPS)
- *      whose package.json spec or locked version drifted from the pin. Guards
- *      against a repeat of the @anthropic-ai/bedrock-sdk 0.32.0 prod outage
- *      (empty Bedrock stream). No baseline: any drift is a hard failure.
+ *      whose package.json spec or locked version drifted from the pin.
+ *      No baseline: any drift is a hard failure.
  *   5. raw-user-error: raw caught-error messages passed to API response fields,
  *      client error state, or toast fields. Engine, database, and upstream
  *      messages must pass through getErrorMessage() or errorResponse().
@@ -282,16 +281,9 @@ function countHandRolledInvariants() {
 // Dependencies pinned to an EXACT version on purpose, because a bump broke prod
 // and must not silently return via `npm update`, a dependabot bump, or a manual
 // install. Any drift (in package.json OR the lockfile) fails CI. See DECISIONS.md.
-const PINNED_DEPS = [
-  {
-    name: '@anthropic-ai/bedrock-sdk',
-    version: '0.29.1',
-    reason:
-      '0.32.0 (grouped dependabot bump #884) broke Bedrock streaming in prod: empty stream, ' +
-      '"request ended without sending any chunks", taking down the AI assistant + invoice OCR. ' +
-      'Keep 0.29.1 until 0.32.x streaming is verified against Bedrock.',
-  },
-]
+// Currently empty (the @anthropic-ai/bedrock-sdk pin left with the built-in
+// assistant); the machinery stays for the next pin.
+const PINNED_DEPS = []
 
 const escapeRegExp = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 

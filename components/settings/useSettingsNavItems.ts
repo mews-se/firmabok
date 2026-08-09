@@ -2,7 +2,6 @@
 
 import { useTranslations } from 'next-intl'
 import { useCompany } from '@/contexts/CompanyContext'
-import { useAgentSheet } from '@/components/agent/AgentSheetProvider'
 import { ENABLED_EXTENSION_IDS } from '@/lib/extensions/_generated/enabled-extensions'
 
 export type SettingsGroupKey = 'account' | 'company' | 'accounting' | 'sales' | 'tools'
@@ -30,21 +29,20 @@ const GROUP_ORDER: SettingsGroupKey[] = ['account', 'company', 'accounting', 'sa
  * AB vs EF, sandbox, identity-verified, or enabled extensions.
  *
  * Visibility is derived from client context (no extra fetch): `isSandbox`
- * comes from CompanyContext, identity from the agent sheet, and extension
- * availability from the generated enabled-extensions set.
+ * comes from CompanyContext and extension availability from the generated
+ * enabled-extensions set.
  */
 export function useSettingsNavItems(): { items: SettingsNavItem[]; groups: SettingsNavGroup[] } {
   const { company, isSandbox } = useCompany()
-  const { identity } = useAgentSheet()
   const t = useTranslations('settings_nav')
 
   const hasCompany = !!company
   const hasBankingExtension = ENABLED_EXTENSION_IDS.has('enable-banking')
   const hasMcpExtension = ENABLED_EXTENSION_IDS.has('mcp-server')
 
-  // Företagsprofil (TIC-snapshot) lives under Företag; Skatteverket under Skatt;
-  // assistentens minne + kunskap under Assistenten; säkerhetsbackup under
-  // Importera/Exportera. Team stays hidden (show:false) until enabled.
+  // Företagsprofil (TIC-snapshot) lives under Företag; Skatteverket under
+  // Skatt; säkerhetsbackup under Importera/Exportera. Team stays hidden
+  // (show:false) until enabled.
   const defs: Array<SettingsNavItem & { show: boolean }> = [
     { id: 'account', href: '/settings/account', label: t('account'), group: 'account', show: true },
     { id: 'billing', href: '/settings/billing', label: t('billing'), group: 'account', show: true },
@@ -54,7 +52,6 @@ export function useSettingsNavItems(): { items: SettingsNavItem[]; groups: Setti
     { id: 'invoicing', href: '/settings/invoicing', label: t('invoicing'), group: 'sales', show: hasCompany },
     { id: 'templates', href: '/settings/templates', label: t('templates'), group: 'sales', show: hasCompany },
     { id: 'banking', href: '/settings/banking', label: t('banking'), group: 'tools', show: hasCompany && !isSandbox && hasBankingExtension },
-    { id: 'assistant', href: '/settings/assistant', label: t('assistant'), group: 'tools', show: hasCompany && identity.isVerified },
     { id: 'api', href: '/settings/api', label: t('api'), group: 'tools', show: hasCompany && hasMcpExtension },
   ]
 

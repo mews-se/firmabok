@@ -4,8 +4,8 @@ import { NextResponse } from 'next/server'
 /**
  * Sandbox guard: returns true if the given company is a sandbox company
  * (`company_settings.is_sandbox = true`). Used to short-circuit API routes
- * that would otherwise call paid external services (Anthropic Bedrock, the
- * Resend email API, Riksbanken FX, VIES, Skatteverket, Enable Banking, TIC).
+ * that would otherwise call paid external services (the Resend email API,
+ * Riksbanken FX, VIES, Skatteverket, Enable Banking).
  *
  * The sandbox is intentionally read-only against external systems: it must
  * never send a real email, charge a token, or speak to a tax authority on

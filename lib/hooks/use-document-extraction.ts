@@ -12,7 +12,7 @@ import { useEffect, useState } from 'react'
 // the UI can quietly fall back ("Uppladdat" without an AI hint): no scary
 // error for a feature the customer didn't pay for.
 //
-// Reasonable timeout: typical extraction takes 2-8s on Sonnet via Bedrock.
+// Reasonable timeout: typical extraction completes within a few seconds.
 // 30s is generous and keeps the UX responsive on flaky links.
 
 const POLL_INTERVAL_MS = 1500

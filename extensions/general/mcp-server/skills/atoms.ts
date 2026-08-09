@@ -1,7 +1,8 @@
 /**
  * Atom-registry → MCP skill adapter.
  *
- * The in-app composer (lib/agent/composer/) writes to `agent_atom_registry`;
+ * `agent_atom_registry` rows are seeded by the generated migration
+ * (scripts/generate-skill-bodies.ts) or scripts/seed-agent-atom-registry.ts;
  * each row points to a SKILL.md body on disk (under `.claude/skills/`). This
  * loader hydrates those rows into `Skill` objects so the existing
  * `gnubok_list_skills` / `gnubok_load_skill` tools can surface them to

@@ -105,8 +105,10 @@ const UNRESOLVED_CEILING = 375
  * day after the REST v1 surface, webhooks, and the disabled extensions were
  * removed: 9 395. Re-baselined again the same day after the transaction
  * inbox, bank-file import, and bank reconciliation were removed: 8 198.
+ * Re-baselined again the same day after the built-in AI assistant was
+ * removed (chat, composer, intents, agent API routes): 7 535.
  */
-const RESOLVED_COLUMN_FLOOR = 8_000
+const RESOLVED_COLUMN_FLOOR = 7_300
 
 let schema: SchemaModel
 let scan: ScanResult

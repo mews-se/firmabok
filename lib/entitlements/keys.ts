@@ -8,7 +8,8 @@
  * and per-tenant module toggles all reference them. Add keys; never rename one.
  */
 export const CAPABILITY = {
-  /** AI assistant chat, onboarding composer, and document field extraction (Anthropic/Bedrock). */
+  /** AI-assisted document flows (invoice inbox). Stable contract: the key
+   *  survives the built-in assistant's removal; existing grants keep working. */
   ai: 'ai',
   /** Bank sync / PSD2 (Enable Banking). Freeze-and-retain: tokens are NOT revoked on downgrade. */
   bank_sync: 'bank_sync',

@@ -67,7 +67,7 @@ import { generateARLedger } from '@/lib/reports/ar-ledger'
 import { generateMonthlyBreakdown } from '@/lib/reports/monthly-breakdown'
 import { uiWidgets, findUiWidget, WIDGET_MIME_TYPE } from './widgets'
 import { dataResources, findResource, parseResourceQuery } from './resources'
-import { buildLedgerContext } from '@/lib/agent-context/ledger-context'
+import { buildLedgerContext } from './ledger-context'
 import { prompts, findPrompt } from './prompts'
 import { findSkill, loadAllSkills, toSummary, SKILL_MIME_TYPE, SKILL_URI_PREFIX, skillUri, skillSlugFromUri } from './skills'
 import type { SkillTier } from './skills'
@@ -3142,8 +3142,7 @@ export const tools: McpTool[] = [
       // profiles read is best-effort: ignore userRes.error so a missing name
       // never blocks the briefing. Data minimisation (GDPR Art.5(1)(c)): the
       // agent only needs the tilltalsnamn to address the user, so pass the first
-      // token only (never the full legal name) into the LLM prompt. Mirrors
-      // app/api/agent/invoke/route.ts, which also derives firstName via split.
+      // token only (never the full legal name) into the LLM prompt.
       const userName =
         (((userRes.data as { full_name: string | null } | null)?.full_name ?? '')
           .trim()

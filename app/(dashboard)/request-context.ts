@@ -3,7 +3,6 @@ import 'server-only'
 import { cache } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { getActiveCompanyId } from '@/lib/company/context'
-import { ensureSandboxAgentProfile } from '@/lib/sandbox/ensure-agent'
 
 /**
  * Request-local dashboard auth context. React cache shares the Supabase client
@@ -40,40 +39,4 @@ export const getDashboardSettings = cache(async () => {
     .select('company_name, onboarding_complete, entity_type, pays_salaries, is_sandbox, dimensions_enabled, ore_rounding, initial_setup_path, initial_setup_completed_at, initial_setup_dismissed_at, vat_registered, moms_period')
     .eq('company_id', companyId)
     .maybeSingle()
-})
-
-const getDashboardAgentProfile = cache(async () => {
-  const [{ supabase }, companyId] = await Promise.all([
-    getDashboardAuthContext(),
-    getDashboardCompanyId(),
-  ])
-  if (!companyId) return { data: null, error: null }
-
-  return supabase
-    .from('agent_profiles')
-    .select('display_name, avatar_id, verified_at')
-    .eq('company_id', companyId)
-    .maybeSingle()
-})
-
-export const getResolvedDashboardAgentProfile = cache(async () => {
-  const [{ supabase }, companyId, settingsResult, profileResult] = await Promise.all([
-    getDashboardAuthContext(),
-    getDashboardCompanyId(),
-    getDashboardSettings(),
-    getDashboardAgentProfile(),
-  ])
-
-  let profile = profileResult.data
-  if (companyId && settingsResult.data?.is_sandbox === true && !profile?.verified_at) {
-    await ensureSandboxAgentProfile(supabase, companyId)
-    const refreshed = await supabase
-      .from('agent_profiles')
-      .select('display_name, avatar_id, verified_at')
-      .eq('company_id', companyId)
-      .maybeSingle()
-    profile = refreshed.data ?? profile
-  }
-
-  return profile
 })

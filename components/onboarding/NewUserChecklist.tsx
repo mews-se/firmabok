@@ -25,7 +25,6 @@ interface NewUserChecklistProps {
   hasBankConnected?: boolean
   hasSkatteverketConnected?: boolean
   hasInboxItems?: boolean
-  hasAgentBuilt?: boolean
   /** Personalized VAT-deadline line for the Skatteverket step (null = say nothing). */
   vatLine?: VatDeadlineLine
 }
@@ -48,8 +47,7 @@ function captureSetup(event: string, properties?: Record<string, unknown>) {
 /**
  * First-run getting-started block on Hem, in the founder-picked stepped
  * shape: a numbered thread (get the books in, connect the bank, connect
- * Skatteverket, get receipts flowing, build the assistant) on a hairline
- * spine.
+ * Skatteverket, get receipts flowing) on a hairline spine.
  * Only the step you are on argues its case: it carries the description and
  * the partner marks next to a filled action. Steps you have not reached yet
  * drop the pitch but keep a quiet outline action, so any step stays one
@@ -66,7 +64,6 @@ export default function NewUserChecklist({
   hasBankConnected = false,
   hasSkatteverketConnected = false,
   hasInboxItems = false,
-  hasAgentBuilt = false,
   vatLine = null,
 }: NewUserChecklistProps) {
   const t = useTranslations('initial_setup')
@@ -114,14 +111,13 @@ export default function NewUserChecklist({
   // Companies built without the skatteverket/inbox extensions skip those steps.
   const step3Done = !hasSkatteverket || hasSkatteverketConnected
   const step4Done = !hasInbox || hasInboxItems
-  const step5Done = hasAgentBuilt
 
   useEffect(() => {
     // The block retires itself once every step is done; Dölj remains the
     // manual way out.
     if (
       !state.completedAt &&
-      step1Done && step2Done && step3Done && step4Done && step5Done &&
+      step1Done && step2Done && step3Done && step4Done &&
       saving === null
     ) {
       void persist({ completed: true }, 'complete').then((updated) => {
@@ -131,7 +127,7 @@ export default function NewUserChecklist({
   // persist intentionally stays out: its identity follows the toast hook and
   // would retrigger this completion sync after every render.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step1Done, step2Done, step3Done, step4Done, step5Done, saving, state.completedAt])
+  }, [step1Done, step2Done, step3Done, step4Done, saving, state.completedAt])
 
   if (state.dismissedAt || state.completedAt) return null
 
@@ -157,16 +153,12 @@ export default function NewUserChecklist({
     captureSetup('onboarding_setup_step_started', { step: 'receipts' })
     router.push(hasAi ? '/e/general/invoice-inbox' : '/settings/billing')
   }
-  const goAssistant = () => {
-    captureSetup('onboarding_setup_step_started', { step: 'assistant' })
-    router.push(hasAi ? '/onboarding/agent' : '/settings/billing')
-  }
   const dismiss = () =>
     void persist({ dismissed: true }, 'dismiss').then((updated) => {
       if (updated) captureSetup('onboarding_setup_dismissed', {})
     })
 
-  const activeStep = !step1Done ? 1 : !step2Done ? 2 : !step3Done ? 3 : !step4Done ? 4 : 5
+  const activeStep = !step1Done ? 1 : !step2Done ? 2 : !step3Done ? 3 : 4
   const numbers = checklistNumbers({ hasSkatteverket, hasInbox })
   const stepCount = numbers.count
 
@@ -225,6 +217,7 @@ export default function NewUserChecklist({
           number={2}
           done={step2Done}
           active={activeStep === 2}
+          last={!hasSkatteverket && !hasInbox}
           title={t('step_bank_title')}
           action={(variant) => (
             <Button
@@ -250,6 +243,7 @@ export default function NewUserChecklist({
             number={numbers.skv}
             done={step3Done}
             active={activeStep === 3}
+            last={!hasInbox}
             title={t('step_skv_title')}
             action={(variant) => (
               <Button size="sm" variant={variant} asChild>
@@ -293,6 +287,7 @@ export default function NewUserChecklist({
             number={numbers.receipts}
             done={step4Done}
             active={activeStep === 4}
+            last
             title={t('step_receipts_title')}
             action={(variant) => (
               <Button size="sm" variant={variant} onClick={goReceipts}>
@@ -308,22 +303,6 @@ export default function NewUserChecklist({
             {t('step_receipts_description')}
           </Step>
         )}
-
-        <Step
-          number={numbers.assistant}
-          done={step5Done}
-          active={activeStep === 5}
-          title={t('step_assistant_title')}
-          badge={t('step_assistant_beta')}
-          last
-          action={(variant) => (
-            <Button size="sm" variant={variant} onClick={goAssistant}>
-              {t('step_assistant_action')}
-            </Button>
-          )}
-        >
-          {t('step_assistant_description')}
-        </Step>
       </ol>
     </section>
   )

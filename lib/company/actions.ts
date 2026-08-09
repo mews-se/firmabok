@@ -168,13 +168,10 @@ async function createCompanyFromOnboardingImpl(params: {
   }
 
   // Persist whatever lookup data the wizard already gathered. Do NOT call
-  // /profile here: that handler fans out to 13 Lens calls and the 5 s
-  // timeout in tic-fetch.ts ate ~530 wasted calls in May before yielding
-  // zero snapshots (every signup's /profile timed out, but the in-flight
-  // upstream fetches still counted against quota). The agent build path
-  // (app/(onboarding)/onboarding/agent/page.tsx) calls ensureTicSnapshot
-  // with upgradeV1: true lazily, which is the right place: only companies
-  // that actually reach agent onboarding spend the budget.
+  // /profile here: that handler fanned out to 13 Lens calls and the 5 s
+  // fetch timeout ate ~530 wasted calls in May before yielding zero
+  // snapshots (every signup's /profile timed out, but the in-flight
+  // upstream fetches still counted against quota).
   if (params.ticLookup) {
     const { error: ticErr } = await supabase
       .from('companies')

@@ -117,9 +117,8 @@ export default function DPAPage() {
               <li><strong>Oföränderlig bokföring:</strong> Bokförda verifikationer kan inte ändras eller
                 raderas (databasutlösare)</li>
               <li><strong>Säkerhetskopior:</strong> Kontinuerliga databaskopior med point-in-time-recovery</li>
-              <li><strong>EU-lagring och EU-inferens:</strong> All primär datalagring sker i EU
-                (Supabase, eu-north-1, Stockholm). AI-inferens sker, när AI-funktioner är aktiverade, inom
-                EU via Amazon Bedrock (eu-north-1, Stockholm): ingen överföring till tredje land</li>
+              <li><strong>EU-lagring:</strong> All primär datalagring sker i EU
+                (Supabase, eu-north-1, Stockholm)</li>
             </ul>
           </CardContent>
         </Card>

@@ -33,10 +33,8 @@ export function MainContainer({
   }, [pathname])
 
   // Full-bleed routes own their own padding + multi-pane layout. They
-  // shouldn't sit inside max-w-5xl or any horizontal padding: that's what
-  // causes a visible gap between the dashboard sidebar and the chat-sidebar
-  // pane on wide viewports.
-  const isFullBleed = pathname.startsWith('/e/') || pathname.startsWith('/chat')
+  // shouldn't sit inside max-w-5xl or any horizontal padding.
+  const isFullBleed = pathname.startsWith('/e/')
 
   // The salary run detail page drives a wide, horizontal-flow layout (progress
   // band + 5-up KPIs + full-width employee ledger) that the standard max-w-5xl

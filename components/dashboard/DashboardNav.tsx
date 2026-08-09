@@ -31,7 +31,6 @@ import {
   Tags,
   ChevronRight,
   Clock,
-  Sparkles,
   Percent,
   CalendarClock,
   CalendarRange,
@@ -49,8 +48,6 @@ import { resetAnalyticsIdentity } from '@/lib/analytics/reset'
 import { SupportLink } from '@/components/ui/support-link'
 import CompanySwitcher from '@/components/dashboard/CompanySwitcher'
 import UserMenu from '@/components/dashboard/UserMenu'
-import AgentAvatar from '@/components/agent/AgentAvatar'
-import { useAgentSheet } from '@/components/agent/AgentSheetProvider'
 import { useCompany } from '@/contexts/CompanyContext'
 import { useRealtimeSupabase } from '@/lib/hooks/use-realtime-supabase'
 import { useWorklistBadges } from '@/lib/hooks/use-worklist-badges'
@@ -88,8 +85,6 @@ interface DashboardNavProps {
 type NavLabelKey =
   | 'dashboard'
   | 'home'
-  | 'assistant'
-  | 'agent_knowledge'
   | 'kpi'
   | 'invoices'
   | 'customers'
@@ -115,8 +110,8 @@ type NavLabelKey =
 // PR 2): same routes, concept structure.
 //   top of rail          : collapse toggle (64px icon rail when collapsed;
 //                          state persists in user_preferences.ui_state).
-//   top section          : flat, no header: Hem, Assistent (Flöden joins
-//                          when the flow engine exists).
+//   top section          : flat, no header: Hem (Flöden joins when the
+//                          flow engine exists).
 //   four groups          : static headers (Arbeta, Analys, Data,
 //                          Skatt & bokslut); the Register (Data) and
 //                          Bokslut (Skatt) sub-lists are animated folds.
@@ -163,7 +158,6 @@ const navItems: NavItem[] = [
   // Top section: flat list, always visible, no header. (Flöden joins here
   // when the flow engine exists.)
   { href: '/', labelKey: 'home', icon: Home, group: 'top' },
-  { href: '/chat', labelKey: 'assistant', icon: Sparkles, group: 'top' },
   // Arbeta: everything the user produces, bookkeeping funnel first
   // (Bokföring · Underlag · Granskning), then the transactional flows.
   { href: '/bookkeeping', labelKey: 'bookkeeping', icon: BookOpen, group: 'arbeta' },
@@ -241,10 +235,6 @@ export default function DashboardNav({ companyName: _companyName, entityType, di
   const router = useRouter()
   const supabase = useRealtimeSupabase()
   const { company, capabilities, trialEndsAt } = useCompany()
-  // Agent identity drives the "Assistent" nav icon: when the user has
-  // built their assistant we show its chosen avatar instead of the
-  // generic Sparkles glyph.
-  const { identity: agentIdentity } = useAgentSheet()
   const tNav = useTranslations('nav')
   const tCommon = useTranslations('common')
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
@@ -405,25 +395,10 @@ export default function DashboardNav({ companyName: _companyName, entityType, di
 
   const hiddenNavHrefs = new Set(getBranding().hiddenNavHrefs)
 
-  // Render a nav item's leading glyph. The "Assistent" entry (/chat) shows
-  // the agent's chosen avatar once built; everything else (and the
-  // pre-onboarding /chat) uses its lucide icon. The passed className carries
-  // size + margin + active color; tailwind-merge lets the explicit h/w win
-  // over AgentAvatar's default box size.
   const renderNavIcon = (
     item: { href: string; icon: typeof LayoutDashboard },
     className: string,
   ) => {
-    if (item.href === '/chat' && agentIdentity.avatarId) {
-      return (
-        <AgentAvatar
-          avatarId={agentIdentity.avatarId}
-          size="xs"
-          alt={agentIdentity.displayName ?? 'Assistent'}
-          className={className}
-        />
-      )
-    }
     const Icon = item.icon
     return <Icon className={className} />
   }
@@ -441,10 +416,6 @@ export default function DashboardNav({ companyName: _companyName, entityType, di
     // Entity-gated statutory surfaces: INK2/ÅR for aktiebolag, NE for
     // enskild firma; the page for the other form doesn't exist.
     if (item.entityOnly && item.entityOnly !== entityType) return false
-    // Hide the Assistent (/chat) tab until the agent is built: mirrors the
-    // floating AgentTrigger and avoids a nav entry that only bounces to the
-    // home checklist (chat/layout redirects unverified users to /).
-    if (item.href === '/chat' && !agentIdentity.isVerified) return false
     // Granskning stays in the top nav at all times now: the badge
     // surfaces the count when there are pending ops, but the link is
     // always present so users can navigate there manually.
@@ -471,15 +442,10 @@ export default function DashboardNav({ companyName: _companyName, entityType, di
   // as plain icons (group headers and fold headers disappear).
   const railItems = [...topItems, ...sidebarGroups.flatMap(({ items }) => items)]
 
-  const allMobileNavItems: { href: string; labelKey: NavLabelKey; icon: typeof LayoutDashboard }[] = [
+  const mobileNavItems: { href: string; labelKey: NavLabelKey; icon: typeof LayoutDashboard }[] = [
     { href: '/', labelKey: 'home', icon: Home },
-    { href: '/chat', labelKey: 'assistant', icon: Sparkles },
     { href: '/bookkeeping', labelKey: 'bookkeeping', icon: BookOpen },
   ]
-  // Same gate as the sidebar: no Assistent tab until the agent is built.
-  const mobileNavItems = allMobileNavItems.filter(
-    (item) => item.href !== '/chat' || agentIdentity.isVerified,
-  )
 
   const renderBadge = (item: NavItem | { comingSoon?: boolean; devBadge?: boolean; betaBadge?: boolean }, position: 'sidebar' | 'mobile') => {
     const baseClass =
@@ -728,7 +694,7 @@ export default function DashboardNav({ companyName: _companyName, entityType, di
               )}
               aria-label={tNav('main_navigation')}
             >
-              {/* Top section: flat, no header. Hem, Assistent. */}
+              {/* Top section: flat, no header. */}
               <div className="mb-4 space-y-px">
                 {topItems.map((item) => renderSidebarItem(item))}
               </div>
@@ -955,7 +921,7 @@ export default function DashboardNav({ companyName: _companyName, entityType, di
                 CompanySwitcher above stays outside so it remains masked,
                 and count bubbles inside carry data-ph-mask. */}
             <div data-ph-unmask className="px-2">
-              {/* Top items (Hem, Assistent) */}
+              {/* Top items (Hem) */}
               <div className="space-y-0.5">
                 {topItems.map((item) => {
                   const active = isActive(item.href)

@@ -9,11 +9,10 @@ import { type FormLine } from '@/components/bookkeeping/JournalEntryForm'
 import type { CopyPrefill } from '@/components/bookkeeping/NewJournalEntryDialog'
 import { DialogLoadingSkeleton } from '@/components/ui/dialog-loading-skeleton'
 import { SplitButton } from '@/components/ui/split-button'
-import { useAgentSheet } from '@/components/agent/AgentSheetProvider'
 import { useUiState } from '@/lib/hooks/use-ui-state'
 import { resolveInitialMode } from '@/lib/ui-state/client'
 import { useToast } from '@/components/ui/use-toast'
-import { Plus, LayoutTemplate, Sparkles } from 'lucide-react'
+import { Plus, LayoutTemplate } from 'lucide-react'
 import { PageHeader } from '@/components/ui/page-header'
 import { formatVoucher } from '@/lib/bookkeeping/voucher-series-resolver'
 import type { JournalEntry, JournalEntryLine } from '@/types'
@@ -29,7 +28,7 @@ const TemplateBookDialog = dynamic(
 
 // SplitButton modes for "Nytt verifikat" (concept scene 9). The last-used
 // mode persists per user in ui_state.create_mode.bookkeeping.
-const CREATE_MODES = ['tomt', 'mall', 'assistent'] as const
+const CREATE_MODES = ['tomt', 'mall'] as const
 
 interface NextVoucher {
   next: number
@@ -54,7 +53,6 @@ export default function BookkeepingPage() {
   const [isLoadingCopy, setIsLoadingCopy] = useState(false)
   const [nextVoucher, setNextVoucher] = useState<NextVoucher | null>(null)
   const t = useTranslations('bookkeeping')
-  const { openAgentSheet } = useAgentSheet()
   const { uiState, loaded: uiStateLoaded } = useUiState()
 
   // React to copy_from in URL: switch tab, fetch source entry, then clean URL.
@@ -169,17 +167,6 @@ export default function BookkeepingPage() {
                 icon: LayoutTemplate,
                 description: t('create_mall_desc'),
                 onSelect: () => setShowTemplateDialog(true),
-              },
-              {
-                key: 'assistent',
-                label: t('create_with_assistant'),
-                icon: Sparkles,
-                description: t('create_assistent_desc'),
-                onSelect: () =>
-                  openAgentSheet({
-                    intentId: 'verifikation.draft',
-                    contextRef: 'verifikation:new',
-                  }),
               },
             ]}
           />

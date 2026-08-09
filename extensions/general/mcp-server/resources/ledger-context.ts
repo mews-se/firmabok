@@ -1,5 +1,5 @@
 import type { McpResource } from './types'
-import { buildLedgerContext } from '@/lib/agent-context/ledger-context'
+import { buildLedgerContext } from '../ledger-context'
 
 /**
  * How this company books things, derived from the ledger itself: account

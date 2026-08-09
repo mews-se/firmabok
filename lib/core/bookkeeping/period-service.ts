@@ -636,9 +636,9 @@ export interface PeriodStatusForDate {
    *       period always carries a real period_id or lock_date.
    *
    * Deliberately an additive optional field rather than a fourth
-   * `PeriodStatusValue`: the union is consumed as an exhaustive
-   * `Record<PeriodStatusValue, string>` in lib/agent/intents/bokslut-step.ts,
-   * so widening it would break unrelated callers at compile time.
+   * `PeriodStatusValue`: callers consume the union as exhaustive
+   * `Record<PeriodStatusValue, string>` maps, so widening it would break
+   * unrelated callers at compile time.
    */
   lookup_failed?: boolean
 }

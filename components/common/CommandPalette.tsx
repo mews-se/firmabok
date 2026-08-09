@@ -14,7 +14,6 @@ import {
   Upload,
   Package,
   ClipboardCheck,
-  Wand2,
   Inbox,
   TrendingUp,
   Settings,
@@ -137,28 +136,7 @@ export default function CommandPalette({ initialOpen = false }: { initialOpen?: 
     return q ? visible.filter(e => matches(e, q)) : visible.slice(0, 6)
   }, [q, allowedByCapability])
 
-  const annaFallback: Entry | null = q && filteredActions.length === 0 && filteredPages.length === 0
-    ? {
-        id: 'anna-fallback',
-        label: `Fråga Anna: "${query.trim()}"`,
-        icon: Wand2,
-        href: `/chat/new?prompt=${encodeURIComponent(query.trim())}`,
-      }
-    : q
-      ? {
-          id: 'anna-followup',
-          label: `Fråga Anna istället: "${query.trim()}"`,
-          icon: Wand2,
-          href: `/chat/new?prompt=${encodeURIComponent(query.trim())}`,
-        }
-      : null
-
-  const flatEntries: Entry[] = [
-    ...(annaFallback && filteredActions.length === 0 && filteredPages.length === 0 ? [annaFallback] : []),
-    ...filteredActions,
-    ...filteredPages,
-    ...(annaFallback && (filteredActions.length > 0 || filteredPages.length > 0) ? [annaFallback] : []),
-  ]
+  const flatEntries: Entry[] = [...filteredActions, ...filteredPages]
 
   function commit(entry: Entry) {
     setOpen(false)
@@ -238,19 +216,9 @@ export default function CommandPalette({ initialOpen = false }: { initialOpen?: 
                 })}
               </Section>
             )}
-            {annaFallback && (
-              <Section title="Anna">
-                <Row
-                  entry={annaFallback}
-                  active={flatEntries.indexOf(annaFallback) === activeIndex}
-                  onSelect={() => commit(annaFallback)}
-                  onHover={() => setActiveIndex(flatEntries.indexOf(annaFallback))}
-                />
-              </Section>
-            )}
             {flatEntries.length === 0 && (
               <div className="px-4 py-8 text-center text-sm text-muted-foreground">
-                Inget hittades. Tryck Enter eller börja om.
+                Inget hittades.
               </div>
             )}
           </div>

@@ -5,8 +5,6 @@ import { MainContainer } from '@/components/dashboard/MainContainer'
 import CompanyTabSync from '@/components/dashboard/CompanyTabSync'
 import AnalyticsIdentify from '@/components/AnalyticsIdentify'
 import { computeIdentityHash } from '@/lib/analytics/identity-hash'
-import { AgentSheetProvider } from '@/components/agent/AgentSheetProvider'
-import AgentTrigger from '@/components/agent/AgentTrigger'
 import LazyCommandPalette from '@/components/common/LazyCommandPalette'
 import { SettingsHotkey } from '@/components/settings/SettingsHotkey'
 import { SessionTimeoutController } from '@/components/auth/SessionTimeoutController'
@@ -20,7 +18,6 @@ import {
   getDashboardAuthContext,
   getDashboardCompanyId,
   getDashboardSettings,
-  getResolvedDashboardAgentProfile,
 } from './request-context'
 
 /**
@@ -40,9 +37,9 @@ const NO_COMPANY_ALLOWED_PATHS = ['/settings/account']
  */
 const MAIN_PANEL_CLASS =
   'safe-area-main-padding md:!pb-0 relative bg-background min-h-screen ' +
-  'md:min-h-0 md:ml-[var(--nav-w)] md:mt-[10px] md:mr-[var(--agent-dock-w)] md:h-[calc(100vh-20px)] ' +
+  'md:min-h-0 md:ml-[var(--nav-w)] md:mt-[10px] md:mr-[10px] md:h-[calc(100vh-20px)] ' +
   'md:overflow-y-auto md:rounded-xl md:border md:border-border ' +
-  'md:transition-[margin-left,margin-right] md:duration-300 md:ease-[cubic-bezier(0.32,0.72,0,1)]'
+  'md:transition-[margin-left] md:duration-300 md:ease-[cubic-bezier(0.32,0.72,0,1)]'
 
 export default async function DashboardLayout({
   children,
@@ -110,28 +107,26 @@ export default async function DashboardLayout({
         }}
       >
         <SessionTimeoutController />
-        <AgentSheetProvider>
-          <CompanyTabSync />
-          <div className="min-h-screen bg-frame md:flex md:flex-col">
-            <DashboardNav
-              companyName={getBranding().appName.toLowerCase()}
-              entityType="enskild_firma"
-              isSandbox={false}
-              extensionNavItems={getExtensionNavItems()}
-            />
-            <main
-              id="main-content"
-              className={MAIN_PANEL_CLASS}
-              role="main"
-            >
-              <div className="max-w-5xl mx-auto px-5 py-8 md:px-8 md:py-10">
-                {children}
-              </div>
-            </main>
-            {settingsModal}
-            <SettingsHotkey />
-          </div>
-        </AgentSheetProvider>
+        <CompanyTabSync />
+        <div className="min-h-screen bg-frame md:flex md:flex-col">
+          <DashboardNav
+            companyName={getBranding().appName.toLowerCase()}
+            entityType="enskild_firma"
+            isSandbox={false}
+            extensionNavItems={getExtensionNavItems()}
+          />
+          <main
+            id="main-content"
+            className={MAIN_PANEL_CLASS}
+            role="main"
+          >
+            <div className="max-w-5xl mx-auto px-5 py-8 md:px-8 md:py-10">
+              {children}
+            </div>
+          </main>
+          {settingsModal}
+          <SettingsHotkey />
+        </div>
       </CompanyProvider>
     )
   }
@@ -146,7 +141,6 @@ export default async function DashboardLayout({
     { data: memberRow },
     { data: allMemberships },
     { data: settings },
-    agentProfileIdentity,
     { data: userProfile },
     entitlements,
     { data: allSettingsNames },
@@ -160,9 +154,6 @@ export default async function DashboardLayout({
     // fetched here anymore: DashboardNav loads them client-side after mount
     // (lib/hooks/use-worklist-badges) so two head-count queries stop blocking
     // first paint on every dashboard navigation.
-    // Agent identity, name + avatar, surfaced on the FAB and chat
-    // surfaces. Null when no agent_profile exists yet (banner CTA path).
-    getResolvedDashboardAgentProfile(),
     // The signed-in user's profile, shown in the bottom-left account
     // popover (full_name + initial) so it's clear which user is logged
     // in, distinct from the active company shown at the top.
@@ -174,10 +165,9 @@ export default async function DashboardLayout({
     // show company_settings.company_name instead of the frozen companies.name.
     supabase.from('company_settings').select('company_id, company_name'),
     // Per-user UI state (nav collapse/fold state), server-rendered so the
-    // sidebar width is right on first paint, plus the hide-assistant-FAB
-    // preference (Inställningar → Assistenten). Batched here so it costs no
+    // sidebar width is right on first paint. Batched here so it costs no
     // extra round-trip on the dashboard critical path.
-    supabase.from('user_preferences').select('ui_state, hide_assistant_fab').eq('user_id', user.id).maybeSingle(),
+    supabase.from('user_preferences').select('ui_state').eq('user_id', user.id).maybeSingle(),
   ])
 
   // company_id -> current display name for every company the user belongs to.
@@ -208,24 +198,22 @@ export default async function DashboardLayout({
     return (
       <CompanyProvider value={companyContextValue}>
         <SessionTimeoutController />
-        <AgentSheetProvider>
-          <CompanyTabSync />
-          <div className="min-h-screen bg-frame md:flex md:flex-col">
-            <DashboardNav
-              companyName={getBranding().appName.toLowerCase()}
-              entityType="enskild_firma"
-              isSandbox={false}
-              extensionNavItems={getExtensionNavItems()}
-            />
-            <main id="main-content" className={MAIN_PANEL_CLASS} role="main">
-              <div className="max-w-5xl mx-auto px-5 py-8 md:px-8 md:py-10">
-                {children}
-              </div>
-            </main>
-            {settingsModal}
-            <SettingsHotkey />
-          </div>
-        </AgentSheetProvider>
+        <CompanyTabSync />
+        <div className="min-h-screen bg-frame md:flex md:flex-col">
+          <DashboardNav
+            companyName={getBranding().appName.toLowerCase()}
+            entityType="enskild_firma"
+            isSandbox={false}
+            extensionNavItems={getExtensionNavItems()}
+          />
+          <main id="main-content" className={MAIN_PANEL_CLASS} role="main">
+            <div className="max-w-5xl mx-auto px-5 py-8 md:px-8 md:py-10">
+              {children}
+            </div>
+          </main>
+          {settingsModal}
+          <SettingsHotkey />
+        </div>
       </CompanyProvider>
     )
   }
@@ -288,70 +276,58 @@ export default async function DashboardLayout({
   return (
     <CompanyProvider value={companyContextValue}>
       <SessionTimeoutController />
-      <AgentSheetProvider
-        identity={{
-          displayName: agentProfileIdentity?.display_name ?? null,
-          avatarId: agentProfileIdentity?.avatar_id ?? null,
-          isVerified: Boolean(agentProfileIdentity?.verified_at),
-        }}
-        // Server-seeded panel geometry (docked width / floating rect / mode)
-        // so the assistant opens at the user's persisted size without a jump.
-        initialPanelPrefs={uiState.agent_panel}
+      <CompanyTabSync />
+      <div
+        id="dash-shell"
+        className="min-h-screen bg-frame md:flex md:flex-col"
+        style={{ '--nav-w': navCollapsed ? '64px' : '248px' } as React.CSSProperties}
       >
-        <CompanyTabSync />
-        <div
-          id="dash-shell"
-          className="min-h-screen bg-frame md:flex md:flex-col"
-          style={{ '--nav-w': navCollapsed ? '64px' : '248px' } as React.CSSProperties}
+        {/* Skip to content link for keyboard/screen reader users */}
+        <a
+          data-ph-unmask
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[100] focus:px-4 focus:py-2 focus:bg-primary focus:text-primary-foreground focus:rounded-lg focus:text-sm focus:font-medium"
         >
-          {/* Skip to content link for keyboard/screen reader users */}
-          <a
-            data-ph-unmask
-            href="#main-content"
-            className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[100] focus:px-4 focus:py-2 focus:bg-primary focus:text-primary-foreground focus:rounded-lg focus:text-sm focus:font-medium"
-          >
-            Hoppa till innehåll
-          </a>
-          {isSandbox && <SandboxBanner />}
-          <DashboardNav
-            companyName={settings?.company_name || 'Min verksamhet'}
-            entityType={entityType}
-            dimensionsEnabled={dimensionsEnabled}
-            isSandbox={isSandbox}
-            extensionNavItems={getExtensionNavItems()}
-            userName={userProfile?.full_name ?? null}
-            userEmail={user.email ?? null}
-            initialUiState={uiState}
-          />
-          <main id="main-content" className={MAIN_PANEL_CLASS} role="main">
-            <MainContainer companyId={companyId}>{children}</MainContainer>
-          </main>
-          <AgentTrigger hidden={userPrefs?.hide_assistant_fab === true} />
-          <LazyCommandPalette />
-          <SettingsHotkey />
-          {settingsModal}
-        </div>
-        {!isSandbox && (
-          <AnalyticsIdentify
-            user={{
-              userId: user.id,
-              email: user.email,
-              fullName: userProfile?.full_name ?? null,
-              role: memberRow.role as CompanyRole,
-            }}
-            identityHash={computeIdentityHash(user.id)}
-            company={{
-              id: companyId,
-              name: displayName,
-              entityType,
-              accountingFramework: companyRow.accounting_framework as AccountingFramework,
-              paysSalaries,
-              trialEndsAt: entitlements.trialEndsAt,
-              capabilities: entitlements.capabilities,
-            }}
-          />
-        )}
-      </AgentSheetProvider>
+          Hoppa till innehåll
+        </a>
+        {isSandbox && <SandboxBanner />}
+        <DashboardNav
+          companyName={settings?.company_name || 'Min verksamhet'}
+          entityType={entityType}
+          dimensionsEnabled={dimensionsEnabled}
+          isSandbox={isSandbox}
+          extensionNavItems={getExtensionNavItems()}
+          userName={userProfile?.full_name ?? null}
+          userEmail={user.email ?? null}
+          initialUiState={uiState}
+        />
+        <main id="main-content" className={MAIN_PANEL_CLASS} role="main">
+          <MainContainer companyId={companyId}>{children}</MainContainer>
+        </main>
+        <LazyCommandPalette />
+        <SettingsHotkey />
+        {settingsModal}
+      </div>
+      {!isSandbox && (
+        <AnalyticsIdentify
+          user={{
+            userId: user.id,
+            email: user.email,
+            fullName: userProfile?.full_name ?? null,
+            role: memberRow.role as CompanyRole,
+          }}
+          identityHash={computeIdentityHash(user.id)}
+          company={{
+            id: companyId,
+            name: displayName,
+            entityType,
+            accountingFramework: companyRow.accounting_framework as AccountingFramework,
+            paysSalaries,
+            trialEndsAt: entitlements.trialEndsAt,
+            capabilities: entitlements.capabilities,
+          }}
+        />
+      )}
     </CompanyProvider>
   )
 }

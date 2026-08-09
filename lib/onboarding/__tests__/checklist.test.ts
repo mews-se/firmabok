@@ -35,39 +35,35 @@ describe('vatDeadlineLine', () => {
 })
 
 describe('checklistNumbers', () => {
-  it('numbers all five steps when both extensions are on', () => {
+  it('numbers all four steps when both extensions are on', () => {
     expect(checklistNumbers({ hasSkatteverket: true, hasInbox: true })).toEqual({
-      count: 5,
+      count: 4,
       skv: 3,
       receipts: 4,
-      assistant: 5,
     })
   })
 
-  it('collapses to four steps without the inbox extension', () => {
+  it('collapses to three steps without the inbox extension', () => {
     expect(checklistNumbers({ hasSkatteverket: true, hasInbox: false })).toEqual({
-      count: 4,
+      count: 3,
       skv: 3,
       receipts: 4,
-      assistant: 4,
     })
   })
 
-  it('collapses to four steps without the skatteverket extension', () => {
+  it('collapses to three steps without the skatteverket extension', () => {
     expect(checklistNumbers({ hasSkatteverket: false, hasInbox: true })).toEqual({
-      count: 4,
-      skv: 3,
-      receipts: 3,
-      assistant: 4,
-    })
-  })
-
-  it('collapses to three steps with neither extension', () => {
-    expect(checklistNumbers({ hasSkatteverket: false, hasInbox: false })).toEqual({
       count: 3,
       skv: 3,
       receipts: 3,
-      assistant: 3,
+    })
+  })
+
+  it('collapses to two steps with neither extension', () => {
+    expect(checklistNumbers({ hasSkatteverket: false, hasInbox: false })).toEqual({
+      count: 2,
+      skv: 3,
+      receipts: 3,
     })
   })
 })

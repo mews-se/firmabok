@@ -9,7 +9,6 @@ import {
   getDashboardAuthContext,
   getDashboardCompanyId,
   getDashboardSettings,
-  getResolvedDashboardAgentProfile,
 } from './request-context'
 
 export const dynamic = 'force-dynamic'
@@ -49,7 +48,6 @@ export default async function DashboardPage() {
     { count: postedEntryCount, error: postedEntryError },
     { data: nextVatDeadline },
     { data: profile },
-    agentProfile,
     worklist,
     suggestedMatches,
     resumeItems,
@@ -88,7 +86,6 @@ export default async function DashboardPage() {
       .maybeSingle(),
     // First name for the greeting.
     supabase.from('profiles').select('full_name').eq('id', user.id).maybeSingle(),
-    getResolvedDashboardAgentProfile(),
     // Pending-work counts + suggested matches come from lib/worklist: the
     // same source as the sidebar badges, so the numbers can never diverge.
     getWorklistCounts(supabase, companyId),
@@ -114,8 +111,6 @@ export default async function DashboardPage() {
   if (!settings?.onboarding_complete) {
     redirect('/onboarding')
   }
-
-  const agentBuilt = Boolean(agentProfile?.verified_at)
 
   const onboardingProgress: OnboardingProgress = {
     hasCustomers: (customerCount || 0) > 0,
@@ -161,7 +156,6 @@ export default async function DashboardPage() {
   return (
     <DashboardContent
       companyId={companyId}
-      agentBuilt={agentBuilt}
       userFirstName={userFirstName}
       expiringBankConnections={expiringBankConnections}
       worklist={worklist}

@@ -21,7 +21,6 @@
     "test:pg": "vitest run --project pg-real"
   },
   "dependencies": {
-    "@anthropic-ai/bedrock-sdk": "0.29.1",
     "@hookform/resolvers": "^5.4.0",
     "@radix-ui/react-checkbox": "^1.3.7",
     "@radix-ui/react-dialog": "^1.1.19",

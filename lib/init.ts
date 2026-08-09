@@ -21,15 +21,10 @@ const REQUIRED_CORE_VARS = [
 ] as const
 
 // Each entry is one logical requirement; if multiple names are listed, the
-// requirement is satisfied when ANY of them is set.
-// AI features run Claude via AWS Bedrock (see lib/agent/composer/client.ts),
-// so the static AWS keys are what actually gates them. The assistant's client
-// can fall back to the AWS credential provider chain (instance profile, IRSA),
-// so this stays a log-only warning.
-const REQUIRED_EXTENSION_VARS: ReadonlyArray<readonly string[]> = [
-  ['AWS_ACCESS_KEY_ID'],
-  ['AWS_SECRET_ACCESS_KEY'],
-] as const
+// requirement is satisfied when ANY of them is set. Currently empty (the AWS
+// Bedrock keys left with the built-in assistant); the log-only warning
+// machinery stays for the next extension that needs env.
+const REQUIRED_EXTENSION_VARS: ReadonlyArray<readonly string[]> = [] as const
 
 function validateEnvironment(): void {
   // During builds (CI, Docker, Vercel), env vars may be absent or set to

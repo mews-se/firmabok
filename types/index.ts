@@ -77,27 +77,6 @@ export interface UserUiState {
   // Split-button last-used create modes, keyed per surface (plan PR 3/4),
   // e.g. create_mode.bookkeeping = 'mall'.
   create_mode?: Record<string, string>
-  // Assistant panel geometry (components/agent/AgentSheet): docked width,
-  // undocked floating rect, and which of the two modes is active. Client
-  // re-clamps to the current viewport on read, so stale sizes from another
-  // screen are safe.
-  agent_panel?: AgentPanelState
-}
-
-export type AgentPanelMode = 'docked' | 'floating'
-
-// Viewport pixels of the undocked assistant window.
-export interface AgentPanelFloatRect {
-  x: number
-  y: number
-  w: number
-  h: number
-}
-
-export interface AgentPanelState {
-  mode?: AgentPanelMode
-  dock_width?: number
-  float?: AgentPanelFloatRect
 }
 
 // Transaction categories
@@ -4165,24 +4144,6 @@ export interface AGIDeclaration {
   corrects_agi_id: string | null
   created_at: string
   updated_at: string
-}
-
-/**
- * A `pending_operations` row a chat conversation staged and nobody has answered
- * yet, as returned by GET /api/agent/conversations/[id] and by the /chat/[id]
- * server page.
- *
- * Approval cards ride on streamed events that are never persisted, so this is
- * what lets a resumed thread show its still-open proposal instead of silently
- * dropping it. `operation_type` is the bare action name as stored
- * ('categorize_transaction'), not the prefixed MCP tool name.
- */
-export interface StoredStagedOperation {
-  id: string
-  operation_type: string
-  title?: string | null
-  risk_level?: string | null
-  preview_data?: unknown
 }
 
 // ============================================================

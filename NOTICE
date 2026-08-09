@@ -1,0 +1,48 @@
+erp-base
+Copyright 2024-2026 Arcim
+
+This product is licensed under the GNU Affero General Public License v3.0
+or later (AGPL-3.0-or-later). See the LICENSE file for the full license text.
+
+---
+
+Third-Party Dependencies
+
+This project includes or depends on the following third-party software:
+
+| Dependency             | License              | Notes                                      |
+|------------------------|----------------------|--------------------------------------------|
+| Next.js                | MIT                  |                                            |
+| React                  | MIT                  |                                            |
+| Supabase JS            | MIT                  |                                            |
+| Tailwind CSS           | MIT                  |                                            |
+| shadcn/ui              | MIT                  |                                            |
+| Radix UI               | MIT                  |                                            |
+| Lucide                 | ISC                  |                                            |
+| Recharts               | MIT                  |                                            |
+| Zod                    | MIT                  |                                            |
+| date-fns               | MIT                  |                                            |
+| Framer Motion          | MIT                  |                                            |
+| LangChain              | MIT                  |                                            |
+| Anthropic SDK          | MIT                  |                                            |
+| OpenAI SDK             | Apache-2.0           |                                            |
+| Resend                 | MIT                  |                                            |
+| JSZip                  | MIT OR GPL-3.0       | Dual-licensed                              |
+| sharp                  | Apache-2.0           | Bundles libvips (LGPL-3.0-or-later)        |
+| web-push               | MPL-2.0              |                                            |
+| Sentry (runtime)       | MIT                  |                                            |
+| Sentry (CLI/build)     | FSL-1.1-MIT          | Build-time only, not distributed           |
+| Vitest                 | MIT                  | Dev dependency only                        |
+| TypeScript             | Apache-2.0           | Dev dependency only                        |
+| ESLint                 | MIT                  | Dev dependency only                        |
+
+Copyleft dependency notes:
+
+- sharp bundles libvips which is licensed under LGPL-3.0-or-later. libvips is
+  dynamically linked and can be replaced by end users.
+- JSZip is dual-licensed under MIT or GPL-3.0. This project uses it under the
+  MIT license.
+- web-push is licensed under MPL-2.0. Source code is available from its
+  upstream repository.
+- Sentry CLI is licensed under FSL-1.1-MIT (Functional Source License). It is
+  used only as a build-time tool and is not distributed with this software.

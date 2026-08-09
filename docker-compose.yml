@@ -1,0 +1,78 @@
+services:
+  app:
+    image: ghcr.io/erp-mafia/gnubok:${IMAGE_TAG:-latest}
+    env_file: .env
+    # Bound to loopback by default: put a TLS-terminating reverse proxy in
+    # front (see docker-compose.caddy.yml). Override PORT in .env to change
+    # the host port, or use the caddy overlay to remove the host binding.
+    ports:
+      - "127.0.0.1:${PORT:-3000}:3000"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    init: true
+    # tmpfs ordering matters: the parent /app/.next must be mounted before
+    # any sub-mounts. The entrypoint cp's image-baked templates into these
+    # mounts at startup, then sed-substitutes the NEXT_PUBLIC_* placeholders,
+    # then drops the write bits.
+    #
+    # uid=1001 (nextjs), mode=750: the entrypoint runs UNPRIVILEGED as nextjs
+    # and owns these mounts, so it can populate them with no CAP_CHOWN/CAP_SETUID,
+    # which is what lets the container run under `cap_drop: ALL`. nodejs-group
+    # members can read the served bundle; nothing else on the host can.
+    tmpfs:
+      - /tmp
+      - /app/.next:uid=1001,gid=1001,mode=750,size=400m
+      - /app/public:uid=1001,gid=1001,mode=750,size=200m
+    # CPU limits are intentionally left to host tooling or a local override.
+    # Some Compose builds bundled with NAS platforms reject the `cpus` key.
+    mem_limit: 1g
+    pids_limit: 200
+    restart: unless-stopped
+    healthcheck:
+      # 127.0.0.1, not localhost: the app binds 0.0.0.0 (IPv4) but localhost can
+      # resolve to ::1 (IPv6), where nothing listens → false-unhealthy → the
+      # cron service (depends_on healthy) never starts.
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:3000/api/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 30s
+      # `start_interval` requires Docker Compose 2.20.2+ and Docker Engine 25.0+.
+      # Omitting it keeps the base file usable with older NAS container stacks.
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  cron:
+    build:
+      context: docker
+      dockerfile: cron.Dockerfile
+    depends_on:
+      app:
+        condition: service_healthy
+    environment:
+      - CRON_SECRET=${CRON_SECRET}
+      - APP_URL=http://app:3000
+    volumes:
+      - ./docker/crontab.self-hosted:/etc/supercronic/crontab:ro
+    init: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp
+    mem_limit: 64m
+    pids_limit: 30
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"

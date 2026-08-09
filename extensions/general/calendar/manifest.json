@@ -1,0 +1,19 @@
+{
+  "id": "calendar",
+  "sector": "general",
+  "exportName": "calendarExtension",
+  "entryPoint": "@/extensions/general/calendar",
+  "workspace": "@/components/extensions/general/CalendarWorkspace",
+  "requiredEnvVars": [],
+  "optionalEnvVars": [],
+  "npmDependencies": ["ics"],
+  "definition": {
+    "name": "Kalender",
+    "category": "operations",
+    "icon": "Calendar",
+    "dataPattern": "core",
+    "readsCoreTables": ["invoices", "deadlines", "customers"],
+    "description": "Fullständig kalendervy med månads-, vecko- och dagsvisning",
+    "longDescription": "Se alla fakturadatum och deadlines i en interaktiv kalender med månads-, vecko- och dagsvy."
+  }
+}

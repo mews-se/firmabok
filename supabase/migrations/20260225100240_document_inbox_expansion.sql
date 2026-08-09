@@ -1,0 +1,5 @@
+-- Migration: document_inbox_expansion
+-- No-op: all document inbox columns (matched_transaction_id, match_confidence,
+-- match_method, suggested_template_id, etc.) are included in the
+-- invoice_inbox migration (20260223150836) in this consolidated set.
+-- Originally applied to production as a separate migration.

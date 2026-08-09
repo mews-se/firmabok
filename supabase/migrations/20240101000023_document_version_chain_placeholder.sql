@@ -1,0 +1,7 @@
+-- Migration 23: Document Version Chain Hardening (placeholder)
+-- This migration was planned but never deployed to production.
+-- The columns prev_version_hash and last_integrity_check_at do not exist
+-- in the production document_attachments table.
+-- The functions create_document_version() and validate_version_chain()
+-- do not exist in the production database.
+-- Kept as a numbered placeholder to preserve migration sequence.

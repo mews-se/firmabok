@@ -1,0 +1,780 @@
+import type { SupabaseClient } from '@supabase/supabase-js'
+import type { CashAccount, CashAccountSource } from '@/types'
+import { createLogger } from '@/lib/logger'
+import { syncMappedAccounts } from '@/lib/import/account-sync'
+
+const log = createLogger('cash-accounts')
+
+/**
+ * Suggested BAS account per currency. Single source — the enable-banking
+ * callback and the AccountPickerDialog both key off these.
+ */
+export const CURRENCY_LEDGER_DEFAULTS: Record<string, string> = {
+  SEK: '1930',
+  EUR: '1932',
+  USD: '1933',
+  GBP: '1934',
+}
+
+export function defaultLedgerForCurrency(currency: string): string {
+  return CURRENCY_LEDGER_DEFAULTS[currency.toUpperCase()] ?? '1930'
+}
+
+/**
+ * Canonical read/write surface for cash_accounts.
+ *
+ * Replaces ad-hoc reads of bank_connections.accounts_data for routing decisions.
+ * UI panels that just display balances may still read accounts_data until the
+ * follow-up migration drops that column.
+ *
+ * All methods accept an authenticated SupabaseClient and rely on RLS for tenancy
+ * isolation. Defense-in-depth filter by company_id is applied regardless.
+ */
+
+export interface ListCashAccountsOptions {
+  enabledOnly?: boolean
+}
+
+export interface UpsertFromPsd2Input {
+  bank_connection_id: string
+  external_uid: string
+  currency: string
+  ledger_account: string
+  iban?: string | null
+  name?: string | null
+  balance?: number | null
+  balance_updated_at?: string | null
+  enabled?: boolean
+  /**
+   * Existing cash_accounts row this PSD2 account was matched to by IBAN
+   * (see resolvePsd2LedgerAccount). The row is promoted in place: it keeps its
+   * id, its ledger_account and its linked transactions, and is re-pointed at
+   * this connection + external_uid. Without this the reconnect path would try
+   * to INSERT a second row on the same ledger and trip the
+   * (company_id, ledger_account) UNIQUE constraint.
+   */
+  reuse_cash_account_id?: string | null
+}
+
+/**
+ * Normalize an IBAN for comparison: ASPSPs format the same account both as
+ * "SE45 5000 0000 0583 9825 7466" and "SE4550000000058398257466", and a plain
+ * string compare would read those as two different accounts. Mirrors the
+ * normalization the sync path already applies when deriving external_ids.
+ */
+export function normalizeIban(iban: string | null | undefined): string | null {
+  if (!iban) return null
+  const normalized = iban.replace(/\s+/g, '').toUpperCase()
+  return normalized || null
+}
+
+export async function listForCompany(
+  supabase: SupabaseClient,
+  companyId: string,
+  opts: ListCashAccountsOptions = {},
+): Promise<CashAccount[]> {
+  let q = supabase
+    .from('cash_accounts')
+    .select('*')
+    .eq('company_id', companyId)
+    .order('is_primary', { ascending: false })
+    .order('ledger_account', { ascending: true })
+
+  if (opts.enabledOnly) q = q.eq('enabled', true)
+
+  const { data, error } = await q
+  if (error) {
+    log.error('listForCompany failed', { companyId, error: error.message })
+    return []
+  }
+  return (data ?? []) as CashAccount[]
+}
+
+/**
+ * Primary cash account for a company. Filters by currency when provided. Falls
+ * back to the global primary (`is_primary = true`) when no currency-specific
+ * match exists.
+ *
+ * Used by skattekonto-booking's __PRIMARY_SEK__ sentinel and by transfer-pairing
+ * to identify the company's default settlement account.
+ */
+export async function getPrimary(
+  supabase: SupabaseClient,
+  companyId: string,
+  currency?: string,
+): Promise<CashAccount | null> {
+  let q = supabase
+    .from('cash_accounts')
+    .select('*')
+    .eq('company_id', companyId)
+    .eq('is_primary', true)
+    .limit(1)
+
+  if (currency) q = q.eq('currency', currency.toUpperCase())
+
+  const { data, error } = await q.maybeSingle()
+  if (error) {
+    log.warn('getPrimary failed', { companyId, currency, error: error.message })
+  }
+  if (data) return data as CashAccount
+
+  if (currency) {
+    // Fall back to any-currency primary so a company without a SEK account still
+    // resolves the sentinel: rare but possible (manual cash-on-hand only).
+    const { data: anyPrimary } = await supabase
+      .from('cash_accounts')
+      .select('*')
+      .eq('company_id', companyId)
+      .eq('is_primary', true)
+      .maybeSingle()
+    if (anyPrimary) return anyPrimary as CashAccount
+  }
+
+  return null
+}
+
+export async function findByIban(
+  supabase: SupabaseClient,
+  companyId: string,
+  iban: string,
+): Promise<CashAccount | null> {
+  if (!iban) return null
+  const { data, error } = await supabase
+    .from('cash_accounts')
+    .select('*')
+    .eq('company_id', companyId)
+    .eq('iban', iban)
+    .maybeSingle()
+  if (error) {
+    log.warn('findByIban failed', { companyId, iban, error: error.message })
+    return null
+  }
+  return (data as CashAccount | null) ?? null
+}
+
+/**
+ * Of the given bank_connection ids, return the subset whose connection row has
+ * status 'revoked'. A revoked connection no longer holds a live claim on its
+ * cash_accounts rows: the allocator, the picker-save collision guard, and
+ * upsertFromPsd2's promote-in-place path all treat those rows like manual
+ * holders so a reconnect can land back on its original ledger account.
+ *
+ * On lookup failure this returns an empty set (treat every connection as
+ * active): the conservative pre-fix behavior.
+ */
+export async function getRevokedConnectionIds(
+  supabase: SupabaseClient,
+  companyId: string,
+  connectionIds: readonly string[],
+): Promise<Set<string>> {
+  if (connectionIds.length === 0) return new Set()
+
+  const { data, error } = await supabase
+    .from('bank_connections')
+    .select('id, status')
+    .eq('company_id', companyId)
+    .in('id', [...connectionIds])
+
+  if (error) {
+    log.warn('getRevokedConnectionIds lookup failed', { companyId, error: error.message })
+    return new Set()
+  }
+
+  return new Set(
+    ((data ?? []) as Array<{ id: string; status: string }>)
+      .filter(c => c.status === 'revoked')
+      .map(c => c.id),
+  )
+}
+
+/**
+ * Find a free BAS class-19 slot for a new PSD2 cash account, respecting the
+ * UNIQUE (company_id, ledger_account) constraint. A bank returning N
+ * same-currency accounts must not map them all to the currency default —
+ * that's exactly the collision this prevents.
+ *
+ * Rules:
+ *   - The currency default (1930/1932/1933/1934) is available when no
+ *     PSD2-backed row holds it. A manual holder (the seeded 1930 row) does
+ *     not block it — upsertFromPsd2 promotes that row in place.
+ *     Rows held by a REVOKED connection count as manual too: disconnecting a
+ *     bank releases its ledger claims, so reconnecting the same bank gets its
+ *     original slot back instead of overflowing to 1939.
+ *   - Overflow walks the free-use 1931–1959 sub-account slots, skipping the
+ *     four currency defaults (reserved as suggestions for their currencies)
+ *     and any slot held by ANY existing row — promoting an unrelated manual
+ *     account (SIE-imported, kassa) would silently steal it.
+ *   - Overflow ALSO skips 19xx numbers that already exist in the company's
+ *     chart of accounts, even when no cash_accounts row holds them. A chart
+ *     imported from SIE carries the company's real bank accounts by name
+ *     ("1942 Nordnet", "1938 Danske eSett Settlement") without any PSD2 row
+ *     behind them, and handing one of those out as "free" is how a SEK
+ *     företagskonto ended up proposed as 1942 Nordnet. Only when every
+ *     chart-free slot is exhausted do we fall back to chart-occupied numbers,
+ *     so a company with a fully populated 19xx chart still gets an answer.
+ *   - `exclude` carries slots already assigned earlier in the caller's loop
+ *     but not yet visible in the table.
+ *
+ * Returns null when no slot is free (or the lookup fails) — callers fall back
+ * to their previous behavior and surface the error.
+ */
+export async function findFreeLedgerAccount(
+  supabase: SupabaseClient,
+  companyId: string,
+  currency: string,
+  exclude: ReadonlySet<string> = new Set(),
+): Promise<string | null> {
+  const preferred = defaultLedgerForCurrency(currency)
+
+  const { data: rows, error } = await supabase
+    .from('cash_accounts')
+    .select('ledger_account, bank_connection_id')
+    .eq('company_id', companyId)
+
+  if (error) {
+    log.error('findFreeLedgerAccount lookup failed', { companyId, error: error.message })
+    return null
+  }
+
+  // Chart accounts are advisory here: a failed lookup must not block
+  // allocation, it just costs us the "don't steal a named bank account" guard.
+  const { data: chartRows, error: chartError } = await supabase
+    .from('chart_of_accounts')
+    .select('account_number')
+    .eq('company_id', companyId)
+    .like('account_number', '19%')
+
+  if (chartError) {
+    log.warn('findFreeLedgerAccount chart lookup failed', {
+      companyId,
+      error: chartError.message,
+    })
+  }
+  const chartTaken = new Set(
+    ((chartRows ?? []) as Array<{ account_number: string }>).map(r => r.account_number),
+  )
+
+  const typedRows = (rows ?? []) as Array<{ ledger_account: string; bank_connection_id: string | null }>
+  const revokedConnectionIds = await getRevokedConnectionIds(
+    supabase,
+    companyId,
+    [...new Set(typedRows.map(r => r.bank_connection_id).filter((id): id is string => id !== null))],
+  )
+
+  const anyTaken = new Set<string>()
+  const connectedTaken = new Set<string>()
+  for (const row of typedRows) {
+    anyTaken.add(row.ledger_account)
+    if (row.bank_connection_id !== null && !revokedConnectionIds.has(row.bank_connection_id)) {
+      connectedTaken.add(row.ledger_account)
+    }
+  }
+
+  if (!exclude.has(preferred) && !connectedTaken.has(preferred)) return preferred
+
+  const reserved = new Set(Object.values(CURRENCY_LEDGER_DEFAULTS))
+  const candidates: string[] = []
+  for (let n = 1931; n <= 1959; n++) {
+    const candidate = String(n)
+    if (reserved.has(candidate)) continue
+    if (exclude.has(candidate) || anyTaken.has(candidate)) continue
+    candidates.push(candidate)
+  }
+
+  // First pass: slots the chart has never heard of, so we can create them
+  // cleanly. Second pass: chart-occupied slots, the pre-fix behavior, only
+  // once nothing unnamed is left.
+  const unnamed = candidates.find(c => !chartTaken.has(c))
+  if (unnamed) return unnamed
+  if (candidates.length > 0) {
+    log.warn('findFreeLedgerAccount fell back to a chart-occupied slot', {
+      companyId,
+      currency,
+      ledger: candidates[0],
+    })
+    return candidates[0]
+  }
+
+  log.warn('findFreeLedgerAccount exhausted 1931–1959', { companyId, currency })
+  return null
+}
+
+/**
+ * Allocate a ledger slot for a new PSD2 account AND make sure that account
+ * number exists in the company's chart of accounts — cash_accounts has no FK
+ * to the chart, but booking (and the AccountPicker, which only lists chart
+ * accounts) breaks on numbers the chart doesn't know. Sub-accounts outside
+ * the BAS reference (1931, …) are created with metadata derived from the
+ * account number; standard numbers get their BAS name.
+ */
+export async function allocatePsd2LedgerAccount(
+  supabase: SupabaseClient,
+  companyId: string,
+  userId: string,
+  input: { currency: string; accountName?: string | null; exclude?: ReadonlySet<string> },
+): Promise<string | null> {
+  const ledger = await findFreeLedgerAccount(supabase, companyId, input.currency, input.exclude ?? new Set())
+  if (!ledger) return null
+
+  const name = input.accountName?.trim() || `Bankkonto ${input.currency.toUpperCase()}`
+  const sync = await syncMappedAccounts(
+    supabase,
+    companyId,
+    userId,
+    [
+      {
+        sourceAccount: ledger,
+        sourceName: name,
+        targetAccount: ledger,
+        targetName: name,
+        confidence: 1,
+        matchType: 'exact',
+        isOverride: false,
+      },
+    ],
+    false,
+  )
+  if (sync.error) {
+    log.error('allocatePsd2LedgerAccount chart sync failed', {
+      companyId,
+      ledger,
+      error: sync.error,
+    })
+    return null
+  }
+  return ledger
+}
+
+export interface Psd2LedgerResolution {
+  ledgerAccount: string
+  /**
+   * Existing row to promote in place, when the IBAN was already known. Null
+   * when the ledger was freshly allocated.
+   */
+  reuseCashAccountId: string | null
+  source: 'iban' | 'allocated'
+}
+
+/**
+ * Decide which BAS account a PSD2 account should book to, IBAN first.
+ *
+ * The IBAN identifies the physical bank account; the provider's account `uid`
+ * does not survive a re-authorization at every ASPSP, and a fresh connect to
+ * an already-connected bank mints a new bank_connection row regardless. Both
+ * cases used to look like "an account we have never seen", so the allocator
+ * handed out the next free 19xx slot and the user's mapping (1930/1940/1941)
+ * silently moved to 1942-1946 on every consent renewal.
+ *
+ * Matching on the IBAN instead means a known account keeps its ledger, its
+ * cash_accounts row id and therefore its linked transactions. The previous
+ * holder's connection status is deliberately NOT considered: one IBAN is one
+ * physical account, so the connection that just authorized it is the one that
+ * owns it. This matters for the case that motivated the fix, where the old
+ * connection still reads 'active' because its session was killed bank-side
+ * without telling us.
+ *
+ * Returns null only when allocation itself fails; callers keep their existing
+ * fallback.
+ */
+export async function resolvePsd2LedgerAccount(
+  supabase: SupabaseClient,
+  companyId: string,
+  userId: string,
+  input: {
+    iban?: string | null
+    currency: string
+    accountName?: string | null
+    exclude?: ReadonlySet<string>
+  },
+): Promise<Psd2LedgerResolution | null> {
+  const exclude = input.exclude ?? new Set<string>()
+  const wanted = normalizeIban(input.iban)
+
+  if (wanted) {
+    const { data, error } = await supabase
+      .from('cash_accounts')
+      .select('id, iban, ledger_account')
+      .eq('company_id', companyId)
+      .not('iban', 'is', null)
+
+    if (error) {
+      // Fall through to allocation: a failed lookup must not block the
+      // connection, it just costs us the reuse.
+      log.warn('resolvePsd2LedgerAccount iban lookup failed', {
+        companyId,
+        error: error.message,
+      })
+    } else {
+      const match = ((data ?? []) as Array<{ id: string; iban: string | null; ledger_account: string }>)
+        .find(row => normalizeIban(row.iban) === wanted)
+      // A ledger already claimed earlier in the caller's loop cannot be handed
+      // out twice, even on an IBAN hit: two rows on one ledger violate the
+      // (company_id, ledger_account) UNIQUE constraint.
+      if (match && !exclude.has(match.ledger_account)) {
+        return {
+          ledgerAccount: match.ledger_account,
+          reuseCashAccountId: match.id,
+          source: 'iban',
+        }
+      }
+    }
+  }
+
+  const allocated = await allocatePsd2LedgerAccount(supabase, companyId, userId, {
+    currency: input.currency,
+    accountName: input.accountName,
+    exclude,
+  })
+  if (!allocated) return null
+  return { ledgerAccount: allocated, reuseCashAccountId: null, source: 'allocated' }
+}
+
+/**
+ * Upsert a PSD2-sourced cash account during connection callback / sync. Keyed on
+ * (company_id, bank_connection_id, external_uid). When the row exists, balance
+ * and ledger_account are refreshed; the rest of the metadata stays put.
+ *
+ * Never sets is_primary: that's owned by the user via the AccountPicker or by
+ * the initial-backfill migration.
+ */
+export async function upsertFromPsd2(
+  supabase: SupabaseClient,
+  companyId: string,
+  input: UpsertFromPsd2Input,
+): Promise<void> {
+  const payload = {
+    company_id: companyId,
+    bank_connection_id: input.bank_connection_id,
+    external_uid: input.external_uid,
+    iban: input.iban ?? null,
+    name: input.name ?? null,
+    currency: input.currency.toUpperCase(),
+    ledger_account: input.ledger_account,
+    balance: input.balance ?? null,
+    balance_updated_at: input.balance_updated_at ?? null,
+    enabled: input.enabled ?? true,
+    source: 'enable_banking' as CashAccountSource,
+  }
+
+  // create_company_with_owner and the seed_default_cash_account migration plant
+  // a manual (bank_connection_id IS NULL) row on the same ledger_account so
+  // reconciliation routes work before any PSD2 connection exists, and the
+  // disconnect handler demotes a revoked connection's rows to manual the same
+  // way. Rows still pointing at a REVOKED connection (orphans from before the
+  // disconnect handler released claims) no longer hold a live claim either.
+  // In all three cases the PSD2 sync claiming that BAS slot has to promote the
+  // holder row in place: a plain upsert on (company_id, bank_connection_id,
+  // external_uid) wouldn't match it and the INSERT path then trips the
+  // (company_id, ledger_account) UNIQUE constraint. Promoting (instead of
+  // inserting) keeps the row id stable so transactions.cash_account_id links
+  // and the ledger's history stay attached.
+  const { data: holderRow, error: holderLookupError } = await supabase
+    .from('cash_accounts')
+    .select('id, bank_connection_id')
+    .eq('company_id', companyId)
+    .eq('ledger_account', input.ledger_account)
+    .maybeSingle()
+
+  if (holderLookupError) {
+    log.error('upsertFromPsd2 holder lookup failed', {
+      companyId,
+      bankConnectionId: input.bank_connection_id,
+      externalUid: input.external_uid,
+      error: holderLookupError.message,
+    })
+    throw new Error(`cash_accounts upsert failed: ${holderLookupError.message}`)
+  }
+
+  const typedHolder = holderRow as { id: string; bank_connection_id: string | null } | null
+  let promotableRowId: string | null = null
+  if (typedHolder) {
+    if (typedHolder.id === input.reuse_cash_account_id) {
+      // Matched by IBAN upstream: this row IS this account, whoever held it
+      // last. Promoting keeps its id (transactions.cash_account_id stays
+      // linked) and re-points it at the connection that just authorized.
+      promotableRowId = typedHolder.id
+    } else if (typedHolder.bank_connection_id === null) {
+      promotableRowId = typedHolder.id
+    } else if (typedHolder.bank_connection_id !== input.bank_connection_id) {
+      const revoked = await getRevokedConnectionIds(supabase, companyId, [
+        typedHolder.bank_connection_id,
+      ])
+      if (revoked.has(typedHolder.bank_connection_id)) {
+        promotableRowId = typedHolder.id
+      }
+    }
+    // Holder owned by the input connection itself (or by another ACTIVE
+    // connection): fall through to the plain upsert. For the former the upsert
+    // matches on (company_id, bank_connection_id, external_uid) and updates in
+    // place; for the latter the UNIQUE constraint rejects the write and the
+    // error surfaces to the caller (the picker-save collision guard should
+    // have caught it earlier).
+  }
+
+  if (promotableRowId) {
+    // Promoting the holder makes it THE row for this (bank_connection_id,
+    // external_uid). If this connection + uid already has a row on another
+    // ledger (the reconnect callback mirrored it onto an overflow slot while
+    // the target slot was still wrongly blocked by a revoked connection), that
+    // duplicate must be resolved first or the promote trips the UNIQUE
+    // (company_id, bank_connection_id, external_uid) constraint.
+    const { data: ownRow, error: ownLookupError } = await supabase
+      .from('cash_accounts')
+      .select('id, is_primary')
+      .eq('company_id', companyId)
+      .eq('bank_connection_id', input.bank_connection_id)
+      .eq('external_uid', input.external_uid)
+      .neq('id', promotableRowId)
+      .maybeSingle()
+
+    if (ownLookupError) {
+      log.error('upsertFromPsd2 duplicate lookup failed', {
+        companyId,
+        bankConnectionId: input.bank_connection_id,
+        externalUid: input.external_uid,
+        error: ownLookupError.message,
+      })
+      throw new Error(`cash_accounts upsert failed: ${ownLookupError.message}`)
+    }
+
+    const typedOwn = ownRow as { id: string; is_primary: boolean } | null
+    let transferPrimary = false
+    if (typedOwn) {
+      // With linked transactions the duplicate is demoted to a plain manual
+      // row (deleting it would SET NULL those transactions' cash_account_id
+      // links). Without any, it is a leftover mirror from the broken reconnect
+      // and is deleted outright so its overflow slot frees up.
+      const { data: linkedTx, error: linkedTxError } = await supabase
+        .from('transactions')
+        .select('id')
+        .eq('company_id', companyId)
+        .eq('cash_account_id', typedOwn.id)
+        .limit(1)
+
+      if (linkedTxError) {
+        log.error('upsertFromPsd2 duplicate transaction check failed', {
+          companyId,
+          bankConnectionId: input.bank_connection_id,
+          externalUid: input.external_uid,
+          error: linkedTxError.message,
+        })
+        throw new Error(`cash_accounts upsert failed: ${linkedTxError.message}`)
+      }
+
+      if ((linkedTx ?? []).length > 0) {
+        const { error: demoteError } = await supabase
+          .from('cash_accounts')
+          .update({ bank_connection_id: null, external_uid: null })
+          .eq('id', typedOwn.id)
+        if (demoteError) {
+          throw new Error(`cash_accounts upsert failed: ${demoteError.message}`)
+        }
+      } else {
+        const { error: deleteError } = await supabase
+          .from('cash_accounts')
+          .delete()
+          .eq('id', typedOwn.id)
+        if (deleteError) {
+          throw new Error(`cash_accounts upsert failed: ${deleteError.message}`)
+        }
+      }
+      // A primary duplicate must hand the flag to the promoted row either way:
+      // deleted, it would leave the __PRIMARY_SEK__ sentinel unresolvable;
+      // demoted, the sentinel would keep resolving to the stale manual row.
+      transferPrimary = typedOwn.is_primary
+    }
+
+    // .select() so we can detect a 0-row UPDATE: Supabase's update().eq() returns
+    // { error: null, data: [] } if the row was deleted between the SELECT above
+    // and this UPDATE (rare but theoretically possible under concurrent ops).
+    // If that happens, fall through to the normal upsert path instead of
+    // silently returning success without persisting anything.
+    const { data: promoted, error: promoteError } = await supabase
+      .from('cash_accounts')
+      .update(payload)
+      .eq('id', promotableRowId)
+      .select('id')
+    if (promoteError) {
+      log.error('upsertFromPsd2 promote-holder failed', {
+        companyId,
+        bankConnectionId: input.bank_connection_id,
+        externalUid: input.external_uid,
+        error: promoteError.message,
+      })
+      throw new Error(`cash_accounts upsert failed: ${promoteError.message}`)
+    }
+    if (promoted && promoted.length > 0) {
+      if (transferPrimary) {
+        try {
+          await setPrimary(supabase, companyId, promotableRowId)
+        } catch (primaryError) {
+          // The promote itself succeeded; losing the primary flag is
+          // recoverable via the AccountPicker, so log instead of unwinding.
+          log.error('upsertFromPsd2 primary transfer failed', {
+            companyId,
+            cashAccountId: promotableRowId,
+            error: primaryError instanceof Error ? primaryError.message : String(primaryError),
+          })
+        }
+      }
+      return
+    }
+    // Holder row vanished between SELECT and UPDATE: fall through to upsert.
+  }
+
+  const { error } = await supabase
+    .from('cash_accounts')
+    .upsert(payload, { onConflict: 'company_id,bank_connection_id,external_uid' })
+
+  if (error) {
+    log.error('upsertFromPsd2 failed', {
+      companyId,
+      bankConnectionId: input.bank_connection_id,
+      externalUid: input.external_uid,
+      error: error.message,
+    })
+    throw new Error(`cash_accounts upsert failed: ${error.message}`)
+  }
+}
+
+/**
+ * Find (or create) a manual cash account for a BAS ledger slot, so transactions
+ * ingested outside the PSD2 flow (create_transactions / CSV) can carry a real
+ * cash_account_id instead of NULL. Without the link, reconciliation 404s on the
+ * account and the match dialog falls back to 1930 (issue #1016).
+ *
+ * Manual rows (source='manual', bank_connection_id=null) are already first-class:
+ * every company is seeded a manual 1930 the same way, and upsertFromPsd2 promotes
+ * a manual holder in place if a bank later claims the slot. So pre-creating one
+ * here does NOT race the PSD2 sync (the concern noted in lib/transactions/ingest.ts):
+ * the worst case is a later connection promoting this row, which is the intended flow.
+ *
+ * Keyed on the (company_id, ledger_account) UNIQUE constraint: a concurrent
+ * insert surfaces as 23505, which we treat as "someone else won the race" and
+ * re-read. The row's currency follows the first transaction that created it; a
+ * ledger account holds one currency by that same constraint.
+ */
+export async function ensureManualCashAccount(
+  supabase: SupabaseClient,
+  companyId: string,
+  ledgerAccount: string,
+  currency: string,
+  name?: string | null,
+): Promise<string> {
+  const existing = await supabase
+    .from('cash_accounts')
+    .select('id, currency')
+    .eq('company_id', companyId)
+    .eq('ledger_account', ledgerAccount)
+    .maybeSingle()
+  if (existing.error) {
+    throw new Error(`ensureManualCashAccount lookup failed: ${existing.error.message}`)
+  }
+  if (existing.data) {
+    const row = existing.data as { id: string; currency: string | null }
+    // (company_id, ledger_account) is UNIQUE, so a ledger holds exactly one
+    // currency. A different-currency transaction pointing at the same ledger is
+    // a real conflict (e.g. a SEK row landing on a ledger already claimed for
+    // USD): fail loudly instead of binding it to the wrong-currency account.
+    if (row.currency && row.currency.toUpperCase() !== currency.toUpperCase()) {
+      throw new Error(
+        `Cash account ${ledgerAccount} is denominated in ${row.currency}, not ${currency.toUpperCase()}`,
+      )
+    }
+    return row.id
+  }
+
+  const insert = await supabase
+    .from('cash_accounts')
+    .insert({
+      company_id: companyId,
+      ledger_account: ledgerAccount,
+      currency: currency.toUpperCase(),
+      name: name?.trim() || `Bankkonto ${currency.toUpperCase()}`,
+      enabled: true,
+      is_primary: false,
+      source: 'manual' as CashAccountSource,
+    })
+    .select('id')
+    .single()
+
+  if (insert.error) {
+    // Lost the (company_id, ledger_account) race: re-read the winner's row.
+    if (insert.error.code === '23505') {
+      const reread = await supabase
+        .from('cash_accounts')
+        .select('id')
+        .eq('company_id', companyId)
+        .eq('ledger_account', ledgerAccount)
+        .maybeSingle()
+      if (reread.data) return (reread.data as { id: string }).id
+    }
+    log.error('ensureManualCashAccount insert failed', {
+      companyId,
+      ledgerAccount,
+      error: insert.error.message,
+    })
+    throw new Error(`ensureManualCashAccount insert failed: ${insert.error.message}`)
+  }
+
+  return (insert.data as { id: string }).id
+}
+
+/**
+ * Toggle a cash account's enabled flag. Used by the AccountPicker when a user
+ * opts in or out of syncing a particular PSD2 account.
+ */
+export async function setEnabled(
+  supabase: SupabaseClient,
+  companyId: string,
+  cashAccountId: string,
+  enabled: boolean,
+): Promise<void> {
+  const { error } = await supabase
+    .from('cash_accounts')
+    .update({ enabled })
+    .eq('company_id', companyId)
+    .eq('id', cashAccountId)
+  if (error) throw new Error(`cash_accounts setEnabled failed: ${error.message}`)
+}
+
+/**
+ * Remap a cash account to a different BAS ledger account. Triggers RLS + the
+ * (company_id, ledger_account) UNIQUE constraint: surface conflict errors so
+ * the UI can prompt the user to resolve.
+ */
+export async function setLedgerAccount(
+  supabase: SupabaseClient,
+  companyId: string,
+  cashAccountId: string,
+  ledgerAccount: string,
+): Promise<void> {
+  const { error } = await supabase
+    .from('cash_accounts')
+    .update({ ledger_account: ledgerAccount })
+    .eq('company_id', companyId)
+    .eq('id', cashAccountId)
+  if (error) throw new Error(`cash_accounts setLedgerAccount failed: ${error.message}`)
+}
+
+/**
+ * Mark a cash account as the primary for its company. Delegates to the
+ * `set_cash_account_primary` RPC so the clear-old-primary and set-new-primary
+ * updates happen inside a single transaction. The intermediate "no primary"
+ * state is never visible to concurrent readers: important because
+ * skattekonto-booking's __PRIMARY_SEK__ resolver runs through getPrimary() and
+ * would otherwise see null in the gap and mis-route the counter account.
+ */
+export async function setPrimary(
+  supabase: SupabaseClient,
+  companyId: string,
+  cashAccountId: string,
+): Promise<void> {
+  const { error } = await supabase.rpc('set_cash_account_primary', {
+    p_company_id: companyId,
+    p_cash_account_id: cashAccountId,
+  })
+  if (error) {
+    throw new Error(`cash_accounts setPrimary failed: ${error.message}`)
+  }
+}

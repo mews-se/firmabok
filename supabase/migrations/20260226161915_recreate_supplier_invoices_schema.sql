@@ -1,0 +1,5 @@
+-- Migration: recreate_supplier_invoices_schema
+-- No-op: suppliers, supplier_invoices, supplier_invoice_items, and
+-- supplier_invoice_payments tables are created by migration 025 (supplier_invoices)
+-- in this consolidated set with the final schema.
+-- Originally applied to production as a separate migration.

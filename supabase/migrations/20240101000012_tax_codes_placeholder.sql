@@ -1,0 +1,5 @@
+-- Migration 12: Tax Code Engine (placeholder)
+-- This migration was planned but never deployed to production.
+-- The tax_codes table does not exist in the production database.
+-- The system operates without it — tax code logic is handled in application code.
+-- Kept as a numbered placeholder to preserve migration sequence.

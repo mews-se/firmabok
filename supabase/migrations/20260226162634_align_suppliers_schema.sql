@@ -1,0 +1,5 @@
+-- Migration: align_suppliers_schema
+-- No-op: supplier schema alignment (supplier_type, address_line2,
+-- bank_account, default_expense_account, default_currency columns)
+-- is included in migration 025 (supplier_invoices) in this consolidated set.
+-- Originally applied to production as a separate migration.

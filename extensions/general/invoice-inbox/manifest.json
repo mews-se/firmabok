@@ -1,0 +1,22 @@
+{
+  "id": "invoice-inbox",
+  "sector": "general",
+  "exportName": "invoiceInboxExtension",
+  "entryPoint": "@/extensions/general/invoice-inbox",
+  "workspace": "@/components/extensions/general/InvoiceInboxWorkspace",
+  "requiredEnvVars": [
+    "RESEND_API_KEY",
+    "RESEND_INBOUND_DOMAIN",
+    "RESEND_INBOUND_WEBHOOK_SECRET"
+  ],
+  "definition": {
+    "name": "Dokumentinkorg",
+    "category": "import",
+    "icon": "Inbox",
+    "dataPattern": "both",
+    "hasOwnData": true,
+    "readsCoreTables": ["document_attachments", "suppliers"],
+    "description": "Vidarebefordra leverantörsfakturor till en unik adress: dokumenten landar här med extraherade fält",
+    "longDescription": "Varje bolag får en unik fakturainkorg-adress. Fakturor som skickas dit fångas automatiskt och fält som org.nr, OCR, bankgiro, belopp och förfallodatum läses av med AI. Kräver AI-funktionen i din prenumeration."
+  }
+}

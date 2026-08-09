@@ -1,0 +1,142 @@
+name: Scheduled Image Vulnerability Scan
+
+# The build pipeline (docker-publish.yml) builds and publishes the image but
+# does NOT fail on CVEs: it stays green so deploys are deterministic. This
+# workflow is the actual vulnerability gate: it re-scans the published `latest`
+# image and fails (notifying repo admins) plus raises a Security-tab alert on a
+# fixable CRITICAL/HIGH CVE, prompting a dependency or base-image bump.
+#
+# It fires on three triggers:
+#   1. workflow_run: the moment "Build and Push Docker Image" completes, so a
+#      freshly published image is gated within the scan's own duration (minutes)
+#      rather than waiting up to 24h for the cron. This is what shrinks the
+#      vulnerable-image exposure window after every publish.
+#   2. schedule (daily): catches CVEs newly disclosed against an already-
+#      published image even when nothing was republished.
+#   3. workflow_dispatch: run on demand from the Actions tab after a patch to
+#      confirm clean.
+#
+# Severity gate policy (both jobs): only fixable CRITICAL/HIGH CVEs may fail a
+# run; LOW/MEDIUM findings must never turn a run red. Every sarif-format Trivy
+# step MUST keep `limit-severities-for-sarif: true`, otherwise trivy-action
+# unsets TRIVY_SEVERITY for SARIF output and the gate silently widens to all
+# severities (that exact misconfiguration shipped once; see the scan step).
+#
+# The `sca` job is the dependency-level counterpart of the image scan: a daily
+# Trivy filesystem scan of the npm lockfile. It exists because Dependabot was
+# deliberately removed (PR #1084) and two HIGH Next.js CVEs then sat
+# undetected until a manual check; this job is the automated SCA alerting
+# that replaces it.
+#
+# NOTE: GitHub only runs `schedule` and `workflow_run` triggers from the default
+# branch, so both start firing once this is merged to main.
+on:
+  workflow_run:
+    workflows: ['Build and Push Docker Image']
+    types: [completed]
+  schedule:
+    # 06:17 UTC daily: off the hour to dodge cron congestion on GitHub.
+    - cron: '17 6 * * *'
+  workflow_dispatch: {}
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: erp-mafia/gnubok
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    # workflow_run fires even when the publish FAILED: there's no new image to
+    # gate in that case, so skip. schedule/workflow_dispatch carry no
+    # workflow_run payload, so the `!= 'workflow_run'` arm lets them through.
+    if: >-
+      github.event_name != 'workflow_run' ||
+      github.event.workflow_run.conclusion == 'success'
+    permissions:
+      contents: read
+      # Pull the published image from GHCR.
+      packages: read
+      # SARIF upload to the repo's "Security" tab.
+      security-events: write
+
+    steps:
+      - name: Log in to GHCR
+        uses: docker/login-action@abd2ef45e78c5afb21d64d4ca52ee8550d9572c7 # v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Scan published image with Trivy
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          # Block on fixable CRITICAL/HIGH: the same policy the build pipeline
+          # used to enforce inline. It is safe to block here: a red scheduled
+          # run is a "go patch" notification, not a blocked deploy. ignore-unfixed
+          # keeps it actionable (only CVEs we can resolve by rebuilding fail).
+          severity: CRITICAL,HIGH
+          exit-code: '1'
+          ignore-unfixed: true
+          format: sarif
+          output: trivy-results.sarif
+          # Without this, trivy-action unsets TRIVY_SEVERITY when format is
+          # sarif (entrypoint.sh: "Building SARIF report with all severities"),
+          # silently discarding the CRITICAL,HIGH filter above. The exit code
+          # then fires on any fixable CVE down to LOW, which is not the policy
+          # documented here and turns routine low-severity noise into a red run.
+          limit-severities-for-sarif: true
+
+      - name: Upload Trivy results to GitHub Security tab
+        # if: always() so findings still reach the Security tab even though the
+        # scan step above failed the run. Same category as docker-publish.yml so
+        # the two analyses share one alert set instead of duplicating.
+        if: always()
+        uses: github/codeql-action/upload-sarif@e4fba868fa4b1b91e1fdab776edc8cfbe6e9fb81 # v4
+        with:
+          sarif_file: trivy-results.sarif
+          category: trivy
+
+  sca:
+    runs-on: ubuntu-latest
+    # The lockfile does not change when an image is published, so the
+    # workflow_run trigger is irrelevant here: run on the daily schedule and
+    # on manual dispatch only.
+    if: github.event_name != 'workflow_run'
+    permissions:
+      contents: read
+      # SARIF upload to the repo's "Security" tab.
+      security-events: write
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Scan npm lockfile with Trivy
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          # Filesystem scan: picks up package-lock.json and reports known CVEs
+          # in the resolved dependency tree, including transitive pins. Same
+          # gate policy as the image scan above: fail only on fixable
+          # CRITICAL/HIGH, and keep limit-severities-for-sarif set (see the
+          # header comment for why dropping it silently widens the gate).
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln
+          severity: CRITICAL,HIGH
+          exit-code: '1'
+          ignore-unfixed: true
+          format: sarif
+          output: trivy-sca.sarif
+          limit-severities-for-sarif: true
+
+      - name: Upload Trivy SCA results to GitHub Security tab
+        # if: always() so findings reach the Security tab even when the scan
+        # step failed the run. Distinct category from the image scan so
+        # dependency alerts and image alerts stay separately traceable.
+        if: always()
+        uses: github/codeql-action/upload-sarif@e4fba868fa4b1b91e1fdab776edc8cfbe6e9fb81 # v4
+        with:
+          sarif_file: trivy-sca.sarif
+          category: trivy-sca

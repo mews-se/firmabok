@@ -1,0 +1,4 @@
+-- Migration: add_missing_dimension_columns
+-- No-op: cost_center and project text columns on journal_entry_lines
+-- are created by migration 011 (alter_existing_tables) in this consolidated set.
+-- Originally applied to production as a separate migration.

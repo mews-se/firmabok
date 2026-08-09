@@ -1,0 +1,26 @@
+{
+  "id": "tic",
+  "sector": "general",
+  "exportName": "ticExtension",
+  "entryPoint": "@/extensions/general/tic",
+  "workspace": "@/components/extensions/general/TicWorkspace",
+  "requiredEnvVars": ["TIC_API_PROXY_URL"],
+  "optionalEnvVars": [],
+  "npmDependencies": [],
+  "definition": {
+    "name": "Bolagsuppgifter",
+    "category": "import",
+    "icon": "Building2",
+    "dataPattern": "manual",
+    "hasOwnData": true,
+    "description": "Hämta företagsinformation automatiskt vid registrering",
+    "longDescription": "Fyll i företagsuppgifter automatiskt genom att ange organisationsnummer. Hämtar adress, momsregistrering, F-skattestatus och bankuppgifter från offentliga register via TIC.",
+    "quickAction": {
+      "label": "Företagsprofil",
+      "description": "Visa offentliga uppgifter",
+      "icon": "Building2",
+      "href": "/e/general/tic",
+      "order": 10
+    }
+  }
+}

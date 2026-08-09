@@ -1,0 +1,4 @@
+-- Migration: add_tax_code_column
+-- No-op: tax_code column on journal_entry_lines
+-- is created by migration 011 (alter_existing_tables) in this consolidated set.
+-- Originally applied to production as a separate migration.

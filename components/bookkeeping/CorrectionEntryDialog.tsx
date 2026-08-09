@@ -1,0 +1,434 @@
+'use client'
+
+import { useState, useEffect, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import AccountCombobox from '@/components/bookkeeping/AccountCombobox'
+import { AddAccountDialog } from '@/components/bookkeeping/AddAccountDialog'
+import CorrectionPreview from '@/components/bookkeeping/CorrectionPreview'
+import {
+  autoCorrectionDescription,
+  correctionDescriptionForSubmit,
+} from '@/components/bookkeeping/correction-entry-description'
+import { nextLineDescriptionForAccountChange } from '@/components/bookkeeping/correction-line-description'
+import { useToast } from '@/components/ui/use-toast'
+import { getErrorMessage } from '@/lib/errors/get-error-message'
+import { Loader2, Plus, Trash2 } from 'lucide-react'
+import { formatDate } from '@/lib/utils'
+import { formatVoucher } from '@/lib/bookkeeping/voucher-series-resolver'
+import {
+  changeCorrectionLineAccount,
+  getSelectableCorrectionCatalog,
+} from '@/lib/bookkeeping/correction-line-account'
+import { splitCreateAccountPrefill } from '@/lib/bookkeeping/create-account-prefill'
+import { loadBasCatalog, type CatalogAccount } from '@/lib/bookkeeping/bas-catalog-client'
+import type { JournalEntry, JournalEntryLine, BASAccount } from '@/types'
+
+interface CorrectionLine {
+  account_number: string
+  debit_amount: string
+  credit_amount: string
+  line_description: string
+}
+
+interface Props {
+  entry: JournalEntry
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  onCorrected: () => void
+}
+
+export default function CorrectionEntryDialog({ entry, open, onOpenChange, onCorrected }: Props) {
+  const { toast } = useToast()
+  const router = useRouter()
+  const t = useTranslations('journal_detail')
+  const [accounts, setAccounts] = useState<BASAccount[]>([])
+  const [catalog, setCatalog] = useState<CatalogAccount[]>([])
+  const [accountsStatus, setAccountsStatus] = useState<'loading' | 'ready' | 'error'>('loading')
+  const [lines, setLines] = useState<CorrectionLine[]>([])
+  const [description, setDescription] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  // Index of the line whose combobox opened the create dialog, and the search
+  // string it was showing. Null index = the dialog is closed.
+  const [creatingAccountForLine, setCreatingAccountForLine] = useState<number | null>(null)
+  const [createAccountPrefill, setCreateAccountPrefill] = useState('')
+
+  const activeAccounts = useMemo(
+    () => accounts.filter((account) => account.is_active),
+    [accounts],
+  )
+  const selectableCatalog = useMemo(
+    () => getSelectableCorrectionCatalog(accounts, catalog),
+    [accounts, catalog],
+  )
+  const accountNameSources = useMemo(
+    () => [...accounts, ...catalog],
+    [accounts, catalog],
+  )
+
+  const originalLines = ((entry.lines || []) as JournalEntryLine[])
+    .slice()
+    .sort((a, b) => a.sort_order - b.sort_order)
+
+  useEffect(() => {
+    if (open) {
+      // Pre-fill with original entry's lines
+      setLines(
+        originalLines.map((l) => ({
+          account_number: l.account_number,
+          debit_amount: Number(l.debit_amount) > 0 ? String(Number(l.debit_amount)) : '',
+          credit_amount: Number(l.credit_amount) > 0 ? String(Number(l.credit_amount)) : '',
+          line_description: l.line_description || '',
+        }))
+      )
+      // Pre-fill the verifikationstext with the same auto text the server
+      // would generate; only a user edit is sent along (see handleSubmit).
+      setDescription(autoCorrectionDescription(entry.description))
+      void fetchAccounts()
+    }
+  }, [open, entry.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function fetchAccounts() {
+    setAccountsStatus('loading')
+    try {
+      const [res, basCatalog] = await Promise.all([
+        fetch('/api/bookkeeping/accounts?active=false'),
+        loadBasCatalog(),
+      ])
+      if (!res.ok) throw new Error(`accounts ${res.status}`)
+      const { data } = await res.json()
+      setAccounts(data || [])
+      setCatalog(basCatalog)
+      setAccountsStatus('ready')
+    } catch {
+      setAccounts([])
+      setCatalog([])
+      setAccountsStatus('error')
+    }
+  }
+
+  const updateLine = (index: number, field: keyof CorrectionLine, value: string) => {
+    setLines((prev) =>
+      prev.map((l, i) => {
+        if (i !== index) return l
+        const next = { ...l, [field]: value }
+        // When the account changes, refresh the auto-filled description to the
+        // new account's name. Without this, a description carried over from the
+        // original entry (e.g. 2393 "Lån från närstående personer, långfristig
+        // del") stays stale on the newly chosen account (e.g. 2893, kortfristig).
+        if (field === 'account_number' && value) {
+          next.line_description = nextLineDescriptionForAccountChange(
+            l.line_description,
+            l.account_number,
+            value,
+            accounts,
+          )
+        }
+        return next
+      })
+    )
+  }
+
+  const updateLineAccount = (index: number, accountNumber: string) => {
+    setLines((prev) => prev.map((line, lineIndex) => (
+      lineIndex === index
+        ? changeCorrectionLineAccount(line, accountNumber, accountNameSources)
+        : line
+    )))
+  }
+
+  const addLine = () => {
+    setLines((prev) => [...prev, { account_number: '', debit_amount: '', credit_amount: '', line_description: '' }])
+  }
+
+  const removeLine = (index: number) => {
+    setLines((prev) => prev.filter((_, i) => i !== index))
+  }
+
+  const closeCreateAccount = () => {
+    setCreatingAccountForLine(null)
+    setCreateAccountPrefill('')
+  }
+
+  // A number that is neither in the company chart nor in BAS 2026 (a retired
+  // account such as 8022, or a company-specific underkonto) would otherwise be
+  // a dead end here: the rättelse can only post to accounts that exist in the
+  // chart. Creating it inline keeps the half-finished rättelse intact.
+  const handleAccountCreated = async (account: { account_number: string; account_name?: string }) => {
+    await fetchAccounts()
+    if (creatingAccountForLine != null) {
+      // fetchAccounts' state update is not visible in this closure, so the
+      // fresh account's own name is passed alongside the stale sources. The
+      // reactivate path reports no name, but that account is already in
+      // `accounts` (the fetch includes deactivated rows).
+      const created = account.account_name
+        ? [{ account_number: account.account_number, account_name: account.account_name }]
+        : []
+      setLines((prev) => prev.map((line, index) => (
+        index === creatingAccountForLine
+          ? changeCorrectionLineAccount(line, account.account_number, [...accountNameSources, ...created])
+          : line
+      )))
+    }
+    closeCreateAccount()
+  }
+
+  const totalDebit = lines.reduce((sum, l) => sum + (parseFloat(l.debit_amount) || 0), 0)
+  const totalCredit = lines.reduce((sum, l) => sum + (parseFloat(l.credit_amount) || 0), 0)
+  const roundedDebit = Math.round(totalDebit * 100) / 100
+  const roundedCredit = Math.round(totalCredit * 100) / 100
+  const isBalanced = roundedDebit === roundedCredit && roundedDebit > 0
+
+  const hasValidLines = lines.length >= 2 && lines.every((l) => l.account_number.length === 4)
+
+  async function handleSubmit() {
+    if (!isBalanced || !hasValidLines) return
+
+    setIsSubmitting(true)
+    try {
+      const apiLines = lines.map((l) => ({
+        account_number: l.account_number,
+        debit_amount: parseFloat(l.debit_amount) || 0,
+        credit_amount: parseFloat(l.credit_amount) || 0,
+        line_description: l.line_description || undefined,
+      }))
+
+      const res = await fetch(`/api/bookkeeping/journal-entries/${entry.id}/correct`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          lines: apiLines,
+          // Only sent when the user changed the auto prefill: the server
+          // fallback ("Rättelse: <original>") stays the source of truth.
+          description: correctionDescriptionForSubmit(description, entry.description),
+        }),
+      })
+
+      const result = await res.json()
+
+      if (!res.ok) {
+        const error = new Error('Failed to create correction') as Error & { body?: unknown; status?: number }
+        error.body = result
+        error.status = res.status
+        throw error
+      }
+
+      const correctedId = result.data?.corrected?.id
+
+      toast({
+        title: 'Ändringsverifikation skapad',
+        description: 'Storno och rättelse har bokförts.',
+        action: correctedId ? (
+          <Button variant="outline" size="sm" onClick={() => router.push(`/bookkeeping/${correctedId}`)}>
+            Visa rättelsen
+          </Button>
+        ) : undefined,
+      })
+      onOpenChange(false)
+      onCorrected()
+    } catch (err) {
+      const anyErr = err as { body?: unknown; status?: number }
+      toast({
+        title: 'Kunde inte spara ändringsverifikation',
+        description: getErrorMessage(anyErr.body ?? err, { context: 'journal_entry', statusCode: anyErr.status }),
+        variant: 'destructive',
+      })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-3xl max-h-[95dvh] sm:max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Skapa ändringsverifikation</DialogTitle>
+        </DialogHeader>
+
+        {/* Storno explanation */}
+        <div className="rounded-lg bg-muted/50 border p-3 text-sm text-muted-foreground">
+          <p className="font-medium text-foreground mb-1">Hur fungerar en ändringsverifikation?</p>
+          <p>En bokförd verifikation kan inte ändras direkt. Istället skapas automatiskt:</p>
+          <ol className="list-decimal list-inside mt-1 space-y-0.5">
+            <li>En <strong>stornoverifikation</strong> som nollställer den ursprungliga</li>
+            <li>En ny verifikation med dina rättade uppgifter</li>
+          </ol>
+          <p className="mt-2">
+            Rättelsen bokförs i samma räkenskapsperiod som originalet: du hittar den under originalets räkenskapsår.
+          </p>
+        </div>
+
+        {/* Original entry metadata: lines live inside CorrectionPreview below */}
+        <div className="space-y-1">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">
+            <span className="text-muted-foreground">Original</span>
+            <span className="font-mono">{formatVoucher(entry)}</span>
+            <span className="tabular-nums">{formatDate(entry.entry_date)}</span>
+          </div>
+          <p className="text-sm">{entry.description}</p>
+        </div>
+
+        {/* Live diff: original | storno | correction | förändring */}
+        <CorrectionPreview originalLines={originalLines} correctedLines={lines} />
+
+        {/* Verifikationstext for the new (corrected) entry. Pre-filled with
+            the auto text; editable so a header named after the wrong account
+            is not echoed on the correction (issue #1031). */}
+        <div className="space-y-1">
+          <Label htmlFor="correction-description">Verifikationstext</Label>
+          <Input
+            id="correction-description"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder={autoCorrectionDescription(entry.description)}
+          />
+          <p className="text-xs text-muted-foreground">
+            Texten på den nya verifikationen. Ändra den om originalets beskrivning inte längre
+            stämmer, till exempel när rättelsen byter konto.
+          </p>
+        </div>
+
+        {/* Corrected lines (editable) */}
+        <div className="space-y-2">
+          <div className="space-y-1">
+            <p className="text-sm font-medium">Rättade rader</p>
+            <p className="text-xs text-muted-foreground">
+              Det här är hela den nya verifikationen: alla konton som ska finnas kvar måste stå
+              kvar. Tar du bort ett konto nollställs det (stornon återför det). Vill du bara återföra
+              hela verifikatet utan att ersätta det, använd Återför (storno) istället.
+            </p>
+          </div>
+
+          {accountsStatus !== 'ready' && (
+            <div className="flex items-center justify-between gap-3 rounded-lg border bg-muted/50 p-3 text-sm text-muted-foreground">
+              <span className="flex items-center gap-2">
+                {accountsStatus === 'loading' && <Loader2 className="h-4 w-4 animate-spin" />}
+                {accountsStatus === 'loading' ? t('accounts_loading') : t('accounts_load_failed')}
+              </span>
+              {accountsStatus === 'error' && (
+                <Button variant="outline" size="sm" onClick={() => void fetchAccounts()}>
+                  {t('accounts_retry')}
+                </Button>
+              )}
+            </div>
+          )}
+
+          <div className="space-y-2">
+            {lines.map((line, index) => (
+              <div key={index} className="space-y-2 sm:space-y-0 sm:grid sm:grid-cols-[1fr_1fr_120px_120px_auto] sm:gap-2 sm:items-start border-b sm:border-0 pb-3 sm:pb-0 last:border-0">
+                <div className="grid grid-cols-[1fr_auto] sm:contents gap-2">
+                  <AccountCombobox
+                    value={line.account_number}
+                    accounts={activeAccounts}
+                    catalog={selectableCatalog}
+                    onChange={(v) => updateLineAccount(index, v)}
+                    onCreateAccount={(prefill) => {
+                      setCreatingAccountForLine(index)
+                      setCreateAccountPrefill(prefill)
+                    }}
+                    disabled={accountsStatus !== 'ready'}
+                  />
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 min-h-[44px] min-w-[44px] sm:order-last"
+                    onClick={() => removeLine(index)}
+                    disabled={lines.length <= 2}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+                <Input
+                  value={line.line_description}
+                  onChange={(e) => updateLine(index, 'line_description', e.target.value)}
+                  placeholder="Beskrivning"
+                  className="h-8"
+                />
+                <div className="grid grid-cols-2 gap-2 sm:contents">
+                  <Input
+                    type="number"
+                    value={line.debit_amount}
+                    onChange={(e) => updateLine(index, 'debit_amount', e.target.value)}
+                    placeholder="Debet"
+                    className="h-8 text-right"
+                    min={0}
+                    step="0.01"
+                  />
+                  <Input
+                    type="number"
+                    value={line.credit_amount}
+                    onChange={(e) => updateLine(index, 'credit_amount', e.target.value)}
+                    placeholder="Kredit"
+                    className="h-8 text-right"
+                    min={0}
+                    step="0.01"
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <Button variant="outline" size="sm" onClick={addLine}>
+            <Plus className="h-4 w-4 mr-1" />
+            Lägg till rad
+          </Button>
+
+          {/* Balance summary */}
+          <div className="flex justify-end gap-6 text-sm pt-2 border-t">
+            <div>
+              <span className="text-muted-foreground mr-2">Debet:</span>
+              <span className={!isBalanced ? 'text-destructive font-medium' : 'font-medium'}>
+                {roundedDebit.toLocaleString('sv-SE', { minimumFractionDigits: 2 })}
+              </span>
+            </div>
+            <div>
+              <span className="text-muted-foreground mr-2">Kredit:</span>
+              <span className={!isBalanced ? 'text-destructive font-medium' : 'font-medium'}>
+                {roundedCredit.toLocaleString('sv-SE', { minimumFractionDigits: 2 })}
+              </span>
+            </div>
+          </div>
+
+          {!isBalanced && roundedDebit + roundedCredit > 0 && (
+            <p className="text-sm text-destructive">
+              Debet och kredit måste vara lika och större än 0.
+            </p>
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
+            Avbryt
+          </Button>
+          <Button
+            onClick={handleSubmit}
+            disabled={!isBalanced || !hasValidLines || isSubmitting}
+          >
+            {isSubmitting ? 'Skapar...' : 'Skapa ändringsverifikation'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+
+      {/* Nested on purpose: closing this one (Esc, click-outside, Avbryt) must
+          leave the half-filled ändringsverifikation behind it untouched. */}
+      <AddAccountDialog
+        open={creatingAccountForLine != null}
+        onOpenChange={(next) => {
+          if (!next) closeCreateAccount()
+        }}
+        onCreated={handleAccountCreated}
+        {...splitCreateAccountPrefill(createAccountPrefill)}
+      />
+    </Dialog>
+  )
+}

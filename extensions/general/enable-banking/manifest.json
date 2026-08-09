@@ -1,0 +1,20 @@
+{
+  "id": "enable-banking",
+  "sector": "general",
+  "exportName": "enableBankingExtension",
+  "entryPoint": "@/extensions/general/enable-banking",
+  "workspace": "@/components/extensions/general/EnableBankingWorkspace",
+  "requiredEnvVars": ["ENABLE_BANKING_APP_ID", "ENABLE_BANKING_PRIVATE_KEY"],
+  "optionalEnvVars": ["ENABLE_BANKING_SANDBOX"],
+  "npmDependencies": [],
+  "definition": {
+    "name": "Bankintegration (PSD2)",
+    "category": "import",
+    "icon": "Landmark",
+    "dataPattern": "manual",
+    "hasOwnData": true,
+    "description": "Automatisk banktransaktionssynk via PSD2",
+    "longDescription": "Koppla ditt bankkonto direkt och synka transaktioner automatiskt via säker PSD2-bankintegration. Stöder de flesta svenska banker.",
+    "subscriptionNotice": "Denna integration kräver ett aktivt Enable Banking-abonnemang. Utan abonnemang kommer bankintegration inte att fungera."
+  }
+}

@@ -1,4 +1,4 @@
-import { normalizeOrgNumber } from '@/lib/company-lookup/normalize-org-number'
+import { normalizeOrgNumber } from '@/lib/invariants/org-number'
 
 /**
  * Swedish VAT registration number (momsregistreringsnummer) helpers.

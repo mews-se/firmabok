@@ -3,7 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { setActiveCompany, CompanyContextError } from '@/lib/company/context'
 import { revalidatePath } from 'next/cache'
-import { normalizeOrgNumber } from '@/lib/company-lookup/normalize-org-number'
+import { normalizeOrgNumber } from '@/lib/invariants/org-number'
 import { normalizeVatNumber, isValidSwedishVatNumber, deriveSwedishVatNumber } from '@/lib/vat/vat-number'
 import {
   regenerateTaxDeadlinesForUser,

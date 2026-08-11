@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/auth/require-auth'
 import { createServiceClient } from '@/lib/supabase/server'
-import { normalizeOrgNumber } from '@/lib/company-lookup/normalize-org-number'
+import { normalizeOrgNumber } from '@/lib/invariants/org-number'
 import { getErrorMessage as getUserErrorMessage } from '@/lib/errors/get-error-message'
 
 /**

@@ -121,7 +121,10 @@ else
 fi
 
 # ─── Start everything ───
-compose pull
+# Tolerate pull failures: a locally built IMAGE_TAG has no registry
+# counterpart, and an offline LAN should still restart on cached images.
+# A genuinely missing image still fails cleanly at up.
+compose pull --ignore-pull-failures 2>/dev/null || true
 compose up -d
 
 # ─── Wait for a green health check ───

@@ -2,7 +2,7 @@
 #
 # LAN install on a fresh Debian server. Installs Docker if needed,
 # generates the stack's secrets and brings up
-# docker-compose.selfhost.yml: the app, its cron sidecar and the five
+# docker-compose.yml: the app, its cron sidecar and the five
 # Supabase services it uses, behind nginx on a single origin.
 #
 #   ./install-debian.sh <lan-ip>   install, or update an existing install
@@ -27,9 +27,9 @@ fail() {
 
 compose() {
     if [ -n "$DOCKER_SUDO" ]; then
-        sudo docker compose -f "$REPO_DIR/docker-compose.selfhost.yml" "$@"
+        sudo docker compose -f "$REPO_DIR/docker-compose.yml" "$@"
     else
-        docker compose -f "$REPO_DIR/docker-compose.selfhost.yml" "$@"
+        docker compose -f "$REPO_DIR/docker-compose.yml" "$@"
     fi
 }
 
@@ -62,7 +62,7 @@ jwt() {
 # When run standalone (downloaded straight from GitHub), fetch or update
 # the repo and hand over to its copy of this script. The running file is
 # outside the repo, so the pull cannot change it mid-flight.
-if [ ! -f "$REPO_DIR/docker-compose.selfhost.yml" ]; then
+if [ ! -f "$REPO_DIR/docker-compose.yml" ]; then
     command -v git >/dev/null 2>&1 || { $SUDO apt update; $SUDO apt install -y git; }
     if [ -d "$HOME/firmabok/.git" ]; then
         git -C "$HOME/firmabok" pull --ff-only
@@ -141,7 +141,7 @@ while [ "$tries" -lt 120 ]; do
     tries=$((tries + 1))
     sleep 5
 done
-[ "$healthy" = true ] || fail 'the app did not become healthy; check the logs with: docker compose -f docker-compose.selfhost.yml logs'
+[ "$healthy" = true ] || fail 'the app did not become healthy; check the logs with: docker compose logs (in the repo directory)'
 
 echo ''
 echo "Done. Open http://$IP, create your account, then close signups"

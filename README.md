@@ -72,7 +72,7 @@ sh install-debian.sh 10.0.0.30
 
 [install-debian.sh](install-debian.sh) gör resten självt: hämtar repot,
 installerar Docker, genererar hemligheterna och startar hela stacken ur
-[docker-compose.selfhost.yml](docker-compose.selfhost.yml) — appen och
+[docker-compose.yml](docker-compose.yml) — appen och
 de fem Supabase-tjänster den behöver, bakom en tunn nginx på en
 gemensam adress. Migrationerna körs automatiskt, även vid
 uppdateringar. Ren HTTP på det egna nätet; cookies följer adressens
@@ -93,6 +93,11 @@ startar om med den nya appimagen, publicerad till
 
 **Backup.** Ditt ansvar: `pg_dump` mot en annan maskin, gärna
 kompletterat med SIE-export per räkenskapsår.
+
+**Stopp och avinstallation.** Vardagskommandona fungerar rakt av i
+`~/firmabok`: `docker compose stop`, `start`, `logs`. Avinstallation:
+`docker compose down -v` (tar containrarna och ALL data) och ta sedan
+bort katalogen.
 
 **Fördjupning.** [docs/SELF-HOSTING.md](docs/SELF-HOSTING.md) beskriver
 arkitekturen, miljövariablerna, backupkommandona och bygge från källa.

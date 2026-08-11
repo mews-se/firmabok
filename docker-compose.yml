@@ -1,7 +1,7 @@
 # The complete self-hosted stack in one file: the app, its cron sidecar
-# and the five Supabase services it actually uses, all pinned. This is
-# the LAN path driven by install-debian.sh; docker-compose.yml remains
-# the variant for a cloud Supabase project.
+# and the five Supabase services it actually uses, all pinned. Driven
+# by install-debian.sh; named docker-compose.yml so plain
+# `docker compose stop/logs/ps` works from the checkout.
 #
 # nginx is the single entry point: one origin, plain HTTP (LAN-only by
 # design), path routing that mirrors the hosted Supabase gateway layout
@@ -68,7 +68,8 @@ services:
       - ALL
     read_only: true
     init: true
-    # See docker-compose.yml for why the tmpfs mounts look like this.
+    # Read-only root: Next.js still needs writable .next and public at
+    # runtime, so they are sized tmpfs mounts owned by the app user.
     tmpfs:
       - /tmp
       - /app/.next:uid=1001,gid=1001,mode=750,size=400m

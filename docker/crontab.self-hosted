@@ -1,6 +1,6 @@
 # AUTO-GENERATED: do not edit. Run `npm run crontabs:generate` to regenerate.
 #
-# Variant: self-hosted (bind-mounted by docker-compose.selfhost.yml).
+# Variant: self-hosted (bind-mounted by docker-compose.yml).
 # Source of truth: the `crons` array in vercel.json. Paths, order and
 # cadence mirror it exactly; scripts/__tests__/generate-crontabs.test.ts
 # fails CI if this file drifts from it.

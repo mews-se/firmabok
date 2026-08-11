@@ -6,7 +6,7 @@ behind it.
 
 ## Architecture
 
-One Compose file, [docker-compose.selfhost.yml](../docker-compose.selfhost.yml),
+One Compose file, [docker-compose.yml](../docker-compose.yml),
 holds the whole stack:
 
 ```mermaid
@@ -14,7 +14,7 @@ flowchart LR
     user((Browser))
     user -- "http://SERVER-IP" --> nginx
 
-    subgraph stack["docker-compose.selfhost.yml"]
+    subgraph stack["docker-compose.yml"]
         nginx["proxy<br/>nginx · :80"]
         app["app<br/>Next.js · :3000"]
         cron["cron<br/>supercronic"]
@@ -107,8 +107,8 @@ echo 'IMAGE_TAG=local' >> .env
 
 ## Troubleshooting
 
-**The health wait times out.** Look at the logs:
-`docker compose -f docker-compose.selfhost.yml logs migrate app`.
+**The health wait times out.** Look at the logs (from the checkout):
+`docker compose logs migrate app`.
 The usual causes are a migration error (migrate exits non-zero and the
 app never starts) or wrong values in `.env`.
 
@@ -120,6 +120,5 @@ the browser must match: `DOMAIN` decides both. Check that you are
 browsing `http://<DOMAIN>` exactly.
 
 **Signups are closed and I need another account.** Set
-`AUTH_SIGNUPS_DISABLED=false` in `.env`, run
-`docker compose -f docker-compose.selfhost.yml up -d`, create the
-account, then run `./install-debian.sh lock` again.
+`AUTH_SIGNUPS_DISABLED=false` in `.env`, run `docker compose up -d`,
+create the account, then run `./install-debian.sh lock` again.

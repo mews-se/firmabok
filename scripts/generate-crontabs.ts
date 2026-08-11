@@ -42,13 +42,13 @@ export interface VercelCron {
 /** The compose file that bind-mounts each variant, quoted in the file header. */
 const MOUNTED_BY: Record<CrontabVariant, string> = {
   hosted: 'docker-compose.hosted.yml',
-  'self-hosted': 'docker-compose.selfhost.yml',
+  'self-hosted': 'docker-compose.yml',
 }
 
 /**
  * The invocation. `${CRON_SECRET}` and `${APP_URL}` are expanded by the shell
  * supercronic runs each job under; both come from the cron service's
- * environment in docker-compose.selfhost.yml. Not a template literal on purpose: the
+ * environment in docker-compose.yml. Not a template literal on purpose: the
  * `${...}` must reach the file verbatim.
  */
 const CURL_PREFIX = 'curl -sf -H "Authorization: Bearer ${CRON_SECRET}" ${APP_URL}'

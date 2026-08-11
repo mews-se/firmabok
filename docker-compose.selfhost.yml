@@ -119,7 +119,7 @@ services:
       - ./docker/db-init/webhooks.sql:/docker-entrypoint-initdb.d/init-scripts/98-webhooks.sql
       - ./docker/db-init/roles.sql:/docker-entrypoint-initdb.d/init-scripts/99-roles.sql
       - ./docker/db-init/jwt.sql:/docker-entrypoint-initdb.d/init-scripts/99-jwt.sql
-      - ./data/db:/var/lib/postgresql/data
+      - db_data:/var/lib/postgresql/data
       - db_config:/etc/postgresql-custom
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "postgres", "-h", "localhost"]
@@ -313,9 +313,14 @@ services:
       # Document previews are rendered by the app; no imgproxy.
       ENABLE_IMAGE_TRANSFORMATION: "false"
     volumes:
-      - ./data/storage:/var/lib/storage
+      - storage_data:/var/lib/storage
     restart: unless-stopped
     logging: *logging
 
+# Named volumes: the database and document archive live under Docker's
+# management instead of as container-uid-owned files in the checkout.
+# Back up with pg_dump via docker exec, not by copying these.
 volumes:
+  db_data:
   db_config:
+  storage_data:

@@ -1,8 +1,6 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import dynamic from 'next/dynamic'
-import Image from 'next/image'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
 import Link from 'next/link'
@@ -24,7 +22,6 @@ import {
 } from 'lucide-react'
 import { BrandWordmark } from '@/components/branding/BrandWordmark'
 import { getErrorMessage, type ErrorLocale } from '@/lib/errors/get-error-message'
-import { isBankIdEnabled } from '@/lib/auth/bankid'
 import { getBranding } from '@/lib/branding/service'
 import { detectWebmailHint } from '@/lib/auth/webmail-search'
 import { safeReturnTo } from '@/lib/auth/safe-return-to'
@@ -37,29 +34,18 @@ import { GoogleAuthButton } from '@/components/auth/GoogleAuthButton'
 import { isGoogleAuthEnabled } from '@/lib/auth/google-oauth'
 import { classifyAuthError, type AuthErrorKind } from '@/lib/auth/classify-auth-error'
 import { resetAnalyticsIdentity } from '@/lib/analytics/reset'
-import { persistLoginMethodHint, type LoginMethod } from '@/lib/auth/login-method'
 import {
-  isSessionAuthMethod,
   setSessionAuthMethodHint,
   type SessionTimeoutReason,
 } from '@/lib/auth/session-timeout-shared'
 
 const branding = getBranding()
-import type { BankIdResult } from '@/components/auth/BankIdAuth'
-
-const BankIdAuth = dynamic(
-  () => import('@/components/auth/BankIdAuth').then((module) => module.BankIdAuth),
-  { ssr: false },
-)
 
 /**
- * The login panel shows one method at a time (the pattern Swedish users know
- * from banks, Kivra and Fortnox): a primary zone owned by the active method,
- * and the remaining methods as quiet half-width chips under a single divider.
- * `initialMethod` comes from the server page reading the method-hint cookie,
- * so a returning password user lands straight on the form with no flash.
+ * The login panel: the password form up front, with any remaining methods
+ * as quiet chips under a single divider.
  */
-export function LoginClient({ initialMethod }: { initialMethod: LoginMethod | null }) {
+export function LoginClient() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -68,11 +54,9 @@ export function LoginClient({ initialMethod }: { initialMethod: LoginMethod | nu
   const [showResetPassword, setShowResetPassword] = useState(false)
   const [resetCooldownUntil, setResetCooldownUntil] = useState<number | null>(null)
   const [resetCooldownRemaining, setResetCooldownRemaining] = useState(0)
-  const [bankIdNoAccount, setBankIdNoAccount] = useState<{ givenName?: string; surname?: string } | null>(null)
-  const [bankIdUnavailable, setBankIdUnavailable] = useState(false)
   // Auth failures render inline (see AuthFormError / the field error line),
   // never as a toast: `kind` drives field highlighting and the recovery action.
-  const [formError, setFormError] = useState<{ kind: AuthErrorKind | 'bankid' | 'oauth'; message: string } | null>(null)
+  const [formError, setFormError] = useState<{ kind: AuthErrorKind | 'oauth'; message: string } | null>(null)
   // Consecutive credential failures; from the second one on, the error line
   // grows a reset-password action (extra help on repeated errors).
   const [failedAttempts, setFailedAttempts] = useState(0)
@@ -86,30 +70,16 @@ export function LoginClient({ initialMethod }: { initialMethod: LoginMethod | nu
   const reasonParam = searchParams.get('reason')
   const timeoutReason: SessionTimeoutReason | null =
     reasonParam === 'idle' || reasonParam === 'absolute' ? reasonParam : null
-  const methodParam = searchParams.get('method')
-  const requestedMethod = isSessionAuthMethod(methodParam) ? methodParam : 'password'
   // Post-login destination, set e.g. by the MCP OAuth authorize endpoint
   // (/login?next=/api/mcp-oauth/authorize?...). Sanitized to a same-origin
   // relative path; '/' means no explicit destination.
   const nextPath = safeReturnTo(searchParams.get('next'), '/')
   const supabase = createClient()
-  const bankIdEnabled = isBankIdEnabled()
   const googleAuthEnabled = isGoogleAuthEnabled()
   const tAuth = useTranslations('auth')
   const tCommon = useTranslations('common')
   const tInvite = useTranslations('invite')
   const errorLocale = useLocale() as ErrorLocale
-
-  // Which method owns the panel. A session-timeout re-login follows the method
-  // that timed out; otherwise the cookie hint wins; a fresh visitor starts on
-  // BankID (the Swedish default) when it is enabled.
-  const [method, setMethod] = useState<LoginMethod>(() => {
-    if (!bankIdEnabled) return 'email'
-    if (timeoutReason) return requestedMethod === 'bankid' ? 'bankid' : 'email'
-    if (initialMethod) return initialMethod
-    return 'bankid'
-  })
-  const prevMethodRef = useRef(method)
 
   useEffect(() => {
     if (timeoutReason) resetAnalyticsIdentity()
@@ -124,19 +94,6 @@ export function LoginClient({ initialMethod }: { initialMethod: LoginMethod | nu
       passwordInputRef.current?.select()
     }
   }, [formError])
-
-  // Switching to the email form should land the caret in the first field.
-  useEffect(() => {
-    if (prevMethodRef.current !== method) {
-      prevMethodRef.current = method
-      if (method === 'email') emailInputRef.current?.focus()
-    }
-  }, [method])
-
-  const switchMethod = (next: LoginMethod) => {
-    setFormError(null)
-    setMethod(next)
-  }
 
   const openResetForm = () => {
     setFormError(null)
@@ -179,67 +136,6 @@ export function LoginClient({ initialMethod }: { initialMethod: LoginMethod | nu
     return () => clearInterval(interval)
   }, [resetCooldownUntil])
 
-  const handleBankIdComplete = async (result: BankIdResult) => {
-    if (result.error === 'no_account') {
-      setBankIdNoAccount({ givenName: result.givenName, surname: result.surname })
-      setMethod('email')
-      return
-    }
-
-    if (result.error === 'service_unavailable') {
-      setBankIdUnavailable(true)
-      setMethod('email')
-      return
-    }
-
-    if (result.error) {
-      setFormError({ kind: 'bankid', message: tAuth('login_failed_bankid') })
-      return
-    }
-
-    if (result.tokenHash && result.type) {
-      try {
-        const { error } = await supabase.auth.verifyOtp({
-          token_hash: result.tokenHash,
-          type: result.type as 'magiclink',
-        })
-
-        if (error) {
-          console.error('[login] BankID verifyOtp failed', error)
-          setFormError({ kind: 'bankid', message: tAuth('login_failed_bankid') })
-          return
-        }
-
-        setSessionAuthMethodHint('bankid')
-        persistLoginMethodHint('bankid')
-
-        // Check for pending invite token
-        if (await acceptPendingInvite()) {
-          window.location.href = '/'
-          return
-        }
-
-        if (nextPath !== '/') {
-          // An explicit destination (e.g. the MCP OAuth consent page, raw
-          // HTML from a route handler) outranks the company picker.
-          window.location.assign(nextPath)
-          return
-        }
-
-        // Always land on the picker after BankID login so the user sees
-        // fresh CompanyRoles fetched during this session's enrichment.
-        router.push('/select-company')
-        router.refresh()
-      } catch (error) {
-        console.error('[login] BankID complete error', error)
-        setFormError({
-          kind: 'bankid',
-          message: getErrorMessage(error, { context: 'auth', locale: errorLocale }),
-        })
-      }
-    }
-  }
-
   const handlePasswordLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setFormError(null)
@@ -276,7 +172,6 @@ export function LoginClient({ initialMethod }: { initialMethod: LoginMethod | nu
       }
 
       setSessionAuthMethodHint('password')
-      persistLoginMethodHint('email')
 
       // Check MFA status
       const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
@@ -356,9 +251,9 @@ export function LoginClient({ initialMethod }: { initialMethod: LoginMethod | nu
     }
   }
 
-  // Credential/form failures attach to the form; BankID and Google failures
-  // belong to the panel (they originate outside the fields).
-  const panelError = formError && (formError.kind === 'bankid' || formError.kind === 'oauth')
+  // Credential/form failures attach to the form; Google failures belong to
+  // the panel (they originate outside the fields).
+  const panelError = formError && formError.kind === 'oauth'
     ? formError
     : null
   const formLevelError = formError && !panelError ? formError : null
@@ -488,9 +383,7 @@ export function LoginClient({ initialMethod }: { initialMethod: LoginMethod | nu
     )
   }
 
-  const showBankIdChip = method === 'email' && bankIdEnabled
-  const showEmailChip = method === 'bankid'
-  const chipCount = (showBankIdChip ? 1 : 0) + (showEmailChip ? 1 : 0) + (googleAuthEnabled ? 1 : 0)
+  const chipCount = googleAuthEnabled ? 1 : 0
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-frame p-4">
@@ -539,33 +432,7 @@ export function LoginClient({ initialMethod }: { initialMethod: LoginMethod | nu
               <AuthFormError message={panelError.message} />
             </div>
           )}
-          {bankIdNoAccount && (
-            <div className="mb-4 text-[13px] leading-5">
-              <p className="font-medium">
-                {tAuth('bankid_no_account_greeting', { name: bankIdNoAccount.givenName ?? '' })}
-              </p>
-              <p className="mt-1 text-muted-foreground">{tAuth('bankid_no_account_body')}</p>
-              <p className="mt-1">
-                <Link
-                  href="/register"
-                  className="text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors"
-                >
-                  {tAuth('bankid_no_account_create')}
-                </Link>
-              </p>
-            </div>
-          )}
-          {bankIdUnavailable && (
-            <div className="mb-4 text-[13px] leading-5">
-              <p className="font-medium">{tAuth('bankid_unavailable_title')}</p>
-              <p className="mt-1 text-muted-foreground">{tAuth('bankid_unavailable_body')}</p>
-            </div>
-          )}
-
-          <div key={method} className="animate-fade-in">
-            {method === 'bankid' ? (
-              <BankIdAuth mode="login" hero onComplete={handleBankIdComplete} />
-            ) : (
+          <div className="animate-fade-in">
               <form onSubmit={handlePasswordLogin} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="email">{tAuth('email_label')}</Label>
@@ -659,7 +526,6 @@ export function LoginClient({ initialMethod }: { initialMethod: LoginMethod | nu
                   )}
                 </Button>
               </form>
-            )}
           </div>
 
           {chipCount > 0 && (
@@ -674,40 +540,12 @@ export function LoginClient({ initialMethod }: { initialMethod: LoginMethod | nu
                   </span>
                 </div>
               </div>
-              <div className={chipCount === 2 ? 'grid grid-cols-2 gap-3' : 'grid grid-cols-1 gap-3'}>
-                {showBankIdChip && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="h-10 w-full gap-2"
-                    onClick={() => switchMethod('bankid')}
-                  >
-                    <Image
-                      src="/logos/bankid-seeklogo.svg"
-                      alt=""
-                      width={18}
-                      height={18}
-                      className="dark:invert"
-                    />
-                    BankID
-                  </Button>
-                )}
+              <div className="grid grid-cols-1 gap-3">
                 {googleAuthEnabled && (
                   <GoogleAuthButton
                     compact
                     onError={(message) => setFormError({ kind: 'oauth', message })}
                   />
-                )}
-                {showEmailChip && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="h-10 w-full gap-2"
-                    onClick={() => switchMethod('email')}
-                  >
-                    <Mail className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-                    {tAuth('method_email_chip')}
-                  </Button>
                 )}
               </div>
             </>

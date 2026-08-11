@@ -1,5 +1,5 @@
 import type { CompanyLookupResult } from './types'
-import { normalizeOrgNumber } from './normalize-org-number'
+import { normalizeOrgNumber } from '@/lib/invariants/org-number'
 
 /**
  * Outcome of a client-side TIC company lookup.

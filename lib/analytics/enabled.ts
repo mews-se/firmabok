@@ -8,7 +8,7 @@
  * Dockerfile / docker-entrypoint.sh, deliberately). Recapt achieved the same
  * result only by accident, via that missing sentinel; here it is explicit.
  *
- * Mirrors the shape of `isBankIdEnabled()` in lib/auth/bankid.ts: self-hosted
+ * Self-hosted
  * short-circuits first, then the feature's own env var decides.
  */
 

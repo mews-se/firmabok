@@ -23,7 +23,6 @@ import { AuthFormError } from '@/components/auth/AuthFormError'
 import { GoogleAuthButton } from '@/components/auth/GoogleAuthButton'
 import { isGoogleAuthEnabled } from '@/lib/auth/google-oauth'
 import { classifyAuthError, type AuthErrorKind } from '@/lib/auth/classify-auth-error'
-import { persistLoginMethodHint } from '@/lib/auth/login-method'
 import { cn } from '@/lib/utils'
 
 const branding = getBranding()
@@ -192,7 +191,6 @@ function RegisterPageContent() {
         return
       }
 
-      persistLoginMethodHint('email')
 
       // If auto-confirmed (local dev), process invite immediately and redirect
       if (data.session) {

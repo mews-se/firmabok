@@ -6,11 +6,7 @@ import Link from 'next/link'
 import { useLocale, useTranslations } from 'next-intl'
 import { createCompanyFromOnboarding } from '@/lib/company/actions'
 import { computeFiscalPeriod } from '@/lib/company/compute-fiscal-period'
-import { deriveFirstYearDefaults } from '@/lib/company/first-year-defaults'
-import { parseStartMonthDay } from '@/lib/company/first-year-defaults'
-import { fetchCompanyLookup } from '@/lib/company-lookup/fetch-company-lookup'
 import { normalizeOrgNumber } from '@/lib/invariants/org-number'
-import { ENABLED_EXTENSION_IDS } from '@/lib/extensions/_generated/enabled-extensions'
 import posthog from 'posthog-js'
 import { isAnalyticsEnabled } from '@/lib/analytics/enabled'
 import {
@@ -29,7 +25,6 @@ import {
   efFirstYearEndOptions,
   type FirstYearEndOption,
 } from '@/lib/onboarding-journey/fiscal-options'
-import type { EntityType } from '@/types'
 import JourneyOrb, { type OrbState } from './JourneyOrb'
 import JourneyTrack from './JourneyTrack'
 import Question from './Question'
@@ -44,10 +39,6 @@ import './journey.css'
  * The journey onboarding flow. Renders the reducer's current step,
  * performs the side effects, and collects the exact settings payload the
  * wizard sends today.
- *
- * TIC budget: fetchCompanyLookup fires exactly once per confirmed orgnr
- * (Enter, or the auto-submitted BankID deep link). No debounce-per-key,
- * no roster prefetch. The advisory dup check is an internal endpoint.
  */
 
 const STATION_FRACS = [0.07, 0.285, 0.5, 0.715, 0.93]
@@ -80,8 +71,6 @@ interface OnboardingJourneyProps {
   teamId: string
   mode?: 'first' | 'add'
   initialOrgNumber?: string
-  initialEntityType?: EntityType
-  initialLegalName?: string
   /** A pending invitation exists for this user's email: an invitee has
    *  likely landed here by mistake (lost invite cookie), so the first
    *  question carries a "join via the link in the email" hint. */
@@ -92,18 +81,14 @@ export default function OnboardingJourney({
   teamId,
   mode = 'first',
   initialOrgNumber,
-  initialEntityType,
-  initialLegalName,
   hasPendingInvite = false,
 }: OnboardingJourneyProps) {
   const router = useRouter()
   const t = useTranslations('onboarding')
   const locale = useLocale()
-  const ticEnabled = ENABLED_EXTENSION_IDS.has('tic')
-
   const [state, dispatch] = useReducer(
     journeyReducer,
-    { mode, initialOrgNumber, initialEntityType, initialLegalName },
+    { mode, initialOrgNumber },
     initJourney,
   )
 
@@ -141,8 +126,7 @@ export default function OnboardingJourney({
 
   /* ── side effects ─────────────────────────────────────────────── */
 
-  // One lookup per confirmed orgnr: fired from the submit handler, never
-  // from typing. The dup check (internal endpoint) rides along, advisory.
+  // The dup check (internal endpoint) rides along, advisory.
   const submitOrg = useCallback(
     (raw: string) => {
       const normalized = normalizeOrgNumber(raw)
@@ -154,9 +138,6 @@ export default function OnboardingJourney({
       setDupName(null)
       setDupElsewhere(false)
       dispatch({ type: 'ORG_SUBMITTED', orgNumber: raw })
-      fetchCompanyLookup(raw, { ticEnabled }).then((outcome) => {
-        dispatch({ type: 'LOOKUP_RESULT', outcome })
-      })
       fetch(`/api/company/check-org-number?org_number=${encodeURIComponent(raw)}`)
         .then(async (res) => {
           if (!res.ok) return
@@ -166,12 +147,11 @@ export default function OnboardingJourney({
         })
         .catch(() => {})
     },
-    [ticEnabled],
+    [],
   )
 
-  // BankID deep link: auto-submit the orgnr once on mount (the single
-  // lookup replaces the wizard's preverified suppression, per the plan
-  // addendum). Guarded against strict-mode double-invoke.
+  // ?org_number= deep link: auto-submit once on mount. Guarded against
+  // strict-mode double-invoke.
   const autoRan = useRef(false)
   useEffect(() => {
     if (autoRan.current) return
@@ -226,7 +206,6 @@ export default function OnboardingJourney({
         endDate: periodResult.endStr,
         name: periodResult.periodName,
       },
-      ticLookup: s.ticLookup,
     })
       .then((result) => {
         timers.forEach((id) => window.clearTimeout(id))
@@ -263,11 +242,9 @@ export default function OnboardingJourney({
       ? narration === null
         ? 'working'
         : 'shaping'
-      : state.lookupPending
-        ? 'searching'
-        : thinking
-          ? 'thinking'
-          : 'listening'
+      : thinking
+        ? 'thinking'
+        : 'listening'
 
   const fyAnswer = useMemo(() => {
     const s = state.settings
@@ -305,19 +282,6 @@ export default function OnboardingJourney({
     { label: t('journey_station_done') },
   ]
 
-  const lookupFacts = useMemo(() => {
-    const lk = state.ticLookup
-    if (!lk || station > 0) return []
-    const facts: { text: string; warn?: boolean }[] = []
-    if (entity) facts.push({ text: entity === 'aktiebolag' ? t('journey_form_ab') : t('journey_form_ef') })
-    if (lk.address?.city) facts.push({ text: lk.address.city })
-    if (lk.sniCodes[0]?.name) facts.push({ text: lk.sniCodes[0].name })
-    if (lk.registration.fTax) facts.push({ text: 'F-skatt' })
-    if (lk.registration.vat) facts.push({ text: t('journey_fact_vat') })
-    if (lk.isCeased) facts.push({ text: t('journey_fact_ceased'), warn: true })
-    return facts
-  }, [state.ticLookup, station, entity, t])
-
   /* ── per-step question rendering ──────────────────────────────── */
 
   const flyProps = { flyTargetRef: bandRef, flyTargetFrac: STATION_FRACS[station] }
@@ -333,9 +297,7 @@ export default function OnboardingJourney({
             attn={
               state.serverError === 'org_number_invalid'
                 ? t('journey_err_org_invalid')
-                : state.lookupNote === 'error'
-                  ? t('journey_lookup_error')
-                  : undefined
+                : undefined
             }
           >
             <div className={`jny-biginput${orgShake ? ' is-err' : ''}`} style={{ marginTop: 26 }}>
@@ -346,62 +308,15 @@ export default function OnboardingJourney({
                 aria-label={t('step2_org_number_label')}
                 autoComplete="off"
                 autoFocus
-                disabled={state.lookupPending}
                 onChange={(e) => setOrgInput(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !state.lookupPending) submitOrg(orgInput)
+                  if (e.key === 'Enter') submitOrg(orgInput)
                 }}
               />
             </div>
             <p className="jny-enterhint">
               {t('journey_press')} <b>Enter</b>
             </p>
-          </Question>
-        )
-
-      case 'notfound':
-        return (
-          <Question title={t('journey_notfound_title')} sub={t('journey_notfound_sub')}>
-            <ChipRow
-              options={[
-                { key: 'continue', label: t('journey_notfound_continue') },
-                { key: 'edit', label: t('journey_notfound_edit') },
-              ]}
-              onPick={(k) =>
-                dispatch({ type: k === 'continue' ? 'NOTFOUND_CONTINUE' : 'NOTFOUND_EDIT' })
-              }
-              {...flyProps}
-            />
-          </Question>
-        )
-
-      case 'ceased':
-        return (
-          <Question title={t('journey_ceased_title')} sub={t('journey_ceased_sub')}>
-            <ChipRow
-              options={[
-                { key: 'continue', label: t('journey_ceased_continue') },
-                { key: 'edit', label: t('journey_notfound_edit') },
-              ]}
-              onPick={(k) =>
-                dispatch({ type: k === 'continue' ? 'CEASED_CONTINUE' : 'CEASED_EDIT' })
-              }
-              {...flyProps}
-            />
-          </Question>
-        )
-
-      case 'form':
-        return (
-          <Question title={t('journey_form_title')} info={t('journey_form_info')}>
-            <ChipRow
-              options={[
-                { key: 'aktiebolag', label: t('journey_form_ab') },
-                { key: 'enskild_firma', label: t('journey_form_ef') },
-              ]}
-              onPick={(k) => dispatch({ type: 'ENTITY_PICKED', entityType: k as EntityType })}
-              {...flyProps}
-            />
           </Question>
         )
 
@@ -486,22 +401,8 @@ export default function OnboardingJourney({
             </Question>
           )
         }
-        const startMonth = state.lookupRan
-          ? parseStartMonthDay(state.ticLookup?.fiscalYear?.startMonthDay)
-          : null
-        const firstYearSuggested = state.lookupRan
-          ? deriveFirstYearDefaults(state.ticLookup?.registrationDate).isFirstFiscalYear
-          : false
-        const confirmMode = startMonth !== null
-        const title = confirmMode ? t('journey_fy_confirm_title') : t('journey_fy_ask_title')
-        const sub = confirmMode
-          ? startMonth === 1
-            ? t('journey_fy_confirm_sub_calendar')
-            : t('journey_fy_confirm_sub_broken', {
-                from: monthLong[startMonth - 1],
-                to: monthLong[(startMonth + 10) % 12],
-              })
-          : t('journey_fy_ask_sub')
+        const title = t('journey_fy_ask_title')
+        const sub = t('journey_fy_ask_sub')
         return (
           <Question
             title={title}
@@ -511,22 +412,13 @@ export default function OnboardingJourney({
           >
             <ChipRow
               options={[
-                {
-                  key: 'confirm',
-                  label: confirmMode ? t('journey_fy_yes') : t('journey_fy_calendar'),
-                },
+                { key: 'confirm', label: t('journey_fy_calendar') },
                 { key: 'other', label: t('journey_fy_other') },
-                {
-                  key: 'first',
-                  label: t('journey_fy_first'),
-                  rec: firstYearSuggested ? t('journey_suggested') : undefined,
-                },
+                { key: 'first', label: t('journey_fy_first') },
               ]}
               onPick={(k) => {
                 if (k === 'other') dispatch({ type: 'FY_OTHER_SELECTED' })
                 else if (k === 'first') dispatch({ type: 'FY_FIRST_SELECTED' })
-                else if (confirmMode && startMonth !== null && startMonth !== 1)
-                  dispatch({ type: 'FY_END_MONTH_PICKED', endMonth: startMonth === 1 ? 12 : startMonth - 1 })
                 else dispatch({ type: 'FY_CALENDAR_CONFIRMED' })
               }}
               {...flyProps}
@@ -546,35 +438,19 @@ export default function OnboardingJourney({
         )
 
       case 'fystart': {
-        const regDate = state.lookupRan ? state.ticLookup?.registrationDate : null
-        const regIso = regDate
-          ? new Date(regDate).toISOString().slice(0, 10)
-          : null
         return (
           <Question
             title={isEf ? t('journey_fystart_ef_title') : t('journey_fystart_ab_title')}
             sub={
-              regIso
-                ? t('journey_fystart_reg_sub', { date: formatDayMonthYear(regIso) })
-                : isEf
+              isEf
                   ? t('journey_fystart_ef_sub')
                   : t('journey_fystart_ab_sub')
             }
           >
-            {regIso ? (
-              <FyStartWithSuggestion
-                regIso={regIso}
-                regLabel={formatDayMonthYear(regIso)}
-                otherLabel={t('journey_fystart_other')}
-                onPick={(d) => dispatch({ type: 'FY_START_PICKED', date: d })}
-                flyProps={flyProps}
-              />
-            ) : (
-              <JourneyDatePicker
-                years={[new Date().getFullYear() - 1, new Date().getFullYear()]}
-                onPick={(d) => dispatch({ type: 'FY_START_PICKED', date: d })}
-              />
-            )}
+            <JourneyDatePicker
+              years={[new Date().getFullYear() - 1, new Date().getFullYear()]}
+              onPick={(d) => dispatch({ type: 'FY_START_PICKED', date: d })}
+            />
           </Question>
         )
       }
@@ -615,7 +491,6 @@ export default function OnboardingJourney({
         return (
           <Question
             title={isEf ? t('journey_moms_ef_title') : t('journey_moms_ab_title')}
-            sub={state.lookupRan && state.ticLookup?.registration.vat ? t('journey_moms_sub_registered') : undefined}
             info={info}
           >
             <ChipRow
@@ -721,25 +596,9 @@ export default function OnboardingJourney({
             </div>
           ) : (
             <>
-              <div className="jny-factname">
-                {state.ticLookup && station === 0 ? (
-                  <InkText text={state.ticLookup.companyName} step={90} />
-                ) : null}
-              </div>
               <div className="jny-factmeta">
-                {lookupFacts.map((f, i) => (
-                  <span
-                    key={f.text}
-                    className={`jny-f is-on${f.warn ? ' is-warn' : ''}`}
-                    style={{ transitionDelay: `${i * 150}ms` }}
-                  >
-                    {i > 0 ? ' · ' : ''}
-                    {f.text}
-                  </span>
-                ))}
                 {dupName && station === 0 ? (
-                  <span className="jny-f is-on" style={{ transitionDelay: `${lookupFacts.length * 150}ms` }}>
-                    {lookupFacts.length > 0 ? ' · ' : ''}
+                  <span className="jny-f is-on">
                     {t('journey_dup_note', { name: dupName })}
                   </span>
                 ) : null}
@@ -748,8 +607,7 @@ export default function OnboardingJourney({
                   // already exists under another Accounted account. Shown
                   // only when there is no own-account match, which is the
                   // more specific hint.
-                  <span className="jny-f is-on is-warn" style={{ transitionDelay: `${lookupFacts.length * 150}ms` }}>
-                    {lookupFacts.length > 0 ? ' · ' : ''}
+                  <span className="jny-f is-on is-warn">
                     {t('journey_dup_elsewhere_note')}
                   </span>
                 ) : null}
@@ -861,43 +719,6 @@ function FyMonthStep({
         </div>
       ) : null}
     </Question>
-  )
-}
-
-function FyStartWithSuggestion({
-  regIso,
-  regLabel,
-  otherLabel,
-  onPick,
-  flyProps,
-}: {
-  regIso: string
-  regLabel: string
-  otherLabel: string
-  onPick: (date: string) => void
-  flyProps: { flyTargetRef: React.RefObject<HTMLDivElement | null>; flyTargetFrac: number }
-}) {
-  const [manual, setManual] = useState(false)
-  if (manual) {
-    return (
-      <JourneyDatePicker
-        years={[new Date().getFullYear() - 1, new Date().getFullYear()]}
-        onPick={onPick}
-      />
-    )
-  }
-  return (
-    <ChipRow
-      options={[
-        { key: 'reg', label: regLabel },
-        { key: 'other', label: otherLabel },
-      ]}
-      onPick={(k) => {
-        if (k === 'reg') onPick(regIso)
-        else setManual(true)
-      }}
-      {...flyProps}
-    />
   )
 }
 
@@ -1043,7 +864,6 @@ function DoneStep({
   }
   if (s.f_skatt === false) notes.push(t('journey_note_fskatt'))
   if (s.vat_registered === false) notes.push(t('journey_note_vat_watch'))
-  if (state.ticLookup?.isCeased) notes.push(t('journey_note_ceased'))
 
   return (
     <div className="jny-qstep">

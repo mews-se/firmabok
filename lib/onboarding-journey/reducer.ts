@@ -1,34 +1,24 @@
-import type { CompanySettings, EntityType, MomsPeriod } from '@/types'
-import type { CompanyLookupResult } from '@/lib/company-lookup/types'
-import type { CompanyLookupOutcome } from '@/lib/company-lookup/fetch-company-lookup'
-import { mapEntityType } from '@/lib/company-lookup/entity-type-map'
+import type { CompanySettings, MomsPeriod } from '@/types'
 import { deriveSwedishVatNumber } from '@/lib/vat/vat-number'
 
 /**
  * Pure state machine for the journey onboarding
  * (dev_docs/onboarding_migration_plan.md). The component renders `step`,
- * dispatches actions, and performs the side effects (the single TIC lookup
- * via fetchCompanyLookup, the createCompanyFromOnboarding call); the reducer
- * owns every transition and every settings write.
+ * dispatches actions, and performs the side effects (the
+ * createCompanyFromOnboarding call); the reducer owns every transition and
+ * every settings write.
  *
  * Invariants encoded here:
  * - `settings` accumulates the exact CompanySettings partial today's wizard
  *   sends to createCompanyFromOnboarding: nothing less.
- * - `lookupRan` is true only when TIC answered with data for the CURRENT
- *   orgnr. Facts (name/address/F-skatt/moms/räkenskapsår) may be presented
- *   as facts only then; otherwise they are asked as questions. BankID
- *   prefill without a successful lookup is the degraded ask-questions path.
- * - `vat_registered` is never silently defaulted: it is either lookup data
- *   (registration.vat === true) or an explicit answer (ML 17 kap 24 §).
+ * - `vat_registered` is never silently defaulted: it is always an explicit
+ *   answer (ML 17 kap 24 §).
  * - History stores each step's ENTRY snapshot, so Back rolls both answers
  *   and stations to how they were when the step began.
  */
 
 export type JourneyStep =
   | 'orgnr'
-  | 'notfound'
-  | 'ceased'
-  | 'form'
   | 'name'
   | 'address'
   | 'fskatt'
@@ -45,9 +35,6 @@ export type JourneyStation = 0 | 1 | 2 | 3 | 4
 
 const STATION_OF: Record<JourneyStep, JourneyStation> = {
   orgnr: 0,
-  notfound: 0,
-  ceased: 0,
-  form: 0,
   name: 0,
   address: 0,
   fskatt: 0,
@@ -75,11 +62,8 @@ export type JourneyServerError =
 interface JourneySnapshot {
   step: JourneyStep
   settings: Partial<CompanySettings>
-  ticLookup: CompanyLookupResult | null
-  lookupRan: boolean
-  lookupNote: 'none' | 'error'
   addressAsked: boolean
-  /** EF only: the verksamhetsnamn question was explicitly answered. */
+  /** The verksamhetsnamn question was explicitly answered. */
   nameConfirmedForEf: boolean
 }
 
@@ -87,10 +71,6 @@ export interface JourneyState extends JourneySnapshot {
   /** Entry snapshot of the CURRENT step (what Back from a later step restores). */
   entry: JourneySnapshot
   history: JourneySnapshot[]
-  /** Component fires the lookup while this is true; reducer set on ORG_SUBMITTED. */
-  lookupPending: boolean
-  /** BankID CompanyRoles prefill present (name/entity trusted without lookup). */
-  viaPrefill: boolean
   mode: 'first' | 'add'
   submitting: boolean
   serverError: JourneyServerError
@@ -98,22 +78,12 @@ export interface JourneyState extends JourneySnapshot {
 
 export interface JourneyInit {
   mode?: 'first' | 'add'
-  /** ?org_number= deep link. The component auto-submits it on mount, which
-   *  triggers the same single lookup as manual entry (2026-07-24 addendum:
-   *  no preverified suppression in the journey). */
+  /** ?org_number= deep link. The component auto-submits it on mount. */
   initialOrgNumber?: string
-  initialEntityType?: EntityType
-  initialLegalName?: string
 }
 
 export type JourneyAction =
   | { type: 'ORG_SUBMITTED'; orgNumber: string }
-  | { type: 'LOOKUP_RESULT'; outcome: CompanyLookupOutcome }
-  | { type: 'NOTFOUND_CONTINUE' }
-  | { type: 'NOTFOUND_EDIT' }
-  | { type: 'CEASED_CONTINUE' }
-  | { type: 'CEASED_EDIT' }
-  | { type: 'ENTITY_PICKED'; entityType: EntityType }
   | { type: 'NAME_SUBMITTED'; name: string }
   | { type: 'ADDRESS_SUBMITTED'; addressLine1?: string; postalCode?: string; city?: string }
   | { type: 'FSKATT_ANSWERED'; fskatt: boolean }
@@ -135,9 +105,6 @@ function snapshotOf(s: JourneySnapshot): JourneySnapshot {
   return {
     step: s.step,
     settings: s.settings,
-    ticLookup: s.ticLookup,
-    lookupRan: s.lookupRan,
-    lookupNote: s.lookupNote,
     addressAsked: s.addressAsked,
     nameConfirmedForEf: s.nameConfirmedForEf,
   }
@@ -146,16 +113,12 @@ function snapshotOf(s: JourneySnapshot): JourneySnapshot {
 export function initJourney(init: JourneyInit = {}): JourneyState {
   const settings: Partial<CompanySettings> = {}
   if (init.initialOrgNumber) settings.org_number = init.initialOrgNumber
-  // Enskild firma is the only company form here, so the AB/EF question
-  // never needs to be asked.
-  settings.entity_type = init.initialEntityType ?? 'enskild_firma'
-  if (init.initialLegalName) settings.company_name = init.initialLegalName
+  // Enskild firma is the only company form here, so the question is never
+  // asked.
+  settings.entity_type = 'enskild_firma'
   const base: JourneySnapshot = {
     step: 'orgnr',
     settings,
-    ticLookup: null,
-    lookupRan: false,
-    lookupNote: 'none',
     addressAsked: false,
     nameConfirmedForEf: false,
   }
@@ -163,8 +126,6 @@ export function initJourney(init: JourneyInit = {}): JourneyState {
     ...base,
     entry: snapshotOf(base),
     history: [],
-    lookupPending: false,
-    viaPrefill: Boolean(init.initialOrgNumber && (init.initialEntityType || init.initialLegalName)),
     mode: init.mode ?? 'first',
     submitting: false,
     serverError: null,
@@ -176,7 +137,6 @@ export function initJourney(init: JourneyInit = {}): JourneyState {
 function go(state: JourneyState, next: JourneyStep, patch?: Partial<JourneyState>): JourneyState {
   const moved: JourneyState = {
     ...state,
-    lookupPending: false,
     serverError: null,
     ...patch,
     step: next,
@@ -192,154 +152,28 @@ function stay(state: JourneyState, patch: Partial<JourneyState>): JourneyState {
 
 /**
  * The Företaget station asks only what is still unknown, then hands over to
- * the fiscal-year station. Order: name → address → F-skatt.
- * - AB with a known company_name (lookup or BankID roles) skips the name
- *   question; EF always confirms the verksamhetsnamn (it defaults to the
- *   person's name but is freely choosable, same as the wizard).
- * - Address is asked only when the lookup did not provide one.
- * - F-skatt is asked whenever it is not lookup data.
+ * the fiscal-year station. Order: name → address → F-skatt. The
+ * verksamhetsnamn is always confirmed (it defaults to the person's name but
+ * is freely choosable, same as the wizard).
  */
 function nextCompanyStep(state: JourneyState): JourneyStep {
   const s = state.settings
-  const nameKnown =
-    s.entity_type === 'aktiebolag'
-      ? Boolean(s.company_name)
-      : Boolean(s.company_name) && state.nameConfirmedForEf === true
+  const nameKnown = Boolean(s.company_name) && state.nameConfirmedForEf === true
   if (!nameKnown) return 'name'
-  if (!state.lookupRan && !state.addressAsked) return 'address'
+  if (!state.addressAsked) return 'address'
   if (s.f_skatt === undefined) return 'fskatt'
   return 'fy'
-}
-
-/** After the fiscal-year station: skip the moms question only when the
- *  lookup POSITIVELY says the company is VAT registered. A negative or
- *  missing registration is always asked (never defaulted). */
-function afterFiscalYear(state: JourneyState): JourneyState {
-  if (state.lookupRan && state.ticLookup?.registration.vat === true) {
-    const settings = {
-      ...state.settings,
-      vat_registered: true,
-      vat_number: deriveSwedishVatNumber(state.settings.org_number),
-    }
-    return go(stay(state, { settings }), 'moms')
-  }
-  return go(state, 'momsyn')
-}
-
-/** Downstream answers invalidated by an entity-type change. */
-function wipeDownstream(settings: Partial<CompanySettings>): Partial<CompanySettings> {
-  const next = { ...settings }
-  delete next.fiscal_year_start_month
-  delete next.is_first_fiscal_year
-  delete next.first_year_start
-  delete next.first_year_end
-  delete next.vat_registered
-  delete next.vat_number
-  delete next.moms_period
-  delete next.accounting_method
-  return next
 }
 
 export function journeyReducer(state: JourneyState, action: JourneyAction): JourneyState {
   switch (action.type) {
     case 'ORG_SUBMITTED': {
       if (state.submitting) return state
-      // Fresh orgnr invalidates any previous lookup facts.
-      return stay(state, {
+      const patched = stay(state, {
         settings: { ...state.settings, org_number: action.orgNumber },
-        ticLookup: null,
-        lookupRan: false,
-        lookupNote: 'none',
-        lookupPending: true,
         serverError: null,
       })
-    }
-
-    case 'LOOKUP_RESULT': {
-      if (!state.lookupPending) return state
-      const cleared = stay(state, { lookupPending: false })
-      const outcome = action.outcome
-
-      if (outcome.status === 'aborted') return cleared
-
-      if (outcome.status === 'found') {
-        const lookup = outcome.result
-        const mapped = mapEntityType(lookup.legalEntityType)
-        const settings: Partial<CompanySettings> = {
-          ...state.settings,
-          entity_type: mapped ?? state.settings.entity_type,
-          company_name: lookup.companyName || state.settings.company_name,
-          address_line1: lookup.address?.street ?? state.settings.address_line1,
-          postal_code: lookup.address?.postalCode ?? state.settings.postal_code,
-          city: lookup.address?.city ?? state.settings.city,
-          f_skatt: lookup.registration.fTax,
-        }
-        const enriched = stay(cleared, {
-          settings,
-          ticLookup: lookup,
-          lookupRan: true,
-          lookupNote: 'none' as const,
-        })
-        if (lookup.isCeased) return go(enriched, 'ceased')
-        if (!settings.entity_type) return go(enriched, 'form')
-        return go(enriched, nextCompanyStep(enriched))
-      }
-
-      if (outcome.status === 'not_found') {
-        return go(cleared, 'notfound')
-      }
-
-      // disabled: silent manual path. error: manual path + advisory note.
-      const noted = stay(cleared, {
-        lookupNote: outcome.status === 'error' ? ('error' as const) : ('none' as const),
-      })
-      if (noted.settings.entity_type) {
-        // BankID prefill (or re-run after entity known): degraded ask-
-        // questions path; entity/name from CompanyRoles survive as prefill.
-        return go(noted, nextCompanyStep(noted))
-      }
-      return go(noted, 'form')
-    }
-
-    case 'NOTFOUND_CONTINUE': {
-      if (state.settings.entity_type) return go(state, nextCompanyStep(state))
-      return go(state, 'form')
-    }
-
-    case 'NOTFOUND_EDIT':
-    case 'CEASED_EDIT': {
-      // Back to the orgnr question; the fresh submit re-runs the single lookup.
-      return go(state, 'orgnr', {
-        settings: { ...state.settings, org_number: undefined },
-        ticLookup: null,
-        lookupRan: false,
-        lookupNote: 'none',
-      })
-    }
-
-    case 'CEASED_CONTINUE': {
-      // Proceed with the (ceased) lookup facts: same as wizard, which lets
-      // the user continue after the inline warning.
-      if (!state.settings.entity_type) return go(state, 'form')
-      return go(state, nextCompanyStep(state))
-    }
-
-    case 'ENTITY_PICKED': {
-      const prev = state.settings.entity_type
-      let settings: Partial<CompanySettings> = { ...state.settings, entity_type: action.entityType }
-      let next = state
-      if (prev && prev !== action.entityType) {
-        // Same guard as the wizard's step-1 wipe, but broader per the plan:
-        // a changed entity invalidates org/name and every downstream answer.
-        settings = wipeDownstream({
-          ...settings,
-          org_number: undefined,
-          company_name: undefined,
-        })
-        next = stay(state, { ticLookup: null, lookupRan: false, nameConfirmedForEf: false })
-        return go(stay(next, { settings }), 'orgnr')
-      }
-      return go(stay(next, { settings }), nextCompanyStep(stay(next, { settings })))
+      return go(patched, nextCompanyStep(patched))
     }
 
     case 'NAME_SUBMITTED': {
@@ -382,7 +216,7 @@ export function journeyReducer(state: JourneyState, action: JourneyAction): Jour
           first_year_end: undefined,
         },
       })
-      return afterFiscalYear(patched)
+      return go(patched, 'momsyn')
     }
 
     case 'FY_OTHER_SELECTED':
@@ -403,7 +237,7 @@ export function journeyReducer(state: JourneyState, action: JourneyAction): Jour
           first_year_end: undefined,
         },
       })
-      return afterFiscalYear(patched)
+      return go(patched, 'momsyn')
     }
 
     case 'FY_START_PICKED': {
@@ -434,7 +268,7 @@ export function journeyReducer(state: JourneyState, action: JourneyAction): Jour
               : 1,
         },
       })
-      return afterFiscalYear(patched)
+      return go(patched, 'momsyn')
     }
 
     case 'VAT_ANSWERED': {
@@ -481,13 +315,8 @@ export function journeyReducer(state: JourneyState, action: JourneyAction): Jour
       const cleared = stay(state, { submitting: false })
       if (action.code === 'org_number_invalid') {
         // The server rejected the orgnr: travel back to the Företaget
-        // station. Answers are kept; the fresh orgnr re-runs the lookup and
-        // the flow walks forward again.
-        return go(cleared, 'orgnr', {
-          ticLookup: null,
-          lookupRan: false,
-          serverError: 'org_number_invalid',
-        })
+        // station. Answers are kept; the flow walks forward again.
+        return go(cleared, 'orgnr', { serverError: 'org_number_invalid' })
       }
       if (action.code === 'period_invalid') {
         return go(cleared, 'fy', { serverError: 'period_invalid' })
@@ -504,7 +333,6 @@ export function journeyReducer(state: JourneyState, action: JourneyAction): Jour
         ...snap,
         entry: snap,
         history,
-        lookupPending: false,
         submitting: false,
         serverError: null,
       }
@@ -541,7 +369,6 @@ export function journeyReducer(state: JourneyState, action: JourneyAction): Jour
         ...snap,
         entry: snap,
         history,
-        lookupPending: false,
         submitting: false,
         serverError: null,
       }

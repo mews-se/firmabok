@@ -10,7 +10,6 @@ import {
   toDeadlineSettings,
 } from '@/lib/tax/deadline-generator'
 import type { CompanySettingsForDeadlines } from '@/lib/tax/deadline-config'
-import type { CompanyLookupResult } from '@/lib/company-lookup/types'
 import { getErrorMessage } from '@/lib/errors/get-error-message'
 
 /**
@@ -63,11 +62,6 @@ export async function createCompanyFromOnboarding(params: {
     endDate: string
     name: string
   }
-  // Optional TIC lookup result captured during the onboarding form. When
-  // supplied, persisted to companies.tic_snapshot so downstream features
-  // (specialized accountant agent composer, MCP briefing) can read the same
-  // Bolagsverket-sourced data the form used. Empty for manual entry paths.
-  ticLookup?: CompanyLookupResult | null
 }): Promise<{ companyId?: string; error?: string }> {
   try {
     return await createCompanyFromOnboardingImpl(params)
@@ -85,7 +79,6 @@ async function createCompanyFromOnboardingImpl(params: {
   teamId: string
   settings: Record<string, unknown>
   fiscalPeriod: { startDate: string; endDate: string; name: string }
-  ticLookup?: CompanyLookupResult | null
 }): Promise<{ companyId?: string; error?: string }> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -164,24 +157,6 @@ async function createCompanyFromOnboardingImpl(params: {
     if (orgUpdateError) {
       await rollback('org_number update failed', orgUpdateError)
       return { error: 'Kunde inte spara organisationsnummer. Försök igen.' }
-    }
-  }
-
-  // Persist whatever lookup data the wizard already gathered. Do NOT call
-  // /profile here: that handler fanned out to 13 Lens calls and the 5 s
-  // fetch timeout ate ~530 wasted calls in May before yielding zero
-  // snapshots (every signup's /profile timed out, but the in-flight
-  // upstream fetches still counted against quota).
-  if (params.ticLookup) {
-    const { error: ticErr } = await supabase
-      .from('companies')
-      .update({
-        tic_snapshot: params.ticLookup,
-        tic_snapshot_fetched_at: new Date().toISOString(),
-      })
-      .eq('id', newCompanyId)
-    if (ticErr) {
-      console.warn('[createCompanyFromOnboarding] tic snapshot persist failed', ticErr)
     }
   }
 

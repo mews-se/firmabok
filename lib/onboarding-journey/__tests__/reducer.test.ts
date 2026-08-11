@@ -31,12 +31,14 @@ function run(state: JourneyState, ...actions: JourneyAction[]): JourneyState {
 
 /** Manual AB path up to the fiscal-year station. */
 function manualAbAtFy(): JourneyState {
+  // The entity preset means an AB pick is a change: do it first, before
+  // the org number, so the wipe has nothing to eat.
   return run(
     initJourney(),
+    { type: 'ENTITY_PICKED', entityType: 'aktiebolag' },
     { type: 'ORG_SUBMITTED', orgNumber: '559999-9999' },
     { type: 'LOOKUP_RESULT', outcome: { status: 'not_found' } },
     { type: 'NOTFOUND_CONTINUE' },
-    { type: 'ENTITY_PICKED', entityType: 'aktiebolag' },
     { type: 'NAME_SUBMITTED', name: 'Testbolaget AB' },
     { type: 'ADDRESS_SUBMITTED', addressLine1: 'Gatan 1', postalCode: '123 45', city: 'Lund' },
     { type: 'FSKATT_ANSWERED', fskatt: true },
@@ -154,7 +156,7 @@ describe('journeyReducer: EF found via lookup', () => {
 })
 
 describe('journeyReducer: manual path (not found)', () => {
-  it('walks form → name → address → F-skatt → fy', () => {
+  it('walks name → address → F-skatt → fy with the enskild firma preset', () => {
     let s = run(
       initJourney(),
       { type: 'ORG_SUBMITTED', orgNumber: '559999-9999' },
@@ -162,9 +164,9 @@ describe('journeyReducer: manual path (not found)', () => {
     )
     expect(s.step).toBe('notfound')
     s = journeyReducer(s, { type: 'NOTFOUND_CONTINUE' })
-    expect(s.step).toBe('form')
-    s = journeyReducer(s, { type: 'ENTITY_PICKED', entityType: 'aktiebolag' })
+    // The entity question never appears: enskild firma is preset.
     expect(s.step).toBe('name')
+    expect(s.settings.entity_type).toBe('enskild_firma')
     s = journeyReducer(s, { type: 'NAME_SUBMITTED', name: 'Testbolaget AB' })
     expect(s.step).toBe('address')
     s = journeyReducer(s, { type: 'ADDRESS_SUBMITTED', city: 'Lund' })
@@ -274,13 +276,14 @@ describe('journeyReducer: BankID prefill', () => {
     expect(s.lookupNote).toBe('none')
   })
 
-  it('without any prefill a disabled lookup goes to the form question', () => {
+  it('without any prefill a disabled lookup proceeds on the enskild firma preset', () => {
     const s = run(
       initJourney(),
       { type: 'ORG_SUBMITTED', orgNumber: '556677-8899' },
       { type: 'LOOKUP_RESULT', outcome: { status: 'disabled' } },
     )
-    expect(s.step).toBe('form')
+    expect(s.step).toBe('name')
+    expect(s.settings.entity_type).toBe('enskild_firma')
   })
 })
 
@@ -336,9 +339,6 @@ describe('journeyReducer: Back and station jumps', () => {
     s = journeyReducer(s, { type: 'BACK' })
     expect(s.step).toBe('name')
     expect(s.settings.company_name).toBeUndefined()
-    s = journeyReducer(s, { type: 'BACK' })
-    expect(s.step).toBe('form')
-    expect(s.settings.entity_type).toBeUndefined()
   })
 
   it('a station jump rewinds to the first step of that station', () => {
@@ -408,15 +408,15 @@ describe('journeyReducer: entity change wipe', () => {
     expect(s.settings.accounting_method).toBeUndefined()
   })
 
-  it('first-time entity selection keeps a deep-link prefill', () => {
+  it('re-picking the preset entity keeps a deep-link prefill', () => {
     const s = run(
-      initJourney({ initialOrgNumber: '556677-8899', initialLegalName: 'Nordvik AB' }),
+      initJourney({ initialOrgNumber: '556677-8899', initialLegalName: 'Nordvik EF' }),
       { type: 'ORG_SUBMITTED', orgNumber: '556677-8899' },
       { type: 'LOOKUP_RESULT', outcome: { status: 'error' } },
-      { type: 'ENTITY_PICKED', entityType: 'aktiebolag' },
+      { type: 'ENTITY_PICKED', entityType: 'enskild_firma' },
     )
     expect(s.settings.org_number).toBe('556677-8899')
-    expect(s.settings.company_name).toBe('Nordvik AB')
+    expect(s.settings.company_name).toBe('Nordvik EF')
   })
 })
 
@@ -482,7 +482,7 @@ describe('journeyReducer: robustness', () => {
     expect(journeyReducer(fresh, { type: 'BACK' })).toBe(fresh)
   })
 
-  it('an unmappable entity type from the lookup falls through to the form question', () => {
+  it('an unmappable entity type from the lookup keeps the enskild firma preset', () => {
     const s = run(
       initJourney(),
       { type: 'ORG_SUBMITTED', orgNumber: '769612-3456' },
@@ -494,7 +494,8 @@ describe('journeyReducer: robustness', () => {
         },
       },
     )
-    expect(s.step).toBe('form')
+    expect(s.step).not.toBe('form')
+    expect(s.settings.entity_type).toBe('enskild_firma')
     expect(s.settings.company_name).toBe('Brf Sjöutsikten')
     expect(s.lookupRan).toBe(true)
   })

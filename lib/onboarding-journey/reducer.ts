@@ -146,7 +146,9 @@ function snapshotOf(s: JourneySnapshot): JourneySnapshot {
 export function initJourney(init: JourneyInit = {}): JourneyState {
   const settings: Partial<CompanySettings> = {}
   if (init.initialOrgNumber) settings.org_number = init.initialOrgNumber
-  if (init.initialEntityType) settings.entity_type = init.initialEntityType
+  // Enskild firma is the only company form here, so the AB/EF question
+  // never needs to be asked.
+  settings.entity_type = init.initialEntityType ?? 'enskild_firma'
   if (init.initialLegalName) settings.company_name = init.initialLegalName
   const base: JourneySnapshot = {
     step: 'orgnr',

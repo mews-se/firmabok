@@ -38,15 +38,8 @@ This project includes or depends on the following third-party software:
 | Zod                    | MIT                  |                                            |
 | date-fns               | MIT                  |                                            |
 | Framer Motion          | MIT                  |                                            |
-| LangChain              | MIT                  |                                            |
-| Anthropic SDK          | MIT                  |                                            |
-| OpenAI SDK             | Apache-2.0           |                                            |
-| Resend                 | MIT                  |                                            |
 | JSZip                  | MIT OR GPL-3.0       | Dual-licensed                              |
 | sharp                  | Apache-2.0           | Bundles libvips (LGPL-3.0-or-later)        |
-| web-push               | MPL-2.0              |                                            |
-| Sentry (runtime)       | MIT                  |                                            |
-| Sentry (CLI/build)     | FSL-1.1-MIT          | Build-time only, not distributed           |
 | Vitest                 | MIT                  | Dev dependency only                        |
 | TypeScript             | Apache-2.0           | Dev dependency only                        |
 | ESLint                 | MIT                  | Dev dependency only                        |
@@ -55,8 +48,8 @@ Vendored files:
 
 - docker/db-init/*.sql are taken from the Supabase Docker self-hosting
   stack (github.com/supabase/supabase, docker/volumes/db/), licensed
-  under Apache-2.0. docker/Caddyfile.selfhost mirrors the routing layout
-  of the same stack's Kong configuration.
+  under Apache-2.0. docker/nginx.selfhost.conf mirrors the routing
+  layout of the same stack's Kong configuration.
 
 Copyleft dependency notes:
 
@@ -64,7 +57,3 @@ Copyleft dependency notes:
   dynamically linked and can be replaced by end users.
 - JSZip is dual-licensed under MIT or GPL-3.0. This project uses it under the
   MIT license.
-- web-push is licensed under MPL-2.0. Source code is available from its
-  upstream repository.
-- Sentry CLI is licensed under FSL-1.1-MIT (Functional Source License). It is
-  used only as a build-time tool and is not distributed with this software.

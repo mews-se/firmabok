@@ -2452,24 +2452,6 @@
     "env_test": "Test environment",
     "env_prod": "Production"
   },
-  "settings_bankid": {
-    "cancel_linking": "Cancel",
-    "title": "BankID",
-    "toast_already_linked": "This BankID is already linked to another account.",
-    "toast_link_failed": "Could not link BankID.",
-    "toast_linked": "BankID linked to your account",
-    "confirm_unlink": "Unlink BankID from your account?",
-    "toast_unlinked": "BankID unlinked",
-    "toast_unlink_failed": "Could not unlink BankID",
-    "link_bankid_title": "Link BankID",
-    "link_bankid_description": "Scan the QR code with the BankID app",
-    "linked_description": "Your account is linked to BankID.",
-    "not_linked_description": "Link BankID for more secure sign-in.",
-    "linked_on": "Linked {date}",
-    "unlinking": "Unlinking...",
-    "unlink_button": "Unlink",
-    "link_button": "Link BankID"
-  },
   "settings_security": {
     "set_password_title": "Set a password",
     "set_password_description": "You signed in with BankID and have no password yet. Set one to enable 2FA or to sign in when BankID is unavailable.",

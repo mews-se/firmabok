@@ -9,8 +9,6 @@ import { Button } from '@/components/ui/button'
 import { useToast } from '@/components/ui/use-toast'
 import { Loader2, ShieldCheck, ShieldOff } from 'lucide-react'
 import { isMfaRequired } from '@/lib/auth/mfa'
-import { isBankIdEnabled } from '@/lib/auth/bankid'
-import { BankIdSettings } from '@/components/settings/BankIdSettings'
 import { userHasPassword } from '@/lib/auth/has-password'
 import { getErrorMessage as getUserErrorMessage } from '@/lib/errors/get-error-message'
 import {
@@ -23,7 +21,6 @@ import {
 
 const isSelfHosted = process.env.NEXT_PUBLIC_SELF_HOSTED === 'true'
 const mfaRequired = isMfaRequired()
-const bankIdEnabled = isBankIdEnabled()
 
 export function SecuritySettings() {
   const t = useTranslations('settings_security')
@@ -137,8 +134,8 @@ export function SecuritySettings() {
       const { error } = await supabase.auth.mfa.unenroll({ factorId: mfaFactorId })
 
       if (error) {
-        // mfa.unenroll requires AAL2: for BankID-linked users at AAL1 (the
-        // shouldEnforceMfa skip path), this is the only way to step up.
+        // mfa.unenroll requires AAL2: for users at AAL1 this is the only
+        // way to step up.
         if (error.message?.includes('AAL2')) {
           router.push(
             `/mfa/verify?returnTo=${encodeURIComponent('/settings/account')}`,
@@ -172,9 +169,7 @@ export function SecuritySettings() {
 
   return (
     <SettingsGroup label={t('group_security')}>
-      {bankIdEnabled && <BankIdSettings />}
-
-      {/* BankID-only users with no password: set-password row before the rest */}
+      {/* Users without a password (OAuth sign-in): set-password row first */}
       {hasPassword === false && (
         <SettingsRow
           label={t('set_password_title')}

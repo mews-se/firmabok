@@ -2452,24 +2452,6 @@
     "env_test": "Testmiljö",
     "env_prod": "Produktion"
   },
-  "settings_bankid": {
-    "cancel_linking": "Avbryt",
-    "title": "BankID",
-    "toast_already_linked": "Detta BankID är redan kopplat till ett annat konto.",
-    "toast_link_failed": "Kunde inte koppla BankID.",
-    "toast_linked": "BankID kopplat till ditt konto",
-    "confirm_unlink": "Vill du koppla bort BankID från ditt konto?",
-    "toast_unlinked": "BankID bortkopplat",
-    "toast_unlink_failed": "Kunde inte koppla bort BankID",
-    "link_bankid_title": "Koppla BankID",
-    "link_bankid_description": "Skanna QR-koden med BankID-appen",
-    "linked_description": "Ditt konto är kopplat till BankID.",
-    "not_linked_description": "Koppla BankID för säkrare inloggning.",
-    "linked_on": "Kopplat {date}",
-    "unlinking": "Kopplar bort...",
-    "unlink_button": "Koppla bort",
-    "link_button": "Koppla BankID"
-  },
   "settings_security": {
     "set_password_title": "Sätt ett lösenord",
     "set_password_description": "Du loggade in med BankID och har inget lösenord ännu. Sätt ett lösenord för att kunna aktivera 2FA eller logga in när BankID inte är tillgängligt.",

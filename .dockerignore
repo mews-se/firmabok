@@ -6,7 +6,6 @@ node_modules
 data/
 .gitignore
 .env*
-!.env.docker.example
 supabase/
 **/__tests__/
 **/*.test.ts

@@ -145,8 +145,8 @@ nginx är enda ingången och bara de Supabase-tjänster appen använder
 körs. Ren
 HTTP på det egna nätet — cookies följer adressens schema, så en
 https-adress bakom egen proxy fungerar också om man hellre vill det.
-[docs/SELF-HOSTING.md](docs/SELF-HOSTING.md) fördjupar: varianten med
-Supabase-moln, Synology/NAS, bygge från källa och backup.
+[docs/SELF-HOSTING.md](docs/SELF-HOSTING.md) fördjupar: arkitekturen,
+miljövariablerna, backup och bygge från källa.
 
 Färdig image publiceras till `ghcr.io/mews-se/firmabok`.
 

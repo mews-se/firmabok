@@ -98,8 +98,9 @@ compose-filen och skriptet läsbara.
 
 Surfa sedan till `http://10.0.0.30` — ren HTTP, inga certifikat och
 inga varningar; stacken är byggd för det egna nätverket och inget
-annat. Skapa kontot, gå igenom onboardingen och stäng därefter
-registreringen:
+annat. Skapa kontot — e-postadressen är bara ett lokalt användarnamn,
+så den behöver inte vara en riktig adress (ingen mail skickas
+någonsin) — gå igenom onboardingen och stäng därefter registreringen:
 
 ```bash
 ~/firmabok/install-debian.sh lock

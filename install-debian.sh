@@ -125,7 +125,9 @@ fi
 # counterpart, and an offline LAN should still restart on cached images.
 # A genuinely missing image still fails cleanly at up.
 compose pull --ignore-pull-failures 2>/dev/null || true
-compose up -d
+# --remove-orphans: a service renamed in an update must not linger and
+# hold its ports.
+compose up -d --remove-orphans
 
 # ─── Wait for a green health check ───
 echo 'Waiting for the app to become healthy (first start takes a few minutes)...'

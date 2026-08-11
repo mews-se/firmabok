@@ -1,8 +1,6 @@
 'use client'
 
 import { useState, useEffect, useRef, Suspense } from 'react'
-import dynamic from 'next/dynamic'
-import Image from 'next/image'
 import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useLocale, useTranslations } from 'next-intl'
@@ -14,8 +12,6 @@ import { useToast } from '@/components/ui/use-toast'
 import { Check, Loader2, Mail, ArrowLeft, ExternalLink, Eye, EyeOff } from 'lucide-react'
 import { BrandWordmark } from '@/components/branding/BrandWordmark'
 import { getErrorMessage, type ErrorLocale } from '@/lib/errors/get-error-message'
-import { isBankIdEnabled } from '@/lib/auth/bankid'
-import type { BankIdResult } from '@/components/auth/BankIdAuth'
 import { getBranding } from '@/lib/branding/service'
 import { detectWebmailHint } from '@/lib/auth/webmail-search'
 import {
@@ -27,15 +23,10 @@ import { AuthFormError } from '@/components/auth/AuthFormError'
 import { GoogleAuthButton } from '@/components/auth/GoogleAuthButton'
 import { isGoogleAuthEnabled } from '@/lib/auth/google-oauth'
 import { classifyAuthError, type AuthErrorKind } from '@/lib/auth/classify-auth-error'
-import { persistLoginMethodHint, type LoginMethod } from '@/lib/auth/login-method'
+import { persistLoginMethodHint } from '@/lib/auth/login-method'
 import { cn } from '@/lib/utils'
 
 const branding = getBranding()
-
-const BankIdAuth = dynamic(
-  () => import('@/components/auth/BankIdAuth').then((module) => module.BankIdAuth),
-  { ssr: false },
-)
 
 export default function RegisterPage() {
   return (
@@ -50,11 +41,9 @@ function RegisterPageContent() {
   // NOT read `next`: nothing links here with one (bounceToAuth in
   // lib/supabase/middleware.ts targets /login and the two MFA pages only, and
   // app/invite/[token]/page.tsx sends `?invite=`), the already-signed-in case
-  // is handled in the middleware behind safeReturnTo, and neither signup path
-  // has a destination to spend it on: the password path leaves through the
-  // confirmation mail and /auth/callback, and the BankID path must land a
-  // brand-new account on '/' or /select-company rather than a deep link it has
-  // no membership for. If a destination is ever wanted here it MUST go through
+  // is handled in the middleware behind safeReturnTo, and the signup path
+  // has no destination to spend it on: it leaves through the confirmation
+  // mail and /auth/callback. If a destination is ever wanted here it MUST go through
   // safeReturnTo (lib/auth/safe-return-to.ts); a hand-rolled check on this
   // value is an open redirect.
   const searchParams = useSearchParams()
@@ -65,13 +54,10 @@ function RegisterPageContent() {
   const [isRegistered, setIsRegistered] = useState(false)
   const [duplicateEmail, setDuplicateEmail] = useState<string | null>(null)
   const [inviteEmail, setInviteEmail] = useState<string | null>(null)
-  const [bankIdUser, setBankIdUser] = useState<{ givenName?: string; surname?: string } | null>(null)
-  const [bankIdSessionId, setBankIdSessionId] = useState<string | null>(null)
-  const [bankIdEmail, setBankIdEmail] = useState('')
   // Signup failures render inline next to the form (see AuthFormError), never
   // as a toast. Field-level problems attach to their field; everything else
   // goes to the form-level alert above the form.
-  const [formError, setFormError] = useState<{ kind: AuthErrorKind | 'bankid' | 'oauth'; message: string } | null>(null)
+  const [formError, setFormError] = useState<{ kind: AuthErrorKind | 'oauth'; message: string } | null>(null)
   const [passwordError, setPasswordError] = useState<string | null>(null)
   const [confirmError, setConfirmError] = useState<string | null>(null)
   const [showPassword, setShowPassword] = useState(false)
@@ -81,35 +67,13 @@ function RegisterPageContent() {
   const { toast } = useToast()
   const router = useRouter()
   const supabase = createClient()
-  const bankIdEnabled = isBankIdEnabled()
   const googleAuthEnabled = isGoogleAuthEnabled()
   const t = useTranslations('register')
   const tAuth = useTranslations('auth')
   const tInvite = useTranslations('invite')
   const errorLocale = useLocale() as ErrorLocale
 
-  // Which method owns the panel (mirrors the login page): BankID is the
-  // Swedish default for a fresh signup; the email form is one chip away.
-  const [method, setMethod] = useState<LoginMethod>(bankIdEnabled ? 'bankid' : 'email')
-  const prevMethodRef = useRef(method)
-
-  // Switching to the email form should land the caret in the first field,
-  // except when an invite pre-filled and locked it.
-  useEffect(() => {
-    if (prevMethodRef.current !== method) {
-      prevMethodRef.current = method
-      if (method === 'email' && !inviteEmail) emailInputRef.current?.focus()
-    }
-  }, [method, inviteEmail])
-
-  const switchMethod = (next: LoginMethod) => {
-    setFormError(null)
-    setMethod(next)
-  }
-
-  const showBankIdChip = method === 'email' && bankIdEnabled
-  const showEmailChip = method === 'bankid'
-  const chipCount = (showBankIdChip ? 1 : 0) + (showEmailChip ? 1 : 0) + (googleAuthEnabled ? 1 : 0)
+  const chipCount = googleAuthEnabled ? 1 : 0
 
   // Accept a pending invite, if any, and report a non-definitive failure.
   // Returns true when the caller should land the user in the app directly.
@@ -130,13 +94,11 @@ function RegisterPageContent() {
   }
 
   // When arriving from an invite link, fetch the invite info to pre-fill
-  // and lock the email field so the user registers with the correct address.
-  // BOTH signup forms are pre-filled: the BankID form used to be left blank
-  // and editable, so an invitee who signed up with BankID typed their private
-  // address, POST /api/team/accept answered 403 on the email equality check,
-  // and they landed on /select-company with no membership. The token now
-  // survives that 403 (lib/auth/consume-invite-cookie.ts) so it is recoverable
-  // rather than terminal, but the signup should not walk into it at all.
+  // and lock the email field so the user registers with the correct address:
+  // a mismatched address makes POST /api/team/accept answer 403 on the email
+  // equality check. The token survives that 403
+  // (lib/auth/consume-invite-cookie.ts) so it is recoverable rather than
+  // terminal, but the signup should not walk into it at all.
   useEffect(() => {
     const inviteToken = searchParams.get('invite')
     if (!inviteToken) return
@@ -147,109 +109,10 @@ function RegisterPageContent() {
         if (data?.data?.email) {
           setInviteEmail(data.data.email)
           setEmail(data.data.email)
-          setBankIdEmail(data.data.email)
         }
       })
       .catch(() => {})
   }, [searchParams])
-
-  const [bankIdUnavailable, setBankIdUnavailable] = useState(false)
-
-  const handleBankIdComplete = (result: BankIdResult) => {
-    if (result.error === 'service_unavailable') {
-      setBankIdUnavailable(true)
-      setMethod('email')
-      return
-    }
-
-    if (result.error) {
-      setFormError({ kind: 'bankid', message: t('bankid_failed_description') })
-      return
-    }
-    // BankID verified: store sessionId and show email form
-    setFormError(null)
-    setBankIdUser({ givenName: result.givenName, surname: result.surname })
-    if (result.sessionId) setBankIdSessionId(result.sessionId)
-  }
-
-  const handleBankIdSignup = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    setFormError(null)
-    setIsLoading(true)
-
-    const formData = new FormData(e.currentTarget)
-    const emailValue = (formData.get('bankid_email') as string) || bankIdEmail
-
-    try {
-      const res = await fetch('/api/extensions/ext/tic/bankid/complete', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sessionId: bankIdSessionId,
-          mode: 'signup',
-          email: emailValue,
-        }),
-      })
-
-      const json = await res.json()
-
-      if (!res.ok) {
-        if (json.error === 'already_linked') {
-          // email_exists kind: the alert renders a sign-in link, which is the
-          // recovery path for both "BankID taken" and "email taken".
-          setFormError({ kind: 'email_exists', message: t('bankid_already_linked_description') })
-        } else if (json.error === 'account_exists') {
-          // Inline with a sign-in link instead of yanking the user to /login
-          // mid-read: they keep the context and choose when to leave.
-          setFormError({ kind: 'email_exists', message: t('account_exists_description') })
-        } else {
-          setFormError({
-            kind: 'unknown',
-            message: json.message || json.error || t('register_failed_default'),
-          })
-        }
-        return
-      }
-
-      // Exchange token hash for Supabase session
-      const { error } = await supabase.auth.verifyOtp({
-        token_hash: json.data.tokenHash,
-        type: json.data.type as 'magiclink',
-      })
-
-      if (error) {
-        console.error('[register] BankID verifyOtp failed', error.message)
-        setFormError({
-          kind: 'unknown',
-          message: getErrorMessage(error, { context: 'auth', locale: errorLocale }),
-        })
-        return
-      }
-
-      // Invited signup: accept the pending invite before routing to the
-      // picker, same as the login page's BankID path. Without this, an
-      // invitee who registers with BankID lands on /select-company with no
-      // membership and gets funneled into creating a company instead of
-      // joining the one they were invited to.
-      persistLoginMethodHint('bankid')
-
-      if (await acceptPendingInvite()) {
-        window.location.href = '/'
-        return
-      }
-
-      router.push('/select-company')
-      router.refresh()
-    } catch (error) {
-      console.error('[register] BankID signup error', error instanceof Error ? error.message : String(error))
-      setFormError({
-        kind: 'unknown',
-        message: getErrorMessage(error, { context: 'auth', locale: errorLocale }),
-      })
-    } finally {
-      setIsLoading(false)
-    }
-  }
 
   // The live checklist under the password field mirrors these rules; the
   // aggregate check gates submission.
@@ -493,12 +356,6 @@ function RegisterPageContent() {
         </header>
 
         <div className="rounded-xl border border-border bg-background p-6">
-          {bankIdUnavailable && !bankIdUser && (
-            <p className="mb-4 text-[13px] leading-5 text-muted-foreground">
-              {t('bankid_unavailable_body')}
-            </p>
-          )}
-
           {formError && (
             <div className="mb-4">
               <AuthFormError
@@ -517,63 +374,7 @@ function RegisterPageContent() {
             </div>
           )}
 
-          {bankIdUser ? (
-            <form onSubmit={handleBankIdSignup} className="space-y-4">
-              <div className="rounded-lg border bg-muted/30 p-3">
-                <p className="text-sm font-medium">
-                  {bankIdUser.givenName} {bankIdUser.surname}
-                </p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {t('bankid_verified')}
-                </p>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="bankid_email">{t('email_label')}</Label>
-                <Input
-                  id="bankid_email"
-                  name="bankid_email"
-                  type="email"
-                  autoComplete="email"
-                  placeholder={t('email_placeholder')}
-                  value={bankIdEmail}
-                  onChange={(e) => setBankIdEmail(e.target.value)}
-                  required
-                  disabled={isLoading || !!inviteEmail}
-                  readOnly={!!inviteEmail}
-                  className="h-11"
-                />
-                <p className="text-xs text-muted-foreground">
-                  {inviteEmail ? t('invite_email_hint') : t('bankid_email_hint')}
-                </p>
-              </div>
-              <Button type="submit" className="w-full h-11" disabled={isLoading}>
-                {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    {t('creating')}
-                  </>
-                ) : (
-                  t('create_account')
-                )}
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                className="w-full text-muted-foreground"
-                onClick={() => {
-                  setBankIdUser(null)
-                  setBankIdSessionId(null)
-                }}
-              >
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                {t('back')}
-              </Button>
-            </form>
-          ) : (
-          <div key={method} className="animate-fade-in">
-          {method === 'bankid' && bankIdEnabled ? (
-            <BankIdAuth mode="signup" hero onComplete={handleBankIdComplete} />
-          ) : (
+          <div className="animate-fade-in">
           <form onSubmit={handleRegister} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">{t('email_label')}</Label>
@@ -711,11 +512,9 @@ function RegisterPageContent() {
               )}
             </Button>
           </form>
-          )}
           </div>
-          )}
 
-          {!bankIdUser && chipCount > 0 && (
+          {chipCount > 0 && (
             <>
               <div className="relative my-6">
                 <div className="absolute inset-0 flex items-center">
@@ -727,40 +526,12 @@ function RegisterPageContent() {
                   </span>
                 </div>
               </div>
-              <div className={chipCount === 2 ? 'grid grid-cols-2 gap-3' : 'grid grid-cols-1 gap-3'}>
-                {showBankIdChip && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="h-10 w-full gap-2"
-                    onClick={() => switchMethod('bankid')}
-                  >
-                    <Image
-                      src="/logos/bankid-seeklogo.svg"
-                      alt=""
-                      width={18}
-                      height={18}
-                      className="dark:invert"
-                    />
-                    BankID
-                  </Button>
-                )}
+              <div className="grid grid-cols-1 gap-3">
                 {googleAuthEnabled && (
                   <GoogleAuthButton
                     compact
                     onError={(message) => setFormError({ kind: 'oauth', message })}
                   />
-                )}
-                {showEmailChip && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="h-10 w-full gap-2"
-                    onClick={() => switchMethod('email')}
-                  >
-                    <Mail className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-                    {tAuth('method_email_chip')}
-                  </Button>
                 )}
               </div>
             </>

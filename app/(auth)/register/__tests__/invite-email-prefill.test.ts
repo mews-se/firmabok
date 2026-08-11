@@ -3,17 +3,16 @@ import fs from 'node:fs'
 import path from 'node:path'
 
 /**
- * Two findings on the signup page, both about an address travelling (or not)
+ * Findings on the signup page, all about an address travelling (or not)
  * with the user.
  *
- * 1. The BankID signup form left its email field blank and editable while the
- *    password form on the very same page pre-filled and locked it from the
- *    invitation. An invitee who chose BankID therefore typed their private
- *    address, POST /api/team/accept answered 403 on its email equality check,
- *    and they landed on /select-company with no membership. The token now
- *    survives that 403 (lib/auth/consume-invite-cookie.ts retains it on
- *    `wrong_email`, and /select-company re-runs acceptance server-side), so the
- *    dead end is recoverable; the signup still should not walk into it.
+ * 1. The email field must be pre-filled and locked from the invitation:
+ *    an invitee who typed a different address made POST /api/team/accept
+ *    answer 403 on its email equality check and landed on /select-company
+ *    with no membership. The token survives that 403
+ *    (lib/auth/consume-invite-cookie.ts retains it on `wrong_email`, and
+ *    /select-company re-runs acceptance server-side), so the dead end is
+ *    recoverable; the signup still should not walk into it.
  * 2. The duplicate-email screen linked to `/login?email=...`, which
  *    app/(auth)/login/page.tsx never reads. The address rode along in the URL,
  *    the browser history, the Referer header and every proxy access log, and
@@ -69,31 +68,24 @@ function duplicateScreen(): string {
 }
 
 describe('an invited signup', () => {
-  it('pre-fills the BankID email field from the invitation, not just the password one', () => {
-    const effect = inviteEffect()
-    expect(effect).toContain('setEmail(data.data.email)')
-    expect(effect).toContain('setBankIdEmail(data.data.email)')
+  it('pre-fills the email field from the invitation', () => {
+    expect(inviteEffect()).toContain('setEmail(data.data.email)')
   })
 
-  it('locks the BankID email field exactly the way the password field is locked', () => {
-    // Same invitation, same page: one behaviour. The divergence was the bug.
-    for (const id of ['email', 'bankid_email']) {
-      const props = inputProps(id)
-      expect(props, id).toContain('disabled={isLoading || !!inviteEmail}')
-      expect(props, id).toContain('readOnly={!!inviteEmail}')
-    }
+  it('locks the email field to the invited address', () => {
+    const props = inputProps('email')
+    expect(props).toContain('disabled={isLoading || !!inviteEmail}')
+    expect(props).toContain('readOnly={!!inviteEmail}')
   })
 
   it('tells the invitee where the locked address came from', () => {
-    expect(fieldGroup('bankid_email')).toContain("t('invite_email_hint')")
     expect(fieldGroup('email')).toContain("t('invite_email_hint')")
   })
 
   it('still submits the invited address although a disabled input is not in the FormData', () => {
     // `disabled` (unlike `readOnly`) excludes a field from FormData, so the
-    // locked value only reaches the request through the state fallback. Both
-    // handlers rely on it; dropping either fallback would POST an empty email.
-    expect(CODE).toContain("(formData.get('bankid_email') as string) || bankIdEmail")
+    // locked value only reaches the request through the state fallback;
+    // dropping the fallback would POST an empty email.
     expect(CODE).toContain("(formData.get('email') as string) || email")
   })
 })
@@ -102,27 +94,20 @@ describe('a signup that did not come from an invitation', () => {
   // The overwhelming majority. Nothing may lock or pre-fill for these users.
   it('starts with no invited address', () => {
     expect(CODE).toContain('const [inviteEmail, setInviteEmail] = useState<string | null>(null)')
-    expect(CODE).toContain("const [bankIdEmail, setBankIdEmail] = useState('')")
   })
 
   it('never resolves an invitation when the link carries no token', () => {
     expect(inviteEffect()).toContain('if (!inviteToken) return')
   })
 
-  it('leaves both email fields editable, gating every lock on the invitation', () => {
-    for (const id of ['email', 'bankid_email']) {
-      const props = inputProps(id)
-      // No unconditional lock: every disabled/readOnly here names inviteEmail.
-      const locks = props.match(/(disabled|readOnly)=\{[^}]*\}/g) ?? []
-      expect(locks.length, id).toBeGreaterThan(0)
-      for (const lock of locks) {
-        expect(lock, `${id}: ${lock} is not conditional on the invitation`).toContain('inviteEmail')
-      }
+  it('leaves the email field editable, gating every lock on the invitation', () => {
+    const props = inputProps('email')
+    // No unconditional lock: every disabled/readOnly here names inviteEmail.
+    const locks = props.match(/(disabled|readOnly)=\{[^}]*\}/g) ?? []
+    expect(locks.length).toBeGreaterThan(0)
+    for (const lock of locks) {
+      expect(lock, `${lock} is not conditional on the invitation`).toContain('inviteEmail')
     }
-  })
-
-  it('keeps the BankID field its own hint when there is no invitation', () => {
-    expect(fieldGroup('bankid_email')).toContain("t('bankid_email_hint')")
   })
 })
 
@@ -172,10 +157,8 @@ describe('the wording the locked field renders', () => {
     ) as { register: Record<string, string> }
 
   for (const locale of ['sv', 'en'] as const) {
-    it(`has both email hints in ${locale}.json`, () => {
-      const register = messages(locale).register
-      expect(register.invite_email_hint).toBeTruthy()
-      expect(register.bankid_email_hint).toBeTruthy()
+    it(`has the invite email hint in ${locale}.json`, () => {
+      expect(messages(locale).register.invite_email_hint).toBeTruthy()
     })
   }
 })

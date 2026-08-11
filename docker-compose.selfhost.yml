@@ -153,9 +153,12 @@ services:
     depends_on:
       db:
         condition: service_healthy
-      # Healthy GoTrue means its own auth-schema migrations have run;
-      # the app migrations build on top of them.
+      # Healthy GoTrue and Storage mean their own schema migrations have
+      # run; the app migrations build on top of both (storage.buckets
+      # policies among them).
       auth:
+        condition: service_healthy
+      storage:
         condition: service_healthy
     volumes:
       - ./supabase/migrations:/migrations:ro

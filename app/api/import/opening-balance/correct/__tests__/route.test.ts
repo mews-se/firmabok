@@ -80,8 +80,8 @@ function openPeriodWithOB(overrides: Record<string, unknown> = {}) {
 /** Flatten every console.error call into one searchable string. */
 function auditLines(spy: SpyInstance): string {
   return spy.mock.calls
-    .map((call) => call.map((a: unknown) => (typeof a === 'string' ? a : JSON.stringify(a))).join(' '))
-    .filter((line) => line.includes('opening balance correction failed'))
+    .map((call: unknown[]) => call.map((a: unknown) => (typeof a === 'string' ? a : JSON.stringify(a))).join(' '))
+    .filter((line: string) => line.includes('opening balance correction failed'))
     .join('\n')
 }
 

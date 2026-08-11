@@ -133,6 +133,7 @@ interface RpcResult {
     status: string
     paid_amount: number
     remaining_amount: number
+    cross_currency?: boolean
     amount: number
   }>
   total_allocated?: number

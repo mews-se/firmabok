@@ -63,14 +63,14 @@ describe('/api/tax-assessment-notices', () => {
       error: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }),
     })
 
-    const response = await GET(createMockRequest('/api/tax-assessment-notices'), {})
+    const response = await GET(createMockRequest('/api/tax-assessment-notices'))
     expect(response.status).toBe(401)
   })
 
   it('lists active notices', async () => {
     enqueue({ data: [notice], error: null })
     const { status, body } = await parseJsonResponse<{ data: Array<typeof notice> }>(
-      await GET(createMockRequest('/api/tax-assessment-notices'), {}),
+      await GET(createMockRequest('/api/tax-assessment-notices')),
     )
 
     expect(status).toBe(200)
@@ -86,7 +86,7 @@ describe('/api/tax-assessment-notices', () => {
         decision_date: '2026-07-01',
         payment_due_date: '2026-06-30',
       },
-    }), {})
+    }))
 
     expect(response.status).toBe(400)
   })
@@ -101,7 +101,7 @@ describe('/api/tax-assessment-notices', () => {
         decision_date: notice.decision_date,
         payment_due_date: notice.payment_due_date,
       },
-    }), {})
+    }))
 
     expect(response.status).toBe(404)
   })
@@ -123,7 +123,7 @@ describe('/api/tax-assessment-notices', () => {
           decision_date: notice.decision_date,
           payment_due_date: notice.payment_due_date,
         },
-      }), {}),
+      })),
     )
 
     expect(status).toBe(201)

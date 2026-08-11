@@ -16,7 +16,7 @@ function makeItem(overrides: Partial<InvoiceItem> = {}): InvoiceItem {
     vat_rate: 25,
     vat_amount: 25,
     ...overrides,
-  }
+  } as InvoiceItem
 }
 
 describe('formatPdfCurrency', () => {

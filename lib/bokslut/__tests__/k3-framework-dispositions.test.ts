@@ -147,7 +147,7 @@ beforeEach(() => {
   vi.mocked(calculateOveravskrivningar).mockResolvedValue({
     status: 'not_applicable',
     proposal: null,
-    warning: null,
+    warning: undefined,
     currentReserve: 0,
     currentPeriodChange: 0,
     targetReserve: 0,
@@ -241,7 +241,7 @@ describe('buildDispositionsProposal: K3 framework', () => {
         ],
         warnings: [],
       },
-      warning: null,
+      warning: undefined,
       currentReserve: 0,
       currentPeriodChange: 0,
       targetReserve: 100_000,

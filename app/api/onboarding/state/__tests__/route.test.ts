@@ -41,7 +41,7 @@ describe('/api/onboarding/state', () => {
       error: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }),
     })
 
-    const response = await GET(createMockRequest('/api/onboarding/state'), {})
+    const response = await GET(createMockRequest('/api/onboarding/state'))
     expect(response.status).toBe(401)
   })
 
@@ -56,7 +56,7 @@ describe('/api/onboarding/state', () => {
 
     const { status, body } = await parseJsonResponse<{
       data: { path: string; completedAt: string | null; dismissedAt: string | null }
-    }>(await GET(createMockRequest('/api/onboarding/state'), {}))
+    }>(await GET(createMockRequest('/api/onboarding/state')))
 
     expect(status).toBe(200)
     expect(body.data).toEqual({ path: 'migration', completedAt: null, dismissedAt: null })
@@ -66,7 +66,7 @@ describe('/api/onboarding/state', () => {
     const response = await PATCH(createMockRequest('/api/onboarding/state', {
       method: 'PATCH',
       body: {},
-    }), {})
+    }))
 
     expect(response.status).toBe(400)
   })
@@ -76,7 +76,7 @@ describe('/api/onboarding/state', () => {
     const response = await PATCH(createMockRequest('/api/onboarding/state', {
       method: 'PATCH',
       body: { path: 'bank' },
-    }), {})
+    }))
 
     expect(response.status).toBe(404)
   })
@@ -104,7 +104,7 @@ describe('/api/onboarding/state', () => {
     }>(await PATCH(createMockRequest('/api/onboarding/state', {
       method: 'PATCH',
       body: { path: 'bank' },
-    }), {}))
+    })))
 
     expect(status).toBe(200)
     expect(body.data).toEqual({ path: 'bank', completedAt: null, dismissedAt: null })

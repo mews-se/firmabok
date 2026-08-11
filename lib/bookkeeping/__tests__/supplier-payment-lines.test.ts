@@ -8,7 +8,7 @@ function sumDebit(lines: Array<{ debit_amount: number }>): number {
 function sumCredit(lines: Array<{ credit_amount: number }>): number {
   return sumOre(lines.map((l) => l.credit_amount))
 }
-function line(lines: Array<{ account_number: string }>, acct: string) {
+function line<T extends { account_number: string }>(lines: T[], acct: string) {
   return lines.find((l) => l.account_number === acct)
 }
 

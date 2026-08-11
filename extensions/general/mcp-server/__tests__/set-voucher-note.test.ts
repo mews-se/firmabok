@@ -59,7 +59,7 @@ describe('gnubok_set_voucher_note: validation gates', () => {
   it('rejects non-string non-null notes before any DB call', async () => {
     await expect(
       tool.execute({ journal_entry_id: 'je-1', notes: 42 }, 'company-1', 'user-1', noopSupabase),
-    ).rejects.toThrow(/string.*null/s)
+    ).rejects.toThrow(/string[\s\S]*null/)
   })
 
   it('rejects notes longer than 2000 chars before any DB call', async () => {

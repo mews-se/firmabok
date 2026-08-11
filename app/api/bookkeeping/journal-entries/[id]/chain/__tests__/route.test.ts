@@ -66,17 +66,17 @@ function buildMockSupabase({
       })
       // Also handle when .order resolves directly (chain entries fetch)
       const orderResult = { data: chainEntries }
-      builder.order = vi.fn().mockImplementation(() => {
-        const obj = { ...builder, ...orderResult }
-        obj.then = (fn: (v: unknown) => void) => Promise.resolve(fn(orderResult))
+      builder.order = vi.fn().mockImplementation(() => ({
+        ...builder,
+        ...orderResult,
+        then: (fn: (v: unknown) => void) => Promise.resolve(fn(orderResult)),
         // Support both .limit().single() and direct resolution
-        obj.limit = vi.fn().mockReturnValue({
+        limit: vi.fn().mockReturnValue({
           single: vi.fn().mockResolvedValue({
             data: singleResult ? { voucher_number: singleResult.voucher_number } : null,
           }),
-        })
-        return obj
-      })
+        }),
+      }))
     }
 
     return builder

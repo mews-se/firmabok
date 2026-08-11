@@ -647,7 +647,7 @@ describe('ensureFiscalPeriod validation', () => {
           '2025-06-01',
           '2026-12-31',
         ),
-      ).rejects.toThrow(/omfattar 19 månader.*högst 18 månader \(BFL 3 kap\.\)/s)
+      ).rejects.toThrow(/omfattar 19 månader[\s\S]*högst 18 månader \(BFL 3 kap\.\)/)
     })
 
     it('refuses a 24-month räkenskapsår and names the recovery path', async () => {

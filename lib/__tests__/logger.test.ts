@@ -64,7 +64,7 @@ describe('logger', () => {
       headers: { authorization: 'Bearer secret', cookie: 'sess=xxx' },
       payload: { password: 'hunter2', token: 'tok' },
     })
-    const rec = sink[0] as {
+    const rec = sink[0] as unknown as {
       user: string
       headers: { authorization: string; cookie: string }
       payload: { password: string; token: string }

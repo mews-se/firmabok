@@ -156,7 +156,8 @@ describe('MCP company routing', () => {
     expect(() => assertMcpCompanyWriteAccess(context, 'pending_operations:approve')).toThrow(
       expect.objectContaining({ code: 'FORBIDDEN' })
     )
-    expect(() => assertMcpCompanyWriteAccess(context, 'webhooks:manage')).toThrow(
+    // The scope is gone from the union; unknown scopes must stay forbidden.
+    expect(() => assertMcpCompanyWriteAccess(context, 'webhooks:manage' as never)).toThrow(
       expect.objectContaining({ code: 'FORBIDDEN' })
     )
   })

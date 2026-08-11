@@ -40,7 +40,7 @@ describe('GET /api/settings/rot-rut-signal', () => {
       supabase: {},
       error: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }),
     })
-    const res = await GET(createMockRequest('/api/settings/rot-rut-signal'), {})
+    const res = await GET(createMockRequest('/api/settings/rot-rut-signal'))
     expect(res.status).toBe(401)
   })
 
@@ -51,7 +51,7 @@ describe('GET /api/settings/rot-rut-signal', () => {
       error: null,
     })
     const { status, body } = await parseJsonResponse<{ data: { has_rot_rut: boolean } }>(
-      await GET(createMockRequest('/api/settings/rot-rut-signal'), {})
+      await GET(createMockRequest('/api/settings/rot-rut-signal'))
     )
     expect(status).toBe(200)
     expect(body.data.has_rot_rut).toBe(true)
@@ -64,7 +64,7 @@ describe('GET /api/settings/rot-rut-signal', () => {
       error: null,
     })
     const { status, body } = await parseJsonResponse<{ data: { has_rot_rut: boolean } }>(
-      await GET(createMockRequest('/api/settings/rot-rut-signal'), {})
+      await GET(createMockRequest('/api/settings/rot-rut-signal'))
     )
     expect(status).toBe(200)
     expect(body.data.has_rot_rut).toBe(false)
@@ -77,7 +77,7 @@ describe('GET /api/settings/rot-rut-signal', () => {
       error: null,
     })
     const { status, body } = await parseJsonResponse<{ data: { has_rot_rut: boolean } }>(
-      await GET(createMockRequest('/api/settings/rot-rut-signal'), {})
+      await GET(createMockRequest('/api/settings/rot-rut-signal'))
     )
     expect(status).toBe(200)
     expect(body.data.has_rot_rut).toBe(false)

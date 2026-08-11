@@ -89,10 +89,12 @@ export function withRouteContext<P extends DynamicParams = { params: Promise<Rec
   operation: string,
   handler: RouteHandler<P>,
   options: RouteContextOptions = {},
-): (request: Request, params: P) => Promise<Response> {
+// The second argument is optional: Next always passes it, but static
+// routes never read it and unit tests invoke handlers directly.
+): (request: Request, params?: P) => Promise<Response> {
   const { requireWrite = false } = options
 
-  return async function wrapped(request: Request, params: P): Promise<Response> {
+  return async function wrapped(request: Request, params?: P): Promise<Response> {
     const requestId = generateRequestId()
     const start = Date.now()
     const log = createLogger(`api/${operation}`, { requestId, operation })
@@ -157,7 +159,7 @@ export function withRouteContext<P extends DynamicParams = { params: Promise<Rec
       errLog = ctx.log
 
       const handlerStart = Date.now()
-      const response = await handler(request, ctx, params)
+      const response = await handler(request, ctx, (params ?? { params: Promise.resolve({}) }) as P)
       const handlerMs = Date.now() - handlerStart
 
       if (response instanceof Response && !response.headers.get('X-Request-Id')) {

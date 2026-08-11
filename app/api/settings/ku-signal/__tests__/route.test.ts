@@ -45,7 +45,7 @@ describe('GET /api/settings/ku-signal', () => {
       supabase: {},
       error: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }),
     })
-    const res = await GET(createMockRequest('/api/settings/ku-signal'), {})
+    const res = await GET(createMockRequest('/api/settings/ku-signal'))
     expect(res.status).toBe(401)
   })
 
@@ -58,7 +58,7 @@ describe('GET /api/settings/ku-signal', () => {
     fetchEntryLinesMock.mockResolvedValue([{ account_number: '2898' }])
 
     const { status, body } = await parseJsonResponse<{ data: { has_ku_signal: boolean } }>(
-      await GET(createMockRequest('/api/settings/ku-signal'), {})
+      await GET(createMockRequest('/api/settings/ku-signal'))
     )
     expect(status).toBe(200)
     expect(body.data.has_ku_signal).toBe(true)
@@ -73,7 +73,7 @@ describe('GET /api/settings/ku-signal', () => {
     fetchEntryLinesMock.mockResolvedValue([])
 
     const { status, body } = await parseJsonResponse<{ data: { has_ku_signal: boolean } }>(
-      await GET(createMockRequest('/api/settings/ku-signal'), {})
+      await GET(createMockRequest('/api/settings/ku-signal'))
     )
     expect(status).toBe(200)
     expect(body.data.has_ku_signal).toBe(false)
@@ -88,7 +88,7 @@ describe('GET /api/settings/ku-signal', () => {
     fetchEntryLinesMock.mockResolvedValue([{ account_number: '2893' }])
 
     const { status, body } = await parseJsonResponse<{ data: { has_ku_signal: boolean } }>(
-      await GET(createMockRequest('/api/settings/ku-signal'), {})
+      await GET(createMockRequest('/api/settings/ku-signal'))
     )
     expect(status).toBe(200)
     expect(body.data.has_ku_signal).toBe(false)

@@ -40,7 +40,7 @@ function makeTx(overrides: Partial<Transaction> = {}): Transaction {
     created_at: '2026-06-12T00:00:00Z',
     updated_at: '2026-06-12T00:00:00Z',
     ...overrides,
-  }
+  } as Transaction
 }
 
 describe('detectOwnAccountTransfer', () => {

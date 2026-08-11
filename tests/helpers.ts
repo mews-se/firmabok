@@ -93,6 +93,12 @@ export function createMockSupabase() {
     from: vi.fn().mockImplementation(() => buildChain()),
     rpc: vi.fn().mockImplementation(() => buildChain()),
     storage: storageMock,
+    // The proxy chain covers whatever the code under test touches; the
+    // cast lets it stand in for a real client at call sites.
+  } as unknown as import('@supabase/supabase-js').SupabaseClient & {
+    from: ReturnType<typeof vi.fn>
+    rpc: ReturnType<typeof vi.fn>
+    storage: typeof storageMock
   }
 
   return { supabase, mockResult }
@@ -693,9 +699,12 @@ export function createMockRequest(
 }
 
 /**
- * Parse NextResponse to {status, body}.
+ * Parse NextResponse to {status, body}. The default is `any` on
+ * purpose: tests assert the runtime shape, and an `unknown` default
+ * forces a cast at every property access.
  */
-export async function parseJsonResponse<T = unknown>(
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function parseJsonResponse<T = any>(
   response: Response
 ): Promise<{ status: number; body: T }> {
   const body = (await response.json()) as T

@@ -251,7 +251,7 @@ describe('findSupplierInvoiceMatch', () => {
       status: 'registered',
       remaining_amount: 29890,
       invoice_date: '2026-06-05',
-      due_date: null,
+      due_date: undefined,
     })
     expect(findSupplierInvoiceMatch(tx, [inv])!.matchMethod).toBe('amount_date')
   })

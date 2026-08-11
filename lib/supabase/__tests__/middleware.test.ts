@@ -77,7 +77,7 @@ function locationOf(response: Response) {
   return response.headers.get('location')
 }
 
-function run(path: string, init?: RequestInit) {
+function run(path: string, init?: ConstructorParameters<typeof NextRequest>[1]) {
   return updateSession(new NextRequest(`${ORIGIN}${path}`, init))
 }
 

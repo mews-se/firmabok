@@ -26,7 +26,7 @@ const OK_RESULT = {
 
 async function callRoute() {
   const { GET } = await import('../route')
-  return GET(new Request('https://example.test/api/settings/booking-templates/sync/cron') as never, {} as never)
+  return GET(new Request('https://example.test/api/settings/booking-templates/sync/cron') as never)
 }
 
 beforeEach(() => {

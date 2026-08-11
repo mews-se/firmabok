@@ -86,7 +86,7 @@ describe('gnubok_create_account: validation gates', () => {
     enqueue({ data: { account_number: '5410', account_name: 'Förbrukningsinventarier', is_active: false } })
     await expect(
       createAccount.execute({ account_number: '5410' }, 'company-1', 'user-1', supabase as never),
-    ).rejects.toThrow(/inaktivt.*is_active=true/s)
+    ).rejects.toThrow(/inaktivt[\s\S]*is_active=true/)
   })
 
   it('rejects a non-BAS number without name/type/balance', async () => {
@@ -198,7 +198,7 @@ describe('gnubok_update_account', () => {
         { account_number: '5410', account_name: 'Nytt namn' },
         'company-1', 'user-1', supabase as never,
       ),
-    ).rejects.toThrow(/finns inte.*gnubok_create_account/s)
+    ).rejects.toThrow(/finns inte[\s\S]*gnubok_create_account/)
   })
 
   it('rejects a call with no fields to change', async () => {

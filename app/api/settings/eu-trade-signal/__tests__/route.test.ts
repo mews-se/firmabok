@@ -33,7 +33,7 @@ describe('GET /api/settings/eu-trade-signal', () => {
       supabase: {},
       error: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }),
     })
-    const res = await GET(createMockRequest('/api/settings/eu-trade-signal'), {})
+    const res = await GET(createMockRequest('/api/settings/eu-trade-signal'))
     expect(res.status).toBe(401)
   })
 
@@ -42,7 +42,7 @@ describe('GET /api/settings/eu-trade-signal', () => {
     fetchEntryLinesMock.mockResolvedValue([{ account_number: '3308' }])
 
     const { status, body } = await parseJsonResponse<{ data: { has_eu_sales: boolean } }>(
-      await GET(createMockRequest('/api/settings/eu-trade-signal'), {})
+      await GET(createMockRequest('/api/settings/eu-trade-signal'))
     )
     expect(status).toBe(200)
     expect(body.data.has_eu_sales).toBe(true)
@@ -53,7 +53,7 @@ describe('GET /api/settings/eu-trade-signal', () => {
     fetchEntryLinesMock.mockResolvedValue([])
 
     const { status, body } = await parseJsonResponse<{ data: { has_eu_sales: boolean } }>(
-      await GET(createMockRequest('/api/settings/eu-trade-signal'), {})
+      await GET(createMockRequest('/api/settings/eu-trade-signal'))
     )
     expect(status).toBe(200)
     expect(body.data.has_eu_sales).toBe(false)

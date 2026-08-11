@@ -1,20 +1,16 @@
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
-import { createClient, createServiceClient } from '@/lib/supabase/server'
+import { createClient } from '@/lib/supabase/server'
 import { setActiveCompany } from '@/lib/company/context'
 import {
   acceptPendingInviteByToken,
   hasPendingInviteForEmail,
 } from '@/lib/company/pending-invites'
-import type { EnrichmentCompanyRole } from '@/lib/company-lookup/types'
-import BankIdCompanyPicker, {
+import CompanyPicker, {
   type MemberCompany,
-  type TicPickerCompany,
-} from '@/components/onboarding/BankIdCompanyPicker'
+} from '@/components/onboarding/CompanyPicker'
 
 export const dynamic = 'force-dynamic'
-
-const ENRICHMENT_TTL_DAYS = 7
 
 export default async function SelectCompanyPage({
   searchParams,
@@ -28,26 +24,22 @@ export default async function SelectCompanyPage({
     redirect('/login')
   }
 
-  // Invite recovery, same as /onboarding: BankID users land here, so a missed
-  // invite acceptance (e.g. a register flow that dropped the cookie handling)
-  // gets retried before the picker funnels the invitee into creating a company.
+  // Invite recovery, same as /onboarding: a missed invite acceptance (e.g. a
+  // register flow that dropped the cookie handling) gets retried before the
+  // picker funnels the invitee into creating a company.
   const inviteToken = (await cookies()).get('gnubok-invite-token')?.value
   if (inviteToken && (await acceptPendingInviteByToken(user, inviteToken))) {
     redirect('/')
   }
 
   // All lookups key only on user.id/email, one parallel batch instead of
-  // serial round-trips on the post-BankID-login landing page.
+  // serial round-trips.
   const [
-    // Existing Accounted memberships.
+    // Existing memberships.
     { data: memberships },
     { data: teamMembership },
     // Greeting name.
     { data: profile },
-    // BankID enrichment (CompanyRoles from Bolagsverket via TIC). Stored
-    // user-keyed in `bankid_enrichment` because it lands before company
-    // selection, see fetchAndStoreEnrichment in the tic extension.
-    { data: enrichmentRow },
     // Pending invitation for this email with no cookie to accept it from:
     // rendered as a "check your invite email" hint in the picker.
     hasPendingInvite,
@@ -73,11 +65,6 @@ export default async function SelectCompanyPage({
       .limit(1)
       .maybeSingle(),
     supabase.from('profiles').select('full_name').eq('id', user.id).single(),
-    supabase
-      .from('bankid_enrichment')
-      .select('company_roles, created_at, updated_at')
-      .eq('user_id', user.id)
-      .maybeSingle(),
     user.email ? hasPendingInviteForEmail(user.email) : Promise.resolve(false),
   ])
 
@@ -108,12 +95,6 @@ export default async function SelectCompanyPage({
       role: m.role,
     }))
 
-  const memberOrgNumbers = new Set(
-    memberCompanies
-      .map((c) => (c.orgNumber ? c.orgNumber.replace(/[\s-]/g, '') : null))
-      .filter((n): n is string => !!n),
-  )
-
   // Ensure the user has a team (same pattern as /onboarding).
   let teamId = teamMembership?.team_id
   if (!teamId) {
@@ -126,80 +107,12 @@ export default async function SelectCompanyPage({
 
   const firstName = profile?.full_name?.split(' ')[0] ?? null
 
-  const enrichmentValue = enrichmentRow
-    ? { companyRoles: enrichmentRow.company_roles as EnrichmentCompanyRole[] }
-    : null
-
-  // "Currently a director" = no position end date. We deliberately do NOT
-  // also require companyStatus === 'Aktivt': real TIC payloads have been
-  // observed with other values (locale/tenant variants), and filtering too
-  // strictly silently hides the user's real directorships.
-  //
-  // Ceased/struck-off companies would still render here, but two later
-  // guards block provisioning:
-  //   1. BankIdCompanyPicker calls TIC /lookup before provisioning and
-  //      short-circuits with a toast when isCeased=true.
-  //   2. createCompanyFromTicRole refuses to provision when lookup.isCeased.
-  // Both guards are required: don't remove one without removing both.
-  //
-  // Loose `== null` on purpose: TIC payloads have been observed returning
-  // `undefined` for open-ended positions, which `=== null` would miss.
-  const activeRoles = (enrichmentValue?.companyRoles ?? []).filter(
-    (r) => r.positionEnd == null,
-  )
-
-  // Drop TIC roles that already appear in the user's Accounted memberships:
-  // those render via the "Your Accounted companies" section above instead.
-  const rolesNotAlreadyMine = activeRoles.filter(
-    (r) => !memberOrgNumbers.has(r.companyRegistrationNumber.replace(/[\s-]/g, '')),
-  )
-
-  // Cross-reference remaining TIC org numbers against the global companies
-  // table to detect "exists in Accounted, user not a member" cases. Use the
-  // service client: RLS filters out companies the user isn't a member of,
-  // which is exactly the data we need. Scoped to the specific org numbers.
-  let externallyOwnedOrgs = new Set<string>()
-  if (rolesNotAlreadyMine.length > 0) {
-    const service = createServiceClient()
-    const orgNumbers = rolesNotAlreadyMine.map((r) =>
-      r.companyRegistrationNumber.replace(/[\s-]/g, ''),
-    )
-    const { data: rows } = await service
-      .from('companies')
-      .select('org_number')
-      .in('org_number', orgNumbers)
-      .is('archived_at', null)
-    externallyOwnedOrgs = new Set(
-      (rows ?? []).map((r: { org_number: string | null }) => r.org_number ?? '').filter(Boolean),
-    )
-  }
-
-  const ticCompanies: TicPickerCompany[] = rolesNotAlreadyMine.map((role) => {
-    const cleaned = role.companyRegistrationNumber.replace(/[\s-]/g, '')
-    return {
-      role,
-      status: externallyOwnedOrgs.has(cleaned) ? 'exists' : 'new',
-    }
-  })
-
-  const enrichmentTimestamp = enrichmentRow?.updated_at ?? enrichmentRow?.created_at ?? null
-  const enrichmentStale = enrichmentTimestamp
-    ? Date.now() - new Date(enrichmentTimestamp).getTime() > ENRICHMENT_TTL_DAYS * 24 * 60 * 60 * 1000
-    : false
-
-  // A member of exactly one company with nothing else to decide (no new TIC
-  // engagements, no pending invite, enrichment not stale enough to hide one)
-  // gets sent straight in instead of clicking the only row on every login.
-  // `?choose=1` (the in-app switcher links) always renders the picker, and
+  // A member of exactly one company with nothing else to decide gets sent
+  // straight in instead of clicking the only row on every login. `?choose=1`
+  // (the in-app switcher links) always renders the picker, and
   // multi-company/byra users are untouched.
   const { choose } = await searchParams
-  if (
-    !choose &&
-    memberCompanies.length === 1 &&
-    ticCompanies.length === 0 &&
-    !hasPendingInvite &&
-    !enrichmentStale
-  ) {
+  if (!choose && memberCompanies.length === 1 && !hasPendingInvite) {
     // redirect() throws NEXT_REDIRECT, so it must stay outside the try.
     let switched = false
     try {
@@ -212,12 +125,10 @@ export default async function SelectCompanyPage({
   }
 
   return (
-    <BankIdCompanyPicker
+    <CompanyPicker
       firstName={firstName}
       teamId={teamId}
       memberCompanies={memberCompanies}
-      ticCompanies={ticCompanies}
-      enrichmentStale={enrichmentStale}
       hasPendingInvite={hasPendingInvite}
     />
   )

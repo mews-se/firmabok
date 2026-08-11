@@ -404,12 +404,7 @@ export default function DashboardNav({ companyName: _companyName, entityType, di
 
   const topItems = filteredItems.filter((i) => i.group === 'top')
 
-  // The TIC workspace (/e/general/tic, labelled "Företagsprofil") surfaces
-  // the same Bolagsuppgifter now shown under Inställningar → Företagsprofil.
-  // Drop it from the nav so the company profile lives in exactly one place.
-  const visibleExtensionNavItems = extensionNavItems.filter(
-    (i) => i.href !== '/e/general/tic',
-  )
+  const visibleExtensionNavItems = extensionNavItems
 
   const sidebarGroups: { key: ExpandableGroup; items: NavItem[] }[] = [
     { key: 'arbeta', items: filteredItems.filter((i) => i.group === 'arbeta') },

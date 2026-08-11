@@ -15,8 +15,6 @@ export function extensionNameKey(slug: string): string | null {
       return 'ext_email_name'
     case 'arcim-migration':
       return 'ext_arcim_migration_name'
-    case 'tic':
-      return 'ext_tic_name'
     case 'mcp-server':
       return 'ext_mcp_server_name'
     case 'cloud-backup':
@@ -38,8 +36,6 @@ export function extensionDescriptionKey(slug: string): string | null {
       return 'ext_email_description'
     case 'arcim-migration':
       return 'ext_arcim_migration_description'
-    case 'tic':
-      return 'ext_tic_description'
     case 'mcp-server':
       return 'ext_mcp_server_description'
     case 'cloud-backup':

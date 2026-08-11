@@ -36,9 +36,6 @@ export default async function ExtensionWorkspaceLoading() {
 }
 
 function ShellWorkspaceBody({ workspaceKey }: { workspaceKey: string }) {
-  if (workspaceKey === 'general/tic') {
-    return <TicSkeleton />
-  }
   return (
     <div className="space-y-4">
       <Skeleton className="h-32 w-full rounded-lg" />
@@ -47,60 +44,6 @@ function ShellWorkspaceBody({ workspaceKey }: { workspaceKey: string }) {
   )
 }
 
-function TicSkeleton() {
-  return (
-    <div className="space-y-6">
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card>
-          <CardHeader className="space-y-2">
-            <Skeleton className="h-5 w-48" />
-            <Skeleton className="h-3.5 w-40" />
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex items-start gap-2">
-              <Skeleton className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-              <Skeleton className="h-3.5 flex-1 max-w-[260px]" />
-            </div>
-            <div className="flex items-center gap-2">
-              <Skeleton className="h-3.5 w-3.5 shrink-0" />
-              <Skeleton className="h-3.5 w-48" />
-            </div>
-            <div className="flex items-center gap-2">
-              <Skeleton className="h-3.5 w-3.5 shrink-0" />
-              <Skeleton className="h-3.5 w-36" />
-            </div>
-            <div className="pt-2 border-t space-y-1.5">
-              <Skeleton className="h-3 w-24" />
-              <Skeleton className="h-3 w-44" />
-            </div>
-            <div className="pt-2 border-t space-y-1.5">
-              <Skeleton className="h-3 w-20" />
-              <Skeleton className="h-3 w-full" />
-              <Skeleton className="h-3 w-3/4" />
-            </div>
-            <Skeleton className="h-3 w-32 mt-2" />
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="space-y-2">
-            <Skeleton className="h-5 w-40" />
-            <Skeleton className="h-3.5 w-44" />
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-4">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="space-y-1.5">
-                  <Skeleton className="h-3 w-20" />
-                  <Skeleton className="h-4 w-24" />
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
-  )
-}
 
 function FullScreenWorkspaceSkeleton() {
   return (

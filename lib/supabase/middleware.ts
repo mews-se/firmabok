@@ -338,8 +338,7 @@ export async function updateSession(request: NextRequest) {
     pathname.startsWith('/api/account/') ||
     pathname.startsWith('/api/company')
 
-  // No companies: redirect to the picker if we have BankID enrichment for
-  // this user, otherwise the manual wizard. Either way, allow the escape-hatch
+  // No companies: send the user to onboarding, allowing the escape-hatch
   // routes to pass through.
   if (!companyId) {
     if (isNoCompanyAllowed) {
@@ -355,17 +354,7 @@ export async function updateSession(request: NextRequest) {
       return supabaseResponse
     }
 
-    // Enrichment lives in the user-keyed `bankid_enrichment` table (migration
-    // 20260506160000), it cannot live in extension_data, which is
-    // company-scoped, and the user has no company yet on this path.
-    const { data: enrichmentRow } = await supabase
-      .from('bankid_enrichment')
-      .select('user_id')
-      .eq('user_id', user.id)
-      .maybeSingle()
-
-    const destination = enrichmentRow ? '/select-company' : '/onboarding'
-    return NextResponse.redirect(new URL(destination, request.url))
+    return NextResponse.redirect(new URL('/onboarding', request.url))
   }
 
   // Set company cookie on the response so downstream requests have it

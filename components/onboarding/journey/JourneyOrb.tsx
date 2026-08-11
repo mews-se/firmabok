@@ -15,7 +15,7 @@ import { useEffect, useRef } from 'react'
  * - Reduced motion renders static frames on state changes (jump, no glide).
  */
 
-export type OrbState = 'listening' | 'searching' | 'thinking' | 'working' | 'shaping' | 'check'
+export type OrbState = 'listening' | 'thinking' | 'working' | 'shaping' | 'check'
 
 interface JourneyOrbProps {
   /** Animation mode; drives speed, wobble and the check morph. */
@@ -157,7 +157,7 @@ export default function JourneyOrb({ state, targetX, morphChar, height = 112 }: 
     let running = false
 
     function speed(s: OrbState) {
-      return s === 'working' ? 2.6 : s === 'searching' ? 1.4 : s === 'thinking' ? 0.9 : s === 'check' ? 0.2 : 0.35
+      return s === 'working' ? 2.6 : s === 'thinking' ? 0.9 : s === 'check' ? 0.2 : 0.35
     }
 
     function frame(now: number) {

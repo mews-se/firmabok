@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { type NextRequest, NextResponse } from 'next/server'
 import { hashInviteToken } from '@/lib/auth/invite-tokens'
+import { cookieSecure } from '@/lib/auth/cookie-secure'
 import { INVITE_COOKIE_NAME } from '@/lib/auth/consume-invite-cookie'
 
 export async function GET(request: NextRequest) {
@@ -88,7 +89,7 @@ export async function GET(request: NextRequest) {
         response.cookies.set(INVITE_COOKIE_NAME, inviteTokenMatch[1], {
           path: '/',
           httpOnly: false,
-          secure: process.env.NODE_ENV === 'production',
+          secure: cookieSecure(),
           sameSite: 'lax',
           maxAge: 7 * 24 * 60 * 60,
         })
@@ -171,7 +172,7 @@ export async function GET(request: NextRequest) {
             response.cookies.set('gnubok-company-id', invite.company_id, {
               path: '/',
               httpOnly: true,
-              secure: process.env.NODE_ENV === 'production',
+              secure: cookieSecure(),
               sameSite: 'lax',
               maxAge: 60 * 60 * 24 * 365,
             })

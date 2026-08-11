@@ -1,0 +1,321 @@
+# The complete self-hosted stack in one file: the app, its cron sidecar
+# and the five Supabase services it actually uses, all pinned. This is
+# the LAN path driven by install-debian.sh; docker-compose.yml remains
+# the variant for a cloud Supabase project.
+#
+# nginx is the single entry point: one origin, plain HTTP (LAN-only by
+# design), path routing that mirrors the hosted Supabase gateway layout
+# (see docker/nginx.selfhost.conf). Kong, studio and the rest of the
+# upstream stack are intentionally absent - the services themselves
+# enforce JWT auth, which is what matters on a private network.
+#
+# Needs a .env with DOMAIN, POSTGRES_PASSWORD, JWT_SECRET, ANON_KEY,
+# SERVICE_ROLE_KEY, SECRET_KEY_BASE, REALTIME_DB_ENC_KEY, CRON_SECRET
+# and AUTH_SIGNUPS_DISABLED - install-debian.sh generates it.
+services:
+  proxy:
+    image: nginx:stable-alpine-slim
+    ports:
+      - "80:80"
+    volumes:
+      - ./docker/nginx.selfhost.conf:/etc/nginx/conf.d/default.conf:ro
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    # The master runs as root and drops to the nginx user for workers,
+    # hence the setuid/setgid/chown trio on top of the port bind.
+    cap_add:
+      - NET_BIND_SERVICE
+      - SETUID
+      - SETGID
+      - CHOWN
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /run
+      - /var/cache/nginx
+    mem_limit: 128m
+    pids_limit: 50
+    logging: &logging
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  app:
+    image: ghcr.io/mews-se/firmabok:${IMAGE_TAG:-latest}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      proxy:
+        condition: service_started
+    environment:
+      # http by design: LAN-only stack, and the app's cookies follow the
+      # URL scheme (lib/auth/cookie-secure.ts).
+      NEXT_PUBLIC_SUPABASE_URL: http://${DOMAIN:?set DOMAIN in .env}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${ANON_KEY}
+      SUPABASE_SERVICE_ROLE_KEY: ${SERVICE_ROLE_KEY}
+      NEXT_PUBLIC_APP_URL: http://${DOMAIN}
+      CRON_SECRET: ${CRON_SECRET}
+      NEXT_PUBLIC_BRANDING_APP_NAME: Firmabok
+      NEXT_PUBLIC_SELF_HOSTED: "true"
+      AUTH_SIGNUPS_DISABLED: ${AUTH_SIGNUPS_DISABLED}
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    init: true
+    # See docker-compose.yml for why the tmpfs mounts look like this.
+    tmpfs:
+      - /tmp
+      - /app/.next:uid=1001,gid=1001,mode=750,size=400m
+      - /app/public:uid=1001,gid=1001,mode=750,size=200m
+    mem_limit: 1g
+    pids_limit: 200
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:3000/api/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
+    logging: *logging
+
+  cron:
+    build:
+      context: docker
+      dockerfile: cron.Dockerfile
+    depends_on:
+      app:
+        condition: service_healthy
+    environment:
+      - CRON_SECRET=${CRON_SECRET}
+      - APP_URL=http://app:3000
+    volumes:
+      - ./docker/crontab.self-hosted:/etc/supercronic/crontab:ro
+    init: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp
+    mem_limit: 64m
+    pids_limit: 30
+    restart: unless-stopped
+    logging: *logging
+
+  db:
+    image: supabase/postgres:17.6.1.136
+    volumes:
+      # Init subset from the upstream Supabase Docker stack (Apache-2.0,
+      # see NOTICE): realtime schema, webhooks, role passwords and JWT
+      # settings. The analytics/pooler scripts are not needed here.
+      - ./docker/db-init/realtime.sql:/docker-entrypoint-initdb.d/migrations/99-realtime.sql
+      - ./docker/db-init/webhooks.sql:/docker-entrypoint-initdb.d/init-scripts/98-webhooks.sql
+      - ./docker/db-init/roles.sql:/docker-entrypoint-initdb.d/init-scripts/99-roles.sql
+      - ./docker/db-init/jwt.sql:/docker-entrypoint-initdb.d/init-scripts/99-jwt.sql
+      - ./data/db:/var/lib/postgresql/data
+      - db_config:/etc/postgresql-custom
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres", "-h", "localhost"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    environment:
+      POSTGRES_HOST: /var/run/postgresql
+      PGPORT: "5432"
+      POSTGRES_PORT: "5432"
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      PGDATABASE: postgres
+      POSTGRES_DB: postgres
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXP: "3600"
+    command:
+      - postgres
+      - -c
+      - config_file=/etc/postgresql/postgresql.conf
+      - -c
+      - log_min_messages=fatal
+    restart: unless-stopped
+    logging: *logging
+
+  # One-shot: applies new files from supabase/migrations on every
+  # `up -d`, tracked in the _firmabok.migrations table. The app waits
+  # for it, so an update can never run against an unmigrated schema.
+  migrate:
+    image: supabase/postgres:17.6.1.136
+    depends_on:
+      db:
+        condition: service_healthy
+      # Healthy GoTrue means its own auth-schema migrations have run;
+      # the app migrations build on top of them.
+      auth:
+        condition: service_healthy
+    volumes:
+      - ./supabase/migrations:/migrations:ro
+      - ./docker/migrate.sh:/migrate.sh:ro
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+    entrypoint: ["/bin/sh", "/migrate.sh"]
+    restart: "no"
+    logging: *logging
+
+  auth:
+    image: supabase/gotrue:v2.189.0
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9999/health"]
+      timeout: 5s
+      interval: 5s
+      retries: 3
+    environment:
+      GOTRUE_API_HOST: 0.0.0.0
+      GOTRUE_API_PORT: 9999
+      API_EXTERNAL_URL: http://${DOMAIN}/auth/v1
+
+      GOTRUE_DB_DRIVER: postgres
+      GOTRUE_DB_DATABASE_URL: postgres://supabase_auth_admin:${POSTGRES_PASSWORD}@db:5432/postgres
+
+      GOTRUE_SITE_URL: http://${DOMAIN}
+      GOTRUE_URI_ALLOW_LIST: http://${DOMAIN}/auth/callback,http://${DOMAIN}/api/auth/callback
+      GOTRUE_DISABLE_SIGNUP: ${AUTH_SIGNUPS_DISABLED}
+
+      GOTRUE_JWT_ADMIN_ROLES: service_role
+      GOTRUE_JWT_AUD: authenticated
+      GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
+      GOTRUE_JWT_EXP: "3600"
+      GOTRUE_JWT_SECRET: ${JWT_SECRET}
+      # The app pins user-token issuers to <public url>/auth/v1.
+      GOTRUE_JWT_ISSUER: http://${DOMAIN}/auth/v1
+
+      GOTRUE_EXTERNAL_EMAIL_ENABLED: "true"
+      GOTRUE_EXTERNAL_ANONYMOUS_USERS_ENABLED: "false"
+      # No mailer on the LAN: accounts are confirmed immediately.
+      GOTRUE_MAILER_AUTOCONFIRM: "true"
+      GOTRUE_SMTP_ADMIN_EMAIL: admin@example.com
+      GOTRUE_SMTP_HOST: ""
+      GOTRUE_SMTP_PORT: "2500"
+      GOTRUE_SMTP_USER: ""
+      GOTRUE_SMTP_PASS: ""
+      GOTRUE_SMTP_SENDER_NAME: Firmabok
+      GOTRUE_MAILER_URLPATHS_INVITE: /auth/v1/verify
+      GOTRUE_MAILER_URLPATHS_CONFIRMATION: /auth/v1/verify
+      GOTRUE_MAILER_URLPATHS_RECOVERY: /auth/v1/verify
+      GOTRUE_MAILER_URLPATHS_EMAIL_CHANGE: /auth/v1/verify
+
+      GOTRUE_EXTERNAL_PHONE_ENABLED: "false"
+      GOTRUE_SMS_AUTOCONFIRM: "false"
+    restart: unless-stopped
+    logging: *logging
+
+  rest:
+    image: postgrest/postgrest:v14.12
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "postgrest", "--ready"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+    environment:
+      PGRST_DB_URI: postgres://authenticator:${POSTGRES_PASSWORD}@db:5432/postgres
+      PGRST_DB_SCHEMAS: public,graphql_public
+      PGRST_DB_MAX_ROWS: "1000"
+      PGRST_DB_EXTRA_SEARCH_PATH: public
+      PGRST_DB_ANON_ROLE: anon
+      PGRST_ADMIN_SERVER_PORT: 3001
+      PGRST_ADMIN_SERVER_HOST: localhost
+      PGRST_JWT_SECRET: ${JWT_SECRET}
+      PGRST_DB_USE_LEGACY_GUCS: "false"
+      PGRST_APP_SETTINGS_JWT_SECRET: ${JWT_SECRET}
+      PGRST_APP_SETTINGS_JWT_EXP: "3600"
+    command: ["postgrest"]
+    restart: unless-stopped
+    logging: *logging
+
+  realtime:
+    image: supabase/realtime:v2.102.3
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      default:
+        aliases:
+          # Realtime resolves its tenant from the Host header; nginx
+          # forwards to this name (tenant "realtime-dev").
+          - realtime-dev.supabase-realtime
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - 'curl -sSfL --head -o /dev/null -H "Authorization: Bearer ${ANON_KEY}" http://localhost:4000/api/tenants/realtime-dev/health'
+      timeout: 5s
+      interval: 30s
+      retries: 3
+      start_period: 10s
+    environment:
+      PORT: 4000
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: supabase_admin
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_NAME: postgres
+      DB_AFTER_CONNECT_QUERY: 'SET search_path TO _realtime'
+      DB_ENC_KEY: ${REALTIME_DB_ENC_KEY}
+      API_JWT_SECRET: ${JWT_SECRET}
+      SECRET_KEY_BASE: ${SECRET_KEY_BASE}
+      METRICS_JWT_SECRET: ${JWT_SECRET}
+      ERL_AFLAGS: -proto_dist inet_tcp
+      DNS_NODES: "''"
+      RLIMIT_NOFILE: "10000"
+      APP_NAME: realtime
+      SEED_SELF_HOST: "true"
+      RUN_JANITOR: "true"
+      DISABLE_HEALTHCHECK_LOGGING: "true"
+    restart: unless-stopped
+    logging: *logging
+
+  storage:
+    image: supabase/storage-api:v1.60.4
+    depends_on:
+      db:
+        condition: service_healthy
+      rest:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://storage:5000/status"]
+      timeout: 5s
+      interval: 5s
+      retries: 3
+      start_period: 10s
+    environment:
+      ANON_KEY: ${ANON_KEY}
+      SERVICE_KEY: ${SERVICE_ROLE_KEY}
+      POSTGREST_URL: http://rest:3000
+      AUTH_JWT_SECRET: ${JWT_SECRET}
+      DATABASE_URL: postgres://supabase_storage_admin:${POSTGRES_PASSWORD}@db:5432/postgres
+      STORAGE_PUBLIC_URL: http://${DOMAIN}
+      REQUEST_ALLOW_X_FORWARDED_PATH: "true"
+      FILE_SIZE_LIMIT: 52428800
+      STORAGE_BACKEND: file
+      GLOBAL_S3_BUCKET: stub
+      FILE_STORAGE_BACKEND_PATH: /var/lib/storage
+      TENANT_ID: stub
+      REGION: stub
+      # Document previews are rendered by the app; no imgproxy.
+      ENABLE_IMAGE_TRANSFORMATION: "false"
+    volumes:
+      - ./data/storage:/var/lib/storage
+    restart: unless-stopped
+    logging: *logging
+
+volumes:
+  db_config:

@@ -1,3 +1,4 @@
+import { cookieSecure } from '@/lib/auth/cookie-secure'
 import {
   SESSION_TIMEOUT_COOKIE,
   type SessionAuthMethod,
@@ -265,7 +266,7 @@ export function sessionTimeoutCookieOptions(): SessionTimeoutCookieOptions {
   return {
     path: '/',
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    secure: cookieSecure(),
     sameSite: 'lax',
     maxAge: COOKIE_MAX_AGE_SECONDS,
   }

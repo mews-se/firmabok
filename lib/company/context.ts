@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { fetchAllRows } from '@/lib/supabase/fetch-all'
 import { cookies } from 'next/headers'
+import { cookieSecure } from '@/lib/auth/cookie-secure'
 import type { EntityType } from '@/types'
 
 const COMPANY_COOKIE = 'gnubok-company-id'
@@ -318,7 +319,7 @@ export async function setActiveCompany(
     cookieStore.set(COMPANY_COOKIE, companyId, {
       path: '/',
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: cookieSecure(),
       sameSite: 'lax',
       maxAge: 60 * 60 * 24 * 365, // 1 year
     })

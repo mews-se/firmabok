@@ -2,6 +2,7 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import { shouldEnforceMfa } from '@/lib/auth/mfa'
 import { apiPathSkipsMfaGate } from '@/lib/auth/api-mfa-gate'
+import { cookieSecure } from '@/lib/auth/cookie-secure'
 import { DEFAULT_LOCALE, LOCALE_COOKIE, isLocale } from '@/i18n/config'
 import { userHasPassword } from '@/lib/auth/has-password'
 import { safeReturnTo } from '@/lib/auth/safe-return-to'
@@ -322,7 +323,7 @@ export async function updateSession(request: NextRequest) {
     supabaseResponse.cookies.set(LOCALE_COOKIE, effectiveLocale, {
       path: '/',
       sameSite: 'lax',
-      secure: process.env.NODE_ENV === 'production',
+      secure: cookieSecure(),
       maxAge: 60 * 60 * 24 * 365,
     })
   }
@@ -371,7 +372,7 @@ export async function updateSession(request: NextRequest) {
   supabaseResponse.cookies.set('gnubok-company-id', companyId, {
     path: '/',
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    secure: cookieSecure(),
     sameSite: 'lax',
     maxAge: 60 * 60 * 24 * 365,
   })
@@ -420,7 +421,7 @@ function clearAuthMethodHint(
     path: '/',
     maxAge: 0,
     sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production',
+    secure: cookieSecure(),
   })
 }
 

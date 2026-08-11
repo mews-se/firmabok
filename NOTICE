@@ -51,6 +51,13 @@ This project includes or depends on the following third-party software:
 | TypeScript             | Apache-2.0           | Dev dependency only                        |
 | ESLint                 | MIT                  | Dev dependency only                        |
 
+Vendored files:
+
+- docker/db-init/*.sql are taken from the Supabase Docker self-hosting
+  stack (github.com/supabase/supabase, docker/volumes/db/), licensed
+  under Apache-2.0. docker/Caddyfile.selfhost mirrors the routing layout
+  of the same stack's Kong configuration.
+
 Copyleft dependency notes:
 
 - sharp bundles libvips which is licensed under LGPL-3.0-or-later. libvips is

@@ -277,6 +277,13 @@ The Next.js app is stateless: all data lives in Supabase. The Docker entrypoint 
 
 ## Fully Self-Hosted (No Supabase Cloud)
 
+> **Shortcut:** this repository ships the fully self-hosted path as a
+> single Compose file, `docker-compose.selfhost.yml`, containing only
+> the services the app actually uses, driven by `install-debian.sh` —
+> see the README. The rest of this section documents the equivalent
+> manual pairing with Supabase's complete upstream stack, for operators
+> who prefer to run it themselves.
+
 The setup above relies on a Supabase project at supabase.com. If you also want to host the database, auth, and storage yourself (to keep all data on-premises, avoid the SaaS dependency, or run air-gapped) you can pair Accounted with [Supabase's official Docker self-hosting stack](https://supabase.com/docs/guides/self-hosting/docker) instead.
 
 This is a more involved path. You take responsibility for backups, TLS certificates, image upgrades, and Postgres operations. It is intended for operators already running Docker services who are comfortable with PostgreSQL.

@@ -46,6 +46,11 @@ next-env.d.ts
 # supabase temp files
 supabase/.temp/
 
+# LAN install (docker-compose.selfhost.yml): database and document data,
+# and the generated TLS certificate
+/data/
+/certs/
+
 # claude local settings
 .claude/settings.local.json
 .claude/scheduled_tasks.lock

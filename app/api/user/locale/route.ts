@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { requireAuth } from '@/lib/auth/require-auth'
+import { cookieSecure } from '@/lib/auth/cookie-secure'
 import { LOCALE_COOKIE, SUPPORTED_LOCALES, type Locale } from '@/i18n/config'
 
 const BodySchema = z.object({
@@ -37,7 +38,7 @@ export async function POST(request: Request) {
   response.cookies.set(LOCALE_COOKIE, locale, {
     path: '/',
     sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production',
+    secure: cookieSecure(),
     maxAge: 60 * 60 * 24 * 365,
   })
   return response

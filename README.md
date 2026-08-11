@@ -76,6 +76,43 @@ sessionstimeouts, telemetri — är bortrensade, så installationen ska stå
 på eget nätverk bakom egen kontroll och aldrig exponeras som öppen
 tjänst mot internet eller delas med folk du inte litar på.
 
+## Installation på en Debian-server
+
+Allt som behövs är en färdig Debian-server och serverns LAN-IP —
+exemplet använder `10.0.0.30`, byt mot din egen. Kör som vanlig
+användare; sudo används bara om Docker eller git saknas:
+
+```bash
+wget -O install-debian.sh https://raw.githubusercontent.com/mews-se/firmabok/main/install-debian.sh
+sh install-debian.sh 10.0.0.30
+```
+
+[install-debian.sh](install-debian.sh) gör resten självt: hämtar repot,
+installerar Docker, genererar hemligheterna och startar hela stacken ur
+en enda compose-fil —
+[docker-compose.selfhost.yml](docker-compose.selfhost.yml) — med appen
+och de fem Supabase-tjänster den behöver (databas, inloggning, API,
+realtid, dokumentlagring) bakom en gemensam adress. Migrationerna körs
+automatiskt, även vid uppdateringar. Vill du se exakt vad som körs är
+compose-filen och skriptet läsbara.
+
+Surfa sedan till `http://10.0.0.30` — ren HTTP, inga certifikat och
+inga varningar; stacken är byggd för det egna nätverket och inget
+annat. Skapa kontot, gå igenom onboardingen och stäng därefter
+registreringen:
+
+```bash
+~/firmabok/install-debian.sh lock
+```
+
+### Uppdatering
+
+Kör samma två kommandon som vid installationen: skriptet hämtar
+senaste versionen, kör bara de nya migrationerna och startar om med
+den nya appimagen. Backup är ditt ansvar — `pg_dump` mot en annan
+maskin, gärna kompletterat med SIE-export per räkenskapsår (se
+[docs/SELF-HOSTING.md](docs/SELF-HOSTING.md)).
+
 ## Instruktion
 
 Logga in och skapa företaget vid första starten (självhostat bekräftas
@@ -101,9 +138,14 @@ någon appkoppling.
 
 ## Drift
 
-Docker plus självhostad Supabase, allt lokalt. HTTPS krävs även på LAN
-(secure cookies) — medföljande Caddy-overlay kör `tls internal` som
-standard. Se [docs/SELF-HOSTING.md](docs/SELF-HOSTING.md).
+Docker rakt igenom, allt lokalt. Hela stacken bor i
+[docker-compose.selfhost.yml](docker-compose.selfhost.yml): en tunn
+nginx är enda ingången och bara de Supabase-tjänster appen använder
+körs. Ren
+HTTP på det egna nätet — cookies följer adressens schema, så en
+https-adress bakom egen proxy fungerar också om man hellre vill det.
+[docs/SELF-HOSTING.md](docs/SELF-HOSTING.md) fördjupar: varianten med
+Supabase-moln, Synology/NAS, bygge från källa och backup.
 
 Färdig image publiceras till `ghcr.io/mews-se/firmabok`.
 

@@ -83,7 +83,7 @@ through `company_members`, and every business table carries a `company_id`:
   hand-roll their own auth.
 
 `NEXT_PUBLIC_SELF_HOSTED=true` (the default here) disables MFA enforcement,
-session timeouts, BankID, analytics and the upstream paywall.
+session timeouts, analytics and the upstream paywall.
 
 ## The one extension: MCP
 

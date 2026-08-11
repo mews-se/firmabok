@@ -132,8 +132,8 @@ function SetPasswordContent() {
             Sätt ett lösenord
           </h1>
           <p className="text-muted-foreground text-sm mt-2">
-            Du loggade in med BankID. För att aktivera tvåfaktorsautentisering
-            eller logga in med e-post behöver du först sätta ett lösenord.
+            Du loggade in utan lösenord. För att aktivera tvåfaktorsautentisering
+            eller logga in med e-post behöver du först sätta ett.
           </p>
         </div>
 

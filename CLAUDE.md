@@ -122,7 +122,7 @@ npm run crontabs:generate # Regenerate docker crontab from vercel.json
   explicitly (service-role paths have no RLS).
 - **Auth**: Supabase email+password via `withRouteContext`: never hand-roll
   `supabase.auth.getUser()` in a route. `NEXT_PUBLIC_SELF_HOSTED=true`
-  disables MFA enforcement, session timeouts, BankID, analytics and the
+  disables MFA enforcement, session timeouts, analytics and the
   paywall.
 - **Events**: `lib/events/bus.ts` is a module-level singleton. Any route that
   emits events must call `ensureInitialized()` (`lib/init.ts`) at module

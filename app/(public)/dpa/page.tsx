@@ -107,9 +107,8 @@ export default function DPAPage() {
               <li><strong>Åtkomstkontroll:</strong> Row Level Security (RLS) säkerställer att varje användare
                 enbart kan komma åt sina egna uppgifter</li>
               <li><strong>Autentisering:</strong> Inloggning med e-post och lösenord (lösenord lagras
-                endast som saltad hash, aldrig i klartext), tvåfaktorsautentisering (2FA via TOTP)
-                samt BankID (på den hostade tjänsten). Tvåfaktorsautentisering kan krävas för
-                åtkomst</li>
+                endast som saltad hash, aldrig i klartext) samt tvåfaktorsautentisering (2FA via
+                TOTP). Tvåfaktorsautentisering kan krävas för åtkomst</li>
               <li><strong>Integritetskontroll:</strong> SHA-256 checksummor för alla dokument, med
                 regelbunden verifiering</li>
               <li><strong>Revisionslogg:</strong> Alla ändringshändelser loggas automatiskt av databasen

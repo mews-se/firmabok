@@ -1,6 +1,6 @@
 # Självhosta Firmabok
 
-Allt kör på din egen server, på ditt eget nätverk. README:ns
+Allt körs på din egen server, på ditt eget nätverk. README:ns
 tvåkommandosinstallation är den normala vägen; det här dokumentet är
 referensen bakom den.
 
@@ -79,13 +79,13 @@ om. Inget annat behöver skötas.
 
 ## Backup
 
-De namngivna volymerna är inte filer att kopiera — ta backup logiskt:
+De namngivna volymerna är inte kopierbara — ta backuper logiskt:
 
 ```bash
 docker exec firmabok-db-1 pg_dump -U postgres -d postgres | gzip > firmabok-$(date +%F).sql.gz
 ```
 
-Skicka den filen bort från servern på schema. Som ett portabelt,
+Överför den filen till någon lokal lagringsplats, gärna schemalagt. Som ett portabelt,
 leverantörsneutralt lager ovanpå: exportera varje räkenskapsår som SIE
 via appen (Rapporter → SIE) — vilket svenskt bokföringsprogram som
 helst kan läsa in den igen. Dokumenten ligger i volymen
@@ -108,7 +108,7 @@ echo 'IMAGE_TAG=local' >> .env
 
 ## Felsökning
 
-**Hälsoväntan går ut.** Titta i loggarna (från utcheckningen):
+**Health check går ut.** Titta i loggarna (från utcheckningen):
 `docker compose logs migrate app`. De vanliga orsakerna är ett
 migrationsfel (migrate slutar med fel och appen startar aldrig) eller
 felaktiga värden i `.env`.

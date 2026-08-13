@@ -4,6 +4,18 @@ All notable changes to Firmabok, newest first. Versions follow the
 tags in this repository; each one is published as a container image at
 `ghcr.io/mews-se/firmabok`.
 
+## 2.5.2 — 2026-08-13
+
+- Deleted files nothing referenced: leftovers from features removed
+  earlier, one-off repair and backfill scripts for migrations long
+  since run, and image assets whose code is gone. Four npm packages
+  went with them, about 24 MB of installed dependencies.
+- Fixed two silent problems found along the way: two tests mocked a
+  module that no longer exists, so they were quietly testing nothing,
+  and a scheduled-job file was generated for a setup this project does
+  not have.
+- No functional changes.
+
 ## 2.5.1 — 2026-08-13
 
 - Nine database migrations each seeded the same skill library from

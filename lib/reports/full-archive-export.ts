@@ -20,6 +20,7 @@ import {
 } from './archive-csv'
 import { buildArchiveReadme, buildDriveFolderReadme } from './archive-readme'
 import type { GeneralLedgerReport } from './general-ledger'
+import { fileStorage } from '@/lib/storage/local'
 import type {
   AuditLogEntry,
   BalanceSheetReport,
@@ -493,17 +494,7 @@ async function writeDocuments(
         }
 
         try {
-          // Dual-layout download: the document batch is snapshotted up
-          // front, and a concurrent Phase B backfill can re-home an object
-          // (legacy uploader-scoped -> company-scoped) and later remove the
-          // source mid-run, leaving the stored pointer stale. The helper
-          // tries the stored pointer first, then the alternate layout, so a
-          // healthy document never lands in the manifest as an error.
-          const { blob: fileData, error } = await downloadDocumentObject(
-            supabase,
-            doc.storage_path,
-            companyId
-          )
+          const { blob: fileData, error } = await downloadDocumentObject(doc.storage_path)
 
           if (error || !fileData) {
             manifest.push({
@@ -696,7 +687,7 @@ async function writeSieSourceFiles(
         const zipFileName = `${imp.id}_${sanitizeFileName(imp.filename || `${imp.id}.se`)}`
 
         try {
-          const { data: fileData, error } = await supabase.storage
+          const { data: fileData, error } = await fileStorage()
             .from('sie-files')
             .download(imp.file_storage_path)
 

@@ -69,7 +69,6 @@ describe('MCP model-free document upload tools', () => {
     )
 
     expect(mocks.createPendingDocumentUpload).toHaveBeenCalledWith(
-      expect.anything(),
       companyId,
       userId,
       expect.stringMatching(/^[0-9a-f-]{36}$/),

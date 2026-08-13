@@ -1,11 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { getClient, getPool, withUserContext } from '@/tests/pg/setup'
+import { getPool, withUserContext } from '@/tests/pg/setup'
 import { seedCompany } from '@/tests/pg/fixtures'
 
-// Covers the 2026-07-09 Supabase-advisor lockdowns:
+// Covers the 2026-07-09 advisor lockdowns:
 // - 20260710100000: exchange_rates INSERT is service-role only
 // - 20260710101000: duplicate journal_entry_lines(journal_entry_id) index dropped
-// - 20260710102000: receipts storage bucket has no anon read/listing policy
 describe('db-advisor lockdowns.pg', () => {
   describe('exchange_rates: writes are service-role only', () => {
     it('rejects INSERT from an authenticated user', async () => {
@@ -66,48 +65,6 @@ describe('db-advisor lockdowns.pg', () => {
       const names = res.rows.map((r) => r.indexname)
       expect(names).toContain('idx_journal_entry_lines_entry_id')
       expect(names).not.toContain('idx_journal_entry_lines_entry')
-    })
-  })
-
-  describe('receipts storage bucket: anon cannot read or list', () => {
-    it('storage.objects has no receipts_public_read policy', async () => {
-      const res = await getPool().query(
-        `SELECT polname FROM pg_policy
-          WHERE polrelid = 'storage.objects'::regclass AND polname = 'receipts_public_read'`,
-      )
-      expect(res.rows).toHaveLength(0)
-    })
-
-    it('anon listing of the receipts bucket returns nothing', async () => {
-      await getPool().query(
-        `INSERT INTO storage.buckets (id, name, public)
-         VALUES ('receipts', 'receipts', true)
-         ON CONFLICT (id) DO NOTHING`,
-      )
-      await getPool().query(
-        `INSERT INTO storage.objects (bucket_id, name)
-         VALUES ('receipts', 'someone-elses-folder/receipt.jpg')
-         ON CONFLICT (bucket_id, name) DO NOTHING`,
-      )
-      const client = await getClient()
-      try {
-        await client.query('BEGIN')
-        await client.query(`SELECT set_config('request.jwt.claims', '{"role":"anon"}', true)`)
-        await client.query('SET LOCAL ROLE anon')
-        // Either outcome proves listing is impossible for anon: zero rows via
-        // RLS (no anon SELECT policy left), or no table privilege at all.
-        try {
-          const res = await client.query(
-            `SELECT name FROM storage.objects WHERE bucket_id = 'receipts'`,
-          )
-          expect(res.rows).toHaveLength(0)
-        } catch (err) {
-          expect(String(err)).toMatch(/permission denied/i)
-        }
-      } finally {
-        await client.query('ROLLBACK').catch(() => {})
-        client.release()
-      }
     })
   })
 })

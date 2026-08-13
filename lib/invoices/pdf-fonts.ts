@@ -15,7 +15,7 @@ import {
   toInvoiceFontDataUrl,
 } from '@/lib/invoices/font-files'
 import { createLogger } from '@/lib/logger'
-import { createServiceClient } from '@/lib/supabase/server'
+import { fileStorage } from '@/lib/storage/local'
 
 export const CUSTOM_INVOICE_FONT_RENDER_PREFIX = 'InvoiceCustom-'
 
@@ -127,8 +127,7 @@ async function downloadCustomFontDataUrl(
   }
 
   try {
-    const serviceClient = createServiceClient()
-    const { data, error } = await serviceClient.storage
+    const { data, error } = await fileStorage()
       .from('invoice-fonts')
       .download(storagePath)
     if (error || !data || data.size > INVOICE_FONT_UPLOAD_MAX_BYTES) return null

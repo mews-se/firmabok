@@ -19,17 +19,15 @@ vi.mock('@/lib/auth/require-write', () => ({
   requireWritePermission: (...args: unknown[]) => requireWriteMock(...args),
 }))
 
+// Shared fs-backed storage bucket mock (lib/storage/local).
 const storageBucket = {
   upload: vi.fn().mockResolvedValue({ data: {}, error: null }),
   list: vi.fn().mockResolvedValue({ data: [], error: null }),
   remove: vi.fn().mockResolvedValue({ data: [], error: null }),
 }
 
-vi.mock('@/lib/supabase/server', () => ({
-  createClient: vi.fn(),
-  createServiceClient: () => ({
-    storage: { from: vi.fn().mockReturnValue(storageBucket) },
-  }),
+vi.mock('@/lib/storage/local', () => ({
+  fileStorage: () => ({ from: () => storageBucket }),
 }))
 
 import { DELETE, POST } from '../route'

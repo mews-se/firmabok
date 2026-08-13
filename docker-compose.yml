@@ -1,5 +1,5 @@
 # The complete self-hosted stack in one file: the app, its cron sidecar
-# and the four Supabase services it actually uses, all pinned. Driven
+# and the three Supabase services it actually uses, all pinned. Driven
 # by install-debian.sh; named docker-compose.yml so plain
 # `docker compose stop/logs/ps` works from the checkout.
 #
@@ -63,6 +63,11 @@ services:
       NEXT_PUBLIC_BRANDING_APP_NAME: Firmabok
       NEXT_PUBLIC_SELF_HOSTED: "true"
       AUTH_SIGNUPS_DISABLED: ${AUTH_SIGNUPS_DISABLED}
+      STORAGE_DIR: /var/lib/firmabok-storage
+    # The document archive lives on a named volume served directly by the
+    # app (lib/storage/local.ts); no storage-api service.
+    volumes:
+      - storage_data:/var/lib/firmabok-storage
     security_opt:
       - no-new-privileges:true
     cap_drop:
@@ -161,12 +166,9 @@ services:
     depends_on:
       db:
         condition: service_healthy
-      # Healthy GoTrue and Storage mean their own schema migrations have
-      # run; the app migrations build on top of both (storage.buckets
-      # policies among them).
+      # Healthy GoTrue means its own schema migrations have run; the app
+      # migrations build on top of the auth schema.
       auth:
-        condition: service_healthy
-      storage:
         condition: service_healthy
     volumes:
       - ./supabase/migrations:/migrations:ro
@@ -254,41 +256,6 @@ services:
       PGRST_APP_SETTINGS_JWT_SECRET: ${JWT_SECRET}
       PGRST_APP_SETTINGS_JWT_EXP: "3600"
     command: ["postgrest"]
-    restart: unless-stopped
-    logging: *logging
-
-  storage:
-    image: supabase/storage-api:v1.60.4
-    depends_on:
-      db:
-        condition: service_healthy
-      rest:
-        condition: service_started
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://storage:5000/status"]
-      timeout: 5s
-      interval: 60s
-      retries: 3
-      start_period: 120s
-      start_interval: 5s
-    environment:
-      ANON_KEY: ${ANON_KEY}
-      SERVICE_KEY: ${SERVICE_ROLE_KEY}
-      POSTGREST_URL: http://rest:3000
-      AUTH_JWT_SECRET: ${JWT_SECRET}
-      DATABASE_URL: postgres://supabase_storage_admin:${POSTGRES_PASSWORD}@db:5432/postgres
-      STORAGE_PUBLIC_URL: http://${DOMAIN}
-      REQUEST_ALLOW_X_FORWARDED_PATH: "true"
-      FILE_SIZE_LIMIT: 52428800
-      STORAGE_BACKEND: file
-      GLOBAL_S3_BUCKET: stub
-      FILE_STORAGE_BACKEND_PATH: /var/lib/storage
-      TENANT_ID: stub
-      REGION: stub
-      # Document previews are rendered by the app; no imgproxy.
-      ENABLE_IMAGE_TRANSFORMATION: "false"
-    volumes:
-      - storage_data:/var/lib/storage
     restart: unless-stopped
     logging: *logging
 

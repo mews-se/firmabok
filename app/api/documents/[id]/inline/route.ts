@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
-import { createServiceClient } from '@/lib/supabase/server'
 import { contentDisposition } from '@/lib/api/content-disposition'
+import { fileStorage } from '@/lib/storage/local'
 import { withRouteContext } from '@/lib/api/with-route-context'
 import { getErrorMessage as getUserErrorMessage } from '@/lib/errors/get-error-message'
 
@@ -62,10 +62,9 @@ export const GET = withRouteContext<{ params: Promise<{ id: string }> }>(
       return NextResponse.json({ error: 'Document not found' }, { status: 404 })
     }
 
-    // Use the service-role client to read from the non-public bucket only after
-    // the active-company authorization check above has succeeded.
-    const serviceClient = createServiceClient()
-    const { data: blob, error: downloadError } = await serviceClient.storage
+    // Read from storage only after the active-company authorization check
+    // above has succeeded.
+    const { data: blob, error: downloadError } = await fileStorage()
       .from('documents')
       .download(doc.storage_path)
 

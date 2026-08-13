@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { withRouteContext } from '@/lib/api/with-route-context'
-import { createServiceClient } from '@/lib/supabase/server'
+import { fileStorage } from '@/lib/storage/local'
 import {
   INVOICE_FONT_UPLOAD_MAX_BYTES,
   INVOICE_FONT_UPLOAD_MAX_MB,
@@ -54,8 +54,7 @@ export const POST = withRouteContext(
 
     const fileName = `invoice-font-${Date.now()}.${format}`
     const storagePath = `${companyId}/${fileName}`
-    const serviceClient = createServiceClient()
-    const bucket = serviceClient.storage.from('invoice-fonts')
+    const bucket = fileStorage().from('invoice-fonts')
 
     const { error: uploadError } = await bucket.upload(storagePath, bytes, {
       contentType: getInvoiceFontContentType(format),
@@ -132,8 +131,7 @@ export const DELETE = withRouteContext(
       )
     }
 
-    const serviceClient = createServiceClient()
-    const bucket = serviceClient.storage.from('invoice-fonts')
+    const bucket = fileStorage().from('invoice-fonts')
     const { data: existing } = await bucket.list(companyId)
     if (existing && existing.length > 0) {
       await bucket.remove(existing.map((stored) => `${companyId}/${stored.name}`))

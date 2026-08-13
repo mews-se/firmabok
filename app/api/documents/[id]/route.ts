@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
 import { ensureInitialized } from '@/lib/init'
 import { withRouteContext } from '@/lib/api/with-route-context'
-import { createServiceClient } from '@/lib/supabase/server'
 import { deleteDocument } from '@/lib/core/documents/document-service'
+import { fileStorage } from '@/lib/storage/local'
 import { eventBus } from '@/lib/events'
 import { getErrorMessage as getUserErrorMessage } from '@/lib/errors/get-error-message'
 
@@ -36,16 +36,10 @@ export const GET = withRouteContext<{ params: Promise<{ id: string }> }>(
     // settles handlers via Promise.allSettled), so it cannot fail this
     // Promise.all.
     //
-    // Sign with the service-role client: the storage SELECT policy only
-    // covers the uploader's own folder (documents/{uid}/...), while
-    // document_attachments rows are company-scoped. Signing with the
-    // user-bound client fails for every attachment uploaded by another
-    // member of the same company. The row fetch above (RLS + explicit
-    // company filter) is the authorization, mirroring the inline proxy
-    // route.
-    const serviceClient = createServiceClient()
+    // The row fetch above (RLS + explicit company filter) is the
+    // authorization, mirroring the inline proxy route.
     const [signResult] = await Promise.all([
-      serviceClient.storage.from('documents').createSignedUrl(doc.storage_path, 3600),
+      fileStorage().from('documents').createSignedUrl(doc.storage_path, 3600),
       eventBus.emit({
         type: 'document.accessed',
         payload: {
@@ -67,7 +61,7 @@ export const GET = withRouteContext<{ params: Promise<{ id: string }> }>(
     return NextResponse.json({
       data: {
         ...doc,
-        download_url: signedUrl.signedUrl,
+        download_url: signedUrl?.signedUrl ?? null,
       },
     })
   }

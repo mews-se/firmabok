@@ -38,6 +38,7 @@ import { computeSRUCode } from '@/lib/bookkeeping/bas-data/sru-mapping'
 import { populateTemplatesFromSieVouchers } from '@/lib/bookkeeping/counterparty-templates'
 import { markEntriesNoDocRequired } from '@/lib/bookkeeping/no-doc-required'
 import { monthsBetween, parseDateParts } from '@/lib/bookkeeping/validate-period-duration'
+import { fileStorage } from '@/lib/storage/local'
 import { findUntransferredResults } from '@/lib/reports/imbalance-diagnosis'
 import { formatCurrency } from '@/lib/utils'
 
@@ -1751,11 +1752,11 @@ export async function finalizeImportRecord(
     })
     .eq('id', importId)
 
-  // Archive the SIE file to Supabase Storage (BFL 7 kap 1-2§ retention)
+  // Archive the SIE file to storage (BFL 7 kap 1-2§ retention)
   if (result.success) {
     const storagePath = `${companyId}/${importId}.se`
     const fileBlob = new Blob([fileContent], { type: 'text/plain' })
-    const { error: uploadError } = await supabase.storage
+    const { error: uploadError } = await fileStorage()
       .from('sie-files')
       .upload(storagePath, fileBlob, { upsert: false })
 

@@ -27,26 +27,27 @@ vi.mock('@/lib/init', () => ({
   ensureInitialized: vi.fn(),
 }))
 
-// The GET route signs with the service-role client: the storage SELECT
-// policy only covers the uploader's own folder, so a company member viewing
-// a colleague's upload cannot sign with their own client.
-const createSignedUrlMock = vi.fn()
-const serviceStorageFromMock = vi.fn(() => ({ createSignedUrl: createSignedUrlMock }))
-vi.mock('@/lib/supabase/server', () => ({
-  createServiceClient: () => ({
-    storage: { from: serviceStorageFromMock },
-  }),
+// Shared fs-backed storage bucket mock (lib/storage/local): tests steer
+// individual methods via mockStorage(); beforeEach restores the defaults.
+function storageDefaults() {
+  return {
+    createSignedUrl: vi.fn().mockResolvedValue({
+      data: { signedUrl: 'https://example.com/signed' },
+      error: null,
+    }),
+    remove: vi.fn().mockResolvedValue({ data: [], error: null }),
+  }
+}
+
+const storageBucket: Record<string, unknown> = storageDefaults()
+
+vi.mock('@/lib/storage/local', () => ({
+  fileStorage: () => ({ from: () => storageBucket }),
 }))
 
-// deleteDocument removes storage objects via the cookieless service-role
-// client: the documents bucket is WORM (no DELETE policy on storage.objects),
-// so a caller-bound remove() is silently blocked by RLS.
-const serviceRemoveMock = vi.fn()
-vi.mock('@/lib/auth/api-keys', () => ({
-  createServiceClientNoCookies: () => ({
-    storage: { from: vi.fn(() => ({ remove: serviceRemoveMock })) },
-  }),
-}))
+function mockStorage(overrides: Record<string, unknown>) {
+  Object.assign(storageBucket, overrides)
+}
 
 import { GET, DELETE } from '../route'
 import { requireWritePermission } from '@/lib/auth/require-write'
@@ -61,11 +62,7 @@ beforeEach(() => {
   requireAuthMock.mockResolvedValue({ user: mockUser, supabase: mockSupabase, error: null })
   // Reset write-permission mock to default ok
   vi.mocked(requireWritePermission).mockResolvedValue({ ok: true })
-  createSignedUrlMock.mockResolvedValue({
-    data: { signedUrl: 'https://example.com/signed' },
-    error: null,
-  })
-  serviceRemoveMock.mockResolvedValue({ data: [], error: null })
+  mockStorage(storageDefaults())
 })
 
 function makeReq(method: 'GET' | 'DELETE' = 'DELETE') {
@@ -95,7 +92,9 @@ describe('GET /api/documents/[id]', () => {
 
   it('returns 500 when the signed URL cannot be created', async () => {
     enqueue({ data: makeDocumentAttachment({ id: 'doc-1' }), error: null })
-    createSignedUrlMock.mockResolvedValue({ data: null, error: { message: 'boom' } })
+    mockStorage({
+      createSignedUrl: vi.fn().mockResolvedValue({ data: null, error: { message: 'boom' } }),
+    })
 
     const res = await GET(makeReq('GET'), createMockRouteParams({ id: 'doc-1' }))
     const { status, body } = await parseJsonResponse<{ error: string }>(res)
@@ -108,9 +107,15 @@ describe('GET /api/documents/[id]', () => {
     const row = makeDocumentAttachment({
       id: 'doc-1',
       file_name: 'kvitto.pdf',
-      storage_path: 'documents/user-1/kvitto.pdf',
+      storage_path: 'documents/company-1/user-1/kvitto.pdf',
     })
     enqueue({ data: row, error: null })
+
+    const createSignedUrl = vi.fn().mockResolvedValue({
+      data: { signedUrl: 'https://example.com/signed' },
+      error: null,
+    })
+    mockStorage({ createSignedUrl })
 
     const handler = vi.fn()
     eventBus.on('document.accessed', handler)
@@ -124,8 +129,7 @@ describe('GET /api/documents/[id]', () => {
     expect(body.data.id).toBe('doc-1')
     expect(body.data.download_url).toBe('https://example.com/signed')
 
-    expect(serviceStorageFromMock).toHaveBeenCalledWith('documents')
-    expect(createSignedUrlMock).toHaveBeenCalledWith('documents/user-1/kvitto.pdf', 3600)
+    expect(createSignedUrl).toHaveBeenCalledWith('documents/company-1/user-1/kvitto.pdf', 3600)
 
     expect(handler).toHaveBeenCalledOnce()
     expect(handler).toHaveBeenCalledWith(
@@ -138,16 +142,21 @@ describe('GET /api/documents/[id]', () => {
   })
 
   it('signs attachments stored under another company member folder', async () => {
-    // Regression: the storage SELECT policy is per-uploader-folder, so signing
-    // with the user-bound client failed for every colleague-uploaded document
-    // ("Failed to create download URL"). The service client must sign after
-    // the company-scoped row fetch has authorized access.
+    // A colleague-uploaded document must be downloadable by every company
+    // member: the company-scoped row fetch is the authorization, and the
+    // storage backend signs whatever key that row points at.
     const row = makeDocumentAttachment({
       id: 'doc-2',
       file_name: 'leverantorsfaktura.pdf',
-      storage_path: 'documents/other-member/leverantorsfaktura.pdf',
+      storage_path: 'documents/company-1/other-member/leverantorsfaktura.pdf',
     })
     enqueue({ data: row, error: null })
+
+    const createSignedUrl = vi.fn().mockResolvedValue({
+      data: { signedUrl: 'https://example.com/signed' },
+      error: null,
+    })
+    mockStorage({ createSignedUrl })
 
     const res = await GET(makeReq('GET'), createMockRouteParams({ id: 'doc-2' }))
     const { status, body } = await parseJsonResponse<{
@@ -156,12 +165,10 @@ describe('GET /api/documents/[id]', () => {
 
     expect(status).toBe(200)
     expect(body.data.download_url).toBe('https://example.com/signed')
-    expect(createSignedUrlMock).toHaveBeenCalledWith(
-      'documents/other-member/leverantorsfaktura.pdf',
+    expect(createSignedUrl).toHaveBeenCalledWith(
+      'documents/company-1/other-member/leverantorsfaktura.pdf',
       3600,
     )
-    // The user-bound client must not be used for signing at all.
-    expect(mockSupabase.storage.from).not.toHaveBeenCalled()
   })
 })
 
@@ -222,13 +229,16 @@ describe('DELETE /api/documents/[id]', () => {
       data: {
         id: 'doc-1',
         file_name: 'kvitto.pdf',
-        storage_path: 'documents/user-1/kvitto.pdf',
+        storage_path: 'documents/company-1/user-1/kvitto.pdf',
         journal_entry_id: null,
         user_id: 'user-1',
       },
       error: null,
     })
     enqueue({ data: null, error: null }) // delete
+
+    const remove = vi.fn().mockResolvedValue({ data: [], error: null })
+    mockStorage({ remove })
 
     const handler = vi.fn()
     eventBus.on('document.deleted', handler)
@@ -239,17 +249,10 @@ describe('DELETE /api/documents/[id]', () => {
     expect(status).toBe(200)
     expect(body.data).toEqual({ id: 'doc-1', deleted: true })
 
-    // Both storage layouts are removed: the stored pointer plus the alternate
-    // candidate key. During the company-scoped path migration a document can
-    // exist under either prefix, and removing only the stored one would leave a
-    // readable orphan copy of a document the user asked to erase. The removal
-    // must go through the service-role client (WORM bucket: RLS silently
-    // blocks a caller-bound remove()), never the user-bound client.
-    expect(serviceRemoveMock).toHaveBeenCalledWith([
-      'documents/user-1/kvitto.pdf',
-      'documents/company-1/user-1/kvitto.pdf',
-    ])
-    expect(mockSupabase.storage.from).not.toHaveBeenCalled()
+    // The stored object is removed only after the row delete succeeded; the
+    // retention backstop for linked documents is the block_document_deletion
+    // DB trigger, not the storage layer.
+    expect(remove).toHaveBeenCalledWith(['documents/company-1/user-1/kvitto.pdf'])
 
     expect(handler).toHaveBeenCalledOnce()
     expect(handler).toHaveBeenCalledWith(

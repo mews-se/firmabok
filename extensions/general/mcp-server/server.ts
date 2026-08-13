@@ -15,6 +15,7 @@ import {
   TOOL_SCOPE_MAP,
 } from '@/lib/auth/api-keys'
 import { createLogger } from '@/lib/logger'
+import { fileStorage } from '@/lib/storage/local'
 import { roundOre, sumOre } from '@/lib/money'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { buildMappingResultFromCategory } from '@/lib/bookkeeping/category-mapping'
@@ -7151,7 +7152,6 @@ export const tools: McpTool[] = [
       resolveMcpDocumentMimeType(fileName, args.mime_type)
       const uploadId = crypto.randomUUID()
       const reservation = await createPendingDocumentUpload(
-        supabase,
         companyId,
         userId,
         uploadId,
@@ -8082,7 +8082,7 @@ export const tools: McpTool[] = [
       if (!doc) throw new Error('Document not found')
 
       const ttlSeconds = 300
-      const { data: signed, error: signError } = await supabase.storage
+      const { data: signed, error: signError } = await fileStorage()
         .from('documents')
         .createSignedUrl(doc.storage_path, ttlSeconds)
 
@@ -8714,9 +8714,9 @@ export const tools: McpTool[] = [
         include_documents: includeDocuments,
       })
 
-      // Upload to Storage under a per-user audit-packages folder
+      // Upload to storage under a per-user audit-packages folder
       const storagePath = `${userId}/audit-packages/${Date.now()}_${fileName}`
-      const { error: uploadErr } = await supabase.storage
+      const { error: uploadErr } = await fileStorage()
         .from('documents')
         .upload(storagePath, new Uint8Array(zipBuffer), {
           contentType: 'application/zip',
@@ -8726,12 +8726,12 @@ export const tools: McpTool[] = [
 
       // Sign for 1 hour
       const SIGNED_URL_TTL_SECONDS = 3600
-      const { data: signed, error: signErr } = await supabase.storage
+      const { data: signed, error: signErr } = await fileStorage()
         .from('documents')
         .createSignedUrl(storagePath, SIGNED_URL_TTL_SECONDS)
       if (signErr || !signed) {
         // Best-effort cleanup of the uploaded blob if signing failed
-        await supabase.storage.from('documents').remove([storagePath])
+        await fileStorage().from('documents').remove([storagePath])
         throw new Error(`Failed to sign archive URL: ${signErr?.message ?? 'unknown error'}`)
       }
 

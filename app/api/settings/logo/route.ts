@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
-import { createServiceClient } from '@/lib/supabase/server'
 import { withRouteContext } from '@/lib/api/with-route-context'
+import { fileStorage } from '@/lib/storage/local'
 import { getErrorMessage as getUserErrorMessage } from '@/lib/errors/get-error-message'
 import { LOGO_UPLOAD_MAX_BYTES, LOGO_UPLOAD_MAX_MB } from '@/lib/invoices/branding-constants'
 
@@ -34,32 +34,24 @@ export const POST = withRouteContext(
     const ext = mimeToExt[file.type] ?? 'png'
     const storagePath = `${companyId}/logo-${Date.now()}.${ext}`
 
-    const serviceClient = createServiceClient()
+    const logos = fileStorage().from('logos')
 
     // Remove any previous logo files for this company so we don't pile up orphans.
-    const { data: existing } = await serviceClient.storage
-      .from('logos')
-      .list(companyId)
+    const { data: existing } = await logos.list(companyId)
     if (existing && existing.length > 0) {
-      await serviceClient.storage
-        .from('logos')
-        .remove(existing.map((f) => `${companyId}/${f.name}`))
+      await logos.remove(existing.map((f) => `${companyId}/${f.name}`))
     }
 
-    const { error: uploadError } = await serviceClient.storage
-      .from('logos')
-      .upload(storagePath, buffer, {
-        contentType: file.type,
-        upsert: true,
-      })
+    const { error: uploadError } = await logos.upload(storagePath, buffer, {
+      contentType: file.type,
+      upsert: true,
+    })
 
     if (uploadError) {
       return NextResponse.json({ error: `Uppladdning misslyckades: ${getUserErrorMessage(uploadError)}` }, { status: 500 })
     }
 
-    const { data: urlData } = serviceClient.storage
-      .from('logos')
-      .getPublicUrl(storagePath)
+    const { data: urlData } = logos.getPublicUrl(storagePath)
 
     // Update company settings
     const { error: updateError } = await supabase
@@ -87,14 +79,10 @@ export const DELETE = withRouteContext(
       .single()
 
     if (settings?.logo_url) {
-      const serviceClient = createServiceClient()
-      const { data: existing } = await serviceClient.storage
-        .from('logos')
-        .list(companyId)
+      const logos = fileStorage().from('logos')
+      const { data: existing } = await logos.list(companyId)
       if (existing && existing.length > 0) {
-        await serviceClient.storage
-          .from('logos')
-          .remove(existing.map((f) => `${companyId}/${f.name}`))
+        await logos.remove(existing.map((f) => `${companyId}/${f.name}`))
       }
     }
 

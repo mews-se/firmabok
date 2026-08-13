@@ -25,7 +25,7 @@ CREATE INDEX idx_journal_entries_source_voucher
   WHERE source_voucher_series IS NOT NULL;
 
 -- Extend the immutability trigger to cover the new columns — matches the
--- pattern applied to commit_method/rubric_version in 20260420120000.
+-- pattern applied to commit_method/rubric_version in 20260420120001.
 CREATE OR REPLACE FUNCTION public.enforce_journal_entry_immutability()
 RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN

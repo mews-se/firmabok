@@ -20,14 +20,23 @@ vi.mock('@/lib/auth/require-write', () => ({
   requireWritePermission: vi.fn().mockResolvedValue({ ok: true }),
 }))
 
-const downloadMock = vi.fn()
-vi.mock('@/lib/supabase/server', () => ({
-  createServiceClient: () => ({
-    storage: {
-      from: () => ({ download: downloadMock }),
-    },
-  }),
+// Shared fs-backed storage bucket mock (lib/storage/local): tests steer
+// individual methods via mockStorage(); beforeEach restores the defaults.
+function storageDefaults() {
+  return {
+    download: vi.fn().mockResolvedValue({ data: new Blob(['%PDF-1.4']), error: null }),
+  }
+}
+
+const storageBucket: Record<string, unknown> = storageDefaults()
+
+vi.mock('@/lib/storage/local', () => ({
+  fileStorage: () => ({ from: () => storageBucket }),
 }))
+
+function mockStorage(overrides: Record<string, unknown>) {
+  Object.assign(storageBucket, overrides)
+}
 
 import { GET } from '../route'
 import { NextResponse } from 'next/server'
@@ -58,7 +67,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   reset()
   requireAuthMock.mockResolvedValue({ user: mockUser, supabase: mockSupabase, error: null })
-  downloadMock.mockResolvedValue({ data: new Blob(['%PDF-1.4']), error: null })
+  mockStorage(storageDefaults())
 })
 
 describe('GET /api/documents/[id]/inline', () => {
@@ -90,7 +99,9 @@ describe('GET /api/documents/[id]/inline', () => {
 
   it('returns 500 when the storage download fails', async () => {
     enqueue({ data: makeDoc(), error: null })
-    downloadMock.mockResolvedValue({ data: null, error: { message: 'boom' } })
+    mockStorage({
+      download: vi.fn().mockResolvedValue({ data: null, error: { message: 'boom' } }),
+    })
     const res = await GET(makeReq(), createMockRouteParams({ id: 'doc-1' }))
     const { status } = await parseJsonResponse(res)
     expect(status).toBe(500)

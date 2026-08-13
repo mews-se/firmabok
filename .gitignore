@@ -101,3 +101,4 @@ scripts/reopen-bokslut.sql
 # part of the app. The integration itself lives in lib/analytics/ and
 # instrumentation-client.ts.
 .posthog/
+.storage/

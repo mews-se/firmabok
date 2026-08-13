@@ -95,10 +95,6 @@ jobs:
           echo "New migrations ($COUNT):"
           cat /tmp/new-migrations.txt
 
-      - name: Bootstrap storage schema
-        if: steps.newmig.outputs.count != '0'
-        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f tests/pg/bootstrap.sql
-
       - name: Apply the schema as it stands at the merge base
         if: steps.newmig.outputs.count != '0'
         env:
@@ -178,12 +174,6 @@ jobs:
 
       - name: Install psql client
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends postgresql-client
-
-      - name: Bootstrap storage schema
-        # The supabase/postgres image ships a partial storage schema; the rest
-        # is provisioned by the storage-api service at runtime, which we do
-        # not run in CI. This aligns the schema with what migrations expect.
-        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f tests/pg/bootstrap.sql
 
       - name: Apply migrations
         run: |

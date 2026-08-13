@@ -18,13 +18,11 @@ import sharp from 'sharp'
 import { prepareInvoicePdfRender, buildPaymentLinkQrDataUrl } from '@/lib/invoices/pdf-render-helpers'
 import { makeCompanySettings, makeInvoice } from '@/tests/helpers'
 
+// Shared fs-backed storage bucket mock (lib/storage/local): the custom
+// invoice font is the only storage read on this path.
 const fontDownloadMock = vi.hoisted(() => vi.fn())
-vi.mock('@/lib/supabase/server', () => ({
-  createServiceClient: () => ({
-    storage: {
-      from: () => ({ download: fontDownloadMock }),
-    },
-  }),
+vi.mock('@/lib/storage/local', () => ({
+  fileStorage: () => ({ from: () => ({ download: fontDownloadMock }) }),
 }))
 
 const PNG_DATA_URL_PREFIX = 'data:image/png;base64,'

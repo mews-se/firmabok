@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { createServiceClientNoCookies } from '@/lib/auth/api-keys'
 import { eventBus } from '@/lib/events'
+import { fileStorage } from '@/lib/storage/local'
 import type { DocumentAttachment, DocumentUploadSource } from '@/types'
 
 /**
@@ -33,26 +33,13 @@ function sanitizeFileName(name: string): string {
 }
 
 /**
- * Storage key layout for the `documents` bucket.
+ * Storage key layout for the `documents` bucket:
  *
- * NEW (company-scoped, written since 20260726092000):
  *   documents/{companyId}/{userId}/{timestamp}_{filename}
  *
- * LEGACY (uploader-scoped, written before that migration):
- *   documents/{userId}/{timestamp}_{filename}
- *
- * The legacy layout carried no company_id, so the storage RLS policy could
- * only scope on auth.uid(): an ex-member kept direct Storage access to every
- * document they had uploaded even after their company_members row was
- * deleted. The company-scoped layout lets the policy check
- * public.user_company_ids() instead.
- *
- * Both layouts coexist until the Phase B backfill
- * (scripts/backfill-document-storage-paths.ts) has re-homed every legacy
- * object. Read paths must therefore tolerate both: use
- * documentStoragePathCandidates() (or the downloadDocumentObject /
- * createDocumentSignedUrl helpers below) rather than trusting the stored
- * pointer to be the only key that resolves.
+ * The company prefix keeps the on-disk layout stable and makes the key alone
+ * reveal which tenant owns the object. Authorization happens in the routes
+ * and services against the database before storage is touched.
  */
 export const DOCUMENTS_BUCKET = 'documents'
 const DOCUMENTS_PATH_ROOT = 'documents'
@@ -90,104 +77,45 @@ export function buildReservedDocumentStoragePath(
   return `${DOCUMENTS_PATH_ROOT}/${companyId}/${userId}/${uploadId}_${sanitizeFileName(fileName)}`
 }
 
-/** True when the key already sits under the company-scoped prefix. */
-export function isCompanyScopedDocumentPath(storagePath: string, companyId: string): boolean {
-  return storagePath.startsWith(`${DOCUMENTS_PATH_ROOT}/${companyId}/`)
-}
-
-/**
- * Translate a legacy `documents/{userId}/...` key into its company-scoped
- * equivalent. Returns null when the key is not in the legacy layout (already
- * company-scoped, or one of the non-document shapes the bucket also holds,
- * e.g. the MCP audit-package `{userId}/audit-packages/...` keys).
- */
-export function companyScopedDocumentPath(
-  storagePath: string,
-  companyId: string
-): string | null {
-  if (isCompanyScopedDocumentPath(storagePath, companyId)) return null
-  const prefix = `${DOCUMENTS_PATH_ROOT}/`
-  if (!storagePath.startsWith(prefix)) return null
-  return `${prefix}${companyId}/${storagePath.slice(prefix.length)}`
-}
-
-/**
- * Translate a company-scoped key back into its legacy `documents/{userId}/...`
- * equivalent. Returns null when the key is not company-scoped.
- */
-export function legacyDocumentPath(storagePath: string, companyId: string): string | null {
-  const prefix = `${DOCUMENTS_PATH_ROOT}/${companyId}/`
-  if (!storagePath.startsWith(prefix)) return null
-  return `${DOCUMENTS_PATH_ROOT}/${storagePath.slice(prefix.length)}`
-}
-
-/**
- * Every key that could hold the bytes for a document row, most likely first.
- * The stored pointer always wins; the alternate layout is the fallback for
- * the window in which the Phase B backfill has moved (or not yet moved) an
- * object relative to the DB pointer.
- */
-export function documentStoragePathCandidates(
-  storagePath: string,
-  companyId: string | null | undefined
-): string[] {
-  const candidates = [storagePath]
-  if (companyId) {
-    const alternate =
-      companyScopedDocumentPath(storagePath, companyId) ??
-      legacyDocumentPath(storagePath, companyId)
-    if (alternate && alternate !== storagePath) candidates.push(alternate)
-  }
-  return candidates
-}
-
 type StorageErrorLike = { message?: string } | null
 
 /**
- * Download a document object, tolerating both key layouts.
- *
- * Returns the resolved key alongside the blob so callers can log or repair
- * a stale `document_attachments.storage_path` pointer. When every candidate
- * fails, the FIRST error is returned: it refers to the stored pointer, which
- * is the actionable one.
+ * Download a document object by its stored key. Returns the resolved key
+ * alongside the blob so callers can log which key served the bytes.
  */
 export async function downloadDocumentObject(
-  supabase: SupabaseClient,
-  storagePath: string,
-  companyId: string | null | undefined
+  storagePath: string
 ): Promise<{ blob: Blob | null; error: StorageErrorLike; resolvedPath: string | null }> {
-  let firstError: StorageErrorLike = null
-  for (const candidate of documentStoragePathCandidates(storagePath, companyId)) {
-    const { data, error } = await supabase.storage.from(DOCUMENTS_BUCKET).download(candidate)
-    if (!error && data) {
-      return { blob: data as Blob, error: null, resolvedPath: candidate }
-    }
-    firstError ??= (error as StorageErrorLike) ?? { message: 'download returned no data' }
+  const { data, error } = await fileStorage().from(DOCUMENTS_BUCKET).download(storagePath)
+  if (!error && data) {
+    return { blob: data as Blob, error: null, resolvedPath: storagePath }
   }
-  return { blob: null, error: firstError, resolvedPath: null }
+  return {
+    blob: null,
+    error: (error as StorageErrorLike) ?? { message: 'download returned no data' },
+    resolvedPath: null,
+  }
 }
 
 /**
- * Create a signed URL for a document object, tolerating both key layouts.
- * Same fallback contract as downloadDocumentObject().
+ * Create a signed URL for a document object by its stored key.
+ * Same contract as downloadDocumentObject().
  */
 export async function createDocumentSignedUrl(
-  supabase: SupabaseClient,
   storagePath: string,
-  companyId: string | null | undefined,
   expiresInSeconds: number
 ): Promise<{ signedUrl: string | null; error: StorageErrorLike; resolvedPath: string | null }> {
-  let firstError: StorageErrorLike = null
-  for (const candidate of documentStoragePathCandidates(storagePath, companyId)) {
-    const { data, error } = await supabase.storage
-      .from(DOCUMENTS_BUCKET)
-      .createSignedUrl(candidate, expiresInSeconds)
-    if (!error && data?.signedUrl) {
-      return { signedUrl: data.signedUrl, error: null, resolvedPath: candidate }
-    }
-    firstError ??= (error as StorageErrorLike) ?? { message: 'createSignedUrl returned no data' }
+  const { data, error } = await fileStorage()
+    .from(DOCUMENTS_BUCKET)
+    .createSignedUrl(storagePath, expiresInSeconds)
+  if (!error && data?.signedUrl) {
+    return { signedUrl: data.signedUrl, error: null, resolvedPath: storagePath }
   }
-  return { signedUrl: null, error: firstError, resolvedPath: null }
+  return {
+    signedUrl: null,
+    error: (error as StorageErrorLike) ?? { message: 'createSignedUrl returned no data' },
+    resolvedPath: null,
+  }
 }
 
 export const MAX_DOCUMENT_SIZE = 10 * 1024 * 1024 // 10 MB
@@ -313,37 +241,6 @@ export function validateDocumentMagicBytes(buffer: ArrayBuffer, declaredMimeType
   return null
 }
 
-let bucketVerified = false
-
-/** @internal Reset bucket verification flag: for testing only */
-export function _resetBucketVerified() {
-  bucketVerified = false
-}
-
-/**
- * Ensure the 'documents' storage bucket exists, creating it if missing.
- * Runs once per process lifetime (same pattern as ensureInitialized).
- *
- * Uses a cookieless service-role client for bucket admin operations
- * (getBucket/createBucket require service-role). This avoids the cookie
- * dependency that hangs in API-key auth contexts (e.g. MCP server).
- */
-async function ensureDocumentsBucket(): Promise<void> {
-  if (bucketVerified) return
-
-  const serviceClient = createServiceClientNoCookies()
-  const { data: bucket } = await serviceClient.storage.getBucket('documents')
-
-  if (!bucket) {
-    await serviceClient.storage.createBucket('documents', {
-      public: false,
-      fileSizeLimit: 52428800, // 50 MB
-    })
-  }
-
-  bucketVerified = true
-}
-
 /**
  * Remove a bounded batch of abandoned signed-upload objects. Pending objects
  * are not accounting records and have no document_attachments row. Completed
@@ -354,9 +251,8 @@ export async function cleanupExpiredPendingDocumentUploads(
   userId: string,
   now: number = Date.now()
 ): Promise<number> {
-  const serviceClient = createServiceClientNoCookies()
   const prefix = `${DOCUMENTS_PATH_ROOT}/${companyId}/${userId}/pending`
-  const storage = serviceClient.storage.from(DOCUMENTS_BUCKET)
+  const storage = fileStorage().from(DOCUMENTS_BUCKET)
   const { data, error } = await storage.list(prefix, {
     limit: PENDING_DOCUMENT_UPLOAD_CLEANUP_LIMIT,
     offset: 0,
@@ -389,18 +285,16 @@ export interface PendingDocumentUploadReservation {
  * The returned URL accepts the raw file bytes via PUT without authentication.
  */
 export async function createPendingDocumentUpload(
-  supabase: SupabaseClient,
   companyId: string,
   userId: string,
   uploadId: string,
   fileName: string,
   now: number = Date.now()
 ): Promise<PendingDocumentUploadReservation> {
-  await ensureDocumentsBucket()
   await cleanupExpiredPendingDocumentUploads(companyId, userId, now)
 
   const storagePath = buildPendingDocumentStoragePath(companyId, userId, uploadId, fileName)
-  const { data, error } = await supabase.storage
+  const { data, error } = await fileStorage()
     .from(DOCUMENTS_BUCKET)
     .createSignedUploadUrl(storagePath, { upsert: false })
 
@@ -474,8 +368,7 @@ export async function completePendingDocumentUpload(
   mimeType: string,
   now: number = Date.now()
 ): Promise<CompletedPendingDocumentUpload> {
-  const serviceClient = createServiceClientNoCookies()
-  const storage = serviceClient.storage.from(DOCUMENTS_BUCKET)
+  const storage = fileStorage().from(DOCUMENTS_BUCKET)
   const pendingPath = buildPendingDocumentStoragePath(companyId, userId, uploadId, fileName)
   const permanentPath = buildReservedDocumentStoragePath(companyId, userId, uploadId, fileName)
 
@@ -592,8 +485,6 @@ export async function uploadDocument(
     journal_entry_line_id?: string
   } = {}
 ): Promise<DocumentAttachment> {
-  await ensureDocumentsBucket()
-
   // Reject corrupt uploads at the boundary: see validateDocumentMagicBytes.
   if (file.type) {
     const magicError = validateDocumentMagicBytes(file.buffer, file.type)
@@ -603,12 +494,11 @@ export async function uploadDocument(
   // Compute SHA-256 hash
   const sha256Hash = await computeSHA256(file.buffer)
 
-  // Company-scoped storage key: the tenant id must be IN the key so the
-  // storage RLS policy can revoke access when a membership is removed.
+  // Company-scoped storage key: kept for a stable on-disk layout and so the
+  // key alone reveals which tenant owns the object.
   const storagePath = buildDocumentStoragePath(companyId, userId, file.name)
 
-  // Upload to Supabase Storage
-  const { error: uploadError } = await supabase.storage
+  const { error: uploadError } = await fileStorage()
     .from('documents')
     .upload(storagePath, file.buffer, {
       contentType: file.type || 'application/octet-stream',
@@ -642,16 +532,12 @@ export async function uploadDocument(
     .single()
 
   if (error) {
-    // Clean up the just-uploaded object on record creation failure. The
-    // documents bucket is WORM by design: storage.objects has NO DELETE
-    // policy, so remove() on the caller's cookie-bound client is silently
-    // blocked by RLS (it reports success without deleting anything) and the
-    // object would linger as an orphan. Only the service role can actually
-    // remove it. Authorization: the key was built by this very call for the
-    // caller's own failed upload, and no DB row references it.
-    await createServiceClientNoCookies()
-      .storage.from(DOCUMENTS_BUCKET)
-      .remove([storagePath])
+    // Clean up the just-uploaded object on record creation failure so it
+    // doesn't linger as an orphan. Authorization: the key was built by this
+    // very call for the caller's own failed upload, and no DB row references
+    // it. The WORM guarantee for linked documents lives in the DB trigger
+    // (block_document_deletion), not in the storage layer.
+    await fileStorage().from(DOCUMENTS_BUCKET).remove([storagePath])
     throw new Error(`Failed to create document record: ${error.message}`)
   }
 
@@ -679,8 +565,6 @@ export async function createNewVersion(
   originalId: string,
   file: { name: string; buffer: ArrayBuffer; type?: string }
 ): Promise<DocumentAttachment> {
-  await ensureDocumentsBucket()
-
   if (file.type) {
     const magicError = validateDocumentMagicBytes(file.buffer, file.type)
     if (magicError) throw new Error(magicError)
@@ -704,14 +588,14 @@ export async function createNewVersion(
     throw new Error('Failed to create new version: original document not found')
   }
 
-  // Upload new file to Storage
+  // Upload new file to storage
   const storagePath = buildDocumentStoragePath(
     original.company_id as string,
     userId,
     file.name
   )
 
-  const { error: uploadError } = await supabase.storage
+  const { error: uploadError } = await fileStorage()
     .from('documents')
     .upload(storagePath, file.buffer, {
       contentType: file.type || 'application/octet-stream',
@@ -734,15 +618,10 @@ export async function createNewVersion(
   })
 
   if (rpcError) {
-    // Clean up the uploaded file on RPC failure. Service-role client for the
-    // same reason as in uploadDocument: the WORM bucket has no DELETE policy,
-    // so a caller-bound remove() is silently blocked by RLS and the object
-    // would be orphaned. The original-document fetch above (user-scoped, RLS)
-    // plus the failed RPC are the authorization context; the key was created
-    // by this call and nothing references it.
-    await createServiceClientNoCookies()
-      .storage.from(DOCUMENTS_BUCKET)
-      .remove([storagePath])
+    // Clean up the uploaded file on RPC failure. The original-document fetch
+    // above (user-scoped, RLS) plus the failed RPC are the authorization
+    // context; the key was created by this call and nothing references it.
+    await fileStorage().from(DOCUMENTS_BUCKET).remove([storagePath])
     throw new Error(`Failed to create new version: ${rpcError.message}`)
   }
 
@@ -868,21 +747,10 @@ export async function deleteDocument(
   }
 
   if (doc.storage_path) {
-    // Remove BOTH key layouts. During the Phase B backfill a document can
-    // briefly exist under the legacy and the company-scoped key at once;
-    // removing only the stored pointer would leave a readable orphan copy of
-    // a document the user asked to erase.
-    //
-    // The removal runs on the service-role client: the documents bucket is
-    // WORM by design (storage.objects has no DELETE policy), so the caller's
-    // cookie-bound client is silently blocked by RLS and remove() reports
-    // success while both objects survive, readable by every company member
-    // under the company-scoped SELECT policy. Authorization already happened
-    // above: the company-filtered row fetch plus the row delete that just
-    // succeeded (with block_document_deletion() as the DB-level backstop).
-    await createServiceClientNoCookies()
-      .storage.from(DOCUMENTS_BUCKET)
-      .remove(documentStoragePathCandidates(doc.storage_path, companyId))
+    // Authorization already happened above: the company-filtered row fetch
+    // plus the row delete that just succeeded (with block_document_deletion()
+    // as the DB-level backstop).
+    await fileStorage().from(DOCUMENTS_BUCKET).remove([doc.storage_path])
   }
 
   await eventBus.emit({
@@ -918,18 +786,9 @@ export async function verifyIntegrity(
     throw new Error('Document not found')
   }
 
-  // Download via the service-role client: the storage SELECT policy only
-  // covers the uploader's own folder (documents/{uid}/...), so a caller-bound
-  // client cannot read colleague-uploaded files. The company-filtered row
-  // fetch above (RLS on document_attachments) is the authorization. The
-  // helper tolerates the legacy and the company-scoped key layout while the
-  // Phase B backfill is in flight.
-  const serviceClient = createServiceClientNoCookies()
-  const { blob: fileData, error: downloadError } = await downloadDocumentObject(
-    serviceClient,
-    doc.storage_path,
-    companyId
-  )
+  // The company-filtered row fetch above is the authorization for the
+  // storage read below.
+  const { blob: fileData, error: downloadError } = await downloadDocumentObject(doc.storage_path)
 
   if (downloadError || !fileData) {
     throw new Error(`Failed to download document: ${downloadError?.message}`)

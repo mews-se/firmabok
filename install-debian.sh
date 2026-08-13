@@ -2,7 +2,7 @@
 #
 # LAN install on a fresh Debian server. Installs Docker if needed,
 # generates the stack's secrets and brings up
-# docker-compose.yml: the app, its cron sidecar and the four
+# docker-compose.yml: the app, its cron sidecar and the three
 # Supabase services it uses, behind nginx on a single origin.
 #
 #   ./install-debian.sh <lan-ip>   install, or update an existing install

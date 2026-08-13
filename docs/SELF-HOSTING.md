@@ -22,15 +22,15 @@ flowchart LR
         db[("db<br/>supabase/postgres")]
         auth["auth · GoTrue"]
         rest["rest · PostgREST"]
-        storage["storage-api"]
+        vol[("storage_data<br/>dokumentvolym")]
 
         nginx --> app
         nginx -- /auth/v1 --> auth
         nginx -- /rest/v1 --> rest
-        nginx -- /storage/v1 --> storage
+        app --- vol
         cron -. Bearer CRON_SECRET .-> app
         migrate --> db
-        auth & rest & storage --> db
+        auth & rest --> db
     end
 ```
 
@@ -42,11 +42,13 @@ Designval som är bra att känna till:
   följer adressens schema (`lib/auth/cookie-secure.ts`). Sätter du en
   egen TLS-proxy framför på en https-adress slås Secure-cookies på av
   sig själva.
-- **Ingen Kong, ingen studio, ingen pooler, ingen realtime.**
-  Tjänsterna sköter JWT-verifieringen själva; administrera databasen
-  med `psql` genom `docker exec`. Appen frågar servern i bakgrunden
-  efter ändringar gjorda utanför den egna fliken i stället för att
-  hålla websockets öppna — det sparade stackens tyngsta vilotjänst.
+- **Ingen Kong, ingen studio, ingen pooler, ingen realtime, ingen
+  storage-api.** Tjänsterna sköter JWT-verifieringen själva;
+  administrera databasen med `psql` genom `docker exec`. Appen frågar
+  servern i bakgrunden efter ändringar gjorda utanför den egna fliken
+  i stället för att hålla websockets öppna, och dokumentarkivet läses
+  och skrivs direkt av appen på volymen `storage_data` — de två
+  tyngsta vilotjänsterna i stacken behövdes inte.
 - **Migrationerna är en tjänst.** Engångscontainern `migrate` kör nya
   filer ur `supabase/migrations/` vid varje `up`, bokför dem i
   tabellen `_firmabok.migrations`, och appen får inte starta förrän

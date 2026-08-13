@@ -20,43 +20,53 @@ function makeBuilder() {
   return b
 }
 
-function makeClient(storageOverrides: Record<string, unknown> = {}) {
+function makeClient() {
   return {
     from: vi.fn().mockImplementation(() => makeBuilder()),
     rpc: vi.fn().mockImplementation(async () => results[resultIdx++] ?? { data: null, error: null }),
-    storage: {
-      getBucket: vi.fn().mockResolvedValue({ data: { id: 'documents' }, error: null }),
-      createBucket: vi.fn().mockResolvedValue({ data: { name: 'documents' }, error: null }),
-      from: vi.fn().mockReturnValue({
-        upload: vi.fn().mockResolvedValue({ data: {}, error: null }),
-        createSignedUploadUrl: vi.fn().mockResolvedValue({
-          data: { signedUrl: 'https://example.com/signed-upload' },
-          error: null,
-        }),
-        download: vi.fn().mockResolvedValue({
-          data: new Blob(['test content']),
-          error: null,
-        }),
-        list: vi.fn().mockResolvedValue({ data: [], error: null }),
-        move: vi.fn().mockResolvedValue({ data: {}, error: null }),
-        remove: vi.fn().mockResolvedValue({ data: [], error: null }),
-        getPublicUrl: vi.fn().mockReturnValue({
-          data: { publicUrl: 'https://example.com/file.pdf' },
-        }),
-        ...storageOverrides,
-      }),
-    },
   }
 }
 
-// verifyIntegrity downloads via the service-role client (the storage SELECT
-// policy is per-uploader-folder); tests set this override to control the
-// downloaded bytes.
-let serviceClientOverride: ReturnType<typeof makeClient> | null = null
+// ============================================================
+// Mock: fs-backed storage (lib/storage/local)
+// ============================================================
 
-vi.mock('@/lib/auth/api-keys', () => ({
-  createServiceClientNoCookies: vi.fn(() => serviceClientOverride ?? makeClient()),
+function storageDefaults() {
+  return {
+    upload: vi.fn().mockResolvedValue({ data: {}, error: null }),
+    createSignedUploadUrl: vi.fn().mockResolvedValue({
+      data: { signedUrl: 'https://example.com/signed-upload' },
+      error: null,
+    }),
+    download: vi.fn().mockResolvedValue({
+      data: new Blob(['test content']),
+      error: null,
+    }),
+    list: vi.fn().mockResolvedValue({ data: [], error: null }),
+    move: vi.fn().mockResolvedValue({ data: {}, error: null }),
+    remove: vi.fn().mockResolvedValue({ data: [], error: null }),
+    createSignedUrl: vi.fn().mockResolvedValue({
+      data: { signedUrl: 'https://example.com/signed' },
+      error: null,
+    }),
+    getPublicUrl: vi.fn().mockReturnValue({
+      data: { publicUrl: 'https://example.com/file.pdf' },
+    }),
+  }
+}
+
+// Every fileStorage().from(bucket) call resolves to this shared bucket mock.
+// Tests steer individual methods via mockStorage(); beforeEach restores the
+// defaults.
+const storageBucket: Record<string, unknown> = storageDefaults()
+
+vi.mock('@/lib/storage/local', () => ({
+  fileStorage: () => ({ from: () => storageBucket }),
 }))
+
+function mockStorage(overrides: Record<string, unknown>) {
+  Object.assign(storageBucket, overrides)
+}
 
 import {
   uploadDocument,
@@ -73,13 +83,8 @@ import {
   computeSHA256,
   PENDING_DOCUMENT_UPLOAD_RETENTION_MS,
   SIGNED_DOCUMENT_UPLOAD_TTL_MS,
-  isCompanyScopedDocumentPath,
-  companyScopedDocumentPath,
-  legacyDocumentPath,
-  documentStoragePathCandidates,
   downloadDocumentObject,
   createDocumentSignedUrl,
-  _resetBucketVerified,
 } from '../document-service'
 
 // A minimal valid PDF byte sequence (header + EOF): passes magic-byte check.
@@ -90,10 +95,9 @@ function pdfBuffer(payload = 'test'): ArrayBuffer {
 beforeEach(() => {
   vi.clearAllMocks()
   eventBus.clear()
-  _resetBucketVerified()
+  mockStorage(storageDefaults())
   resultIdx = 0
   results = []
-  serviceClientOverride = null
 })
 
 describe('validateDocumentMagicBytes: application/xhtml+xml', () => {
@@ -284,9 +288,9 @@ describe('uploadDocument', () => {
     results = [{ data: makeDocumentAttachment({ id: 'doc-1' }), error: null }]
 
     const upload = vi.fn().mockResolvedValue({ data: {}, error: null })
-    const supabase = makeClient({ upload })
+    mockStorage({ upload })
 
-    await uploadDocument(supabase as never, 'user-1', 'company-1', {
+    await uploadDocument(makeClient() as never, 'user-1', 'company-1', {
       name: 'kvitto.pdf',
       buffer: pdfBuffer(),
       type: 'application/pdf',
@@ -299,21 +303,19 @@ describe('uploadDocument', () => {
     expect(key).not.toMatch(/^documents\/user-1\//)
   })
 
-  it('cleans up the uploaded object via the service-role client when the record insert fails', async () => {
-    // The documents bucket is WORM (no DELETE policy): a caller-bound
-    // remove() is silently blocked by RLS, so the failed-upload cleanup must
-    // run on the service-role client or the object is orphaned forever.
+  it('cleans up the uploaded object when the record insert fails', async () => {
+    // Without cleanup the failed upload lingers as an orphaned object. The
+    // WORM guarantee for linked documents lives in the DB trigger
+    // (block_document_deletion), not in the storage layer, so removing the
+    // just-written key is safe here.
     results = [{ data: null, error: { message: 'insert exploded' } }]
 
-    const serviceRemove = vi.fn().mockResolvedValue({ data: [], error: null })
-    serviceClientOverride = makeClient({ remove: serviceRemove })
-
-    const callerRemove = vi.fn().mockResolvedValue({ data: [], error: null })
     const upload = vi.fn().mockResolvedValue({ data: {}, error: null })
-    const supabase = makeClient({ upload, remove: callerRemove })
+    const remove = vi.fn().mockResolvedValue({ data: [], error: null })
+    mockStorage({ upload, remove })
 
     await expect(
-      uploadDocument(supabase as never, 'user-1', 'company-1', {
+      uploadDocument(makeClient() as never, 'user-1', 'company-1', {
         name: 'kvitto.pdf',
         buffer: pdfBuffer(),
         type: 'application/pdf',
@@ -321,8 +323,7 @@ describe('uploadDocument', () => {
     ).rejects.toThrow(/Failed to create document record/)
 
     const uploadedKey = upload.mock.calls[0]![0] as string
-    expect(serviceRemove).toHaveBeenCalledWith([uploadedKey])
-    expect(callerRemove).not.toHaveBeenCalled()
+    expect(remove).toHaveBeenCalledWith([uploadedKey])
   })
 })
 
@@ -337,10 +338,9 @@ describe('model-free signed document uploads', () => {
       data: { signedUrl: 'https://storage.example/upload?token=signed' },
       error: null,
     })
-    const supabase = makeClient({ createSignedUploadUrl })
+    mockStorage({ createSignedUploadUrl })
 
     const reservation = await createPendingDocumentUpload(
-      supabase as never,
       company,
       user,
       uploadId,
@@ -377,7 +377,7 @@ describe('model-free signed document uploads', () => {
 
     const move = vi.fn().mockResolvedValue({ data: {}, error: null })
     const download = vi.fn().mockResolvedValue({ data: new Blob([buffer]), error: null })
-    serviceClientOverride = makeClient({ download, move })
+    mockStorage({ download, move })
 
     const completed = await completePendingDocumentUpload(
       makeClient() as never,
@@ -409,7 +409,7 @@ describe('model-free signed document uploads', () => {
     results = [{ data: document, error: null }]
 
     const move = vi.fn().mockResolvedValue({ data: {}, error: null })
-    serviceClientOverride = makeClient({
+    mockStorage({
       download: vi.fn().mockResolvedValue({ data: new Blob([buffer]), error: null }),
       move,
     })
@@ -431,7 +431,7 @@ describe('model-free signed document uploads', () => {
     results = [{ data: null, error: null }]
     const pendingPath = buildPendingDocumentStoragePath(company, user, uploadId, 'invoice.pdf')
     const remove = vi.fn().mockResolvedValue({ data: [], error: null })
-    serviceClientOverride = makeClient({
+    mockStorage({
       download: vi.fn().mockResolvedValue({ data: new Blob(['not a pdf']), error: null }),
       remove,
     })
@@ -467,7 +467,7 @@ describe('model-free signed document uploads', () => {
       ],
       error: null,
     })
-    serviceClientOverride = makeClient({ list, remove })
+    mockStorage({ list, remove })
 
     const removed = await cleanupExpiredPendingDocumentUploads(company, user, now)
 
@@ -524,9 +524,9 @@ describe('createNewVersion', () => {
     ]
 
     const upload = vi.fn().mockResolvedValue({ data: {}, error: null })
-    const supabase = makeClient({ upload })
+    mockStorage({ upload })
 
-    await createNewVersion(supabase as never, 'user-1', 'doc-1', {
+    await createNewVersion(makeClient() as never, 'user-1', 'doc-1', {
       name: 'test-v2.pdf',
       buffer: pdfBuffer('new content'),
       type: 'application/pdf',
@@ -541,10 +541,10 @@ describe('createNewVersion', () => {
     results = [{ data: null, error: null }]
 
     const upload = vi.fn().mockResolvedValue({ data: {}, error: null })
-    const supabase = makeClient({ upload })
+    mockStorage({ upload })
 
     await expect(
-      createNewVersion(supabase as never, 'user-1', 'doc-missing', {
+      createNewVersion(makeClient() as never, 'user-1', 'doc-missing', {
         name: 'test-v2.pdf',
         buffer: pdfBuffer('new content'),
         type: 'application/pdf',
@@ -553,32 +553,29 @@ describe('createNewVersion', () => {
     expect(upload).not.toHaveBeenCalled()
   })
 
-  it('cleans up the uploaded object via the service-role client when the version RPC fails', async () => {
+  it('cleans up the uploaded object when the version RPC fails', async () => {
     results = [
       { data: { company_id: 'company-1' }, error: null },  // resolve owning company
       { data: null, error: { message: 'rpc exploded' } },  // create_document_version RPC
     ]
 
-    const serviceRemove = vi.fn().mockResolvedValue({ data: [], error: null })
-    serviceClientOverride = makeClient({ remove: serviceRemove })
-
-    const callerRemove = vi.fn().mockResolvedValue({ data: [], error: null })
     const upload = vi.fn().mockResolvedValue({ data: {}, error: null })
-    const supabase = makeClient({ upload, remove: callerRemove })
+    const remove = vi.fn().mockResolvedValue({ data: [], error: null })
+    mockStorage({ upload, remove })
 
     await expect(
-      createNewVersion(supabase as never, 'user-1', 'doc-1', {
+      createNewVersion(makeClient() as never, 'user-1', 'doc-1', {
         name: 'test-v2.pdf',
         buffer: pdfBuffer('new content'),
         type: 'application/pdf',
       }),
     ).rejects.toThrow(/Failed to create new version: rpc exploded/)
 
-    // WORM bucket: the cleanup must go through the service-role client, not
-    // the caller-bound client (whose remove() RLS silently blocks).
+    // The key was created by this very call and no row references it; the
+    // WORM protection for linked documents is the block_document_deletion
+    // DB trigger, not the storage layer.
     const uploadedKey = upload.mock.calls[0]![0] as string
-    expect(serviceRemove).toHaveBeenCalledWith([uploadedKey])
-    expect(callerRemove).not.toHaveBeenCalled()
+    expect(remove).toHaveBeenCalledWith([uploadedKey])
   })
 })
 
@@ -607,111 +604,73 @@ describe('storage key layout helpers', () => {
     )
   })
 
-  it('recognises company-scoped keys', () => {
-    expect(isCompanyScopedDocumentPath(`documents/${company}/${user}/1_a.pdf`, company)).toBe(true)
-    expect(isCompanyScopedDocumentPath(`documents/${user}/1_a.pdf`, company)).toBe(false)
-  })
-
-  it('translates legacy to company-scoped and back', () => {
-    const legacy = `documents/${user}/1_a.pdf`
-    const scoped = `documents/${company}/${user}/1_a.pdf`
-    expect(companyScopedDocumentPath(legacy, company)).toBe(scoped)
-    expect(legacyDocumentPath(scoped, company)).toBe(legacy)
-    // Already in the target layout: no translation offered.
-    expect(companyScopedDocumentPath(scoped, company)).toBeNull()
-    expect(legacyDocumentPath(legacy, company)).toBeNull()
-  })
-
-  it('offers no alternate for keys outside the documents/ root', () => {
-    // The MCP audit-package tool writes `{userId}/audit-packages/...`, which
-    // is not a document_attachments key and must never be rewritten.
-    const foreign = `${user}/audit-packages/1_archive.zip`
-    expect(companyScopedDocumentPath(foreign, company)).toBeNull()
-    expect(documentStoragePathCandidates(foreign, company)).toEqual([foreign])
-  })
-
-  it('lists the stored pointer first, then the alternate layout', () => {
-    const legacy = `documents/${user}/1_a.pdf`
-    const scoped = `documents/${company}/${user}/1_a.pdf`
-    expect(documentStoragePathCandidates(legacy, company)).toEqual([legacy, scoped])
-    expect(documentStoragePathCandidates(scoped, company)).toEqual([scoped, legacy])
-    // No companyId: nothing to derive, stored pointer only.
-    expect(documentStoragePathCandidates(legacy, null)).toEqual([legacy])
-  })
 })
 
-describe('dual-layout read helpers', () => {
-  const company = 'company-1'
-  const user = 'user-1'
-  const legacy = `documents/${user}/1_a.pdf`
-  const scoped = `documents/${company}/${user}/1_a.pdf`
+describe('stored-key read helpers', () => {
+  const storagePath = 'documents/company-1/user-1/1_a.pdf'
 
-  it('downloadDocumentObject falls back to the company-scoped key', async () => {
-    const download = vi.fn(async (path: string) =>
-      path === scoped
-        ? { data: new Blob(['ok']), error: null }
-        : { data: null, error: { message: 'Object not found' } },
-    )
-    const supabase = makeClient({ download })
+  it('downloadDocumentObject returns the blob and the resolved key', async () => {
+    const download = vi.fn().mockResolvedValue({ data: new Blob(['ok']), error: null })
+    mockStorage({ download })
 
-    const result = await downloadDocumentObject(supabase as never, legacy, company)
+    const result = await downloadDocumentObject(storagePath)
 
     expect(result.blob).not.toBeNull()
-    expect(result.resolvedPath).toBe(scoped)
-    expect(download).toHaveBeenCalledTimes(2)
-    expect(download.mock.calls[0]![0]).toBe(legacy)
+    expect(result.resolvedPath).toBe(storagePath)
+    expect(download).toHaveBeenCalledWith(storagePath)
   })
 
-  it('downloadDocumentObject falls back to the legacy key', async () => {
-    const download = vi.fn(async (path: string) =>
-      path === legacy
-        ? { data: new Blob(['ok']), error: null }
-        : { data: null, error: { message: 'Object not found' } },
-    )
-    const supabase = makeClient({ download })
-
-    const result = await downloadDocumentObject(supabase as never, scoped, company)
-    expect(result.resolvedPath).toBe(legacy)
-  })
-
-  it('downloadDocumentObject reports the stored-pointer error when both fail', async () => {
+  it('downloadDocumentObject reports the download error', async () => {
     const download = vi.fn(async (path: string) => ({
       data: null,
       error: { message: `missing:${path}` },
     }))
-    const supabase = makeClient({ download })
+    mockStorage({ download })
 
-    const result = await downloadDocumentObject(supabase as never, legacy, company)
+    const result = await downloadDocumentObject(storagePath)
     expect(result.blob).toBeNull()
     expect(result.resolvedPath).toBeNull()
-    expect(result.error?.message).toBe(`missing:${legacy}`)
+    expect(result.error?.message).toBe(`missing:${storagePath}`)
   })
 
-  it('createDocumentSignedUrl falls back to the alternate layout', async () => {
-    const createSignedUrl = vi.fn(async (path: string) =>
-      path === scoped
-        ? { data: { signedUrl: 'https://example.com/signed' }, error: null }
-        : { data: null, error: { message: 'Object not found' } },
-    )
-    const supabase = makeClient({ createSignedUrl })
+  it('createDocumentSignedUrl signs the stored key', async () => {
+    const createSignedUrl = vi.fn().mockResolvedValue({
+      data: { signedUrl: 'https://example.com/signed' },
+      error: null,
+    })
+    mockStorage({ createSignedUrl })
 
-    const result = await createDocumentSignedUrl(supabase as never, legacy, company, 3600)
+    const result = await createDocumentSignedUrl(storagePath, 3600)
     expect(result.signedUrl).toBe('https://example.com/signed')
-    expect(result.resolvedPath).toBe(scoped)
+    expect(result.resolvedPath).toBe(storagePath)
+    expect(createSignedUrl).toHaveBeenCalledWith(storagePath, 3600)
+  })
+
+  it('createDocumentSignedUrl reports the signing error', async () => {
+    const createSignedUrl = vi.fn().mockResolvedValue({
+      data: null,
+      error: { message: 'Object not found' },
+    })
+    mockStorage({ createSignedUrl })
+
+    const result = await createDocumentSignedUrl(storagePath, 3600)
+    expect(result.signedUrl).toBeNull()
+    expect(result.resolvedPath).toBeNull()
+    expect(result.error?.message).toBe('Object not found')
   })
 })
 
 describe('deleteDocument', () => {
-  it('removes BOTH key layouts via the service-role client so no readable orphan copy survives', async () => {
+  it('removes the stored object after the row delete succeeds', async () => {
     const company = 'company-1'
-    const legacy = 'documents/user-1/1_a.pdf'
+    const storagePath = 'documents/company-1/user-1/1_a.pdf'
 
     results = [
       {
         data: {
           id: 'doc-1',
           file_name: 'a.pdf',
-          storage_path: legacy,
+          storage_path: storagePath,
           journal_entry_id: null,
           user_id: 'user-1',
         },
@@ -720,32 +679,28 @@ describe('deleteDocument', () => {
       { data: null, error: null }, // delete
     ]
 
-    const serviceRemove = vi.fn().mockResolvedValue({ data: [], error: null })
-    serviceClientOverride = makeClient({ remove: serviceRemove })
+    const remove = vi.fn().mockResolvedValue({ data: [], error: null })
+    mockStorage({ remove })
 
-    const callerRemove = vi.fn().mockResolvedValue({ data: [], error: null })
-    const supabase = makeClient({ remove: callerRemove })
-
-    const result = await deleteDocument(supabase as never, company, 'doc-1')
+    const result = await deleteDocument(makeClient() as never, company, 'doc-1')
 
     expect(result.ok).toBe(true)
-    expect(serviceRemove).toHaveBeenCalledWith([legacy, `documents/${company}/user-1/1_a.pdf`])
-    // The documents bucket is WORM (no DELETE policy on storage.objects): a
-    // caller-bound remove() is silently blocked by RLS and reports success
-    // without deleting, so it must never be used for the removal.
-    expect(callerRemove).not.toHaveBeenCalled()
+    // The retention backstop for linked documents is the DB trigger
+    // block_document_deletion, which already allowed the row delete above.
+    expect(remove).toHaveBeenCalledTimes(1)
+    expect(remove).toHaveBeenCalledWith([storagePath])
   })
 
   it('does not touch storage when the company-filtered fetch finds nothing (authz-first)', async () => {
     results = [{ data: null, error: null }]
 
-    const serviceRemove = vi.fn().mockResolvedValue({ data: [], error: null })
-    serviceClientOverride = makeClient({ remove: serviceRemove })
+    const remove = vi.fn().mockResolvedValue({ data: [], error: null })
+    mockStorage({ remove })
 
     const result = await deleteDocument(makeClient() as never, 'company-1', 'doc-1')
 
     expect(result).toMatchObject({ ok: false, reason: 'not_found', status: 404 })
-    expect(serviceRemove).not.toHaveBeenCalled()
+    expect(remove).not.toHaveBeenCalled()
   })
 
   it('refuses to delete a document linked to a journal entry (BFL 7 kap 2§)', async () => {
@@ -762,17 +717,13 @@ describe('deleteDocument', () => {
       },
     ]
 
-    const serviceRemove = vi.fn().mockResolvedValue({ data: [], error: null })
-    serviceClientOverride = makeClient({ remove: serviceRemove })
+    const remove = vi.fn().mockResolvedValue({ data: [], error: null })
+    mockStorage({ remove })
 
-    const callerRemove = vi.fn().mockResolvedValue({ data: [], error: null })
-    const supabase = makeClient({ remove: callerRemove })
-
-    const result = await deleteDocument(supabase as never, 'company-1', 'doc-1')
+    const result = await deleteDocument(makeClient() as never, 'company-1', 'doc-1')
 
     expect(result).toMatchObject({ ok: false, reason: 'linked_to_entry', status: 409 })
-    expect(callerRemove).not.toHaveBeenCalled()
-    expect(serviceRemove).not.toHaveBeenCalled()
+    expect(remove).not.toHaveBeenCalled()
   })
 
   it('keeps the storage objects when the DB row delete is blocked by the trigger', async () => {
@@ -790,13 +741,13 @@ describe('deleteDocument', () => {
       { data: null, error: { message: 'blocked by Bokföringslagen retention trigger' } },
     ]
 
-    const serviceRemove = vi.fn().mockResolvedValue({ data: [], error: null })
-    serviceClientOverride = makeClient({ remove: serviceRemove })
+    const remove = vi.fn().mockResolvedValue({ data: [], error: null })
+    mockStorage({ remove })
 
     const result = await deleteDocument(makeClient() as never, 'company-1', 'doc-1')
 
     expect(result).toMatchObject({ ok: false, reason: 'linked_to_entry', status: 409 })
-    expect(serviceRemove).not.toHaveBeenCalled()
+    expect(remove).not.toHaveBeenCalled()
   })
 })
 
@@ -812,8 +763,8 @@ describe('verifyIntegrity', () => {
       { data: { storage_path: 'docs/test.pdf', sha256_hash: expectedHash }, error: null },
     ]
 
-    // The download runs on the service-role client; give it matching bytes.
-    serviceClientOverride = makeClient({
+    // Give the storage backend bytes that match the stored hash.
+    mockStorage({
       download: vi.fn().mockResolvedValue({
         data: new Blob([content]),
         error: null,
@@ -831,7 +782,7 @@ describe('verifyIntegrity', () => {
       { data: { storage_path: 'docs/test.pdf', sha256_hash: 'stored-hash-abc' }, error: null },
     ]
 
-    serviceClientOverride = makeClient({
+    mockStorage({
       download: vi.fn().mockResolvedValue({
         data: new Blob(['different content']),
         error: null,

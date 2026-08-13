@@ -3,6 +3,7 @@ import type { CoreEvent } from '@/lib/events/types'
 import { eventBus } from '@/lib/events/bus'
 import { listForCompany as cashAccountsList, getPrimary as cashAccountsGetPrimary } from '@/lib/cash-accounts/service'
 import { createLogger } from '@/lib/logger'
+import { fileStorage } from '@/lib/storage/local'
 import type {
   ExtensionContext,
   ExtensionLogger,
@@ -82,19 +83,19 @@ function createSettings(
 }
 
 /**
- * Create a storage accessor wrapping Supabase storage.
+ * Create a storage accessor wrapping the filesystem storage backend.
  */
-function createStorage(supabase: SupabaseClient): ExtensionStorage {
+function createStorage(): ExtensionStorage {
   return {
     async download(bucket: string, path: string) {
-      const { data, error } = await supabase.storage
+      const { data, error } = await fileStorage()
         .from(bucket)
         .download(path)
       return { data, error: error?.message }
     },
 
     async upload(bucket: string, path: string, data: ArrayBuffer, options?: { contentType?: string }) {
-      const { error } = await supabase.storage
+      const { error } = await fileStorage()
         .from(bucket)
         .upload(path, data, options ? { contentType: options.contentType } : undefined)
       if (error) return { path: '', error: error.message }
@@ -102,9 +103,7 @@ function createStorage(supabase: SupabaseClient): ExtensionStorage {
     },
 
     getPublicUrl(bucket: string, path: string): string {
-      const { data } = supabase.storage
-        .from(bucket)
-        .getPublicUrl(path)
+      const { data } = fileStorage().from(bucket).getPublicUrl(path)
       return data.publicUrl
     },
   }
@@ -149,7 +148,7 @@ export function createExtensionContext(
     supabase,
     emit: (event: CoreEvent) => eventBus.emit(event),
     settings: createSettings(supabase, userId, companyId, extensionId),
-    storage: createStorage(supabase),
+    storage: createStorage(),
     log: createExtLogger(extensionId, logBindings),
     services: createServices(),
   }

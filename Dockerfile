@@ -87,8 +87,11 @@ COPY --from=builder --chown=nextjs:nodejs /app/public /opt/gnubok-template/publi
 # Pre-create the tmpfs mount points (empty in the image layer; the entrypoint
 # fills them at startup). Owned by nextjs so the unprivileged entrypoint can
 # write into the tmpfs mounted over them.
-RUN mkdir -p /app/.next/cache /app/public && \
-    chown nextjs:nodejs /app /app/.next /app/.next/cache /app/public
+# /var/lib/firmabok-storage is the document-archive volume mount point;
+# creating it nextjs-owned here makes Docker's named-volume initialization
+# copy that ownership, so the unprivileged app can write under it.
+RUN mkdir -p /app/.next/cache /app/public /var/lib/firmabok-storage && \
+    chown nextjs:nodejs /app /app/.next /app/.next/cache /app/public /var/lib/firmabok-storage
 
 COPY --chmod=755 --chown=nextjs:nodejs docker-entrypoint.sh ./docker-entrypoint.sh
 

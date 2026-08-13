@@ -22,17 +22,15 @@ flowchart LR
         db[("db<br/>supabase/postgres")]
         auth["auth · GoTrue"]
         rest["rest · PostgREST"]
-        rt["realtime"]
         storage["storage-api"]
 
         nginx --> app
         nginx -- /auth/v1 --> auth
         nginx -- /rest/v1 --> rest
-        nginx -- /realtime/v1 --> rt
         nginx -- /storage/v1 --> storage
         cron -. Bearer CRON_SECRET .-> app
         migrate --> db
-        auth & rest & rt & storage --> db
+        auth & rest & storage --> db
     end
 ```
 
@@ -44,9 +42,11 @@ Design choices worth knowing:
   the app's cookies follow the URL scheme (`lib/auth/cookie-secure.ts`).
   If you front it with your own TLS proxy on an https:// address,
   Secure cookies switch back on by themselves.
-- **No Kong, no studio, no pooler.** The services enforce JWT auth
-  themselves; administrate the database with `psql` through
-  `docker exec`.
+- **No Kong, no studio, no pooler, no realtime.** The services enforce
+  JWT auth themselves; administrate the database with `psql` through
+  `docker exec`. The app polls for changes made outside the current
+  tab instead of holding WebSocket subscriptions, which saves the
+  heaviest idle service in the stack.
 - **Migrations are a service.** The one-shot `migrate` container applies
   new files from `supabase/migrations/` on every `up`, records them in
   the `_firmabok.migrations` table, and the app is not allowed to start
@@ -65,7 +65,6 @@ Design choices worth knowing:
 | `POSTGRES_PASSWORD` | Database password for all service roles |
 | `JWT_SECRET` | HS256 secret every service verifies tokens against |
 | `ANON_KEY` / `SERVICE_ROLE_KEY` | Supabase-style JWTs signed with `JWT_SECRET` |
-| `SECRET_KEY_BASE` / `REALTIME_DB_ENC_KEY` | Realtime's internal secrets |
 | `CRON_SECRET` | Bearer token the cron sidecar authenticates with |
 | `AUTH_SIGNUPS_DISABLED` | `true` after the first account (`install-debian.sh lock`) |
 | `IMAGE_TAG` | Optional: app image tag, defaults to `latest` |

@@ -12,21 +12,6 @@ const isDev = process.env.NODE_ENV === "development";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
 
-// WebSocket origin for Supabase Realtime. Hosted projects are covered by the
-// wss://*.supabase.co wildcard below, but a SELF-HOSTED Supabase URL is not:
-// Realtime opens wss://<supabase-host>/realtime/v1/websocket, and WebKit
-// throws synchronously on a CSP-blocked `new WebSocket()`, unmounting the
-// dashboard into the error boundary (issue #893). The Docker image bakes the
-// __NEXT_PUBLIC_SUPABASE_WS_URL__ sentinel at build time and
-// docker-entrypoint.sh substitutes the real value at runtime (a build-time
-// https-to-wss replace would only rewrite the sentinel); the fallback derives
-// wss:/ws: from the https/http URL for non-Docker builds where the real URL
-// is present at build time. Empty supabaseUrl stays empty, mirroring how
-// ${supabaseUrl} is interpolated below (extra whitespace is valid in CSP).
-const supabaseWsUrl =
-  process.env.NEXT_PUBLIC_SUPABASE_WS_URL ??
-  supabaseUrl.replace(/^http(s?):/, "ws$1:");
-
 const cspDirectives = [
   "default-src 'self'",
   // No analytics hosts here on purpose. PostHog replaced Recapt and is
@@ -34,7 +19,7 @@ const cspDirectives = [
   // covered by `connect-src 'self'` and its lazy-loaded replay/survey
   // bundles by `script-src 'self'`. Adding `*.posthog.com` back would
   // re-widen the policy for no benefit and undo the ad-blocker resistance.
-  `connect-src 'self' ${supabaseUrl} ${supabaseWsUrl} https://*.supabase.co wss://*.supabase.co https://*.enablebanking.com`,
+  `connect-src 'self' ${supabaseUrl} https://*.supabase.co https://*.enablebanking.com`,
   `style-src 'self' 'unsafe-inline' https://*.enablebanking.com`,
   `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""} https://*.enablebanking.com`,
   "img-src 'self' data: blob: https:",

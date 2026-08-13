@@ -2,7 +2,7 @@
 #
 # LAN install on a fresh Debian server. Installs Docker if needed,
 # generates the stack's secrets and brings up
-# docker-compose.yml: the app, its cron sidecar and the five
+# docker-compose.yml: the app, its cron sidecar and the four
 # Supabase services it uses, behind nginx on a single origin.
 #
 #   ./install-debian.sh <lan-ip>   install, or update an existing install
@@ -110,8 +110,6 @@ POSTGRES_PASSWORD=$(openssl rand -hex 16)
 JWT_SECRET=$jwt_secret
 ANON_KEY=$(jwt "{\"role\":\"anon\",\"iss\":\"supabase\",\"iat\":$iat,\"exp\":$exp}")
 SERVICE_ROLE_KEY=$(jwt "{\"role\":\"service_role\",\"iss\":\"supabase\",\"iat\":$iat,\"exp\":$exp}")
-SECRET_KEY_BASE=$(openssl rand -base64 48)
-REALTIME_DB_ENC_KEY=$(openssl rand -hex 8)
 CRON_SECRET=$(openssl rand -hex 32)
 AUTH_SIGNUPS_DISABLED=false
 EOF

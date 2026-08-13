@@ -73,7 +73,7 @@ sh install-debian.sh 10.0.0.30
 [install-debian.sh](install-debian.sh) gör resten självt: hämtar repot,
 installerar Docker, genererar hemligheterna och startar hela stacken ur
 [docker-compose.yml](docker-compose.yml) — appen och
-de fem Supabase-tjänster den behöver, bakom en tunn nginx på en
+de fyra Supabase-tjänster den behöver, bakom en tunn nginx på en
 gemensam adress. Migrationerna körs automatiskt, även vid
 uppdateringar. Ren HTTP på det egna nätet; cookies följer adressens
 schema, så en https-adress bakom egen proxy fungerar också.

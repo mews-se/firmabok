@@ -1,17 +1,18 @@
 # The complete self-hosted stack in one file: the app, its cron sidecar
-# and the five Supabase services it actually uses, all pinned. Driven
+# and the four Supabase services it actually uses, all pinned. Driven
 # by install-debian.sh; named docker-compose.yml so plain
 # `docker compose stop/logs/ps` works from the checkout.
 #
 # nginx is the single entry point: one origin, plain HTTP (LAN-only by
 # design), path routing that mirrors the hosted Supabase gateway layout
-# (see docker/nginx.selfhost.conf). Kong, studio and the rest of the
-# upstream stack are intentionally absent - the services themselves
-# enforce JWT auth, which is what matters on a private network.
+# (see docker/nginx.selfhost.conf). Kong, studio, realtime and the rest
+# of the upstream stack are intentionally absent - the services
+# themselves enforce JWT auth, which is what matters on a private
+# network, and the app polls instead of subscribing.
 #
 # Needs a .env with DOMAIN, POSTGRES_PASSWORD, JWT_SECRET, ANON_KEY,
-# SERVICE_ROLE_KEY, SECRET_KEY_BASE, REALTIME_DB_ENC_KEY, CRON_SECRET
-# and AUTH_SIGNUPS_DISABLED - install-debian.sh generates it.
+# SERVICE_ROLE_KEY, CRON_SECRET and AUTH_SIGNUPS_DISABLED -
+# install-debian.sh generates it.
 services:
   proxy:
     image: nginx:stable-alpine-slim
@@ -114,9 +115,10 @@ services:
     image: supabase/postgres:17.6.1.136
     volumes:
       # Init subset from the upstream Supabase Docker stack (Apache-2.0,
-      # see NOTICE): realtime schema, webhooks, role passwords and JWT
-      # settings. The analytics/pooler scripts are not needed here.
-      - ./docker/db-init/realtime.sql:/docker-entrypoint-initdb.d/migrations/99-realtime.sql
+      # see NOTICE): webhooks, role passwords and JWT settings. The
+      # analytics/pooler scripts are not needed here. The supabase_realtime
+      # publication that the app migrations alter is created by the image's
+      # own init, so it needs no script of its own.
       - ./docker/db-init/webhooks.sql:/docker-entrypoint-initdb.d/init-scripts/98-webhooks.sql
       - ./docker/db-init/roles.sql:/docker-entrypoint-initdb.d/init-scripts/99-roles.sql
       - ./docker/db-init/jwt.sql:/docker-entrypoint-initdb.d/init-scripts/99-jwt.sql
@@ -243,47 +245,6 @@ services:
       PGRST_APP_SETTINGS_JWT_SECRET: ${JWT_SECRET}
       PGRST_APP_SETTINGS_JWT_EXP: "3600"
     command: ["postgrest"]
-    restart: unless-stopped
-    logging: *logging
-
-  realtime:
-    image: supabase/realtime:v2.102.3
-    depends_on:
-      db:
-        condition: service_healthy
-    networks:
-      default:
-        aliases:
-          # Realtime resolves its tenant from the Host header; nginx
-          # forwards to this name (tenant "realtime-dev").
-          - realtime-dev.supabase-realtime
-    healthcheck:
-      test:
-        - CMD-SHELL
-        - 'curl -sSfL --head -o /dev/null -H "Authorization: Bearer ${ANON_KEY}" http://localhost:4000/api/tenants/realtime-dev/health'
-      timeout: 5s
-      interval: 30s
-      retries: 3
-      start_period: 10s
-    environment:
-      PORT: 4000
-      DB_HOST: db
-      DB_PORT: 5432
-      DB_USER: supabase_admin
-      DB_PASSWORD: ${POSTGRES_PASSWORD}
-      DB_NAME: postgres
-      DB_AFTER_CONNECT_QUERY: 'SET search_path TO _realtime'
-      DB_ENC_KEY: ${REALTIME_DB_ENC_KEY}
-      API_JWT_SECRET: ${JWT_SECRET}
-      SECRET_KEY_BASE: ${SECRET_KEY_BASE}
-      METRICS_JWT_SECRET: ${JWT_SECRET}
-      ERL_AFLAGS: -proto_dist inet_tcp
-      DNS_NODES: "''"
-      RLIMIT_NOFILE: "10000"
-      APP_NAME: realtime
-      SEED_SELF_HOST: "true"
-      RUN_JANITOR: "true"
-      DISABLE_HEALTHCHECK_LOGGING: "true"
     restart: unless-stopped
     logging: *logging
 

@@ -120,11 +120,11 @@ services:
     image: supabase/postgres:17.6.1.136
     volumes:
       # Init subset from the upstream Supabase Docker stack (Apache-2.0,
-      # see NOTICE): webhooks, role passwords and JWT settings. The
-      # analytics/pooler scripts are not needed here. The supabase_realtime
+      # see NOTICE): role passwords and JWT settings. The analytics/pooler
+      # scripts are not needed here, nor the pg_net webhook machinery
+      # (nothing in the app uses supabase_functions). The supabase_realtime
       # publication that the app migrations alter is created by the image's
       # own init, so it needs no script of its own.
-      - ./docker/db-init/webhooks.sql:/docker-entrypoint-initdb.d/init-scripts/98-webhooks.sql
       - ./docker/db-init/roles.sql:/docker-entrypoint-initdb.d/init-scripts/99-roles.sql
       - ./docker/db-init/jwt.sql:/docker-entrypoint-initdb.d/init-scripts/99-jwt.sql
       - db_data:/var/lib/postgresql/data

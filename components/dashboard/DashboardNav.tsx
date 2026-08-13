@@ -48,7 +48,7 @@ import { SupportLink } from '@/components/ui/support-link'
 import CompanySwitcher from '@/components/dashboard/CompanySwitcher'
 import UserMenu from '@/components/dashboard/UserMenu'
 import { useCompany } from '@/contexts/CompanyContext'
-import { useRealtimeSupabase } from '@/lib/hooks/use-realtime-supabase'
+import { createClient } from '@/lib/supabase/client'
 import { useWorklistBadges } from '@/lib/hooks/use-worklist-badges'
 import { persistUiState } from '@/lib/ui-state/client'
 import { EXTENSION_REQUIRED_CAPABILITY, type CapabilityKey } from '@/lib/entitlements/keys'
@@ -234,21 +234,17 @@ const groupLabelKey: Record<Exclude<GroupKey, 'top'>, string> = {
 export default function DashboardNav({ companyName: _companyName, entityType, dimensionsEnabled = false, isSandbox = false, extensionNavItems = [], userName = null, userEmail = null, initialUiState }: DashboardNavProps) {
   const pathname = usePathname()
   const router = useRouter()
-  const supabase = useRealtimeSupabase()
   const { company, capabilities } = useCompany()
   const tNav = useTranslations('nav')
   const tCommon = useTranslations('common')
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [isClosing, setIsClosing] = useState(false)
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  // Badge counts load client-side after mount (and revalidate via the
-  // realtime subscriptions below). They used to arrive as server props, which
+  // Badge counts load client-side after mount (the hook revalidates on focus
+  // and on a polling interval). They used to arrive as server props, which
   // put two head-count queries on the critical path of every dashboard
   // navigation for numbers nobody needs before first paint.
-  const {
-    pendingOperations: pendingOpsCount,
-    refresh: refreshBadges,
-  } = useWorklistBadges(company?.id)
+  const { pendingOperations: pendingOpsCount } = useWorklistBadges(company?.id)
 
   const hasCompany = !!company
   const ALWAYS_ENABLED = new Set(['/settings'])
@@ -297,7 +293,7 @@ export default function DashboardNav({ companyName: _companyName, entityType, di
 
   const handleLogout = async () => {
     resetAnalyticsIdentity()
-    await supabase.auth.signOut()
+    await createClient().auth.signOut()
     router.push(isSandbox ? '/sandbox' : '/login')
   }
 
@@ -340,38 +336,6 @@ export default function DashboardNav({ companyName: _companyName, entityType, di
       closeTimerRef.current = null
     }, 200)
   }
-
-  useEffect(() => {
-    if (!company?.id) return
-
-    // Realtime keeps the badges live; a trailing debounce collapses event
-    // bursts (bulk booking / bulk approvals emit one event per row) into a
-    // single SWR revalidation instead of a request stampede.
-    let debounce: ReturnType<typeof setTimeout> | null = null
-    const queueRefresh = () => {
-      if (debounce) clearTimeout(debounce)
-      debounce = setTimeout(() => void refreshBadges(), 400)
-    }
-
-    const channel = supabase
-      .channel(`dashboard-nav:badges:${company.id}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'pending_operations',
-          filter: `company_id=eq.${company.id}`,
-        },
-        queueRefresh,
-      )
-      .subscribe()
-
-    return () => {
-      if (debounce) clearTimeout(debounce)
-      void supabase.removeChannel(channel)
-    }
-  }, [company?.id, supabase, refreshBadges])
 
   const hiddenNavHrefs = new Set(getBranding().hiddenNavHrefs)
 

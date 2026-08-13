@@ -29,7 +29,6 @@ import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/components/ui/use-toast'
 import { cn, formatCurrency, formatDate } from '@/lib/utils'
 import { getErrorMessage } from '@/lib/errors/get-error-message'
-import { createClient } from '@/lib/supabase/client'
 import {
   ClipboardCheck,
   Bot,
@@ -758,7 +757,7 @@ export default function PendingOperationsPage() {
   const [conversationFilter, setConversationFilter] = useState<string | null>(null)
   const [pendingCount, setPendingCount] = useState<number | null>(null)
   // Detail slide-over (convention 13): id rather than the row object, so the
-  // panel tracks realtime refetches and closes itself when the op leaves the
+  // panel tracks list refetches and closes itself when the op leaves the
   // current list (approved elsewhere, tab switch, filter change).
   const [detailOpId, setDetailOpId] = useState<string | null>(null)
   const [selectedOp, setSelectedOp] = useState<PendingOperation | null>(null)
@@ -817,33 +816,31 @@ export default function PendingOperationsPage() {
     fetchOperations()
   }, [fetchOperations])
 
-  // Realtime subscription: refetch when ANY pending_operations row changes for
-  // this company. RLS scopes the channel automatically: we don't see other
-  // tenants' events. We refetch the whole list (rather than patching state
-  // in-place) so server-side filtering, sorting, and computed fields stay in
-  // sync with whatever the API route returned, including all tab counts.
-  // Trailing debounce: bulk actions emit one event per row, which previously
-  // stampeded 4 requests per event (list + 3 counts); the burst now collapses
-  // into a single refetch after the last event.
+  // Poll for changes made outside this tab (the MCP bridge, cron, another
+  // browser tab): a minute interval plus a refetch when the tab regains
+  // focus/visibility. Own actions refetch directly, so this only covers
+  // out-of-band changes. We refetch the whole list (rather than patching
+  // state in-place) so server-side filtering, sorting, and computed fields
+  // stay in sync with whatever the API route returned, including all tab
+  // counts. The trailing debounce collapses focus+visibilitychange firing
+  // together into a single refetch, and nothing runs while hidden.
   useEffect(() => {
-    const supabase = createClient()
     let debounce: ReturnType<typeof setTimeout> | null = null
-    const channel = supabase
-      .channel('pending_operations:list')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'pending_operations' },
-        () => {
-          if (debounce) clearTimeout(debounce)
-          debounce = setTimeout(() => {
-            fetchOperations()
-          }, 400)
-        }
-      )
-      .subscribe()
+    const refresh = () => {
+      if (document.hidden) return
+      if (debounce) clearTimeout(debounce)
+      debounce = setTimeout(() => {
+        fetchOperations()
+      }, 400)
+    }
+    const interval = setInterval(refresh, 60_000)
+    window.addEventListener('focus', refresh)
+    document.addEventListener('visibilitychange', refresh)
     return () => {
       if (debounce) clearTimeout(debounce)
-      void supabase.removeChannel(channel)
+      clearInterval(interval)
+      window.removeEventListener('focus', refresh)
+      document.removeEventListener('visibilitychange', refresh)
     }
   }, [fetchOperations])
 
@@ -1497,7 +1494,7 @@ export default function PendingOperationsPage() {
       </div>
 
       {/* Detail slide-over (convention 13): the review surface. Derived from
-          the live list, so a realtime refetch that resolves the op closes it. */}
+          the live list, so a refetch that resolves the op closes it. */}
       <SlideOver
         open={detailOp != null}
         onOpenChange={(open) => {

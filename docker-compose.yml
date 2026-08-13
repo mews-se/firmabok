@@ -124,11 +124,16 @@ services:
       - ./docker/db-init/jwt.sql:/docker-entrypoint-initdb.d/init-scripts/99-jwt.sql
       - db_data:/var/lib/postgresql/data
       - db_config:/etc/postgresql-custom
+    # Healthchecks across the stack: a tight start_interval keeps the
+    # depends_on chain fast on boot, then the steady-state interval backs
+    # off - four services probed every 5 s forever was constant idle CPU.
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "postgres", "-h", "localhost"]
-      interval: 5s
+      interval: 60s
       timeout: 5s
-      retries: 10
+      retries: 3
+      start_period: 120s
+      start_interval: 5s
     environment:
       POSTGRES_HOST: /var/run/postgresql
       PGPORT: "5432"
@@ -180,8 +185,10 @@ services:
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9999/health"]
       timeout: 5s
-      interval: 5s
+      interval: 60s
       retries: 3
+      start_period: 120s
+      start_interval: 5s
     environment:
       GOTRUE_API_HOST: 0.0.0.0
       GOTRUE_API_PORT: 9999
@@ -229,9 +236,11 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "postgrest", "--ready"]
-      interval: 5s
+      interval: 60s
       timeout: 5s
       retries: 3
+      start_period: 120s
+      start_interval: 5s
     environment:
       PGRST_DB_URI: postgres://authenticator:${POSTGRES_PASSWORD}@db:5432/postgres
       PGRST_DB_SCHEMAS: public,graphql_public
@@ -258,9 +267,10 @@ services:
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://storage:5000/status"]
       timeout: 5s
-      interval: 5s
+      interval: 60s
       retries: 3
-      start_period: 10s
+      start_period: 120s
+      start_interval: 5s
     environment:
       ANON_KEY: ${ANON_KEY}
       SERVICE_KEY: ${SERVICE_ROLE_KEY}

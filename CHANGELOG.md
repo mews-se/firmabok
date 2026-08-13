@@ -4,6 +4,15 @@ All notable changes to Firmabok, newest first. Versions follow the
 tags in this repository; each one is published as a container image at
 `ghcr.io/mews-se/firmabok`.
 
+## 2.5.1 — 2026-08-13
+
+- Nine database migrations each seeded the same skill library from
+  scratch, so a fresh install worked through about eight megabytes of
+  SQL to reach the state the newest one describes on its own. Only that
+  one is kept: installs are quicker and the repository is smaller.
+  Existing installs are unaffected.
+- Added this changelog.
+
 ## 2.5.0 — 2026-08-13
 
 - The storage service is gone. The app now reads and writes documents,

@@ -1,6 +1,6 @@
 #!/usr/bin/env npx tsx
 /**
- * Crontab generator: emits docker/crontab.hosted and docker/crontab.self-hosted
+ * Crontab generator: emits docker/crontab.self-hosted
  * from the `crons` array in vercel.json.
  *
  * vercel.json is the single source of truth for what runs on a schedule. The
@@ -30,9 +30,9 @@ const ROOT = dirname(dirname(__filename))
 const VERCEL_JSON_PATH = join(ROOT, 'vercel.json')
 const DOCKER_DIR = join(ROOT, 'docker')
 
-export type CrontabVariant = 'hosted' | 'self-hosted'
+export type CrontabVariant = 'self-hosted'
 
-export const VARIANTS: readonly CrontabVariant[] = ['hosted', 'self-hosted']
+export const VARIANTS: readonly CrontabVariant[] = ['self-hosted']
 
 export interface VercelCron {
   path: string
@@ -41,7 +41,6 @@ export interface VercelCron {
 
 /** The compose file that bind-mounts each variant, quoted in the file header. */
 const MOUNTED_BY: Record<CrontabVariant, string> = {
-  hosted: 'docker-compose.hosted.yml',
   'self-hosted': 'docker-compose.yml',
 }
 
@@ -86,22 +85,19 @@ export const EXCLUDED_PATHS: Readonly<Record<string, string>> = {}
  * deliberate hosted/self-hosted divergence gets recorded, so it reads as a
  * decision with a reason instead of as drift in a hand-edited file.
  *
- * Empty on both variants: every job currently runs the vercel.json cadence
- * everywhere. Two candidates were considered and rejected:
+ * Empty: every job runs the vercel.json cadence. One candidate was
+ * considered and rejected:
  *
  *  - /api/documents/verify/cron ran weekly ("0 3 * * 0") in the hand-written
  *    crontabs against a daily vercel.json. Not a load concession: the run is
  *    capped at 200 documents (DOCUMENT_VERIFY_BATCH_SIZE) and walks a
  *    nulls-first queue, so weekly drains the WORM integrity queue seven times
- *    slower on a check that exists to satisfy BFL 7-year retention. The weekly
- *    cadence also sat in crontab.hosted, which is not a small box (the two
- *    files were byte-identical), so it cannot have been a self-hosted
- *    concession. Treated as drift and realigned to daily.
+ *    slower on a check that exists to satisfy BFL 7-year retention. Treated
+ *    as drift and realigned to daily.
  */
 export const SCHEDULE_OVERRIDES: Readonly<
   Record<CrontabVariant, Readonly<Record<string, string>>>
 > = {
-  hosted: {},
   'self-hosted': {},
 }
 

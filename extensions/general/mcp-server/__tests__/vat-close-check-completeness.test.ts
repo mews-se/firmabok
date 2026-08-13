@@ -13,20 +13,8 @@
  * over the full SKV 4700 projection, folded through the same filing gate the
  * web UI uses, so these assertions are really asserting "MCP agrees with the
  * web UI".
- *
- * Only the bank reconciliation is mocked: it queries shapes this fixture has no
- * opinion about, and an unreconciled bank would add an unrelated blocker.
  */
 import { describe, it, expect, vi } from 'vitest'
-
-vi.mock('@/lib/reconciliation/bank-reconciliation', () => ({
-  getReconciliationStatus: vi.fn(async () => ({
-    is_reconciled: true,
-    difference: 0,
-    unmatched_transaction_count: 0,
-    unmatched_gl_line_count: 0,
-  })),
-}))
 
 import { computeVatCloseCheck } from '../server'
 

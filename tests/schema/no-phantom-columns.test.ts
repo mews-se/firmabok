@@ -107,8 +107,10 @@ const UNRESOLVED_CEILING = 375
  * inbox, bank-file import, and bank reconciliation were removed: 8 198.
  * Re-baselined again the same day after the built-in AI assistant was
  * removed (chat, composer, intents, agent API routes): 7 535.
+ * Re-baselined 2026-08-13 after the unreferenced-file sweep (dead widgets,
+ * orphaned repair scripts, one-off backfills): 7 221.
  */
-const RESOLVED_COLUMN_FLOOR = 7_300
+const RESOLVED_COLUMN_FLOOR = 7_000
 
 let schema: SchemaModel
 let scan: ScanResult

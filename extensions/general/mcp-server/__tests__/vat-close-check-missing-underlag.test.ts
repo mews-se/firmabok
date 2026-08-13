@@ -19,15 +19,6 @@
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-vi.mock('@/lib/reconciliation/bank-reconciliation', () => ({
-  getReconciliationStatus: vi.fn(async () => ({
-    is_reconciled: true,
-    difference: 0,
-    unmatched_transaction_count: 0,
-    unmatched_gl_line_count: 0,
-  })),
-}))
-
 import { computeVatCloseCheck } from '../server'
 
 const COMPANY_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'

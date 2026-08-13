@@ -1,24 +1,24 @@
-# Self-Hosting Firmabok
+# Självhosta Firmabok
 
-Everything runs on your own server, on your own network. The README's
-two-command install is the normal path; this document is the reference
-behind it.
+Allt kör på din egen server, på ditt eget nätverk. README:ns
+tvåkommandosinstallation är den normala vägen; det här dokumentet är
+referensen bakom den.
 
-## Architecture
+## Arkitektur
 
-One Compose file, [docker-compose.yml](../docker-compose.yml),
-holds the whole stack:
+En Compose-fil, [docker-compose.yml](../docker-compose.yml), rymmer
+hela stacken:
 
 ```mermaid
 flowchart LR
-    user((Browser))
+    user((Webbläsare))
     user -- "http://SERVER-IP" --> nginx
 
     subgraph stack["docker-compose.yml"]
         nginx["proxy<br/>nginx · :80"]
         app["app<br/>Next.js · :3000"]
         cron["cron<br/>supercronic"]
-        migrate["migrate<br/>one-shot"]
+        migrate["migrate<br/>engångs"]
         db[("db<br/>supabase/postgres")]
         auth["auth · GoTrue"]
         rest["rest · PostgREST"]
@@ -34,69 +34,71 @@ flowchart LR
     end
 ```
 
-Design choices worth knowing:
+Designval som är bra att känna till:
 
-- **One origin, plain HTTP.** nginx routes the Supabase path prefixes
-  to the right service and everything else to the app. No CORS, no
-  certificates, no warnings: the stack is built for a private LAN and
-  the app's cookies follow the URL scheme (`lib/auth/cookie-secure.ts`).
-  If you front it with your own TLS proxy on an https:// address,
-  Secure cookies switch back on by themselves.
-- **No Kong, no studio, no pooler, no realtime.** The services enforce
-  JWT auth themselves; administrate the database with `psql` through
-  `docker exec`. The app polls for changes made outside the current
-  tab instead of holding WebSocket subscriptions, which saves the
-  heaviest idle service in the stack.
-- **Migrations are a service.** The one-shot `migrate` container applies
-  new files from `supabase/migrations/` on every `up`, records them in
-  the `_firmabok.migrations` table, and the app is not allowed to start
-  until it has finished. Updates can never outrun the schema.
-- **Named volumes.** Database (`db_data`) and document archive
-  (`storage_data`) live under Docker's management; nothing in the
-  checkout is root-owned.
+- **En adress, ren HTTP.** nginx skickar Supabase-prefixen till rätt
+  tjänst och allt annat till appen. Ingen CORS, inga certifikat, inga
+  varningar: stacken är byggd för ett privat LAN och appens cookies
+  följer adressens schema (`lib/auth/cookie-secure.ts`). Sätter du en
+  egen TLS-proxy framför på en https-adress slås Secure-cookies på av
+  sig själva.
+- **Ingen Kong, ingen studio, ingen pooler, ingen realtime.**
+  Tjänsterna sköter JWT-verifieringen själva; administrera databasen
+  med `psql` genom `docker exec`. Appen frågar servern i bakgrunden
+  efter ändringar gjorda utanför den egna fliken i stället för att
+  hålla websockets öppna — det sparade stackens tyngsta vilotjänst.
+- **Migrationerna är en tjänst.** Engångscontainern `migrate` kör nya
+  filer ur `supabase/migrations/` vid varje `up`, bokför dem i
+  tabellen `_firmabok.migrations`, och appen får inte starta förrän
+  den är klar. En uppdatering kan aldrig springa förbi schemat.
+- **Namngivna volymer.** Databasen (`db_data`) och dokumentarkivet
+  (`storage_data`) ligger under Dockers förvaltning; inget i
+  utcheckningen ägs av root.
 
-## Environment
+## Miljövariabler
 
-`install-debian.sh` generates `.env` on first install. The variables:
+`install-debian.sh` genererar `.env` vid första installationen.
+Variablerna:
 
-| Variable | Meaning |
+| Variabel | Betydelse |
 |---|---|
-| `DOMAIN` | The server's LAN IP (or a local DNS name) |
-| `POSTGRES_PASSWORD` | Database password for all service roles |
-| `JWT_SECRET` | HS256 secret every service verifies tokens against |
-| `ANON_KEY` / `SERVICE_ROLE_KEY` | Supabase-style JWTs signed with `JWT_SECRET` |
-| `CRON_SECRET` | Bearer token the cron sidecar authenticates with |
-| `AUTH_SIGNUPS_DISABLED` | `true` after the first account (`install-debian.sh lock`) |
-| `IMAGE_TAG` | Optional: app image tag, defaults to `latest` |
+| `DOMAIN` | Serverns LAN-IP (eller ett lokalt DNS-namn) |
+| `POSTGRES_PASSWORD` | Databaslösenord för alla tjänsteroller |
+| `JWT_SECRET` | HS256-hemlighet som varje tjänst verifierar tokens mot |
+| `ANON_KEY` / `SERVICE_ROLE_KEY` | JWT:er i Supabase-stil, signerade med `JWT_SECRET` |
+| `CRON_SECRET` | Bearer-token som cron-sidovagnen autentiserar med |
+| `AUTH_SIGNUPS_DISABLED` | `true` efter första kontot (`install-debian.sh lock`) |
+| `IMAGE_TAG` | Valfri: appens image-tagg, standard `latest` |
 
-## Updating
+## Uppdatera
 
-Re-run the install commands from the README (or `git pull` in the
-checkout and run `./install-debian.sh <ip>` again): the script pulls
-the newer app image, applies only the migrations that are new, and
-restarts. Nothing else needs tending.
+Kör installationskommandona från README:n igen (eller `git pull` i
+utcheckningen och `./install-debian.sh <ip>` på nytt): scriptet hämtar
+den nyare app-imagen, kör bara de migrationer som är nya och startar
+om. Inget annat behöver skötas.
 
-## Backups
+## Backup
 
-The named volumes are not files to copy - back up logically:
+De namngivna volymerna är inte filer att kopiera — ta backup logiskt:
 
 ```bash
 docker exec firmabok-db-1 pg_dump -U postgres -d postgres | gzip > firmabok-$(date +%F).sql.gz
 ```
 
-Ship that off-host on a schedule. As a portable, vendor-neutral layer
-on top, export each fiscal year as SIE via the app (Rapporter → SIE):
-any Swedish bookkeeping system can re-import it. Documents live in the
-`storage_data` volume; include it if you want file-level copies:
+Skicka den filen bort från servern på schema. Som ett portabelt,
+leverantörsneutralt lager ovanpå: exportera varje räkenskapsår som SIE
+via appen (Rapporter → SIE) — vilket svenskt bokföringsprogram som
+helst kan läsa in den igen. Dokumenten ligger i volymen
+`storage_data`; ta med den om du vill ha kopior på filnivå:
 
 ```bash
 docker run --rm -v firmabok_storage_data:/data -v "$PWD":/out alpine tar czf /out/firmabok-documents.tgz -C /data .
 ```
 
-## Building from source
+## Bygga från källa
 
-The published image is `ghcr.io/mews-se/firmabok`. To run your own
-build instead:
+Den publicerade imagen är `ghcr.io/mews-se/firmabok`. För att köra ett
+eget bygge i stället:
 
 ```bash
 docker build -t ghcr.io/mews-se/firmabok:local .
@@ -104,20 +106,20 @@ echo 'IMAGE_TAG=local' >> .env
 ./install-debian.sh <ip>
 ```
 
-## Troubleshooting
+## Felsökning
 
-**The health wait times out.** Look at the logs (from the checkout):
-`docker compose logs migrate app`.
-The usual causes are a migration error (migrate exits non-zero and the
-app never starts) or wrong values in `.env`.
+**Hälsoväntan går ut.** Titta i loggarna (från utcheckningen):
+`docker compose logs migrate app`. De vanliga orsakerna är ett
+migrationsfel (migrate slutar med fel och appen startar aldrig) eller
+felaktiga värden i `.env`.
 
-**Port 80 is taken.** Something else on the server owns it; stop it or
-change the proxy's port mapping in the Compose file.
+**Port 80 är upptagen.** Något annat på servern äger den; stoppa det
+eller ändra proxyns portmappning i Compose-filen.
 
-**Login loops back to the login page.** The app URL and the address in
-the browser must match: `DOMAIN` decides both. Check that you are
-browsing `http://<DOMAIN>` exactly.
+**Inloggningen studsar tillbaka till inloggningssidan.** Appens adress
+och adressen i webbläsaren måste stämma överens: `DOMAIN` styr båda.
+Kontrollera att du surfar till exakt `http://<DOMAIN>`.
 
-**Signups are closed and I need another account.** Set
-`AUTH_SIGNUPS_DISABLED=false` in `.env`, run `docker compose up -d`,
-create the account, then run `./install-debian.sh lock` again.
+**Registreringen är stängd och jag behöver ett konto till.** Sätt
+`AUTH_SIGNUPS_DISABLED=false` i `.env`, kör `docker compose up -d`,
+skapa kontot och kör sedan `./install-debian.sh lock` igen.

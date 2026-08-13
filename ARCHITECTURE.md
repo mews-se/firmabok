@@ -10,7 +10,7 @@ parts are deliberately rigid.
 - **Framework**: Next.js (App Router) with React and TypeScript in strict mode.
 - **Database**: Supabase (PostgreSQL with Row Level Security), which also
   provides auth (email/password). The whole stack runs locally: see
-  [docs/SELF-HOSTING.md](docs/SELF-HOSTING.md), section "Fully Self-Hosted".
+  [docs/SELF-HOSTING.md](docs/SELF-HOSTING.md).
 - **Deployment**: Docker, behind a reverse proxy that terminates HTTPS
   (secure cookies require it even on a LAN).
 - **UI**: Tailwind CSS with shadcn/ui components. UI strings live in

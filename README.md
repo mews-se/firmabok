@@ -101,6 +101,7 @@ bort katalogen.
 
 **Fördjupning.** [docs/SELF-HOSTING.md](docs/SELF-HOSTING.md) beskriver
 arkitekturen, miljövariablerna, backupkommandona och bygge från källa.
+[CHANGELOG.md](CHANGELOG.md) sammanfattar vad varje version ändrade.
 
 ## Instruktion
 

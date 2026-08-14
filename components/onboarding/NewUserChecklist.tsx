@@ -71,7 +71,6 @@ export default function NewUserChecklist({
   const [state, setState] = useState(initialState)
   const [saving, setSaving] = useState<InitialSetupPath | 'dismiss' | 'complete' | null>(null)
 
-  const hasMigration = ENABLED_EXTENSION_IDS.has('arcim-migration')
   const hasBanking = ENABLED_EXTENSION_IDS.has('enable-banking')
   const hasSkatteverket = ENABLED_EXTENSION_IDS.has('skatteverket')
   const hasInbox = ENABLED_EXTENSION_IDS.has('invoice-inbox')
@@ -131,7 +130,7 @@ export default function NewUserChecklist({
     const updated = await persist({ path: 'migration' }, 'migration')
     if (updated) {
       captureSetup('onboarding_setup_step_started', { step: 'books', path: 'migration' })
-      router.push(hasMigration ? '/import?mode=migration' : '/import?mode=sie')
+      router.push('/import?mode=sie')
     }
   }
   const goFresh = () =>

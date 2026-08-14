@@ -981,7 +981,6 @@ export const ARCHIVE_EXCLUDED_TABLES: Record<string, string> = {
   payment_match_log: 'derived matching log',
   pending_operations: 'staged-operation workflow state',
   processing_history: 'internal processing log; behandlingshistorik exports from audit_log',
-  provider_consents: 'consent tokens, not portable',
   salary_payslip_deliveries: 'delivery log',
   skattekonto_transactions: 'mirror of Skatteverket skattekonto, re-fetchable at source',
   skatteverket_api_audit_log: 'integration audit log',

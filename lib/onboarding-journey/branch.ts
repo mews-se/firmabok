@@ -3,8 +3,8 @@ import type { InitialSetupPath } from '@/types'
 /**
  * The done-screen branch question ("Var fanns bokföringen innan?"): the one
  * routing decision made at peak motivation, right after the company exists.
- * Providers deep-link into the migration wizard; the SIE file goes straight
- * to the upload step; a new business skips the import entirely and starts
+ * Providers and the SIE file both go to the SIE upload step (every Swedish
+ * system exports SIE); a new business skips the import entirely and starts
  * on Hem where the checklist points at the bank next.
  */
 export type BranchChoice =
@@ -36,7 +36,6 @@ export function branchDestination(choice: BranchChoice): {
     case 'bokio':
     case 'bjornlunden':
     case 'briox':
-      return { path: 'migration', href: `/import?mode=migration&provider=${choice}` }
     case 'sie':
       return { path: 'migration', href: '/import?mode=sie' }
     case 'fresh':

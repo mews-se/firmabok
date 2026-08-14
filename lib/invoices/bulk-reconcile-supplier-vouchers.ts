@@ -1,8 +1,8 @@
 /**
  * Bulk reconcile supplier invoices to already-posted GL payment vouchers.
  *
- * Context: when a company is migrated from another system (e.g. Fortnox via the
- * arcim-migration extension), the general ledger: including the bank-payment
+ * Context: when a company is migrated from another system (e.g. Fortnox),
+ * the general ledger: including the bank-payment
  * vouchers that settle accounts payable (Dr 2440 / Cr 1930): is imported
  * separately via SIE. Supplier invoices are imported as standalone
  * `supplier_invoices` rows with NO link to those vouchers (the entity mapper

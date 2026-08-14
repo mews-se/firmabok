@@ -3,11 +3,11 @@ import { BRANCH_PROVIDERS, branchDestination, type BranchChoice } from '../branc
 
 describe('branchDestination', () => {
   it.each(['fortnox', 'visma', 'bokio', 'bjornlunden', 'briox'] as const)(
-    'routes %s into the migration wizard with the provider preselected',
+    'routes %s to the SIE upload step',
     (provider) => {
       expect(branchDestination(provider)).toEqual({
         path: 'migration',
-        href: `/import?mode=migration&provider=${provider}`,
+        href: '/import?mode=sie',
       })
     }
   )

@@ -950,20 +950,6 @@ BEGIN
       USING (team_id IN (SELECT user_team_ids()));
   END IF;
 
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='provider_consents' AND cmd='DELETE') THEN
-    CREATE POLICY provider_consents_delete ON public.provider_consents FOR DELETE
-      USING (company_id IN (SELECT user_company_ids()));
-  END IF;
-
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='provider_consent_tokens' AND cmd='DELETE') THEN
-    CREATE POLICY provider_consent_tokens_delete ON public.provider_consent_tokens FOR DELETE
-      USING (consent_id IN (SELECT id FROM provider_consents WHERE company_id IN (SELECT user_company_ids())));
-  END IF;
-
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='provider_otc' AND cmd='DELETE') THEN
-    CREATE POLICY provider_otc_delete ON public.provider_otc FOR DELETE
-      USING (consent_id IN (SELECT id FROM provider_consents WHERE company_id IN (SELECT user_company_ids())));
-  END IF;
 END $$;
 
 

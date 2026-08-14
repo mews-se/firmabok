@@ -87,7 +87,7 @@ AS $function$
 $function$;
 
 -- =============================================================================
--- 2. Role-gated write policies (39 tables)
+-- 2. Role-gated write policies (38 tables)
 --    DDL generated verbatim from the live staging catalog (pg_policies) so the
 --    predicates match exactly what the app has been running against.
 -- =============================================================================
@@ -407,18 +407,6 @@ CREATE POLICY projects_update ON public.projects FOR UPDATE TO public
 
 DROP POLICY IF EXISTS projects_delete ON public.projects;
 CREATE POLICY projects_delete ON public.projects FOR DELETE TO public
-  USING (((company_id = current_active_company_id()) AND current_user_can_write()));
-
-DROP POLICY IF EXISTS provider_consents_insert ON public.provider_consents;
-CREATE POLICY provider_consents_insert ON public.provider_consents FOR INSERT TO public
-  WITH CHECK (((company_id = current_active_company_id()) AND current_user_can_write()));
-
-DROP POLICY IF EXISTS provider_consents_update ON public.provider_consents;
-CREATE POLICY provider_consents_update ON public.provider_consents FOR UPDATE TO public
-  USING (((company_id = current_active_company_id()) AND current_user_can_write()));
-
-DROP POLICY IF EXISTS provider_consents_delete ON public.provider_consents;
-CREATE POLICY provider_consents_delete ON public.provider_consents FOR DELETE TO public
   USING (((company_id = current_active_company_id()) AND current_user_can_write()));
 
 DROP POLICY IF EXISTS receipt_line_items_insert ON public.receipt_line_items;

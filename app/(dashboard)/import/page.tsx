@@ -21,7 +21,6 @@ import { useToast } from '@/components/ui/use-toast'
 import { getErrorMessage } from '@/lib/errors/get-error-message'
 import { ArrowLeft, Landmark, Loader2, ChevronRight, Download, AlertTriangle } from 'lucide-react'
 import { cn, formatDate } from '@/lib/utils'
-import { createClient } from '@/lib/supabase/client'
 import { useCompany } from '@/contexts/CompanyContext'
 import { DestructiveConfirmDialog, useDestructiveConfirm } from '@/components/ui/destructive-confirm-dialog'
 
@@ -1604,50 +1603,28 @@ function CSVDataImportWizard() {
 // Import Page with Selection Cards
 // ============================================================
 
-type ImportMode = null | 'psd2' | 'sie' | 'csv_data' | 'migration'
+type ImportMode = null | 'psd2' | 'sie' | 'csv_data'
 
 export default function ImportPage() {
   const { isSandbox } = useCompany()
   const [mode, setMode] = useState<ImportMode>(null)
-  const [initialProvider, setInitialProvider] = useState<string | null>(null)
   const [view, setView] = useState<'import' | 'export'>('import')
   const [sieDialogOpen, setSieDialogOpen] = useState(false)
-  const [userId, setUserId] = useState('')
   const [exportPeriodId, setExportPeriodId] = useState<string | null>(null)
   const [exportExcludeClosing, setExportExcludeClosing] = useState(true)
   const t = useTranslations('import')
   const router = useRouter()
 
-  // Fetch authenticated user ID (used by the migration wizard)
-  useEffect(() => {
-    const supabase = createClient()
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) setUserId(user.id)
-    })
-  }, [])
-
   // Sync mode + view from URL search params (reacts to client-side navigation changes)
   const searchParams = useSearchParams()
   useEffect(() => {
-    // External imports (provider migration, PSD2 bank connection) need live
-    // third-party credentials, so their deep links are ignored in the sandbox.
+    // External imports (PSD2 bank connection) need live third-party
+    // credentials, so their deep links are ignored in the sandbox.
     // Manual file-import modes (CSV/Excel, SIE) stay reachable.
-    const allowedModes = isSandbox
-      ? ['sie', 'csv_data']
-      : ['psd2', 'sie', 'csv_data', 'migration']
-    if (!isSandbox && searchParams.get('migration')) {
-      setMode('migration')
-    } else {
-      const modeParam = searchParams.get('mode')
-      if (modeParam && allowedModes.includes(modeParam)) {
-        setMode(modeParam as ImportMode)
-      }
-      // Deep link from the onboarding branch question: preselect the old
-      // system so the wizard can jump straight to its connect step. Cleared
-      // for every other mode so a stale preselect can't survive re-entry.
-      setInitialProvider(
-        modeParam === 'migration' && !isSandbox ? searchParams.get('provider') : null
-      )
+    const allowedModes = isSandbox ? ['sie', 'csv_data'] : ['psd2', 'sie', 'csv_data']
+    const modeParam = searchParams.get('mode')
+    if (modeParam && allowedModes.includes(modeParam)) {
+      setMode(modeParam as ImportMode)
     }
     const viewParam = searchParams.get('view')
     if (viewParam === 'export' || viewParam === 'import') {
@@ -1792,17 +1769,7 @@ export default function ImportPage() {
       )}
 
       {mode !== null && (
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => {
-            setMode(null)
-            // Mode is client state (not URL-synced), so the deep-linked
-            // preselect must be cleared here too or a re-entered migration
-            // mode would auto-jump again.
-            setInitialProvider(null)
-          }}
-        >
+        <Button variant="ghost" size="sm" onClick={() => setMode(null)}>
           <ArrowLeft className="mr-2 h-4 w-4" />
           {t('back_to_choices')}
         </Button>

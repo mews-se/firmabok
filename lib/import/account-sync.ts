@@ -3,7 +3,7 @@
  *
  * Single home for the "ensure every mapped target account exists" logic that
  * previously lived in three near-identical copies (executeSIEImport, the
- * /api/import/sie/execute route, and the arcim-migration extension), plus the
+ * /api/import/sie/execute route, and the removed migration importer), plus the
  * rename pass that carries customized #KONTO names from the SIE file into
  * accounts that already exist (e.g. the K1-seeded defaults).
  */

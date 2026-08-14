@@ -1,9 +1,9 @@
-// Leaf module on purpose: imported by extension entry graphs (arcim-migration
-// entity mapper) where pulling in supplier-invoice-line-checks' dependencies
-// (lib/money) shifted the server chunk graph into a Turbopack chunk-name hash
-// collision ("Two or more assets with different content were emitted to the
-// same output path", first seen on the #1385 merge). Keep this file free of
-// imports; supplier-invoice-line-checks re-exports it for all other callers.
+// Leaf module on purpose: pulling in supplier-invoice-line-checks'
+// dependencies (lib/money) once shifted the server chunk graph into a
+// Turbopack chunk-name hash collision ("Two or more assets with different
+// content were emitted to the same output path", first seen on the #1385
+// merge). Keep this file free of imports; supplier-invoice-line-checks
+// re-exports it for all other callers.
 
 /**
  * Convert a supplier-invoice VAT rate to the database's decimal-fraction

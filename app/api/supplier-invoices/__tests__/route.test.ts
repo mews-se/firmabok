@@ -1186,7 +1186,6 @@ describe('POST /api/supplier-invoices: inbox conversion (inbox_item_id)', () => 
         id: INBOX_UUID,
         document_id: 'doc-1',
         created_supplier_invoice_id: 'si-old',
-        channel_context: null,
       },
     })
 
@@ -1206,7 +1205,6 @@ describe('POST /api/supplier-invoices: inbox conversion (inbox_item_id)', () => 
         id: INBOX_UUID,
         document_id: 'doc-1',
         created_supplier_invoice_id: null,
-        channel_context: null,
       },
     })
     // Document validity check (unlinked, current)
@@ -1254,7 +1252,6 @@ describe('POST /api/supplier-invoices: inbox conversion (inbox_item_id)', () => 
         id: INBOX_UUID,
         document_id: null,
         created_supplier_invoice_id: null,
-        channel_context: null,
       },
     })
     // No document on the item: no document checks. Supplier lookup next.

@@ -19,8 +19,7 @@ import {
 } from '@/lib/currency/supplier-invoice-rate'
 import { roundOre } from '@/lib/money'
 import { linkToJournalEntry } from '@/lib/core/documents/document-service'
-import { renderChannelContextNotes } from '@/lib/documents/channel-context-notes'
-import type { InboxChannelContext, SupplierInvoice, SupplierInvoiceItem } from '@/types'
+import type { SupplierInvoice, SupplierInvoiceItem } from '@/types'
 import { getErrorMessage as getUserErrorMessage } from '@/lib/errors/get-error-message'
 
 ensureInitialized()
@@ -85,13 +84,12 @@ export const POST = withRouteContext(
       id: string
       document_id: string | null
       created_supplier_invoice_id: string | null
-      channel_context: InboxChannelContext | null
     }
     let inboxItem: InboxConversionRow | null = null
     if (body.inbox_item_id) {
       const { data: inboxRow, error: inboxError } = await supabase
         .from('invoice_inbox_items')
-        .select('id, document_id, created_supplier_invoice_id, channel_context')
+        .select('id, document_id, created_supplier_invoice_id')
         .eq('id', body.inbox_item_id)
         .eq('company_id', companyId)
         .maybeSingle()
@@ -372,14 +370,7 @@ export const POST = withRouteContext(
         paid_amount: paidPrivately ? totalRounded : 0,
         remaining_amount: paidPrivately ? 0 : totalRounded,
         paid_at: paidPrivately ? new Date().toISOString() : null,
-        // Chat-sourced inbox items: when the request carries NO notes field at
-        // all, default to the rendered chat context so verified human answers
-        // reach the leverantörsfaktura. Presence decides, not truthiness:
-        // notes: "" is an explicit clear (same rule as the old convert route).
-        notes:
-          body.notes === undefined
-            ? (inboxItem ? renderChannelContextNotes(inboxItem.channel_context) : null)
-            : body.notes.trim() || null,
+        notes: body.notes === undefined ? null : body.notes.trim() || null,
         // Display-only öresavrundning override; null = off (no retroactive rounding).
         ore_rounding: body.ore_rounding ?? null,
         // Dimensions PR7: invoice-level bag; generators apply it to every line.

@@ -63,7 +63,7 @@ export default async function DashboardPage() {
     // carry the active company_id; either filter would work: we use user_id
     // because that's what the token-store reads/writes against.
     supabase.from('skatteverket_tokens').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
-    // Any item ever received in the document inbox (email/WhatsApp/upload)
+    // Any item ever received in the document inbox (email/upload)
     // marks the receipts checklist step done: same "has ever done X" shape
     // as the other flags above.
     supabase.from('invoice_inbox_items').select('*', { count: 'exact', head: true }).eq('company_id', companyId),

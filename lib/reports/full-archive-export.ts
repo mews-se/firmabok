@@ -841,27 +841,17 @@ export const MASTER_DATA_DUMP_TABLES: MasterDataTableSpec[] = [
     denormalize: { prefix: 'supplier_invoice_', columns: ['currency', 'exchange_rate'] },
   },
   { name: 'supplier_invoice_payments', file: 'supplier_invoice_payments.json' },
-  // Underlag intake: the chat answers behind a verifikat.
-  //
-  // A projection, not the whole table. `channel_context` holds the human
-  // answers the WhatsApp bot collected (representation deltagare + syfte +
-  // raw_answer), and it is the ONLY complete copy: the verifikat line carries
-  // a 220-char render that drops whole names ("… och N till"), and Skatte-
-  // verket's dokumentationskrav wants every deltagare. Without this file a
-  // company that leaves with its archive keeps an incomplete representation
-  // trail. The booking columns come along so each answer can be tied to the
-  // verifikat it belongs to.
-  //
-  // Everything else on the row (email bodies, OCR output, error messages,
-  // retry state) is inbox workflow state and stays out; the documents
-  // themselves are in dokument/.
+  // Underlag intake: a projection, not the whole table. The booking columns
+  // tie each intake row to the verifikat it produced. Everything else on the
+  // row (email bodies, OCR output, error messages, retry state) is inbox
+  // workflow state and stays out; the documents themselves are in dokument/.
   {
     name: 'invoice_inbox_items',
     file: 'invoice_inbox_items.json',
     orderBy: 'created_at',
     columns:
       'id, created_at, source, status, document_id, matched_transaction_id, ' +
-      'created_journal_entry_id, created_supplier_invoice_id, channel_context',
+      'created_journal_entry_id, created_supplier_invoice_id',
   },
   // Receipts
   { name: 'receipts', file: 'receipts.json', orderBy: 'receipt_date' },
@@ -987,7 +977,6 @@ export const ARCHIVE_EXCLUDED_TABLES: Record<string, string> = {
   graph_transaction_counterparties: 'derived AI context graph, regenerable',
   idempotency_keys: 'infrastructure',
   inbox_rate_counters: 'infrastructure',
-  mail_connections: 'mailbox OAuth grants (live refresh tokens), not portable',
   mcp_tasks: 'MCP task handles: transient tool-call state with a 1-hour TTL',
   metered_events: 'billing telemetry',
   notification_log: 'notification dedup log',
@@ -1002,8 +991,6 @@ export const ARCHIVE_EXCLUDED_TABLES: Record<string, string> = {
   skatteverket_company_connections: 'integration connection state',
   skatteverket_tokens: 'secrets',
   webhook_deliveries: 'automation delivery log',
-  whatsapp_conversations:
-    'WhatsApp bot conversation state (company_id is only a which-company pin); receipts live in document_attachments',
   webhooks: 'automation config with signing secrets',
 }
 

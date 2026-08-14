@@ -38,7 +38,6 @@ interface InboxItemRow {
   created_supplier_invoice_id: string | null
   created_journal_entry_id: string | null
   linked_journal_entry_id: string | null
-  channel_context: Record<string, unknown> | null
 }
 
 export const GET = withRouteContext<{ params: Promise<{ id: string }> }>(
@@ -52,8 +51,7 @@ export const GET = withRouteContext<{ params: Promise<{ id: string }> }>(
       .select(
         'id, status, source, created_at, document_id, extracted_data, extraction_skipped, ' +
           'error_message, matched_supplier_id, matched_transaction_id, ' +
-          'created_supplier_invoice_id, created_journal_entry_id, linked_journal_entry_id, ' +
-          'channel_context',
+          'created_supplier_invoice_id, created_journal_entry_id, linked_journal_entry_id',
       )
       .eq('id', id)
       .eq('company_id', companyId)

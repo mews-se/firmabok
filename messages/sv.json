@@ -209,8 +209,7 @@
     "templates": "Återanvändbara konteringar och mönster som lärts in från din bokföring.",
     "banking": "Transaktioner hämtas automatiskt. Accounted kan bara läsa, aldrig flytta pengar.",
     "assistant": "Vad assistenten vet, minns och kan.",
-    "api": "Nycklar för MCP-klienter som Claude och Cursor, och för egna integrationer.",
-    "whatsapp": "Koppla ditt mobilnummer och skicka kvitton som foto eller PDF direkt i WhatsApp."
+    "api": "Nycklar för MCP-klienter som Claude och Cursor, och för egna integrationer."
   },
   "settings_nav": {
     "aria_label": "Inställningar",
@@ -230,7 +229,6 @@
     "backup": "Säkerhetsbackup",
     "account": "Konto",
     "api": "API",
-    "whatsapp": "WhatsApp",
     "group_account": "Konto",
     "group_company": "Företag",
     "group_accounting": "Bokföring & skatt",
@@ -934,8 +932,7 @@
     "step_receipts_title": "Kvitton och underlag",
     "step_receipts_description": "Fota kvittot eller vidarebefordra mejlet till er inkorgsadress, så tolkas underlaget och väntar på dig.",
     "step_receipts_action": "Öppna inkorgen",
-    "step_receipts_channels": "Mejl · WhatsApp · uppladdning",
-    "step_receipts_channels_no_wa": "Mejl · uppladdning"
+    "step_receipts_channels": "Mejl · uppladdning"
   },
   "tax_assessment_notices": {
     "title": "Slutskattebesked och kvarskatt",
@@ -1866,8 +1863,6 @@
     "col_status": "Status",
     "source_upload": "Uppladdning",
     "source_email": "E-post",
-    "source_whatsapp": "WhatsApp",
-    "source_mail_hunt": "Mejlsök",
     "status_dismissed": "Avfärdad",
     "status_supplier_invoice": "Leverantörsfaktura",
     "status_booked": "Bokförd",

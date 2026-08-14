@@ -57,7 +57,6 @@ function makeItem(overrides: Record<string, unknown> = {}) {
     created_supplier_invoice_id: null,
     created_journal_entry_id: null,
     linked_journal_entry_id: null,
-    channel_context: null,
     ...overrides,
   }
 }

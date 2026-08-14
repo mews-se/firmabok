@@ -11,9 +11,8 @@ export interface ExpenseWarning {
 }
 
 /**
- * Meal/representation keyword pattern. Exported so channel intake (the
- * WhatsApp representation-question trigger) reuses the exact same base
- * heuristic instead of drifting its own copy.
+ * Meal/representation keyword pattern. Exported so other intake surfaces
+ * reuse the exact same base heuristic instead of drifting their own copy.
  */
 export const MEAL_PATTERN = /restaurang|lunch|middag|dinner|café|fika/i
 

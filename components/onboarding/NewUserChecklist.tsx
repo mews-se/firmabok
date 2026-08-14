@@ -75,7 +75,6 @@ export default function NewUserChecklist({
   const hasBanking = ENABLED_EXTENSION_IDS.has('enable-banking')
   const hasSkatteverket = ENABLED_EXTENSION_IDS.has('skatteverket')
   const hasInbox = ENABLED_EXTENSION_IDS.has('invoice-inbox')
-  const hasWhatsApp = ENABLED_EXTENSION_IDS.has('whatsapp-inbox')
 
   const persist = async (
     body: Record<string, unknown>,
@@ -294,7 +293,7 @@ export default function NewUserChecklist({
             )}
             marks={
               <span className="text-[11px] text-muted-foreground">
-                {hasWhatsApp ? t('step_receipts_channels') : t('step_receipts_channels_no_wa')}
+                {t('step_receipts_channels')}
               </span>
             }
           >

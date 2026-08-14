@@ -83,8 +83,6 @@ const UPLOAD_ACCEPT = 'application/pdf,image/jpeg,image/png,image/webp'
 const SOURCE_LABEL_KEYS: Record<string, string> = {
   upload: 'source_upload',
   email: 'source_email',
-  whatsapp: 'source_whatsapp',
-  mail_hunt: 'source_mail_hunt',
 }
 
 function isImageType(type: string | null): boolean {

@@ -22,10 +22,10 @@ interface SettingsSectionHeaderProps {
   /** Right-aligned header action (e.g. "Förhandsvisa faktura", "Skapa nyckel"). */
   action?: React.ReactNode
   /**
-   * Brand mark for a section that represents a third-party channel
-   * (WhatsApp today). Sections that are just Accounted settings leave this
-   * unset: the serif title carries them, and a decorative icon per tab
-   * would turn the settings rail into a sticker album.
+   * Brand mark for a section that represents a third-party channel.
+   * Sections that are just Accounted settings leave this unset: the serif
+   * title carries them, and a decorative icon per tab would turn the
+   * settings rail into a sticker album.
    */
   mark?: React.ReactNode
 }

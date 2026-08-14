@@ -209,8 +209,7 @@
     "templates": "Reusable postings and patterns learned from your bookkeeping.",
     "banking": "Transactions are fetched automatically. Accounted can only read, never move money.",
     "assistant": "What the assistant knows, remembers and can do.",
-    "api": "Keys for MCP clients like Claude and Cursor, and for your own integrations.",
-    "whatsapp": "Link your mobile number and send receipts as photos or PDFs straight from WhatsApp."
+    "api": "Keys for MCP clients like Claude and Cursor, and for your own integrations."
   },
   "settings_nav": {
     "aria_label": "Settings",
@@ -230,7 +229,6 @@
     "backup": "Backup",
     "account": "Account",
     "api": "API",
-    "whatsapp": "WhatsApp",
     "group_account": "Account",
     "group_company": "Company",
     "group_accounting": "Accounting & tax",
@@ -934,8 +932,7 @@
     "step_receipts_title": "Receipts and documents",
     "step_receipts_description": "Photo the receipt or forward the email to your inbox address, and the document is read and waiting for you.",
     "step_receipts_action": "Open the inbox",
-    "step_receipts_channels": "Email · WhatsApp · upload",
-    "step_receipts_channels_no_wa": "Email · upload"
+    "step_receipts_channels": "Email · upload"
   },
   "tax_assessment_notices": {
     "title": "Final tax notices and remaining tax",
@@ -1866,8 +1863,6 @@
     "col_status": "Status",
     "source_upload": "Upload",
     "source_email": "Email",
-    "source_whatsapp": "WhatsApp",
-    "source_mail_hunt": "Mail search",
     "status_dismissed": "Dismissed",
     "status_supplier_invoice": "Supplier invoice",
     "status_booked": "Booked",

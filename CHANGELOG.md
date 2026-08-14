@@ -4,6 +4,32 @@ All notable changes to Firmabok, newest first. Versions follow the
 tags in this repository; each one is published as a container image at
 `ghcr.io/mews-se/firmabok`.
 
+## 3.0.0 — 2026-08-14
+
+- The database is now the official `postgres` image (18.2, alpine)
+  instead of Supabase's. A three-file bootstrap creates the roles, the
+  auth schema GoTrue builds on and the API grants; everything else the
+  stack needs ships with plain postgres. The image layer for a full
+  install shrinks from over three gigabytes to under one, and the
+  database idles around 45 MB.
+- **Breaking:** an existing installation cannot carry its database
+  volume across this upgrade. Take a `pg_dump` on the old version,
+  install fresh, and restore. The install commands themselves are
+  unchanged.
+- New databases are created with Swedish collation (ICU sv-SE), so
+  text sorts z, å, ä, ö the way Swedish expects.
+- The two daily database jobs (overdue supplier invoices, invoice
+  delivery PII redaction) run from the cron container like every other
+  scheduled job; the database needs no cron extension.
+- Security: the overdue sweep function could be called by any signed-in
+  user through the API. It now requires the service role.
+- A large sweep removed the dormant extension browsing surface (the
+  MCP server, the only extension, is untouched), dead schema families
+  for integrations this fork does not ship (Stripe, WooCommerce,
+  WhatsApp and inbound-mail inboxes, provider migration), the AI chat
+  leftovers and sixty-odd unused translation namespaces - about 16,000
+  lines in total. The stack rests around 300 MB of memory.
+
 ## 2.5.2 — 2026-08-13
 
 - Deleted files nothing referenced: leftovers from features removed

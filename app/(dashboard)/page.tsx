@@ -155,7 +155,6 @@ export default async function DashboardPage() {
 
   return (
     <DashboardContent
-      companyId={companyId}
       userFirstName={userFirstName}
       expiringBankConnections={expiringBankConnections}
       worklist={worklist}

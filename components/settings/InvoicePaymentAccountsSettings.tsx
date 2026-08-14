@@ -23,7 +23,6 @@ import {
   normalizeInvoicePaymentAccount,
 } from '@/lib/invoices/payment-accounts'
 import { isValidSwish, normaliseSwish } from '@/lib/payments/swish'
-import { ENABLED_EXTENSION_IDS } from '@/lib/extensions/_generated/enabled-extensions'
 import type {
   CompanySettings,
   Currency,
@@ -114,7 +113,6 @@ export function InvoicePaymentAccountsSettings({
   const accountsRef = useRef(accounts)
   const previousServerAccountsKey = useRef(serverAccountsKey)
   accountsRef.current = accounts
-  const hasBankingExtension = ENABLED_EXTENSION_IDS.has('enable-banking')
 
   useEffect(() => {
     const previousKey = previousServerAccountsKey.current
@@ -354,7 +352,6 @@ export function InvoicePaymentAccountsSettings({
             aria-label={t('bank_label')}
             value={value(activeAccount, 'bank_name')}
             onChange={(next) => updateField('bank_name', next)}
-            enableBankingEnabled={hasBankingExtension}
           />
         </div>
       </SettingsRow>

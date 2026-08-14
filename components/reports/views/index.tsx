@@ -37,7 +37,6 @@ import {
 import { Table, TableBody } from '@/components/ui/table'
 import { useCompanySettings } from '@/components/settings/useSettings'
 import dynamic from 'next/dynamic'
-import { SkatteverketPanel } from '@/components/reports/SkatteverketPanel'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useCanWrite } from '@/lib/hooks/use-can-write'
 import type { FormLine } from '@/components/bookkeeping/JournalEntryForm'
@@ -1738,9 +1737,9 @@ export function VatDeclarationView({ pageTitle }: { pageTitle?: string } = {}) {
   const error = upToDate ? (result.error ?? null) : null
   const loading = fetchKey !== null && !upToDate
 
-  // Local pre-flight checks on the calculated declaration. Computed here (not
-  // in SkatteverketPanel) so every user sees them: they gate direct submission
-  // but concern manual filers just as much.
+  // Local pre-flight checks on the calculated declaration. Computed here so
+  // every user sees them: they gate direct submission but concern manual
+  // filers just as much.
   //
   // The per-verifikat gap scan is folded in BEFORE anything derives from the
   // list. The aggregate checks compare period totals with a tolerance that
@@ -2251,22 +2250,6 @@ export function VatDeclarationView({ pageTitle }: { pageTitle?: string } = {}) {
 
           {activeStep === 4 && (
             <section className="mx-auto max-w-3xl space-y-8">
-              <SkatteverketPanel
-                periodType={periodType}
-                year={year}
-                period={period}
-                fiscalPeriodId={isYearly ? fiscalPeriodId : undefined}
-                fiscalYearEnd={
-                  isYearly && fiscalPeriodEnd
-                    ? {
-                        year: Number(fiscalPeriodEnd.slice(0, 4)),
-                        month: Number(fiscalPeriodEnd.slice(5, 7)),
-                      }
-                    : undefined
-                }
-                hasData={data !== null}
-                localBlocked={checksBlocked}
-              />
               <VatManualFilingCard
               xmlHref={`/api/reports/vat-declaration/eskd?${vatQueryString()}`}
               pdfHref={`/api/reports/vat-declaration/pdf?${vatQueryString()}`}
@@ -2276,28 +2259,6 @@ export function VatDeclarationView({ pageTitle }: { pageTitle?: string } = {}) {
         </div>
       )}
 
-      {/* Skatteverket integration panel for the no-data states (fetch error,
-          empty period): with data it lives inside steg 4. Hidden while the
-          räkenskapsår for helårsmoms is unresolved, so its actions can never
-          target an unconfirmed period. */}
-      {!awaitingFiscalPeriod && !data && (
-        <SkatteverketPanel
-          periodType={periodType}
-          year={year}
-          period={period}
-          fiscalPeriodId={isYearly ? fiscalPeriodId : undefined}
-          fiscalYearEnd={
-            isYearly && fiscalPeriodEnd
-              ? {
-                  year: Number(fiscalPeriodEnd.slice(0, 4)),
-                  month: Number(fiscalPeriodEnd.slice(5, 7)),
-                }
-              : undefined
-          }
-          hasData={data !== null}
-          localBlocked={checksBlocked}
-        />
-      )}
     </div>
     </VatDrillContext.Provider>
   )

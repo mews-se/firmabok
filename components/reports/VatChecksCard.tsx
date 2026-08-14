@@ -92,9 +92,9 @@ const GAP_PREVIEW_COUNT = 8
 /**
  * "Kontroll av underlaget": the local pre-flight checks for the
  * momsdeklaration plus the per-voucher RC-basis-gap worklist with single and
- * bulk Korrigera. Hoisted out of SkatteverketPanel so EVERY user sees it,
- * paying or not, connected or not: manual filers are exactly the users who
- * must not file a declaration these checks would have blocked.
+ * bulk Korrigera. Rendered for EVERY user, paying or not, connected or not:
+ * manual filers are exactly the users who must not file a declaration these
+ * checks would have blocked.
  */
 export function VatChecksCard({
   checks,

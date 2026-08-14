@@ -2,29 +2,19 @@
 
 import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
-import { useSearchParams, useRouter } from 'next/navigation'
 import { TaxSettingsForm } from '@/components/settings/TaxSettingsForm'
 import { TaxAssessmentNoticesPanel } from '@/components/settings/TaxAssessmentNoticesPanel'
 import { SettingsFormWrapper } from '@/components/settings/SettingsFormWrapper'
 import { SettingsLoadError } from '@/components/settings/SettingsLoadError'
 import { SettingsLoadingSkeleton } from '@/components/settings/SettingsLoadingSkeleton'
 import { SettingsSectionHeader } from '@/components/settings/SettingsRows'
-import { SkatteverketConnectPanel } from '@/components/settings/SkatteverketConnectPanel'
 import { useSettings } from '@/components/settings/useSettings'
-import { useToast } from '@/components/ui/use-toast'
-import { ENABLED_EXTENSION_IDS } from '@/lib/extensions/_generated/enabled-extensions'
 import type { CompanySettings } from '@/types'
 
 export function TaxSettingsContent() {
   const { settings, isLoading, updateSettings, refetch } = useSettings()
-  const t = useTranslations('settings_skatteverket')
   const tNav = useTranslations('settings_nav')
   const tIntro = useTranslations('settings_intro')
-  const searchParams = useSearchParams()
-  const router = useRouter()
-  const { toast } = useToast()
-
-  const hasSkatteverketExtension = ENABLED_EXTENSION_IDS.has('skatteverket')
 
   // Derived EU-sales signal: postings on 3108/3308/3107 imply a periodisk
   // sammanställning obligation the opt-in flags may not reflect. Suggestion
@@ -67,26 +57,6 @@ export function TaxSettingsContent() {
       cancelled = true
     }
   }, [])
-
-  // Skatteverket OAuth callback: the connect flow returns to /settings/tax with
-  // a status query param (returnTo set in SkatteverketConnectPanel).
-  useEffect(() => {
-    const connected = searchParams.get('skv_connected')
-    const error = searchParams.get('skv_error')
-    if (connected === 'true') {
-      toast({ title: t('connected_title'), description: t('connected_description') })
-      router.replace('/settings/tax')
-    } else if (error) {
-      let msg: string
-      try {
-        msg = decodeURIComponent(error)
-      } catch {
-        msg = error
-      }
-      toast({ title: t('connect_failed_title'), description: msg, variant: 'destructive' })
-      router.replace('/settings/tax')
-    }
-  }, [searchParams, router, toast, t])
 
   if (isLoading) return <SettingsLoadingSkeleton />
   if (!settings) return <SettingsLoadError onRetry={refetch} />
@@ -149,19 +119,9 @@ export function TaxSettingsContent() {
     }
   }
 
-  // Sandbox companies don't connect to the real Skatteverket: hide the panel,
-  // matching the old Skatteverket tab's visibility gate. Read straight off the
-  // already-loaded settings row (no separate query needed).
-  const showSkatteverket = hasSkatteverketExtension && !settings.is_sandbox
-
   return (
     <div>
       <SettingsSectionHeader title={tNav('tax')} intro={tIntro('tax')} />
-
-      {/* Connection panel first: the skattekonto and momsdeklaration pages
-          send users here specifically to (re)connect; below the long tax
-          form it sat out of view. */}
-      {showSkatteverket && <SkatteverketConnectPanel />}
 
       <SettingsFormWrapper onSave={handleSave} className="space-y-0">
         <TaxSettingsForm

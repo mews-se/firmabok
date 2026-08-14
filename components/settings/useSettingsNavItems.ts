@@ -28,16 +28,15 @@ const GROUP_ORDER: SettingsGroupKey[] = ['account', 'company', 'accounting', 'sa
  * routed settings modal so the two can never drift on which sections show for
  * AB vs EF, sandbox, identity-verified, or enabled extensions.
  *
- * Visibility is derived from client context (no extra fetch): `isSandbox`
+ * Visibility is derived from client context (no extra fetch): the company
  * comes from CompanyContext and extension availability from the generated
  * enabled-extensions set.
  */
 export function useSettingsNavItems(): { items: SettingsNavItem[]; groups: SettingsNavGroup[] } {
-  const { company, isSandbox } = useCompany()
+  const { company } = useCompany()
   const t = useTranslations('settings_nav')
 
   const hasCompany = !!company
-  const hasBankingExtension = ENABLED_EXTENSION_IDS.has('enable-banking')
   const hasMcpExtension = ENABLED_EXTENSION_IDS.has('mcp-server')
 
   // Företagsprofil (TIC-snapshot) lives under Företag; Skatteverket under
@@ -50,7 +49,6 @@ export function useSettingsNavItems(): { items: SettingsNavItem[]; groups: Setti
     { id: 'tax', href: '/settings/tax', label: t('tax'), group: 'accounting', show: hasCompany },
     { id: 'invoicing', href: '/settings/invoicing', label: t('invoicing'), group: 'sales', show: hasCompany },
     { id: 'templates', href: '/settings/templates', label: t('templates'), group: 'sales', show: hasCompany },
-    { id: 'banking', href: '/settings/banking', label: t('banking'), group: 'tools', show: hasCompany && !isSandbox && hasBankingExtension },
     { id: 'api', href: '/settings/api', label: t('api'), group: 'tools', show: hasCompany && hasMcpExtension },
   ]
 

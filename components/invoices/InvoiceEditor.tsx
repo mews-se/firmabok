@@ -55,7 +55,6 @@ import { BankDetailsSetupDialog } from '@/components/invoices/BankDetailsSetupDi
 import { FirstInvoiceLogoPrompt } from '@/components/invoices/FirstInvoiceLogoPrompt'
 import { useCompany, useCapability } from '@/contexts/CompanyContext'
 import { CAPABILITY } from '@/lib/entitlements/keys'
-import { ENABLED_EXTENSION_IDS } from '@/lib/extensions/_generated/enabled-extensions'
 import {
   ROT_WORK_TYPES,
   RUT_WORK_TYPES,
@@ -143,31 +142,12 @@ export default function InvoiceEditor(props: InvoiceEditorProps = { mode: 'creat
   const [mode, setMode] = useState<'invoice' | 'self_billed'>(
     props.initialSelfBilled && !isEditMode ? 'self_billed' : 'invoice',
   )
-  // Company-wide opt-in from the invoice settings page: the whole payment
-  // link section (manual field + Stripe auto toggle) stays hidden until the
-  // company enables it. The send routes enforce the same setting server-side
-  // (maybeCreatePaymentLinkForInvoice), so this is presentation, not the gate.
+  // Company-wide opt-in from the invoice settings page: the payment link
+  // section stays hidden until the company enables it.
   const [paymentLinksEnabled, setPaymentLinksEnabled] = useState(false)
   // An already-linked invoice keeps showing the section even when the
   // setting is off, so the user can still see or clear the old link.
   const hasExistingPaymentLink = Boolean(initial?.payment_link_url)
-  // Active Stripe connection: drives the "auto payment link" toggle in the
-  // payment link section. Absent extension or no connection → toggle hidden.
-  const [stripeConnected, setStripeConnected] = useState(false)
-  useEffect(() => {
-    if (!paymentLinksEnabled) return
-    if (!ENABLED_EXTENSION_IDS.has('stripe')) return
-    let cancelled = false
-    fetch('/api/extensions/ext/stripe/status')
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (!cancelled && data?.connection?.status === 'active') setStripeConnected(true)
-      })
-      .catch(() => {})
-    return () => {
-      cancelled = true
-    }
-  }, [paymentLinksEnabled])
 
   const schema = useMemo(() => {
     const itemSchema = z.object({
@@ -2331,11 +2311,11 @@ export default function InvoiceEditor(props: InvoiceEditorProps = { mode: 'creat
                     />
                   </div>
 
-                  {/* Online payment link: manual paste or the Stripe auto
-                      toggle. Only real invoices: proformas and delivery notes
-                      carry no payment request. Hidden unless the company has
-                      opted in on the invoice settings page, except when the
-                      draft already carries a link (still viewable/clearable). */}
+                  {/* Online payment link (manual paste). Only real invoices:
+                      proformas and delivery notes carry no payment request.
+                      Hidden unless the company has opted in on the invoice
+                      settings page, except when the draft already carries a
+                      link (still viewable/clearable). */}
                   {watchDocumentType === 'invoice' && (paymentLinksEnabled || hasExistingPaymentLink) && (
                     <div className="space-y-2">
                       <Label htmlFor="payment_link_url">{t('payment_link_label')}</Label>
@@ -2349,26 +2329,7 @@ export default function InvoiceEditor(props: InvoiceEditorProps = { mode: 'creat
                       {errors.payment_link_url ? (
                         <p className="text-sm text-destructive">{errors.payment_link_url.message}</p>
                       ) : (
-                        <p className="text-xs text-muted-foreground">
-                          {stripeConnected ? t('payment_link_hint_auto') : t('payment_link_hint')}
-                        </p>
-                      )}
-                      {stripeConnected && !watch('payment_link_url')?.trim() && (
-                        <div className="flex items-center gap-2 pt-1">
-                          <Switch
-                            id="payment_link_auto"
-                            checked={watch('payment_link_auto') ?? true}
-                            onCheckedChange={(v) =>
-                              setValue('payment_link_auto', v, { shouldDirty: true })
-                            }
-                          />
-                          <Label
-                            htmlFor="payment_link_auto"
-                            className="text-sm font-normal text-muted-foreground"
-                          >
-                            {t('payment_link_auto_label')}
-                          </Label>
-                        </div>
+                        <p className="text-xs text-muted-foreground">{t('payment_link_hint')}</p>
                       )}
                     </div>
                   )}

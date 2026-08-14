@@ -10,7 +10,6 @@ import { useTheme } from 'next-themes'
 import { createClient } from '@/lib/supabase/client'
 import { SecuritySettings } from '@/components/settings/SecuritySettings'
 import { InstallAppSection } from '@/components/settings/InstallAppSection'
-import { CalendarFeedSettings } from '@/components/settings/CalendarFeedSettings'
 import { AccountDangerZone } from '@/components/settings/AccountDangerZone'
 import {
   SettingsGroup,
@@ -20,7 +19,6 @@ import {
   SettingsSectionHeader,
   SettingsSeg,
 } from '@/components/settings/SettingsRows'
-import { ENABLED_EXTENSION_IDS } from '@/lib/extensions/_generated/enabled-extensions'
 import { useSettings } from '@/components/settings/useSettings'
 import { resetAnalyticsIdentity } from '@/lib/analytics/reset'
 import { useToast } from '@/components/ui/use-toast'
@@ -35,7 +33,6 @@ export function AccountSettingsContent() {
   const { theme, setTheme } = useTheme()
   const { palette, setPalette } = usePalette()
   const [mounted, setMounted] = useState(false)
-  const hasCalendarExtension = ENABLED_EXTENSION_IDS.has('calendar')
   const { settings } = useSettings()
   const { toast } = useToast()
   const activeLocale = useLocale() as Locale
@@ -243,9 +240,6 @@ export function AccountSettingsContent() {
 
       {/* Security: BankID, password, 2FA (renders its own group) */}
       <SecuritySettings />
-
-      {/* Calendar feed (extension-gated) */}
-      {hasCalendarExtension && <CalendarFeedSettings />}
 
       {/* Privacy & agreements: surface the otherwise-unlinked DPA + privacy policy */}
       <SettingsGroup label={tSettings('legal_title')}>

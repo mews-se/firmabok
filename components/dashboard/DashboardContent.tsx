@@ -9,15 +9,12 @@ import { useCompany } from '@/contexts/CompanyContext'
 import NewUserChecklist from '@/components/onboarding/NewUserChecklist'
 import AttGoraSection from '@/components/dashboard/AttGoraSection'
 import ResumePane from '@/components/dashboard/ResumePane'
-import BackupHealthBanner from '@/components/dashboard/BackupHealthBanner'
-import { SkatteverketPromoCard } from '@/components/dashboard/SkatteverketPromoCard'
 import type { InitialSetupState, OnboardingProgress } from '@/types'
 import type { SuggestedMatch, WorklistCounts } from '@/lib/worklist/types'
 import type { ResumeItem } from '@/lib/worklist/resume'
 import type { VatDeadlineLine } from '@/lib/onboarding/checklist'
 
 interface DashboardContentProps {
-  companyId: string
   /** Signed-in user's first name for the greeting; null falls back to a
    *  nameless greeting. */
   userFirstName?: string | null
@@ -55,7 +52,6 @@ interface DashboardContentProps {
  * §8): the numbers live at /kpi and /reports, deadlines render as Bevaka rows.
  */
 export default function DashboardContent({
-  companyId,
   userFirstName,
   expiringBankConnections,
   worklist,
@@ -94,8 +90,6 @@ export default function DashboardContent({
 
   return (
     <div className="stagger-enter space-y-8">
-      <BackupHealthBanner />
-
       {/* Greeting hero (concept scene 14) */}
       <section>
         <h1 className="font-display text-2xl leading-8 tracking-tight">
@@ -139,12 +133,6 @@ export default function DashboardContent({
         />
         <ResumePane items={resumeItems} />
       </div>
-
-      {/* Connect-Skatteverket nudge for existing companies. */}
-      <SkatteverketPromoCard
-        companyId={companyId}
-        connected={!!onboardingProgress?.hasSkatteverketConnected}
-      />
     </div>
   )
 }

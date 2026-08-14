@@ -369,9 +369,7 @@ export interface CompanySettings {
   invoice_credit_terms_text: string | null
 
   // Opt-in for the invoice payment-link feature (default false): shows the
-  // payment-link field in the invoice editor and enables automatic Stripe
-  // payment links on send. Enforced server-side in
-  // lib/extensions/payment-links.ts, not just in the UI.
+  // payment-link field in the invoice editor.
   invoice_payment_links_enabled: boolean
 
   // Invoice branding (per-company colors, font, optional header/footer text).

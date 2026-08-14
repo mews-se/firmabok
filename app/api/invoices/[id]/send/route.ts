@@ -20,7 +20,6 @@ import {
   issueCreditNote,
   type CreditNoteOriginalInvoice,
 } from '@/lib/invoices/issue-credit-note'
-import { applyPaymentLinkToInvoice } from '@/lib/extensions/payment-links'
 import {
   reserveInvoiceDelivery,
   sendTrackedInvoiceEmail,
@@ -326,20 +325,6 @@ export const POST = withRouteContext(
       return errorResponseFromCode('INVOICE_SEND_NUMBER_ASSIGN_FAILED', opLog, { requestId })
     }
 
-    // Auto-create an online payment link (extension-provided, e.g. Stripe) now
-    // that the number exists, so the email button and PDF QR carry it. A
-    // failure never blocks the send: the faktura is legally valid without a
-    // link, so it degrades to a PARTIAL warning instead.
-    const { failure: paymentLinkFailure } = isCreditNote
-      ? { failure: undefined }
-      : await applyPaymentLinkToInvoice(
-          supabase,
-          companyId!,
-          user.id,
-          invoice as Invoice,
-          opLog,
-        )
-
     // Final render with the assigned number: this is the buffer attached to
     // the email and later archived as underlag. Override status to 'sent' on
     // the in-memory copy: the DB flip happens after email delivery (line
@@ -383,15 +368,6 @@ export const POST = withRouteContext(
     })
 
     const partialFailures: Array<{ step: string; reason: string }> = []
-    if (paymentLinkFailure) {
-      // The failure string is a raw provider/DB message: log it, but the
-      // response field is user-visible and must stay Swedish (issue #337).
-      opLog.warn('payment link creation failed on send', { reason: paymentLinkFailure })
-      partialFailures.push({
-        step: 'payment_link',
-        reason: 'Betalningslänken kunde inte skapas. Fakturan skickades utan betalningslänk.',
-      })
-    }
 
     let statusFlipped = isCreditDeliveryRetry
     let creditJournalEntryId: string | null = null

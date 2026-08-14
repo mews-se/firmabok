@@ -39,11 +39,6 @@ vi.mock('@/lib/invoices/pdf-render-helpers', () => ({
   buildPaymentLinkQrDataUrl: (...args: unknown[]) => mockPaymentLinkQr(...args),
 }))
 
-const mockApplyPaymentLink = vi.fn()
-vi.mock('@/lib/extensions/payment-links', () => ({
-  applyPaymentLinkToInvoice: (...args: unknown[]) => mockApplyPaymentLink(...args),
-}))
-
 const mockSendEmail = vi.fn()
 const mockIsConfigured = vi.fn()
 vi.mock('@/lib/email/service', () => ({
@@ -369,8 +364,8 @@ describe('executeRecurringSchedule auto-send', () => {
     } as unknown as Parameters<typeof executeRecurringSchedule>[1]
   }
 
-  // Fresh objects per test: ensureInvoiceNumber and applyPaymentLinkToInvoice
-  // mutate the invoice they receive, so shared fixtures would leak state.
+  // Fresh objects per test: ensureInvoiceNumber mutates the invoice it
+  // receives, so shared fixtures would leak state.
   function makeInsertedInvoice() {
     return { id: 'inv-1', invoice_number: null, document_type: 'invoice' }
   }
@@ -390,17 +385,6 @@ describe('executeRecurringSchedule auto-send', () => {
     }
   }
 
-  /** Queue for the full happy path (see call order in the service). */
-  function enqueueHappyPath() {
-    enqueue({ data: customer, error: null }) // customers select
-    enqueue({ data: makeInsertedInvoice(), error: null }) // invoices insert
-    enqueue({ data: null, error: null }) // invoice_items insert
-    enqueue({ data: makeCompleteInvoice(), error: null }) // re-fetch with relations
-    enqueue({ data: company, error: null }) // company_settings (auto-send)
-    enqueue({ data: null, error: null }) // status flip to sent
-    enqueue({ data: null, error: null }) // journal_entry_id write-back
-  }
-
   beforeEach(() => {
     vi.clearAllMocks()
     reset()
@@ -408,7 +392,6 @@ describe('executeRecurringSchedule auto-send', () => {
     mockIsConfigured.mockReturnValue(true)
     mockIsSandbox.mockResolvedValue(false)
     mockHasCapability.mockResolvedValue(true)
-    mockApplyPaymentLink.mockResolvedValue({ failure: null })
     mockEnsureNumber.mockImplementation(
       async (_supabase: unknown, _companyId: unknown, inv: { invoice_number: string | null }) => {
         inv.invoice_number = 'F-1'
@@ -425,14 +408,17 @@ describe('executeRecurringSchedule auto-send', () => {
     mockUploadDocument.mockResolvedValue({})
   })
 
-  it('creates a payment link before rendering and passes its QR to the PDF', async () => {
-    enqueueHappyPath()
-    mockApplyPaymentLink.mockImplementation(
-      async (_s: unknown, _c: unknown, _u: unknown, inv: { payment_link_url: string | null }) => {
-        inv.payment_link_url = 'https://pay.example/x'
-        return { failure: null }
-      },
-    )
+  it('passes the invoice payment link QR to the PDF', async () => {
+    enqueue({ data: customer, error: null }) // customers select
+    enqueue({ data: makeInsertedInvoice(), error: null }) // invoices insert
+    enqueue({ data: null, error: null }) // invoice_items insert
+    enqueue({
+      data: { ...makeCompleteInvoice(), payment_link_url: 'https://pay.example/x' },
+      error: null,
+    }) // re-fetch with relations
+    enqueue({ data: company, error: null }) // company_settings (auto-send)
+    enqueue({ data: null, error: null }) // status flip to sent
+    enqueue({ data: null, error: null }) // journal_entry_id write-back
     mockPaymentLinkQr.mockResolvedValue('data:image/png;base64,QR')
 
     const result = await executeRecurringSchedule(client, makeSchedule(), today)
@@ -447,18 +433,6 @@ describe('executeRecurringSchedule auto-send', () => {
         bcc: ['fixed-archive@test.se'],
       }),
     )
-    expect(mockApplyPaymentLink).toHaveBeenCalledTimes(1)
-    expect(mockApplyPaymentLink).toHaveBeenCalledWith(
-      expect.anything(),
-      'company-1',
-      'user-1',
-      expect.objectContaining({ id: 'inv-1' }),
-      expect.anything(),
-    )
-    // Link applied BEFORE the render so the email button and PDF QR carry it.
-    expect(mockApplyPaymentLink.mock.invocationCallOrder[0]).toBeLessThan(
-      mockRenderToBuffer.mock.invocationCallOrder[0],
-    )
     // QR built from the renderable copy (status overridden to 'sent').
     expect(mockPaymentLinkQr).toHaveBeenCalledWith(
       expect.objectContaining({ payment_link_url: 'https://pay.example/x', status: 'sent' }),
@@ -471,17 +445,6 @@ describe('executeRecurringSchedule auto-send', () => {
         filename: 'Oppy Sverige x Kund ÅÄÖ AB Faktura nr F-1 20260706.pdf',
       })],
     }))
-  })
-
-  it('a payment link failure never blocks the send', async () => {
-    enqueueHappyPath()
-    mockApplyPaymentLink.mockResolvedValue({ failure: 'Stripe nere' })
-
-    const result = await executeRecurringSchedule(client, makeSchedule(), today)
-
-    expect(result.autoSent).toBe(true)
-    expect(result.warning).toBeNull()
-    expect(mockSendEmail).toHaveBeenCalledTimes(1)
   })
 
   it('does not reserve a delivery when the customer email is blank', async () => {
@@ -530,8 +493,8 @@ describe('executeRecurringSchedule auto-send', () => {
 
   it('never auto-sends from a sandbox company; invoice stays a numbered draft', async () => {
     mockIsSandbox.mockResolvedValue(true)
-    // Sandbox bails before company_settings/payment-link/render/email, so the
-    // queue only covers invoice creation.
+    // Sandbox bails before company_settings/render/email, so the queue only
+    // covers invoice creation.
     enqueue({ data: customer, error: null })
     enqueue({ data: makeInsertedInvoice(), error: null })
     enqueue({ data: null, error: null })
@@ -543,7 +506,7 @@ describe('executeRecurringSchedule auto-send', () => {
     expect(result.autoSent).toBe(false)
     expect(result.warning).toContain('Auto-utskick misslyckades')
     expect(mockSendEmail).not.toHaveBeenCalled()
-    expect(mockApplyPaymentLink).not.toHaveBeenCalled()
+    expect(mockRenderToBuffer).not.toHaveBeenCalled()
     expect(mockCreateJE).not.toHaveBeenCalled()
   })
 

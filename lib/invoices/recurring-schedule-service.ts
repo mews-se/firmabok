@@ -29,7 +29,6 @@ import {
   buildSwishQrDataUrl,
   buildPaymentLinkQrDataUrl,
 } from '@/lib/invoices/pdf-render-helpers'
-import { applyPaymentLinkToInvoice } from '@/lib/extensions/payment-links'
 import { getEmailService } from '@/lib/email/service'
 import { hasCapability } from '@/lib/entitlements/has-capability'
 import { CAPABILITY } from '@/lib/entitlements/keys'
@@ -590,26 +589,6 @@ async function sendInvoiceFromSchedule(
   }
 
   const items = (invoice.items || []).slice().sort((a, b) => a.sort_order - b.sort_order)
-
-  // Auto-create an online payment link (extension-provided, e.g. Stripe) so
-  // the email button and PDF QR carry it: parity with the manual and v1 send
-  // routes. Best-effort: the faktura is legally valid without a link, so a
-  // failure only logs and the send proceeds. On success the helper mirrors
-  // payment_link_url onto this invoice object, which the email template and
-  // QR builder below read.
-  const { failure: paymentLinkFailure } = await applyPaymentLinkToInvoice(
-    supabase,
-    companyId,
-    userId,
-    invoice,
-    log,
-  )
-  if (paymentLinkFailure) {
-    log.warn('payment link creation failed for recurring invoice; sending without it', {
-      invoiceId: invoice.id,
-      reason: paymentLinkFailure,
-    })
-  }
 
   // Render PDF with status overridden to 'sent' so the customer doesn't
   // receive a "UTKAST" stamp.

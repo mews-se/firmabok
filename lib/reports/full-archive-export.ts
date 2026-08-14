@@ -961,8 +961,6 @@ export const ARCHIVE_EXCLUDED_TABLES: Record<string, string> = {
   bolagsverket_subscriptions: 'integration subscription state',
   booking_template_usage: 'usage telemetry',
   capability_grants: 'entitlement state',
-  chat_messages: 'AI assistant state, not räkenskapsinformation',
-  chat_sessions: 'AI assistant state, not räkenskapsinformation',
   company_capability_config: 'entitlement state',
   company_invitations: 'membership state, meaningless outside the platform',
   company_members: 'membership state, meaningless outside the platform',

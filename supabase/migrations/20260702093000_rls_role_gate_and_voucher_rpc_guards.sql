@@ -181,30 +181,6 @@ DROP POLICY IF EXISTS chart_of_accounts_delete ON public.chart_of_accounts;
 CREATE POLICY chart_of_accounts_delete ON public.chart_of_accounts FOR DELETE TO public
   USING (((company_id = current_active_company_id()) AND current_user_can_write()));
 
-DROP POLICY IF EXISTS chat_messages_insert ON public.chat_messages;
-CREATE POLICY chat_messages_insert ON public.chat_messages FOR INSERT TO public
-  WITH CHECK (((company_id = current_active_company_id()) AND current_user_can_write()));
-
-DROP POLICY IF EXISTS chat_messages_update ON public.chat_messages;
-CREATE POLICY chat_messages_update ON public.chat_messages FOR UPDATE TO public
-  USING (((company_id = current_active_company_id()) AND current_user_can_write()));
-
-DROP POLICY IF EXISTS chat_messages_delete ON public.chat_messages;
-CREATE POLICY chat_messages_delete ON public.chat_messages FOR DELETE TO public
-  USING (((company_id = current_active_company_id()) AND current_user_can_write()));
-
-DROP POLICY IF EXISTS chat_sessions_insert ON public.chat_sessions;
-CREATE POLICY chat_sessions_insert ON public.chat_sessions FOR INSERT TO public
-  WITH CHECK (((company_id = current_active_company_id()) AND current_user_can_write()));
-
-DROP POLICY IF EXISTS chat_sessions_update ON public.chat_sessions;
-CREATE POLICY chat_sessions_update ON public.chat_sessions FOR UPDATE TO public
-  USING (((company_id = current_active_company_id()) AND current_user_can_write()));
-
-DROP POLICY IF EXISTS chat_sessions_delete ON public.chat_sessions;
-CREATE POLICY chat_sessions_delete ON public.chat_sessions FOR DELETE TO public
-  USING (((company_id = current_active_company_id()) AND current_user_can_write()));
-
 DROP POLICY IF EXISTS company_settings_delete ON public.company_settings;
 CREATE POLICY company_settings_delete ON public.company_settings FOR DELETE TO public
   USING (((company_id = current_active_company_id()) AND current_user_can_write()));

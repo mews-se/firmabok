@@ -137,7 +137,6 @@ DECLARE
     'deadlines', 'cost_centers', 'projects',
     'salary_payments', 'mileage_entries',
     'sie_imports', 'sie_account_mappings',
-    'chat_sessions', 'chat_messages',
     'ai_usage_tracking', 'extension_data', 'api_keys',
     'skatteverket_tokens', 'pending_operations', 'payment_match_log',
     'event_log', 'notification_log', 'audit_log'
@@ -201,7 +200,6 @@ DECLARE
     'deadlines', 'cost_centers', 'projects',
     'salary_payments', 'mileage_entries',
     'sie_imports', 'sie_account_mappings',
-    'chat_sessions', 'chat_messages',
     'ai_usage_tracking', 'extension_data', 'api_keys',
     'skatteverket_tokens', 'pending_operations', 'payment_match_log',
     'event_log', 'notification_log', 'audit_log'
@@ -239,7 +237,6 @@ DECLARE
     'deadlines', 'cost_centers', 'projects',
     'salary_payments', 'mileage_entries',
     'sie_imports', 'sie_account_mappings',
-    'chat_sessions', 'chat_messages',
     'ai_usage_tracking', 'extension_data', 'api_keys',
     'skatteverket_tokens', 'pending_operations'
   ];
@@ -364,7 +361,6 @@ DECLARE
     'deadlines', 'cost_centers', 'projects',
     'salary_payments', 'mileage_entries',
     'sie_imports', 'sie_account_mappings',
-    'chat_sessions', 'chat_messages',
     'ai_usage_tracking', 'extension_data', 'api_keys',
     'skatteverket_tokens', 'pending_operations', 'payment_match_log',
     'event_log', 'notification_log', 'audit_log'
@@ -692,22 +688,6 @@ CREATE POLICY "sie_account_mappings_select" ON public.sie_account_mappings
 CREATE POLICY "sie_account_mappings_insert" ON public.sie_account_mappings
   FOR INSERT WITH CHECK (company_id IN (SELECT public.user_company_ids()));
 CREATE POLICY "sie_account_mappings_update" ON public.sie_account_mappings
-  FOR UPDATE USING (company_id IN (SELECT public.user_company_ids()));
-
--- chat_sessions
-CREATE POLICY "chat_sessions_select" ON public.chat_sessions
-  FOR SELECT USING (company_id IN (SELECT public.user_company_ids()));
-CREATE POLICY "chat_sessions_insert" ON public.chat_sessions
-  FOR INSERT WITH CHECK (company_id IN (SELECT public.user_company_ids()));
-CREATE POLICY "chat_sessions_update" ON public.chat_sessions
-  FOR UPDATE USING (company_id IN (SELECT public.user_company_ids()));
-
--- chat_messages
-CREATE POLICY "chat_messages_select" ON public.chat_messages
-  FOR SELECT USING (company_id IN (SELECT public.user_company_ids()));
-CREATE POLICY "chat_messages_insert" ON public.chat_messages
-  FOR INSERT WITH CHECK (company_id IN (SELECT public.user_company_ids()));
-CREATE POLICY "chat_messages_update" ON public.chat_messages
   FOR UPDATE USING (company_id IN (SELECT public.user_company_ids()));
 
 -- ai_usage_tracking

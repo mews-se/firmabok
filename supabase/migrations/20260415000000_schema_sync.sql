@@ -920,16 +920,6 @@ BEGIN
   END IF;
 
   -- Tables that use other policy patterns
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='chat_sessions' AND cmd='DELETE') THEN
-    CREATE POLICY chat_sessions_delete ON public.chat_sessions FOR DELETE
-      USING (company_id IN (SELECT user_company_ids()));
-  END IF;
-
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='chat_messages' AND cmd='DELETE') THEN
-    CREATE POLICY chat_messages_delete ON public.chat_messages FOR DELETE
-      USING (company_id IN (SELECT user_company_ids()));
-  END IF;
-
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='company_members' AND cmd='DELETE') THEN
     CREATE POLICY company_members_delete ON public.company_members FOR DELETE
       USING (company_id IN (SELECT user_company_ids()));

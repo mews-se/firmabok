@@ -42,7 +42,6 @@ function sanitizeFileName(name: string): string {
  * and services against the database before storage is touched.
  */
 export const DOCUMENTS_BUCKET = 'documents'
-const DOCUMENTS_PATH_ROOT = 'documents'
 export const SIGNED_DOCUMENT_UPLOAD_TTL_MS = 2 * 60 * 60 * 1000
 export const PENDING_DOCUMENT_UPLOAD_RETENTION_MS = 24 * 60 * 60 * 1000
 const PENDING_DOCUMENT_UPLOAD_CLEANUP_LIMIT = 100
@@ -54,7 +53,7 @@ export function buildDocumentStoragePath(
   fileName: string,
   timestamp: number = Date.now()
 ): string {
-  return `${DOCUMENTS_PATH_ROOT}/${companyId}/${userId}/${timestamp}_${sanitizeFileName(fileName)}`
+  return `${companyId}/${userId}/${timestamp}_${sanitizeFileName(fileName)}`
 }
 
 /** Build the temporary key targeted by a signed, model-free upload. */
@@ -64,7 +63,7 @@ export function buildPendingDocumentStoragePath(
   uploadId: string,
   fileName: string
 ): string {
-  return `${DOCUMENTS_PATH_ROOT}/${companyId}/${userId}/pending/${uploadId}_${sanitizeFileName(fileName)}`
+  return `${companyId}/${userId}/pending/${uploadId}_${sanitizeFileName(fileName)}`
 }
 
 /** Build the permanent WORM key for a completed signed upload. */
@@ -74,7 +73,7 @@ export function buildReservedDocumentStoragePath(
   uploadId: string,
   fileName: string
 ): string {
-  return `${DOCUMENTS_PATH_ROOT}/${companyId}/${userId}/${uploadId}_${sanitizeFileName(fileName)}`
+  return `${companyId}/${userId}/${uploadId}_${sanitizeFileName(fileName)}`
 }
 
 type StorageErrorLike = { message?: string } | null
@@ -251,7 +250,7 @@ export async function cleanupExpiredPendingDocumentUploads(
   userId: string,
   now: number = Date.now()
 ): Promise<number> {
-  const prefix = `${DOCUMENTS_PATH_ROOT}/${companyId}/${userId}/pending`
+  const prefix = `${companyId}/${userId}/pending`
   const storage = fileStorage().from(DOCUMENTS_BUCKET)
   const { data, error } = await storage.list(prefix, {
     limit: PENDING_DOCUMENT_UPLOAD_CLEANUP_LIMIT,

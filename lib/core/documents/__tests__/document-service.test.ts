@@ -297,10 +297,10 @@ describe('uploadDocument', () => {
     })
 
     const key = upload.mock.calls[0]![0] as string
-    expect(key).toMatch(/^documents\/company-1\/user-1\/\d+_kvitto\.pdf$/)
-    // The legacy layout put userId directly under `documents/`, which left
-    // company_id out of the RLS-visible path entirely.
-    expect(key).not.toMatch(/^documents\/user-1\//)
+    expect(key).toMatch(/^company-1\/user-1\/\d+_kvitto\.pdf$/)
+    // The legacy layout put userId first, which left company_id out of the
+    // key entirely.
+    expect(key).not.toMatch(/^user-1\//)
   })
 
   it('cleans up the uploaded object when the record insert fails', async () => {
@@ -349,7 +349,7 @@ describe('model-free signed document uploads', () => {
     )
 
     expect(createSignedUploadUrl).toHaveBeenCalledWith(
-      `documents/${company}/${user}/pending/${uploadId}_Leverant_r_faktura.pdf`,
+      `${company}/${user}/pending/${uploadId}_Leverant_r_faktura.pdf`,
       { upsert: false },
     )
     expect(reservation).toEqual({
@@ -471,13 +471,13 @@ describe('model-free signed document uploads', () => {
 
     const removed = await cleanupExpiredPendingDocumentUploads(company, user, now)
 
-    expect(list).toHaveBeenCalledWith(`documents/${company}/${user}/pending`, {
+    expect(list).toHaveBeenCalledWith(`${company}/${user}/pending`, {
       limit: 100,
       offset: 0,
       sortBy: { column: 'created_at', order: 'asc' },
     })
     expect(remove).toHaveBeenCalledWith([
-      `documents/${company}/${user}/pending/${uploadId}_old.pdf`,
+      `${company}/${user}/pending/${uploadId}_old.pdf`,
     ])
     expect(removed).toBe(1)
   })
@@ -533,7 +533,7 @@ describe('createNewVersion', () => {
     })
 
     expect(upload.mock.calls[0]![0]).toMatch(
-      /^documents\/company-1\/user-1\/\d+_test-v2\.pdf$/,
+      /^company-1\/user-1\/\d+_test-v2\.pdf$/,
     )
   })
 
@@ -587,20 +587,20 @@ describe('storage key layout helpers', () => {
     // sanitizeFileName replaces non-ASCII with '_', collapses runs, and trims
     // leading/trailing underscores: "Kvitto å ä ö" ends up as "Kvitto".
     expect(buildDocumentStoragePath(company, user, 'Kvitto å ä ö.pdf', 1700000000000)).toBe(
-      `documents/${company}/${user}/1700000000000_Kvitto.pdf`,
+      `${company}/${user}/1700000000000_Kvitto.pdf`,
     )
     expect(buildDocumentStoragePath(company, user, 'faktura 2026-05.pdf', 1700000000000)).toBe(
-      `documents/${company}/${user}/1700000000000_faktura_2026-05.pdf`,
+      `${company}/${user}/1700000000000_faktura_2026-05.pdf`,
     )
   })
 
   it('builds deterministic pending and permanent keys for a reserved upload', () => {
     const uploadId = '33333333-3333-4333-8333-333333333333'
     expect(buildPendingDocumentStoragePath(company, user, uploadId, 'faktura 1.pdf')).toBe(
-      `documents/${company}/${user}/pending/${uploadId}_faktura_1.pdf`,
+      `${company}/${user}/pending/${uploadId}_faktura_1.pdf`,
     )
     expect(buildReservedDocumentStoragePath(company, user, uploadId, 'faktura 1.pdf')).toBe(
-      `documents/${company}/${user}/${uploadId}_faktura_1.pdf`,
+      `${company}/${user}/${uploadId}_faktura_1.pdf`,
     )
   })
 

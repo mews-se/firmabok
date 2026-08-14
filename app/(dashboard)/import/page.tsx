@@ -6,7 +6,6 @@ import { useTranslations } from 'next-intl'
 import { Card, CardContent } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { PageHeader } from '@/components/ui/page-header'
 import { HelpPopover } from '@/components/ui/help-popover'
 import { AttnLine } from '@/components/ui/attn-line'
@@ -23,10 +22,8 @@ import { getErrorMessage } from '@/lib/errors/get-error-message'
 import { ArrowLeft, CreditCard, Landmark, Loader2, ChevronRight, Download, AlertTriangle, ShoppingCart } from 'lucide-react'
 import { cn, formatDate } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
-import { useCompany, useCapability } from '@/contexts/CompanyContext'
-import { CAPABILITY } from '@/lib/entitlements/keys'
+import { useCompany } from '@/contexts/CompanyContext'
 import { DestructiveConfirmDialog, useDestructiveConfirm } from '@/components/ui/destructive-confirm-dialog'
-import { getSettingsPanel } from '@/lib/extensions/settings-panel-registry'
 
 import type { OpeningBalanceParseResult, OpeningBalanceExecuteResult, DetectedColumns } from '@/lib/import/opening-balance/types'
 
@@ -60,7 +57,6 @@ import type {
   ParseIssue,
 } from '@/lib/import/types'
 import type { BASAccount } from '@/types'
-import { ENABLED_EXTENSION_IDS } from '@/lib/extensions/_generated/enabled-extensions'
 import dynamic from 'next/dynamic'
 import { FiscalYearSelector } from '@/components/common/FiscalYearSelector'
 
@@ -1605,25 +1601,6 @@ function CSVDataImportWizard() {
 }
 
 // ============================================================
-// Banking (PSD2) connect UI
-// ============================================================
-// Provided by the enable-banking extension and loaded through the settings
-// panel registry (dynamic import), so this core page never imports from
-// @/extensions directly. The shared panel renders every connection state
-// (pending account selection, active, expiring, and expired/error with the
-// reconnect entry point), which the old inline wizard here did not.
-const BankingPanel = getSettingsPanel('enable-banking')
-
-// Same registry mechanism for the Stripe connect/sync surface: the feed of
-// payments, fees and payouts is an import source in the same category as the
-// PSD2 bank connection above.
-const StripePanel = getSettingsPanel('stripe')
-
-// And for the WooCommerce order feed: the store's paid orders and refunds are
-// an import source in the same category as the Stripe feed above.
-const WooCommercePanel = getSettingsPanel('woocommerce')
-
-// ============================================================
 // Import Page with Selection Cards
 // ============================================================
 
@@ -1635,14 +1612,11 @@ export default function ImportPage() {
   const [initialProvider, setInitialProvider] = useState<string | null>(null)
   const [view, setView] = useState<'import' | 'export'>('import')
   const [sieDialogOpen, setSieDialogOpen] = useState(false)
-  const [cloudOpen, setCloudOpen] = useState(false)
   const [userId, setUserId] = useState('')
   const [exportPeriodId, setExportPeriodId] = useState<string | null>(null)
   const [exportExcludeClosing, setExportExcludeClosing] = useState(true)
   const t = useTranslations('import')
   const router = useRouter()
-  const hasCloudBackup = ENABLED_EXTENSION_IDS.has('cloud-backup')
-  const hasBankSync = useCapability(CAPABILITY.bank_sync)
 
   // Fetch authenticated user ID (used by the migration wizard)
   useEffect(() => {
@@ -1681,20 +1655,13 @@ export default function ImportPage() {
     }
   }, [isSandbox, searchParams])
 
-  // Hash-based deep links: both live on the export tab; #sie-export opens
-  // the SIE dialog, #cloud-backup expands the cloud panel and scrolls to it.
+  // Hash-based deep link: #sie-export lives on the export tab and opens the
+  // SIE dialog.
   useEffect(() => {
     if (typeof window === 'undefined') return
-    const hash = window.location.hash
-    if (hash === '#sie-export') {
+    if (window.location.hash === '#sie-export') {
       setView('export')
       setSieDialogOpen(true)
-    } else if (hash === '#cloud-backup') {
-      setView('export')
-      setCloudOpen(true)
-      setTimeout(() => {
-        document.querySelector(hash)?.scrollIntoView({ block: 'start', behavior: 'smooth' })
-      }, 80)
     }
   }, [])
 
@@ -1706,16 +1673,6 @@ export default function ImportPage() {
     const qs = params.toString()
     router.replace(qs ? `/import?${qs}` : '/import', { scroll: false })
   }
-  // Extensions are active if compiled in: no runtime toggle check needed
-  const hasBankingExtension = ENABLED_EXTENSION_IDS.has('enable-banking')
-  const hasMigrationExtension = ENABLED_EXTENSION_IDS.has('arcim-migration')
-  const hasStripeExtension = ENABLED_EXTENSION_IDS.has('stripe')
-  // Stripe is enabled everywhere (hosted + self-hosted); only the sandbox blocks it.
-  const stripeDisabled = isSandbox
-  const hasWooCommerceExtension = ENABLED_EXTENSION_IDS.has('woocommerce')
-  // Same doctrine as Stripe: external credentials never leave the sandbox.
-  const woocommerceDisabled = isSandbox
-
   return (
     <div className="space-y-8">
       <PageHeader
@@ -1759,60 +1716,6 @@ export default function ImportPage() {
           {view === 'import' ? (
             <div>
               <div className="stagger-enter">
-                {hasBankingExtension && (
-                  <ImportRow
-                    title={t('psd2_title')}
-                    sub={t('psd2_description')}
-                    chip={
-                      hasBankSync ? (
-                        <Badge variant="success" className="font-normal">{t('psd2_recommended')}</Badge>
-                      ) : (
-                        <span className="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-medium leading-none text-muted-foreground">
-                          {t('psd2_requires_subscription')}
-                        </span>
-                      )
-                    }
-                    chips={<LogoChip src="/logos/enable-banking-icon.png" name="Enable Banking" mono />}
-                    disabled={isSandbox}
-                    onClick={() => setMode('psd2')}
-                  />
-                )}
-                {hasStripeExtension && (
-                  <ImportRow
-                    title={t('stripe_title')}
-                    sub={t('stripe_description')}
-                    chips={<LogoChip src="/logos/stripeicon.jpeg" name="Stripe" />}
-                    disabled={stripeDisabled}
-                    onClick={() => setMode('stripe')}
-                  />
-                )}
-                {hasWooCommerceExtension && (
-                  <ImportRow
-                    title={t('woocommerce_title')}
-                    sub={t('woocommerce_description')}
-                    chips={<LogoChip src="/logos/woocommerce.svg" name="WooCommerce" />}
-                    disabled={woocommerceDisabled}
-                    onClick={() => setMode('woocommerce')}
-                  />
-                )}
-                {hasMigrationExtension && (
-                  <ImportRow
-                    title={t('migration_title')}
-                    sub={t('migration_description')}
-                    chips={
-                      <>
-                        <LogoChip src="/logos/fortnox.svg" name="Fortnox" />
-                        <LogoChip src="/logos/visma.jpeg" name="Visma" />
-                        <LogoChip src="/logos/bokio.png" name="Bokio" />
-                        <LogoChip src="/logos/bjornlunden.png" name="Björn Lundén" />
-                        <LogoChip src="/logos/Briox_logo.png" name="Briox" />
-                        <LogoChip src="/logos/wint.svg" name="WINT" />
-                      </>
-                    }
-                    disabled={isSandbox}
-                    onClick={() => setMode('migration')}
-                  />
-                )}
                 <ImportRow
                   title={t('csv_data_title')}
                   sub={t('csv_data_description')}
@@ -1835,14 +1738,6 @@ export default function ImportPage() {
                   sub={t('export_sie_description')}
                   onClick={() => setSieDialogOpen(true)}
                 />
-                {hasCloudBackup && (
-                  <ImportRow
-                    title={t('cloud_row_title')}
-                    sub={t('cloud_row_description')}
-                    expanded={cloudOpen}
-                    onClick={() => setCloudOpen((v) => !v)}
-                  />
-                )}
               </div>
             </div>
           )}
@@ -1914,49 +1809,37 @@ export default function ImportPage() {
       )}
 
       {mode === 'psd2' && (
-        hasBankingExtension && BankingPanel ? (
-          <BankingPanel />
-        ) : (
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-              <Landmark className="mb-4 h-10 w-10 text-muted-foreground/40" />
-              <p className="mb-1 font-medium">Bankintegration (PSD2) är inte aktiverad</p>
-              <p className="max-w-md text-sm text-muted-foreground">
-                Aktivera tillägget Enable Banking för att koppla ditt bankkonto.
-              </p>
-            </CardContent>
-          </Card>
-        )
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+            <Landmark className="mb-4 h-10 w-10 text-muted-foreground/40" />
+            <p className="mb-1 font-medium">Bankintegration (PSD2) är inte aktiverad</p>
+            <p className="max-w-md text-sm text-muted-foreground">
+              Aktivera tillägget Enable Banking för att koppla ditt bankkonto.
+            </p>
+          </CardContent>
+        </Card>
       )}
       {mode === 'stripe' && (
-        hasStripeExtension && StripePanel ? (
-          <StripePanel />
-        ) : (
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-              <CreditCard className="mb-4 h-10 w-10 text-muted-foreground/40" />
-              <p className="mb-1 font-medium">{t('stripe_not_enabled_title')}</p>
-              <p className="max-w-md text-sm text-muted-foreground">
-                {t('stripe_not_enabled_description')}
-              </p>
-            </CardContent>
-          </Card>
-        )
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+            <CreditCard className="mb-4 h-10 w-10 text-muted-foreground/40" />
+            <p className="mb-1 font-medium">{t('stripe_not_enabled_title')}</p>
+            <p className="max-w-md text-sm text-muted-foreground">
+              {t('stripe_not_enabled_description')}
+            </p>
+          </CardContent>
+        </Card>
       )}
       {mode === 'woocommerce' && (
-        hasWooCommerceExtension && WooCommercePanel ? (
-          <WooCommercePanel />
-        ) : (
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-              <ShoppingCart className="mb-4 h-10 w-10 text-muted-foreground/40" />
-              <p className="mb-1 font-medium">{t('woocommerce_not_enabled_title')}</p>
-              <p className="max-w-md text-sm text-muted-foreground">
-                {t('woocommerce_not_enabled_description')}
-              </p>
-            </CardContent>
-          </Card>
-        )
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+            <ShoppingCart className="mb-4 h-10 w-10 text-muted-foreground/40" />
+            <p className="mb-1 font-medium">{t('woocommerce_not_enabled_title')}</p>
+            <p className="max-w-md text-sm text-muted-foreground">
+              {t('woocommerce_not_enabled_description')}
+            </p>
+          </CardContent>
+        </Card>
       )}
       {mode === 'sie' && <SIEImportWizard />}
       {mode === 'csv_data' && <CSVDataImportWizard />}
@@ -1965,25 +1848,17 @@ export default function ImportPage() {
 }
 
 // Quiet action row (concept scene 32): borderless list row with title, muted
-// sub-line and a chevron; chips only for the recommended/gated exceptions.
+// sub-line and a chevron.
 function ImportRow({
   title,
   sub,
-  chip,
-  chips,
   disabled = false,
-  expanded,
   onClick,
   id,
 }: {
   title: string
   sub: string
-  chip?: React.ReactNode
-  /** Logo chips under the sub line (provider marks, as on the live page). */
-  chips?: React.ReactNode
   disabled?: boolean
-  /** For rows that fold a panel open below the grid (cloud backup). */
-  expanded?: boolean
   onClick: () => void
   id?: string
 }) {
@@ -1993,7 +1868,6 @@ function ImportRow({
       id={id}
       onClick={onClick}
       disabled={disabled}
-      aria-expanded={expanded}
       className={cn(
         'group flex w-full items-center justify-between gap-4 border-b border-border px-1 py-3 text-left',
         'transition-colors duration-150 hover:bg-secondary/35',
@@ -2001,43 +1875,16 @@ function ImportRow({
       )}
     >
       <span className="min-w-0">
-        <span className="flex flex-wrap items-center gap-2 text-sm font-medium">
-          {title}
-          {chip}
-        </span>
+        <span className="flex flex-wrap items-center gap-2 text-sm font-medium">{title}</span>
         <span className="mt-0.5 block text-xs leading-5 text-muted-foreground">{sub}</span>
-        {chips && <span className="mt-2 flex flex-wrap gap-2">{chips}</span>}
       </span>
       <ChevronRight
         className={cn(
           'h-4 w-4 shrink-0 text-muted-foreground/40 transition-transform duration-150',
           'group-hover:translate-x-0.5 group-hover:text-muted-foreground',
-          expanded && 'rotate-90',
         )}
         aria-hidden="true"
       />
     </button>
-  )
-}
-
-// Provider mark chip (same recipe as the pre-migration live page): tiny logo
-// on a quiet bordered chip, so integrations read as first-class brands.
-// `mono` is for light-on-transparent marks (Enable Banking): the marketing
-// site's grayscale+brightness treatment makes them read on a light ground,
-// with the inverse lift in dark mode.
-function LogoChip({ src, name, mono = false }: { src: string; name: string; mono?: boolean }) {
-  return (
-    <span className="flex items-center gap-2 rounded border border-border bg-muted/30 px-2 py-1">
-      <img
-        src={src}
-        alt=""
-        className={cn(
-          'h-4 w-4 shrink-0 rounded-sm object-contain',
-          mono &&
-            'opacity-90 [filter:grayscale(100%)_brightness(0.18)] dark:[filter:grayscale(100%)_brightness(1.5)]',
-        )}
-      />
-      <span className="text-[11px] font-medium text-muted-foreground">{name}</span>
-    </span>
   )
 }

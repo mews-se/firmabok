@@ -22,8 +22,6 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useCompany } from '@/contexts/CompanyContext'
-import { requiredCapabilityForExtension } from '@/lib/entitlements/keys'
 
 type Entry = {
   id: string
@@ -85,19 +83,6 @@ export default function CommandPalette({ initialOpen = false }: { initialOpen?: 
   const [query, setQuery] = useState('')
   const [activeIndex, setActiveIndex] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
-  const { capabilities } = useCompany()
-
-  // Drop entries that jump to a paywalled extension workspace the active
-  // company can't reach (e.g. the AI-only Dokumentinkorg). The page itself is
-  // gated server-side; this keeps ⌘K from offering a dead destination.
-  const allowedByCapability = useMemo(() => {
-    return (entry: Entry) => {
-      const m = entry.href.match(/^\/e\/([^/]+)\/([^/?#]+)/)
-      if (!m) return true
-      const required = requiredCapabilityForExtension(m[1], m[2])
-      return !required || capabilities.includes(required)
-    }
-  }, [capabilities])
 
   function handleOpenChange(next: boolean) {
     setOpen(next)
@@ -127,14 +112,14 @@ export default function CommandPalette({ initialOpen = false }: { initialOpen?: 
 
   const q = query.trim().toLowerCase()
 
-  const filteredActions = useMemo(() => {
-    const visible = ACTION_ENTRIES.filter(allowedByCapability)
-    return q ? visible.filter(e => matches(e, q)) : visible
-  }, [q, allowedByCapability])
-  const filteredPages = useMemo(() => {
-    const visible = PAGE_ENTRIES.filter(allowedByCapability)
-    return q ? visible.filter(e => matches(e, q)) : visible.slice(0, 6)
-  }, [q, allowedByCapability])
+  const filteredActions = useMemo(
+    () => (q ? ACTION_ENTRIES.filter(e => matches(e, q)) : ACTION_ENTRIES),
+    [q],
+  )
+  const filteredPages = useMemo(
+    () => (q ? PAGE_ENTRIES.filter(e => matches(e, q)) : PAGE_ENTRIES.slice(0, 6)),
+    [q],
+  )
 
   const flatEntries: Entry[] = [...filteredActions, ...filteredPages]
 

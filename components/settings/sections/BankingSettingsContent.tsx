@@ -3,16 +3,10 @@
 import { useState, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
 import { useSearchParams, useRouter } from 'next/navigation'
-import Link from 'next/link'
-import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { useToast } from '@/components/ui/use-toast'
-import { AlertTriangle, CreditCard, ExternalLink } from 'lucide-react'
-import { getSettingsPanel } from '@/lib/extensions/settings-panel-registry'
-import { ENABLED_EXTENSION_IDS } from '@/lib/extensions/_generated/enabled-extensions'
+import { AlertTriangle, CreditCard } from 'lucide-react'
 import { SettingsSectionHeader } from '@/components/settings/SettingsRows'
-
-const BankingPanel = getSettingsPanel('enable-banking')
 
 export function BankingSettingsContent() {
   const t = useTranslations('settings_banking')
@@ -25,7 +19,6 @@ export function BankingSettingsContent() {
   const [failedBankName, setFailedBankName] = useState<string | null>(null)
   const [isAccessDenied, setIsAccessDenied] = useState(false)
   const [showHbPoaHint, setShowHbPoaHint] = useState(false)
-  const hasBankingExtension = ENABLED_EXTENSION_IDS.has('enable-banking')
 
   // Surface a bank connection/authorization failure that the OAuth callback
   // bounced back as `?bank_error=...`. The success path is handled by the
@@ -119,24 +112,13 @@ export function BankingSettingsContent() {
         </div>
       )}
 
-      {hasBankingExtension && BankingPanel ? (
-        <BankingPanel />
-      ) : (
-        <div className="pt-8">
-          <EmptyState
-            icon={CreditCard}
-            title={t('not_enabled_title')}
-            description={t('not_enabled_description')}
-          >
-            <Button variant="outline" asChild>
-              <Link href="/extensions">
-                <ExternalLink className="mr-2 h-4 w-4" />
-                {t('go_to_extensions')}
-              </Link>
-            </Button>
-          </EmptyState>
-        </div>
-      )}
+      <div className="pt-8">
+        <EmptyState
+          icon={CreditCard}
+          title={t('not_enabled_title')}
+          description={t('not_enabled_description')}
+        />
+      </div>
     </div>
   )
 }

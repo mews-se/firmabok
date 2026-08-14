@@ -9,7 +9,6 @@ import LazyCommandPalette from '@/components/common/LazyCommandPalette'
 import { SettingsHotkey } from '@/components/settings/SettingsHotkey'
 import { SessionTimeoutController } from '@/components/auth/SessionTimeoutController'
 import { SandboxBanner } from '@/components/dashboard/SandboxBanner'
-import { getExtensionNavItems } from '@/lib/extensions/sectors'
 import { CompanyProvider } from '@/contexts/CompanyContext'
 import { getCompanyEntitlements } from '@/lib/entitlements/has-capability'
 import { getBranding } from '@/lib/branding/service'
@@ -112,7 +111,6 @@ export default async function DashboardLayout({
             companyName={getBranding().appName.toLowerCase()}
             entityType="enskild_firma"
             isSandbox={false}
-            extensionNavItems={getExtensionNavItems()}
           />
           <main
             id="main-content"
@@ -202,7 +200,6 @@ export default async function DashboardLayout({
             companyName={getBranding().appName.toLowerCase()}
             entityType="enskild_firma"
             isSandbox={false}
-            extensionNavItems={getExtensionNavItems()}
           />
           <main id="main-content" className={MAIN_PANEL_CLASS} role="main">
             <div className="max-w-5xl mx-auto px-5 py-8 md:px-8 md:py-10">
@@ -293,7 +290,6 @@ export default async function DashboardLayout({
           entityType={entityType}
           dimensionsEnabled={dimensionsEnabled}
           isSandbox={isSandbox}
-          extensionNavItems={getExtensionNavItems()}
           userName={userProfile?.full_name ?? null}
           userEmail={user.email ?? null}
           initialUiState={uiState}

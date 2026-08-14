@@ -3,8 +3,7 @@
  *
  * Reads extensions.config.json and manifest.json files to generate:
  * - lib/extensions/_generated/extension-list.ts
- * - lib/extensions/_generated/workspace-map.tsx
- * - lib/extensions/_generated/sector-definitions.ts
+ * - lib/extensions/_generated/enabled-extensions.ts
  *
  * Usage:
  *   npx tsx scripts/generate-extension-registry.ts          # Generate files
@@ -121,69 +120,6 @@ function generateExtensionList(manifests: Manifest[]): string {
   ].join('\n')
 }
 
-function generateWorkspaceMap(manifests: Manifest[]): string {
-  const withWorkspace = manifests.filter(m => m.workspace)
-
-  const dynamicImports = withWorkspace.map(m => {
-    const key = `${m.sector}/${m.id}`
-    return `  '${key}': dynamic(() => import('${m.workspace}')),`
-  })
-
-  return [
-    `// AUTO-GENERATED: do not edit. Run \`npm run setup:extensions\` to regenerate.`,
-    `import dynamic from 'next/dynamic'`,
-    `import type { ComponentType } from 'react'`,
-    `import type { WorkspaceComponentProps } from '../workspace-registry'`,
-    ``,
-    `export const WORKSPACES: Record<string, ComponentType<WorkspaceComponentProps>> = {`,
-    ...dynamicImports,
-    `}`,
-    ``,
-  ].join('\n')
-}
-
-function generateSectorDefinitions(manifests: Manifest[]): string {
-  // Group by sector
-  const bySector = new Map<string, Manifest[]>()
-  for (const m of manifests) {
-    const existing = bySector.get(m.sector) ?? []
-    existing.push(m)
-    bySector.set(m.sector, existing)
-  }
-
-  const sectorEntries: string[] = []
-  for (const [sector, sectorManifests] of bySector) {
-    const defs = sectorManifests.map(m => {
-      const def: Record<string, unknown> = {
-        slug: m.id,
-        name: m.definition.name,
-        sector: m.sector,
-        category: m.definition.category,
-        icon: m.definition.icon,
-        dataPattern: m.definition.dataPattern,
-        description: m.definition.description,
-        longDescription: m.definition.longDescription,
-      }
-      if (m.definition.readsCoreTables) def.readsCoreTables = m.definition.readsCoreTables
-      if (m.definition.hasOwnData) def.hasOwnData = m.definition.hasOwnData
-      if (m.definition.quickAction) def.quickAction = m.definition.quickAction
-      if (m.definition.subscriptionNotice) def.subscriptionNotice = m.definition.subscriptionNotice
-      return `    ${JSON.stringify(def, null, 6).split('\n').join('\n    ')},`
-    })
-    sectorEntries.push(`  '${sector}': [\n${defs.join('\n')}\n  ],`)
-  }
-
-  return [
-    `// AUTO-GENERATED: do not edit. Run \`npm run setup:extensions\` to regenerate.`,
-    `import type { ExtensionDefinition } from '../types'`,
-    ``,
-    `export const EXTENSION_DEFINITIONS: Record<string, ExtensionDefinition[]> = {`,
-    ...sectorEntries,
-    `}`,
-    ``,
-  ].join('\n')
-}
-
 function generateEnabledExtensions(manifests: Manifest[]): string {
   const ids = manifests.map(m => `  '${m.id}',`)
 
@@ -266,14 +202,6 @@ function main(): void {
   fs.writeFileSync(
     path.join(OUTPUT_DIR, 'extension-list.ts'),
     generateExtensionList(enabledManifests),
-  )
-  fs.writeFileSync(
-    path.join(OUTPUT_DIR, 'workspace-map.tsx'),
-    generateWorkspaceMap(enabledManifests),
-  )
-  fs.writeFileSync(
-    path.join(OUTPUT_DIR, 'sector-definitions.ts'),
-    generateSectorDefinitions(enabledManifests),
   )
   fs.writeFileSync(
     path.join(OUTPUT_DIR, 'enabled-extensions.ts'),

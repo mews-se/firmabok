@@ -4,8 +4,6 @@ import { ensureInitialized } from '@/lib/init'
 import { extensionRegistry } from '@/lib/extensions/registry'
 import { createExtensionContext } from '@/lib/extensions/context-factory'
 import { requireCompanyId } from '@/lib/company/context'
-import { requireCapability } from '@/lib/entitlements/has-capability'
-import { requiredCapabilityForExtensionId } from '@/lib/extensions/sectors'
 import { createLogger } from '@/lib/logger'
 import type { ApiRouteDefinition } from '@/lib/extensions/types'
 
@@ -162,8 +160,8 @@ async function handleRequest(
 
   // Per-extension feature flags. Lets us toggle a single integration off
   // mid-rollout without redeploying or removing it from extensions.config.json.
-  // The frontend (SkatteverketPanel, AGIPanel) inspects the 503 + code to
-  // render an "extension disabled" empty state.
+  // The extension's frontend panels inspect the 503 + code to render an
+  // "extension disabled" empty state.
   const flag = EXTENSION_FEATURE_FLAGS[extensionId]
   if (flag && process.env[flag.envVar] !== 'true') {
     return decorateResponse(
@@ -277,23 +275,6 @@ async function handleRequest(
   }
 
   const companyId = await requireCompanyId(supabase, user.id)
-
-  // Paywall: this dispatcher is the single chokepoint for the whole enabled-
-  // extension API surface (same reasoning as the MFA gate above), so an
-  // extension whose workspace is a paid service (EXTENSION_REQUIRED_CAPABILITY,
-  // e.g. the AI-only invoice-inbox) gates EVERY one of its company-context routes
-  // here, not just its AI-extraction steps. Mirrors the sidebar/page gate off the
-  // same map. The skipAuth ingestion webhook (/inbound) returned above is exempt
-  // by construction: a lapsed company's inbound documents must still be stored
-  // (freeze-and-retain), and booked documents stay reachable via the verifikat.
-  const requiredCapability = requiredCapabilityForExtensionId(extensionId)
-  if (requiredCapability) {
-    const blocked = await requireCapability(supabase, companyId, requiredCapability)
-    if (blocked) {
-      log.info('extension call blocked: capability required', { capability: requiredCapability })
-      return decorateResponse(blocked, requestId)
-    }
-  }
 
   // Build context and dispatch
   const ctx = createExtensionContext(supabase, user.id, companyId, extensionId, requestId)

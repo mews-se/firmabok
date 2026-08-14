@@ -32,20 +32,12 @@ export function MainContainer({
     document.getElementById('main-content')?.scrollTo(0, 0)
   }, [pathname])
 
-  // Full-bleed routes own their own padding + multi-pane layout. They
-  // shouldn't sit inside max-w-5xl or any horizontal padding.
-  const isFullBleed = pathname.startsWith('/e/')
-
   // The salary run detail page drives a wide, horizontal-flow layout (progress
   // band + 5-up KPIs + full-width employee ledger) that the standard max-w-5xl
   // column squeezes. It opts into a wider canvas — a deliberate, scoped
   // exception to the locked container token. Match only /salary/runs/{id}, not
   // its nested employee sub-pages.
   const isWide = /^\/salary\/runs\/[^/]+$/.test(pathname)
-
-  if (isFullBleed) {
-    return <div key={companyId ?? ''} className="h-full">{children}</div>
-  }
 
   return (
     <div

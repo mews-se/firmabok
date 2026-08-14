@@ -41,8 +41,6 @@ import {
   BookCheck,
 } from 'lucide-react'
 import { getBranding } from '@/lib/branding/service'
-import { ENABLED_EXTENSION_IDS as _ENABLED_EXTENSION_IDS } from '@/lib/extensions/_generated/enabled-extensions'
-import { resolveIcon } from '@/lib/extensions/icon-resolver'
 import { resetAnalyticsIdentity } from '@/lib/analytics/reset'
 import { SupportLink } from '@/components/ui/support-link'
 import CompanySwitcher from '@/components/dashboard/CompanySwitcher'
@@ -51,16 +49,8 @@ import { useCompany } from '@/contexts/CompanyContext'
 import { createClient } from '@/lib/supabase/client'
 import { useWorklistBadges } from '@/lib/hooks/use-worklist-badges'
 import { persistUiState } from '@/lib/ui-state/client'
-import { EXTENSION_REQUIRED_CAPABILITY, type CapabilityKey } from '@/lib/entitlements/keys'
+import { type CapabilityKey } from '@/lib/entitlements/keys'
 import type { EntityType, UserUiState } from '@/types'
-
-void _ENABLED_EXTENSION_IDS
-
-interface ExtensionNavItem {
-  href: string
-  label: string
-  icon: string
-}
 
 interface DashboardNavProps {
   companyName: string
@@ -70,7 +60,6 @@ interface DashboardNavProps {
   // fetched by the dashboard layout.
   dimensionsEnabled?: boolean
   isSandbox?: boolean
-  extensionNavItems?: ExtensionNavItem[]
   // Signed-in user's full name + email: drives the bottom-left account
   // popover trigger so the user can see WHO they're logged in as,
   // distinct from the active COMPANY shown by CompanySwitcher up top.
@@ -218,12 +207,6 @@ function segmentItems(items: NavItem[]): NavSegment[] {
   return segments
 }
 
-// Map known extension hrefs to nav translation keys so sidebar labels translate.
-// Extensions whose manifest label happens to be English-ready can stay null.
-function extensionLabelKey(_href: string): string | null {
-  return null
-}
-
 const groupLabelKey: Record<Exclude<GroupKey, 'top'>, string> = {
   arbeta: 'group_work',
   analys: 'group_analysis',
@@ -231,7 +214,7 @@ const groupLabelKey: Record<Exclude<GroupKey, 'top'>, string> = {
   skatt: 'group_tax',
 }
 
-export default function DashboardNav({ companyName: _companyName, entityType, dimensionsEnabled = false, isSandbox = false, extensionNavItems = [], userName = null, userEmail = null, initialUiState }: DashboardNavProps) {
+export default function DashboardNav({ companyName: _companyName, entityType, dimensionsEnabled = false, isSandbox = false, userName = null, userEmail = null, initialUiState }: DashboardNavProps) {
   const pathname = usePathname()
   const router = useRouter()
   const { company, capabilities } = useCompany()
@@ -367,8 +350,6 @@ export default function DashboardNav({ companyName: _companyName, entityType, di
   })
 
   const topItems = filteredItems.filter((i) => i.group === 'top')
-
-  const visibleExtensionNavItems = extensionNavItems
 
   const sidebarGroups: { key: ExpandableGroup; items: NavItem[] }[] = [
     { key: 'arbeta', items: filteredItems.filter((i) => i.group === 'arbeta') },
@@ -595,31 +576,6 @@ export default function DashboardNav({ companyName: _companyName, entityType, di
                 aria-label={tNav('main_navigation')}
               >
                 {railItems.map((item) => renderRailItem(item))}
-                {visibleExtensionNavItems.map((item) => {
-                  const Icon = resolveIcon(item.icon)
-                  const labelTranslationKey = extensionLabelKey(item.href)
-                  const label = labelTranslationKey ? tNav(labelTranslationKey) : item.label
-                  const active = isActive(item.href)
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      title={label}
-                      aria-label={label}
-                      className={cn(
-                        'group flex h-9 w-9 items-center justify-center rounded-lg transition-colors duration-150',
-                        active ? 'bg-secondary' : 'hover:bg-secondary/60',
-                      )}
-                    >
-                      <Icon
-                        className={cn(
-                          'h-[17px] w-[17px]',
-                          active ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground',
-                        )}
-                      />
-                    </Link>
-                  )
-                })}
               </nav>
             <nav
               data-ph-unmask
@@ -653,58 +609,6 @@ export default function DashboardNav({ companyName: _companyName, entityType, di
                           ? renderSidebarItem(seg.item)
                           : renderFold(seg.key, seg.items),
                       )}
-                      {/* Extension nav items land in Arbeta since extension
-                          workspaces are work surfaces. Future categorised
-                          extensions can opt into a different group via
-                          their manifest. */}
-                      {key === 'arbeta' &&
-                        visibleExtensionNavItems.map((item) => {
-                          const Icon = resolveIcon(item.icon)
-                          const active = isActive(item.href)
-                          const enabled = hasCompany
-                          const labelTranslationKey = extensionLabelKey(item.href)
-                          const label = labelTranslationKey
-                            ? tNav(labelTranslationKey)
-                            : item.label
-                          const content = (
-                            <>
-                              <Icon
-                                className={cn(
-                                  'mr-2.5 h-[15px] w-[15px] flex-shrink-0',
-                                  active
-                                    ? 'text-primary'
-                                    : 'text-muted-foreground group-hover:text-foreground',
-                                )}
-                              />
-                              {label}
-                            </>
-                          )
-                          const baseClass = cn(
-                            'group flex items-center px-3 py-[7px] text-[13px] rounded-lg',
-                            enabled
-                              ? cn(
-                                  'transition-colors duration-150',
-                                  active
-                                    ? 'bg-secondary text-foreground font-medium'
-                                    : 'text-muted-foreground hover:text-foreground hover:bg-secondary/60',
-                                )
-                              : 'text-muted-foreground/40 cursor-not-allowed',
-                          )
-                          return enabled ? (
-                            <Link key={item.href} href={item.href} className={baseClass}>
-                              {content}
-                            </Link>
-                          ) : (
-                            <div
-                              key={item.href}
-                              className={baseClass}
-                              aria-disabled="true"
-                              title={tNav('needs_company_tooltip')}
-                            >
-                              {content}
-                            </div>
-                          )
-                        })}
                     </div>
                   </div>
                 ))}
@@ -942,56 +846,6 @@ export default function DashboardNav({ companyName: _companyName, entityType, di
                   </div>
                 </div>
               ))}
-
-              {/* Tillägg (extensions): only when there's at least one */}
-              {visibleExtensionNavItems.length > 0 && (
-                <>
-                  <div className="flex items-center gap-3 my-1.5 px-3">
-                    <span className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-[0.08em]">{tNav('group_extensions')}</span>
-                    <div className="flex-1 h-px bg-border/30" />
-                  </div>
-                  <div className="space-y-0.5">
-                    {visibleExtensionNavItems.map((item) => {
-                      const Icon = resolveIcon(item.icon)
-                      const active = isActive(item.href)
-                      const enabled = hasCompany
-                      const labelTranslationKey = extensionLabelKey(item.href)
-                      const label = labelTranslationKey ? tNav(labelTranslationKey) : item.label
-                      const content = (
-                        <>
-                          <Icon className={cn("h-[18px] w-[18px] flex-shrink-0", active ? "text-primary" : "text-muted-foreground")} />
-                          <span className="text-sm">{label}</span>
-                        </>
-                      )
-                      const baseClass = cn(
-                        'flex items-center gap-3 px-3 min-h-[44px] rounded-lg',
-                        enabled
-                          ? cn(
-                              'transition-colors',
-                              active
-                                ? 'bg-primary/10 text-primary font-medium'
-                                : 'text-foreground active:bg-muted/60'
-                            )
-                          : 'text-muted-foreground/40'
-                      )
-                      return enabled ? (
-                        <Link
-                          key={item.href}
-                          href={item.href}
-                          onClick={closeMobileMenu}
-                          className={baseClass}
-                        >
-                          {content}
-                        </Link>
-                      ) : (
-                        <div key={item.href} className={baseClass} aria-disabled="true">
-                          {content}
-                        </div>
-                      )
-                    })}
-                  </div>
-                </>
-              )}
 
               {/* Mitt konto divider */}
               <div className="flex items-center gap-3 my-1.5 px-3">

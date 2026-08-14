@@ -46,10 +46,13 @@ This project includes or depends on the following third-party software:
 
 Vendored files:
 
-- docker/db-init/*.sql are taken from the Supabase Docker self-hosting
-  stack (github.com/supabase/supabase, docker/volumes/db/), licensed
-  under Apache-2.0. docker/nginx.selfhost.conf mirrors the routing
-  layout of the same stack's Kong configuration.
+- docker/db-init/01-auth-schema.sql is vendored from supabase/postgres
+  17.6.1.136 (github.com/supabase/postgres, migrations/db/init-scripts/
+  00000000000001-auth-schema.sql), licensed under Apache-2.0, with local
+  adaptations noted in the file header. docker/db-init/02-schemas-grants.sql
+  follows the same repo's initial schema. docker/nginx.selfhost.conf
+  mirrors the routing layout of the Supabase self-hosting stack's Kong
+  configuration.
 
 Copyleft dependency notes:
 

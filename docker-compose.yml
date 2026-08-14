@@ -1,7 +1,8 @@
-# The complete self-hosted stack in one file: the app, its cron sidecar
-# and the three Supabase services it actually uses, all pinned. Driven
-# by install-debian.sh; named docker-compose.yml so plain
-# `docker compose stop/logs/ps` works from the checkout.
+# The complete self-hosted stack in one file: the app, its cron sidecar,
+# official postgres and the two Supabase services still in use (GoTrue,
+# PostgREST), all pinned. Driven by install-debian.sh; named
+# docker-compose.yml so plain `docker compose stop/logs/ps` works from
+# the checkout.
 #
 # nginx is the single entry point: one origin, plain HTTP (LAN-only by
 # design), path routing that mirrors the hosted Supabase gateway layout
@@ -64,6 +65,7 @@ services:
       NEXT_PUBLIC_SELF_HOSTED: "true"
       AUTH_SIGNUPS_DISABLED: ${AUTH_SIGNUPS_DISABLED}
       STORAGE_DIR: /var/lib/firmabok-storage
+      NODE_OPTIONS: --max-old-space-size=384
     # The document archive lives on a named volume served directly by the
     # app (lib/storage/local.ts); no storage-api service.
     volumes:
@@ -117,18 +119,14 @@ services:
     logging: *logging
 
   db:
-    image: supabase/postgres:17.6.1.136
+    image: postgres:17.6-bookworm
     volumes:
-      # Init subset from the upstream Supabase Docker stack (Apache-2.0,
-      # see NOTICE): role passwords and JWT settings. The analytics/pooler
-      # scripts are not needed here, nor the pg_net webhook machinery
-      # (nothing in the app uses supabase_functions). The supabase_realtime
-      # publication that the app migrations alter is created by the image's
-      # own init, so it needs no script of its own.
-      - ./docker/db-init/roles.sql:/docker-entrypoint-initdb.d/init-scripts/99-roles.sql
-      - ./docker/db-init/jwt.sql:/docker-entrypoint-initdb.d/init-scripts/99-jwt.sql
+      # First-boot bootstrap: roles, the vendored GoTrue base schema
+      # (Apache-2.0, see NOTICE) and API grants. The official image runs
+      # these once while db_data is empty; everything else the stack needs
+      # ships in postgres contrib (uuid-ossp, pgcrypto, btree_gist).
+      - ./docker/db-init:/docker-entrypoint-initdb.d:ro
       - db_data:/var/lib/postgresql/data
-      - db_config:/etc/postgresql-custom
     # Healthchecks across the stack: a tight start_interval keeps the
     # depends_on chain fast on boot, then the steady-state interval backs
     # off - four services probed every 5 s forever was constant idle CPU.
@@ -140,21 +138,38 @@ services:
       start_period: 120s
       start_interval: 5s
     environment:
-      POSTGRES_HOST: /var/run/postgresql
-      PGPORT: "5432"
-      POSTGRES_PORT: "5432"
-      PGPASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      PGDATABASE: postgres
       POSTGRES_DB: postgres
-      JWT_SECRET: ${JWT_SECRET}
-      JWT_EXP: "3600"
+    # Sized for a single-tenant LAN install: a handful of connections,
+    # no parallel query, no JIT. work_mem stays at 8MB because the SIE
+    # import sorts real data.
     command:
       - postgres
       - -c
-      - config_file=/etc/postgresql/postgresql.conf
+      - max_connections=25
       - -c
-      - log_min_messages=fatal
+      - shared_buffers=64MB
+      - -c
+      - work_mem=8MB
+      - -c
+      - maintenance_work_mem=64MB
+      - -c
+      - effective_cache_size=512MB
+      - -c
+      - max_worker_processes=2
+      - -c
+      - max_parallel_workers=0
+      - -c
+      - max_parallel_workers_per_gather=0
+      - -c
+      - autovacuum_max_workers=1
+      - -c
+      - track_activity_query_size=1024
+      - -c
+      - max_wal_size=512MB
+      - -c
+      - jit=off
+    mem_limit: 256m
     restart: unless-stopped
     logging: *logging
 
@@ -162,7 +177,7 @@ services:
   # `up -d`, tracked in the _firmabok.migrations table. The app waits
   # for it, so an update can never run against an unmigrated schema.
   migrate:
-    image: supabase/postgres:17.6.1.136
+    image: postgres:17.6-bookworm
     depends_on:
       db:
         condition: service_healthy
@@ -245,7 +260,8 @@ services:
       start_interval: 5s
     environment:
       PGRST_DB_URI: postgres://authenticator:${POSTGRES_PASSWORD}@db:5432/postgres
-      PGRST_DB_SCHEMAS: public,graphql_public
+      PGRST_DB_SCHEMAS: public
+      PGRST_DB_POOL: "5"
       PGRST_DB_MAX_ROWS: "1000"
       PGRST_DB_EXTRA_SEARCH_PATH: public
       PGRST_DB_ANON_ROLE: anon
@@ -264,5 +280,4 @@ services:
 # Back up with pg_dump via docker exec, not by copying these.
 volumes:
   db_data:
-  db_config:
   storage_data:

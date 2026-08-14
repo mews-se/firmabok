@@ -19,7 +19,7 @@ flowchart LR
         app["app<br/>Next.js · :3000"]
         cron["cron<br/>supercronic"]
         migrate["migrate<br/>engångs"]
-        db[("db<br/>supabase/postgres")]
+        db[("db<br/>postgres")]
         auth["auth · GoTrue"]
         rest["rest · PostgREST"]
         vol[("storage_data<br/>dokumentvolym")]

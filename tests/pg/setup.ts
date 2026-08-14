@@ -3,7 +3,7 @@ import { afterAll, beforeAll } from 'vitest'
 
 // Shared pool for the pg-real project. DATABASE_URL must point at a Postgres
 // instance that already has every migration from supabase/migrations/ applied
-// and that includes the Supabase `auth` schema (supabase/postgres image).
+// and that includes the `auth` schema (bootstrapped from docker/db-init).
 const databaseUrl =
   process.env.DATABASE_URL ?? 'postgresql://postgres:postgres@localhost:5432/postgres'
 
@@ -72,10 +72,9 @@ export async function withUserContext<T>(
 // so the pooled connection is clean again after COMMIT/ROLLBACK either way.
 //
 // BOTH claim GUC styles are set, for the same reason withUserContext sets
-// both `request.jwt.claims` and `request.jwt.claim.sub`: the CI image
-// (supabase/postgres:15.8.1.060) ships the LEGACY auth shim, where
-// auth.role() reads ONLY `request.jwt.claim.role` (init-scripts/
-// 00000000000001-auth-schema.sql; no in-image migration redefines it), while
+// both `request.jwt.claims` and `request.jwt.claim.sub`: the stack ships
+// the LEGACY auth shim, where auth.role() reads ONLY `request.jwt.claim.role`
+// (docker/db-init/01-auth-schema.sql; GoTrue never redefines it), while
 // hosted Supabase runs the newer coalesce definition that also reads the
 // `request.jwt.claims` JSON. Setting only the JSON works against hosted-style
 // shims and silently leaves auth.role() NULL in CI, which is exactly the

@@ -46,7 +46,7 @@ jobs:
 
     services:
       postgres:
-        image: supabase/postgres:15.8.1.060
+        image: postgres:17.6-bookworm
         env:
           POSTGRES_PASSWORD: postgres
         ports:
@@ -70,6 +70,18 @@ jobs:
 
       - name: Install psql client
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends postgresql-client
+
+      - name: Bootstrap roles and auth schema
+        env:
+          PGHOST: localhost
+          POSTGRES_USER: postgres
+          POSTGRES_DB: postgres
+          POSTGRES_PASSWORD: postgres
+        run: |
+          set -euo pipefail
+          sh docker/db-init/00-roles.sh
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f docker/db-init/01-auth-schema.sql
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f docker/db-init/02-schemas-grants.sql
 
       - name: Identify the migrations this PR adds
         id: newmig
@@ -136,10 +148,10 @@ jobs:
 
     services:
       postgres:
-        # Supabase image ships the auth schema, auth.uid(), and the extensions
-        # (uuid-ossp, pg_cron, btree_gist, vector) this repo's migrations need.
-        # Plain postgres:15 would require manual bootstrap SQL.
-        image: supabase/postgres:15.8.1.060
+        # Official postgres: the roles, auth schema and grants the migrations
+        # need come from docker/db-init, applied by the bootstrap step below -
+        # the same files the compose stack mounts at first boot.
+        image: postgres:17.6-bookworm
         env:
           POSTGRES_PASSWORD: postgres
         ports:
@@ -174,6 +186,18 @@ jobs:
 
       - name: Install psql client
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends postgresql-client
+
+      - name: Bootstrap roles and auth schema
+        env:
+          PGHOST: localhost
+          POSTGRES_USER: postgres
+          POSTGRES_DB: postgres
+          POSTGRES_PASSWORD: postgres
+        run: |
+          set -euo pipefail
+          sh docker/db-init/00-roles.sh
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f docker/db-init/01-auth-schema.sql
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f docker/db-init/02-schemas-grants.sql
 
       - name: Apply migrations
         run: |

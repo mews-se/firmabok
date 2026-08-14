@@ -836,7 +836,7 @@ describe('generateFullArchive', () => {
       // OCR output, error messages) stays out of the archive.
       const select = findCall('invoice_inbox_items', 'select')?.[0] as string
       expect(select).toContain('created_journal_entry_id')
-      expect(select).not.toContain('email_body_text')
+      expect(select).not.toContain('raw_email_payload')
       expect(select).not.toContain('extracted_data')
       expect(select).not.toBe('*')
     })

@@ -2,7 +2,7 @@
  * pg-real test for the SECURITY DEFINER write-RPC tenant guards
  * (20260619130100_securitydefiner_write_rpc_tenant_guards.sql).
  *
- * Four SECURITY DEFINER write RPCs are EXECUTE-able by `authenticated` and so,
+ * Three SECURITY DEFINER write RPCs are EXECUTE-able by `authenticated` and so,
  * without an in-function tenant guard, an authenticated user could call them via
  * PostgREST with ANOTHER company's p_company_id. The migration adds the canonical
  * claims-based guard (mirrors 20260615120000_link_voucher_rpcs_tenant_guard.sql):
@@ -19,9 +19,9 @@
  *   - cross-tenant (userA's session, companyB's id) → RAISE with SQLSTATE 42501.
  *   - own company (userA's session, companyA's id) → the guard does NOT fire;
  *     the call either succeeds or fails with a NON-42501 domain error. For the
- *     two RPCs with no other gate (reserve/release_voucher_range) and for
- *     rotate_company_inbox the own-company call fully succeeds; for the others a
- *     non-guard outcome is sufficient and is documented inline.
+ *     two RPCs with no other gate (reserve/release_voucher_range) the
+ *     own-company call fully succeeds; for the others a non-guard outcome is
+ *     sufficient and is documented inline.
  *   - no-claims bare-pool cross-tenant → guard bypassed (no 42501), proving the
  *     MCP / service-role paths are unaffected.
  *
@@ -114,7 +114,6 @@ async function insertPostedManualIb(params: {
 const MARK_OB = `SELECT public.mark_entry_as_opening_balance($1, $2)`
 const RESERVE = `SELECT public.reserve_voucher_range($1, $2, $3, $4)`
 const RELEASE = `SELECT public.release_voucher_range($1, $2, $3, $4, $5)`
-const ROTATE = `SELECT public.rotate_company_inbox($1)`
 
 describe('SECURITY DEFINER write RPCs: tenant-isolation guard', () => {
   it('mark_entry_as_opening_balance: blocks cross-company, passes own, bypasses for no-claims', async () => {
@@ -174,27 +173,6 @@ describe('SECURITY DEFINER write RPCs: tenant-isolation guard', () => {
 
     const bare = await callBare(RELEASE, [b.companyId, b.fiscalPeriodId, 'A', 5, 10])
     expect(bare).toBeNull()
-  })
-
-  it('rotate_company_inbox: blocks cross-company, passes own, bypasses for no-claims', async () => {
-    const a = await seedCompany()
-    const b = await seedCompany()
-
-    const cross = await callAsUser(a.userId, ROTATE, [b.companyId])
-    expect(cross?.code).toBe('42501')
-
-    // Own company, owner of A → succeeds (creates an active inbox row).
-    const own = await callAsUser(a.userId, ROTATE, [a.companyId])
-    expect(own).toBeNull()
-
-    // No-claims bare pool cross-tenant → the NEW claims-based tenant guard is
-    // bypassed (role is not anon/authenticated). rotate_company_inbox is only
-    // ever called from a user session (auth.uid() present), so unlike the other
-    // five it has no service-role caller; the pre-existing owner/admin check
-    // (auth.uid() NULL → no membership) still raises 42501 here. Disambiguate by
-    // message: the bypass is proven by the new guard's message NOT appearing.
-    const bare = await callBare(ROTATE, [b.companyId])
-    expect(bare?.message ?? '').not.toMatch(/caller is not a member of company/i)
   })
 })
 

@@ -965,8 +965,6 @@ export const ARCHIVE_EXCLUDED_TABLES: Record<string, string> = {
   chat_messages: 'AI assistant state, not räkenskapsinformation',
   chat_sessions: 'AI assistant state, not räkenskapsinformation',
   company_capability_config: 'entitlement state',
-  company_inbound_domains: 'inbound-mail infrastructure',
-  company_inboxes: 'inbound-mail infrastructure',
   company_invitations: 'membership state, meaningless outside the platform',
   company_members: 'membership state, meaningless outside the platform',
   deadlines: 'regenerable operational calendar state',

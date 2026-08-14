@@ -1,4 +1,4 @@
--- Tenant guards on four SECURITY DEFINER write RPCs (P0 tenant backstop).
+-- Tenant guards on three SECURITY DEFINER write RPCs (P0 tenant backstop).
 --
 -- These RPCs run with the definer's privileges and bypass the caller's RLS, and
 -- all are EXECUTE-able by `authenticated`. The canonical guard (introduced on
@@ -19,12 +19,11 @@
 -- authenticated cross-tenant callers — a behavioural break for no isolation
 -- gain. They are tenant-safe as-is.
 --
--- Of the four guarded here: mark_entry_as_opening_balance already raised
--- (P0001) for non-members and rotate_company_inbox already raised 42501 for
--- non-owner/admin — the uniform guard tightens both to a consistent 42501
--- without changing exception-vs-success behaviour. The two voucher-range RPCs
--- (reserve_voucher_range, release_voucher_range) had NO tenant check at all —
--- those are the real gap this migration closes.
+-- Of the three guarded here: mark_entry_as_opening_balance already raised
+-- (P0001) for non-members — the uniform guard tightens it to a consistent
+-- 42501 without changing exception-vs-success behaviour. The two voucher-range
+-- RPCs (reserve_voucher_range, release_voucher_range) had NO tenant check at
+-- all — those are the real gap this migration closes.
 --
 -- Each function body below is copied verbatim from its latest definition; only
 -- the guard block (and, where present, a v_jwt_role DECLARE) is added. Existing
@@ -42,7 +41,6 @@
 --   mark_entry_as_opening_balance   — latest 20260613120000_mark_entry_as_opening_balance.sql
 --   reserve_voucher_range           — latest 20260402075153_fix_reserve_voucher_range.sql
 --   release_voucher_range           — latest 20260402075153_fix_reserve_voucher_range.sql
---   rotate_company_inbox            — latest 20260420190000_inbox_hardening.sql
 -- =============================================================================
 -- 1. mark_entry_as_opening_balance
 -- =============================================================================
@@ -281,72 +279,5 @@ $$;
 
 REVOKE ALL ON FUNCTION public.release_voucher_range(uuid, uuid, text, integer, integer) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.release_voucher_range(uuid, uuid, text, integer, integer) TO authenticated;
-
--- =============================================================================
--- 4. rotate_company_inbox
--- =============================================================================
-CREATE OR REPLACE FUNCTION public.rotate_company_inbox(p_company_id uuid)
-RETURNS public.company_inboxes
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-  v_company_name text;
-  v_local_part text;
-  v_slug_seed text;
-  v_new_row public.company_inboxes;
-  v_jwt_role text := coalesce(nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'role', '');
-BEGIN
-  -- Tenant guard: anon/authenticated may only act on their own companies;
-  -- service_role / direct access (no JWT role) bypasses BY DESIGN.
-  IF v_jwt_role IN ('anon', 'authenticated')
-     AND p_company_id NOT IN (SELECT public.user_company_ids()) THEN
-    RAISE EXCEPTION 'unauthorized: caller is not a member of company %', p_company_id
-      USING ERRCODE = '42501';
-  END IF;
-
-  -- Authorization: caller must be owner/admin of the company.
-  IF NOT EXISTS (
-    SELECT 1 FROM public.company_members
-    WHERE company_id = p_company_id
-      AND user_id = auth.uid()
-      AND role IN ('owner', 'admin')
-  ) THEN
-    RAISE EXCEPTION 'Not authorized to rotate inbox for this company'
-      USING ERRCODE = '42501';
-  END IF;
-
-  SELECT name INTO v_company_name
-  FROM public.companies
-  WHERE id = p_company_id;
-
-  IF v_company_name IS NULL THEN
-    RAISE EXCEPTION 'Company not found' USING ERRCODE = 'P0002';
-  END IF;
-
-  -- All three steps share one transaction — a failure on any of them
-  -- rolls the whole thing back, so the company never ends up without
-  -- an active inbox.
-
-  UPDATE public.company_inboxes
-  SET status = 'deprecated',
-      deprecated_at = now()
-  WHERE company_id = p_company_id
-    AND status = 'active';
-
-  v_local_part := public.generate_inbox_local_part(v_company_name);
-  v_slug_seed := regexp_replace(v_local_part, '-[^-]+$', '');
-
-  INSERT INTO public.company_inboxes (company_id, local_part, slug_seed, status)
-  VALUES (p_company_id, v_local_part, v_slug_seed, 'active')
-  RETURNING * INTO v_new_row;
-
-  RETURN v_new_row;
-END;
-$$;
-
-REVOKE ALL ON FUNCTION public.rotate_company_inbox(uuid) FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.rotate_company_inbox(uuid) TO authenticated;
 
 NOTIFY pgrst, 'reload schema';

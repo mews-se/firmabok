@@ -1,19 +1,5 @@
-# The complete self-hosted stack in one file: the app, its cron sidecar,
-# official postgres and the two Supabase services still in use (GoTrue,
-# PostgREST), all pinned. Driven by install-debian.sh; named
-# docker-compose.yml so plain `docker compose stop/logs/ps` works from
-# the checkout.
-#
-# nginx is the single entry point: one origin, plain HTTP (LAN-only by
-# design), path routing that mirrors the hosted Supabase gateway layout
-# (see docker/nginx.selfhost.conf). Kong, studio, realtime and the rest
-# of the upstream stack are intentionally absent - the services
-# themselves enforce JWT auth, which is what matters on a private
-# network, and the app polls instead of subscribing.
-#
-# Needs a .env with DOMAIN, POSTGRES_PASSWORD, JWT_SECRET, ANON_KEY,
-# SERVICE_ROLE_KEY, CRON_SECRET and AUTH_SIGNUPS_DISABLED -
-# install-debian.sh generates it.
+# The self-hosted stack, driven by install-debian.sh (which also
+# generates the .env this file needs).
 services:
   proxy:
     image: nginx:stable-alpine-slim
@@ -26,8 +12,6 @@ services:
       - no-new-privileges:true
     cap_drop:
       - ALL
-    # The master runs as root and drops to the nginx user for workers,
-    # hence the setuid/setgid/chown trio on top of the port bind.
     cap_add:
       - NET_BIND_SERVICE
       - SETUID
@@ -54,8 +38,6 @@ services:
       proxy:
         condition: service_started
     environment:
-      # http by design: LAN-only stack, and the app's cookies follow the
-      # URL scheme (lib/auth/cookie-secure.ts).
       NEXT_PUBLIC_SUPABASE_URL: http://${DOMAIN:?set DOMAIN in .env}
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${ANON_KEY}
       SUPABASE_SERVICE_ROLE_KEY: ${SERVICE_ROLE_KEY}
@@ -66,8 +48,6 @@ services:
       AUTH_SIGNUPS_DISABLED: ${AUTH_SIGNUPS_DISABLED}
       STORAGE_DIR: /var/lib/firmabok-storage
       NODE_OPTIONS: --max-old-space-size=384
-    # The document archive lives on a named volume served directly by the
-    # app (lib/storage/local.ts); no storage-api service.
     volumes:
       - storage_data:/var/lib/firmabok-storage
     security_opt:
@@ -76,8 +56,6 @@ services:
       - ALL
     read_only: true
     init: true
-    # Read-only root: Next.js still needs writable .next and public at
-    # runtime, so they are sized tmpfs mounts owned by the app user.
     tmpfs:
       - /tmp
       - /app/.next:uid=1001,gid=1001,mode=750,size=400m
@@ -121,15 +99,8 @@ services:
   db:
     image: postgres:18.2-alpine
     volumes:
-      # First-boot bootstrap: roles, the vendored GoTrue base schema
-      # (Apache-2.0, see NOTICE) and API grants. The official image runs
-      # these once while db_data is empty; everything else the stack needs
-      # ships in postgres contrib (uuid-ossp, pgcrypto, btree_gist).
       - ./docker/db-init:/docker-entrypoint-initdb.d:ro
       - db_data:/var/lib/postgresql
-    # Healthchecks across the stack: a tight start_interval keeps the
-    # depends_on chain fast on boot, then the steady-state interval backs
-    # off - four services probed every 5 s forever was constant idle CPU.
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "postgres", "-h", "localhost"]
       interval: 60s
@@ -140,12 +111,8 @@ services:
     environment:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: postgres
-      # ICU gives real Swedish collation (z, å, ä, ö) regardless of libc;
-      # musl's own locale support is codepoint-only.
+      # icu because musl locales cannot sort å/ä/ö
       POSTGRES_INITDB_ARGS: --locale-provider=icu --icu-locale=sv-SE --locale=C.UTF-8
-    # Sized for a single-tenant LAN install: a handful of connections,
-    # no parallel query, no JIT. work_mem stays at 8MB because the SIE
-    # import sorts real data.
     command:
       - postgres
       - -c
@@ -176,16 +143,11 @@ services:
     restart: unless-stopped
     logging: *logging
 
-  # One-shot: applies new files from supabase/migrations on every
-  # `up -d`, tracked in the _firmabok.migrations table. The app waits
-  # for it, so an update can never run against an unmigrated schema.
   migrate:
     image: postgres:18.2-alpine
     depends_on:
       db:
         condition: service_healthy
-      # Healthy GoTrue means its own schema migrations have run; the app
-      # migrations build on top of the auth schema.
       auth:
         condition: service_healthy
     volumes:
@@ -231,7 +193,6 @@ services:
 
       GOTRUE_EXTERNAL_EMAIL_ENABLED: "true"
       GOTRUE_EXTERNAL_ANONYMOUS_USERS_ENABLED: "false"
-      # No mailer on the LAN: accounts are confirmed immediately.
       GOTRUE_MAILER_AUTOCONFIRM: "true"
       GOTRUE_SMTP_ADMIN_EMAIL: admin@example.com
       GOTRUE_SMTP_HOST: ""
@@ -278,9 +239,6 @@ services:
     restart: unless-stopped
     logging: *logging
 
-# Named volumes: the database and document archive live under Docker's
-# management instead of as container-uid-owned files in the checkout.
-# Back up with pg_dump via docker exec, not by copying these.
 volumes:
   db_data:
   storage_data:

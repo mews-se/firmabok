@@ -46,7 +46,7 @@ jobs:
 
     services:
       postgres:
-        image: postgres:17.6-bookworm
+        image: postgres:18.2-alpine
         env:
           POSTGRES_PASSWORD: postgres
         ports:
@@ -151,7 +151,7 @@ jobs:
         # Official postgres: the roles, auth schema and grants the migrations
         # need come from docker/db-init, applied by the bootstrap step below -
         # the same files the compose stack mounts at first boot.
-        image: postgres:17.6-bookworm
+        image: postgres:18.2-alpine
         env:
           POSTGRES_PASSWORD: postgres
         ports:

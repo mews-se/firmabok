@@ -119,14 +119,14 @@ services:
     logging: *logging
 
   db:
-    image: postgres:17.6-bookworm
+    image: postgres:18.2-alpine
     volumes:
       # First-boot bootstrap: roles, the vendored GoTrue base schema
       # (Apache-2.0, see NOTICE) and API grants. The official image runs
       # these once while db_data is empty; everything else the stack needs
       # ships in postgres contrib (uuid-ossp, pgcrypto, btree_gist).
       - ./docker/db-init:/docker-entrypoint-initdb.d:ro
-      - db_data:/var/lib/postgresql/data
+      - db_data:/var/lib/postgresql
     # Healthchecks across the stack: a tight start_interval keeps the
     # depends_on chain fast on boot, then the steady-state interval backs
     # off - four services probed every 5 s forever was constant idle CPU.
@@ -140,6 +140,9 @@ services:
     environment:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: postgres
+      # ICU gives real Swedish collation (z, å, ä, ö) regardless of libc;
+      # musl's own locale support is codepoint-only.
+      POSTGRES_INITDB_ARGS: --locale-provider=icu --icu-locale=sv-SE --locale=C.UTF-8
     # Sized for a single-tenant LAN install: a handful of connections,
     # no parallel query, no JIT. work_mem stays at 8MB because the SIE
     # import sorts real data.
@@ -177,7 +180,7 @@ services:
   # `up -d`, tracked in the _firmabok.migrations table. The app waits
   # for it, so an update can never run against an unmigrated schema.
   migrate:
-    image: postgres:17.6-bookworm
+    image: postgres:18.2-alpine
     depends_on:
       db:
         condition: service_healthy

@@ -68,15 +68,6 @@ export type CoreEvent =
       userId: string
       companyId: string
     } }
-  // Stripe Connect lifecycle: connect/disconnect are outward-facing consent
-  // transitions (a third party gains/loses access to payment data), so they
-  // land in event_log for the audit trail, mirroring bank_connection.*.
-  | { type: 'stripe.connected'; payload: { connectionId: string; stripeAccountId: string; livemode: boolean; userId: string; companyId: string } }
-  | { type: 'stripe.disconnected'; payload: { connectionId: string; stripeAccountId: string | null; reason: 'user' | 'revoked_upstream'; userId: string; companyId: string } }
-  // WooCommerce store lifecycle: same audit doctrine as stripe.* (a third
-  // party's API credentials are granted/dropped).
-  | { type: 'woocommerce.connected'; payload: { connectionId: string; storeUrl: string; userId: string; companyId: string } }
-  | { type: 'woocommerce.disconnected'; payload: { connectionId: string; storeUrl: string | null; reason: 'user' | 'revoked_upstream'; userId: string; companyId: string } }
   // Periods
   | { type: 'period.locked'; payload: { period: FiscalPeriod; userId: string; companyId: string } }
   | { type: 'period.unlocked'; payload: { period: FiscalPeriod; userId: string; companyId: string } }

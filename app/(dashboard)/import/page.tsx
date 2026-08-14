@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/dialog'
 import { useToast } from '@/components/ui/use-toast'
 import { getErrorMessage } from '@/lib/errors/get-error-message'
-import { ArrowLeft, CreditCard, Landmark, Loader2, ChevronRight, Download, AlertTriangle, ShoppingCart } from 'lucide-react'
+import { ArrowLeft, Landmark, Loader2, ChevronRight, Download, AlertTriangle } from 'lucide-react'
 import { cn, formatDate } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { useCompany } from '@/contexts/CompanyContext'
@@ -1604,7 +1604,7 @@ function CSVDataImportWizard() {
 // Import Page with Selection Cards
 // ============================================================
 
-type ImportMode = null | 'psd2' | 'stripe' | 'woocommerce' | 'sie' | 'csv_data' | 'migration'
+type ImportMode = null | 'psd2' | 'sie' | 'csv_data' | 'migration'
 
 export default function ImportPage() {
   const { isSandbox } = useCompany()
@@ -1634,7 +1634,7 @@ export default function ImportPage() {
     // Manual file-import modes (CSV/Excel, SIE) stay reachable.
     const allowedModes = isSandbox
       ? ['sie', 'csv_data']
-      : ['psd2', 'stripe', 'woocommerce', 'sie', 'csv_data', 'migration']
+      : ['psd2', 'sie', 'csv_data', 'migration']
     if (!isSandbox && searchParams.get('migration')) {
       setMode('migration')
     } else {
@@ -1815,28 +1815,6 @@ export default function ImportPage() {
             <p className="mb-1 font-medium">Bankintegration (PSD2) är inte aktiverad</p>
             <p className="max-w-md text-sm text-muted-foreground">
               Aktivera tillägget Enable Banking för att koppla ditt bankkonto.
-            </p>
-          </CardContent>
-        </Card>
-      )}
-      {mode === 'stripe' && (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-            <CreditCard className="mb-4 h-10 w-10 text-muted-foreground/40" />
-            <p className="mb-1 font-medium">{t('stripe_not_enabled_title')}</p>
-            <p className="max-w-md text-sm text-muted-foreground">
-              {t('stripe_not_enabled_description')}
-            </p>
-          </CardContent>
-        </Card>
-      )}
-      {mode === 'woocommerce' && (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-            <ShoppingCart className="mb-4 h-10 w-10 text-muted-foreground/40" />
-            <p className="mb-1 font-medium">{t('woocommerce_not_enabled_title')}</p>
-            <p className="max-w-md text-sm text-muted-foreground">
-              {t('woocommerce_not_enabled_description')}
             </p>
           </CardContent>
         </Card>

@@ -27,10 +27,6 @@ export const CAPABILITY = {
   cloud_backup: 'cloud_backup',
   /** Migration import from other systems (Fortnox/Visma/Bokio/BL/Briox). Kept open so new payers can migrate IN. */
   migration: 'migration',
-  /** Stripe Connect: auto payment links on invoices + payment/payout sync. */
-  stripe_payments: 'stripe_payments',
-  /** WooCommerce store sync: orders/refunds imported as a transaction feed. */
-  woocommerce_sync: 'woocommerce_sync',
 } as const
 
 export type CapabilityKey = (typeof CAPABILITY)[keyof typeof CAPABILITY]
@@ -55,8 +51,6 @@ export const PAID_CAPABILITIES: readonly CapabilityKey[] = [
   CAPABILITY.bank_sync,
   CAPABILITY.skatteverket,
   CAPABILITY.email_send,
-  CAPABILITY.stripe_payments,
-  CAPABILITY.woocommerce_sync,
 ] as const
 
 /**

@@ -20,8 +20,7 @@
 -- immutable bank original when present (title edits never touch it), the
 -- working title for legacy rows predating the column. Historical rows carry
 -- no ISO codes (they were dropped at insert before this feature), so text is
--- the only available signal; MCC and the Stripe feed's own description
--- prefixes fill the gaps.
+-- the only available signal; MCC fills the gaps.
 --
 -- Title stripping only touches rows the user has NOT renamed
 -- (title_edited_at IS NULL), never empties a title (a description that IS
@@ -129,44 +128,7 @@ WHERE transaction_method IS NULL
   AND (bank_connection_id IS NOT NULL OR (import_source IS NOT NULL AND import_source NOT IN ('manual', 'mcp')))
   AND mcc_code IS NOT NULL;
 
--- ===== 3. Stripe feed rows: the sync's own description prefixes are a =====
--- ===== reliable type discriminator (describeBalanceTxn is deterministic) ====
-
-UPDATE public.transactions
-SET transaction_method = 'fee'
-WHERE transaction_method IS NULL
-  AND import_source = 'stripe'
-  AND (
-    coalesce(original_description, description) LIKE 'Stripe-avgift%'
-    OR coalesce(original_description, description) LIKE 'Stripe: Billing%'
-    OR coalesce(original_description, description) LIKE 'Stripe: Automatic Taxes%'
-  );
-
-UPDATE public.transactions
-SET transaction_method = 'card'
-WHERE transaction_method IS NULL
-  AND import_source = 'stripe'
-  AND (
-    coalesce(original_description, description) LIKE 'Stripe-betalning%'
-    OR coalesce(original_description, description) LIKE 'Stripe-återbetalning%'
-  );
-
-UPDATE public.transactions
-SET transaction_method = 'transfer'
-WHERE transaction_method IS NULL
-  AND import_source = 'stripe'
-  AND coalesce(original_description, description) LIKE 'Stripe-utbetalning%';
-
-UPDATE public.transactions
-SET transaction_method = 'adjustment'
-WHERE transaction_method IS NULL
-  AND import_source = 'stripe'
-  AND (
-    coalesce(original_description, description) LIKE 'Stripe-justering%'
-    OR coalesce(original_description, description) LIKE 'Stripe-tvist%'
-  );
-
--- ===== 4. Strip the trailing channel phrase from unedited FEED titles =====
+-- ===== 3. Strip the trailing channel phrase from unedited FEED titles =====
 -- The union of every trailing vocabulary above. Guarded so a title is never
 -- emptied, never rewritten to itself, never rewritten on a user-created row,
 -- and never left ending in a possessive/scope adjective ("Egen insättning"

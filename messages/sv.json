@@ -4249,11 +4249,7 @@
     "export_sie_dialog_description": "Ladda ner bokföringen som SIE4-fil för revisorn eller för flytt till ett annat system.",
     "help_text": "Här samlas alla vägar in och ut: bankkoppling, filimporter och flytt från andra system, samt export av SIE och säkerhetskopior. Varje import granskas innan något bokförs.",
     "pgnote": "Varje import går genom samma steg: ladda upp, mappa kolumner, granska, resultat. Inget bokförs utan att du ser det först.",
-    "bank_format_wise_statement": "Wise kontoutdrag",
-    "stripe_not_enabled_title": "Stripe-tillägget är inte aktiverat",
-    "stripe_not_enabled_description": "Aktivera tillägget Stripe för att koppla ditt Stripe-konto och synka transaktioner automatiskt.",
-    "woocommerce_not_enabled_title": "WooCommerce-tillägget är inte aktiverat",
-    "woocommerce_not_enabled_description": "Aktivera tillägget WooCommerce för att koppla din butik och hämta ordrar automatiskt."
+    "bank_format_wise_statement": "Wise kontoutdrag"
   },
   "empty": {
     "invoices_title": "Inga fakturor ännu",

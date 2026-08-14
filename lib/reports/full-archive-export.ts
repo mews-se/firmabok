@@ -979,7 +979,6 @@ export const ARCHIVE_EXCLUDED_TABLES: Record<string, string> = {
   company_inboxes: 'inbound-mail infrastructure',
   company_invitations: 'membership state, meaningless outside the platform',
   company_members: 'membership state, meaningless outside the platform',
-  company_subscriptions: 'billing state',
   deadlines: 'regenerable operational calendar state',
   dimension_retag_log: 'operation log',
   event_log: '30-day TTL event bus log',
@@ -1002,14 +1001,10 @@ export const ARCHIVE_EXCLUDED_TABLES: Record<string, string> = {
   skatteverket_api_audit_log: 'integration audit log',
   skatteverket_company_connections: 'integration connection state',
   skatteverket_tokens: 'secrets',
-  stripe_connections: 'Stripe OAuth state (secrets)',
-  stripe_payment_events: 'mirror of Stripe data, re-fetchable at source',
-  stripe_payouts: 'mirror of Stripe data, re-fetchable at source',
   webhook_deliveries: 'automation delivery log',
   whatsapp_conversations:
     'WhatsApp bot conversation state (company_id is only a which-company pin); receipts live in document_attachments',
   webhooks: 'automation config with signing secrets',
-  woocommerce_connections: 'WooCommerce connection state (encrypted API secrets)',
 }
 
 /** Max parent ids per `IN (...)` chunk: keeps the PostgREST URL well under limits. */

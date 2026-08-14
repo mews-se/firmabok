@@ -4249,11 +4249,7 @@
     "export_sie_dialog_description": "Download your bookkeeping as a SIE4 file for your accountant or for moving to another system.",
     "help_text": "Every way in and out lives here: bank connections, file imports and migrations from other systems, plus SIE export and backups. Every import is reviewed before anything is booked.",
     "pgnote": "Every import goes through the same steps: upload, map columns, review, result. Nothing is booked without you seeing it first.",
-    "bank_format_wise_statement": "Wise balance statement",
-    "stripe_not_enabled_title": "The Stripe extension is not enabled",
-    "stripe_not_enabled_description": "Enable the Stripe extension to connect your Stripe account and sync transactions automatically.",
-    "woocommerce_not_enabled_title": "The WooCommerce extension is not enabled",
-    "woocommerce_not_enabled_description": "Enable the WooCommerce extension to connect your store and fetch orders automatically."
+    "bank_format_wise_statement": "Wise balance statement"
   },
   "empty": {
     "invoices_title": "No invoices yet",

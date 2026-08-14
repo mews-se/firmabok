@@ -14,7 +14,7 @@ import { getPool } from '@/tests/pg/setup'
  *   - The closed-vocabulary CHECK constraint.
  *   - The backfill's trailing-phrase classification (real production strings),
  *     its precedence (word-boundary: "Löneinsättning" is salary, never
- *     deposit), the MCC and Stripe-prefix fallbacks, and the NULL result for
+ *     deposit), the MCC fallback, and the NULL result for
  *     unclassifiable rows.
  *   - FEED-ROW SCOPE: user-created rows (import_source NULL/manual/mcp) are
  *     never classified and never rewritten ("Egen insättning" stays intact).
@@ -264,23 +264,6 @@ describe('transactions.transaction_method: backfill classification + title strip
     expect((await getRow(atm)).transaction_method).toBe('withdrawal')
     // No phrase → the title is untouched.
     expect((await getRow(card)).description).toBe('COOP KONSUM STOCKHOLM')
-  })
-
-  it('classifies Stripe feed rows from their deterministic prefixes', async () => {
-    const { userId, companyId } = await seedCompany()
-    const mk = (description: string) =>
-      insertFeedRow({ companyId, userId, description, importSource: 'stripe' })
-    const fee = await mk('Stripe-avgift (Stripe-betalning Carl)')
-    const usage = await mk('Stripe: Billing - Usage Fee (2026-07-26)')
-    const charge = await mk('Stripe-betalning Fredrik Schöön')
-    const payout = await mk('Stripe-utbetalning po_1')
-
-    await runBackfill()
-
-    expect((await getRow(fee)).transaction_method).toBe('fee')
-    expect((await getRow(usage)).transaction_method).toBe('fee')
-    expect((await getRow(charge)).transaction_method).toBe('card')
-    expect((await getRow(payout)).transaction_method).toBe('transfer')
   })
 
   it('leaves unclassifiable rows NULL and untouched, and is idempotent', async () => {

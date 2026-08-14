@@ -1599,7 +1599,6 @@ export type JournalEntrySourceType =
   | 'result_appropriation'
   | 'rot_rut_payout'
   | 'vat_settlement'
-  | 'stripe_payout'
 
 // Journal entry status
 export type JournalEntryStatus = 'draft' | 'posted' | 'reversed' | 'cancelled'

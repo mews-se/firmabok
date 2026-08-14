@@ -263,7 +263,7 @@ describe('schema replay (parser fidelity)', () => {
     const sourceType = sets.get('source_type')
     expect(sourceType, 'journal_entries.source_type should be a closed value set').toBeDefined()
     expect(sourceType!.has('bank_transaction')).toBe(true)
-    expect(sourceType!.has('stripe_payout')).toBe(true)
+    expect(sourceType!.has('vat_settlement')).toBe(true)
     // The phantom value that read 0 rows where prod had 3 917.
     expect(sourceType!.has('transaction')).toBe(false)
   })

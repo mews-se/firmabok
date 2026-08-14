@@ -263,7 +263,6 @@ export const JournalEntrySourceTypeSchema = z.enum([
   'result_appropriation',
   'rot_rut_payout',
   'vat_settlement',
-  'stripe_payout',
 ])
 
 /** Query params for GET /api/bookkeeping/voucher-sequences/next. */

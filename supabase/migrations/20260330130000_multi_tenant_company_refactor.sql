@@ -137,7 +137,7 @@ DECLARE
     'deadlines', 'cost_centers', 'projects',
     'salary_payments', 'mileage_entries',
     'sie_imports', 'sie_account_mappings',
-    'calendar_feeds', 'chat_sessions', 'chat_messages',
+    'chat_sessions', 'chat_messages',
     'ai_usage_tracking', 'extension_data', 'api_keys',
     'skatteverket_tokens', 'pending_operations', 'payment_match_log',
     'event_log', 'notification_log', 'audit_log'
@@ -201,7 +201,7 @@ DECLARE
     'deadlines', 'cost_centers', 'projects',
     'salary_payments', 'mileage_entries',
     'sie_imports', 'sie_account_mappings',
-    'calendar_feeds', 'chat_sessions', 'chat_messages',
+    'chat_sessions', 'chat_messages',
     'ai_usage_tracking', 'extension_data', 'api_keys',
     'skatteverket_tokens', 'pending_operations', 'payment_match_log',
     'event_log', 'notification_log', 'audit_log'
@@ -239,7 +239,7 @@ DECLARE
     'deadlines', 'cost_centers', 'projects',
     'salary_payments', 'mileage_entries',
     'sie_imports', 'sie_account_mappings',
-    'calendar_feeds', 'chat_sessions', 'chat_messages',
+    'chat_sessions', 'chat_messages',
     'ai_usage_tracking', 'extension_data', 'api_keys',
     'skatteverket_tokens', 'pending_operations'
   ];
@@ -332,11 +332,6 @@ ALTER TABLE public.sie_imports DROP CONSTRAINT IF EXISTS sie_imports_user_id_fil
 ALTER TABLE public.sie_imports ADD CONSTRAINT sie_imports_company_id_file_hash_key
   UNIQUE (company_id, file_hash);
 
--- calendar_feeds: (user_id) → (company_id)
-ALTER TABLE public.calendar_feeds DROP CONSTRAINT IF EXISTS calendar_feeds_user_id_key;
-ALTER TABLE public.calendar_feeds ADD CONSTRAINT calendar_feeds_company_id_key
-  UNIQUE (company_id);
-
 -- skatteverket_tokens: (user_id) → (company_id)
 ALTER TABLE public.skatteverket_tokens DROP CONSTRAINT IF EXISTS skatteverket_tokens_user_id_key;
 ALTER TABLE public.skatteverket_tokens ADD CONSTRAINT skatteverket_tokens_company_id_key
@@ -369,7 +364,7 @@ DECLARE
     'deadlines', 'cost_centers', 'projects',
     'salary_payments', 'mileage_entries',
     'sie_imports', 'sie_account_mappings',
-    'calendar_feeds', 'chat_sessions', 'chat_messages',
+    'chat_sessions', 'chat_messages',
     'ai_usage_tracking', 'extension_data', 'api_keys',
     'skatteverket_tokens', 'pending_operations', 'payment_match_log',
     'event_log', 'notification_log', 'audit_log'
@@ -697,14 +692,6 @@ CREATE POLICY "sie_account_mappings_select" ON public.sie_account_mappings
 CREATE POLICY "sie_account_mappings_insert" ON public.sie_account_mappings
   FOR INSERT WITH CHECK (company_id IN (SELECT public.user_company_ids()));
 CREATE POLICY "sie_account_mappings_update" ON public.sie_account_mappings
-  FOR UPDATE USING (company_id IN (SELECT public.user_company_ids()));
-
--- calendar_feeds
-CREATE POLICY "calendar_feeds_select" ON public.calendar_feeds
-  FOR SELECT USING (company_id IN (SELECT public.user_company_ids()));
-CREATE POLICY "calendar_feeds_insert" ON public.calendar_feeds
-  FOR INSERT WITH CHECK (company_id IN (SELECT public.user_company_ids()));
-CREATE POLICY "calendar_feeds_update" ON public.calendar_feeds
   FOR UPDATE USING (company_id IN (SELECT public.user_company_ids()));
 
 -- chat_sessions

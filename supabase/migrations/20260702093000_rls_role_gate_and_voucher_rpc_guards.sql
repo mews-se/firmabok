@@ -157,18 +157,6 @@ DROP POLICY IF EXISTS btl_delete ON public.booking_template_library;
 CREATE POLICY btl_delete ON public.booking_template_library FOR DELETE TO public
   USING (((NOT is_system) AND current_user_can_write() AND ((company_id IN ( SELECT user_company_ids() AS user_company_ids)) OR ((company_id IS NULL) AND (team_id IN ( SELECT user_team_ids() AS user_team_ids))))));
 
-DROP POLICY IF EXISTS calendar_feeds_insert ON public.calendar_feeds;
-CREATE POLICY calendar_feeds_insert ON public.calendar_feeds FOR INSERT TO public
-  WITH CHECK (((company_id = current_active_company_id()) AND current_user_can_write()));
-
-DROP POLICY IF EXISTS calendar_feeds_update ON public.calendar_feeds;
-CREATE POLICY calendar_feeds_update ON public.calendar_feeds FOR UPDATE TO public
-  USING (((company_id = current_active_company_id()) AND current_user_can_write()));
-
-DROP POLICY IF EXISTS calendar_feeds_delete ON public.calendar_feeds;
-CREATE POLICY calendar_feeds_delete ON public.calendar_feeds FOR DELETE TO public
-  USING (((company_id = current_active_company_id()) AND current_user_can_write()));
-
 DROP POLICY IF EXISTS categorization_templates_insert ON public.categorization_templates;
 CREATE POLICY categorization_templates_insert ON public.categorization_templates FOR INSERT TO public
   WITH CHECK (((company_id = current_active_company_id()) AND current_user_can_write()));

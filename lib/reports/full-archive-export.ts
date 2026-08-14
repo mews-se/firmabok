@@ -960,7 +960,6 @@ export const ARCHIVE_EXCLUDED_TABLES: Record<string, string> = {
   bolagsverket_avtal_acceptances: 'service agreement acceptance state',
   bolagsverket_subscriptions: 'integration subscription state',
   booking_template_usage: 'usage telemetry',
-  calendar_feeds: 'feed tokens (secrets)',
   capability_grants: 'entitlement state',
   chat_messages: 'AI assistant state, not räkenskapsinformation',
   chat_sessions: 'AI assistant state, not räkenskapsinformation',

@@ -863,7 +863,7 @@ BEGIN
   -- Tables with a direct company_id column
   FOR r IN
     SELECT unnest(ARRAY[
-      'api_keys', 'bank_connections', 'bank_file_imports', 'calendar_feeds',
+      'api_keys', 'bank_connections', 'bank_file_imports',
       'categorization_templates', 'chart_of_accounts', 'company_settings',
       'cost_centers', 'customers', 'deadlines', 'document_attachments',
       'extension_data', 'fiscal_periods',

@@ -2576,31 +2576,6 @@ export interface NotificationLog {
   delivery_status: 'sent' | 'delivered' | 'failed'
 }
 
-// ============================================================
-// Calendar Feed Types (ICS)
-// ============================================================
-
-// Calendar feed for Apple Calendar / Google Calendar sync
-export interface CalendarFeed {
-  id: string
-  user_id: string
-  company_id: string
-  feed_token: string
-  is_active: boolean
-  include_tax_deadlines: boolean
-  include_invoices: boolean
-  last_accessed_at: string | null
-  access_count: number
-  created_at: string
-  updated_at: string
-}
-
-// Input for creating/updating calendar feed
-export interface UpdateCalendarFeedInput {
-  include_tax_deadlines?: boolean
-  include_invoices?: boolean
-}
-
 // Swedish labels for deadline status
 export const DEADLINE_STATUS_LABELS: Record<DeadlineStatus, string> = {
   upcoming: 'Kommande',

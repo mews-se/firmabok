@@ -4,6 +4,9 @@
 [![codeql](https://img.shields.io/github/actions/workflow/status/mews-se/firmabok/codeql.yml?branch=main&label=codeql)](https://github.com/mews-se/firmabok/actions/workflows/codeql.yml)
 [![release](https://img.shields.io/github/v/release/mews-se/firmabok?label=release)](https://github.com/mews-se/firmabok/releases)
 [![licens](https://img.shields.io/github/license/mews-se/firmabok?label=licens)](LICENSE)
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6.svg?logo=typescript&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1.svg?logo=postgresql&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-2496ED.svg?logo=docker&logoColor=white)
 
 Svensk bokföring för enskild firma, byggd för självhostad drift på eget
 nätverk — utan molnberoenden, integrationer eller inbyggd AI.

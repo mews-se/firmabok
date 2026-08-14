@@ -38,6 +38,14 @@
     {
       "path": "/api/bookkeeping/accruals/post-due/cron",
       "schedule": "15 5 * * *"
+    },
+    {
+      "path": "/api/supplier-invoices/overdue/cron",
+      "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/invoices/deliveries/redact/cron",
+      "schedule": "15 3 * * *"
     }
   ]
 }

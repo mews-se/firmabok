@@ -1,7 +1,7 @@
 -- Migration: supplier_invoice_overdue_symmetric
 --
 -- Issue #1206: 'overdue' was a one-way label. update_overdue_supplier_invoices()
--- (the daily pg_cron job from 20260303145744, guarded in 20260607120000) flips
+-- (the daily cron job from 20260303145744, guarded in 20260607120000) flips
 -- 'registered'/'approved' payables past their due date to 'overdue', but
 -- nothing ever flipped them back. Extending an unbooked invoice's due date
 -- (renegotiated terms, a mistyped date) therefore left it "Förfallen" forever,
@@ -72,5 +72,10 @@ BEGIN
     AND COALESCE(is_credit_note, false) = false;
 END;
 $$;
+
+-- SECURITY DEFINER with no tenant filter: callable only by the cron route's
+-- service client, never through the PostgREST RPC surface.
+REVOKE ALL ON FUNCTION public.update_overdue_supplier_invoices() FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.update_overdue_supplier_invoices() TO service_role;
 
 NOTIFY pgrst, 'reload schema';

@@ -442,11 +442,7 @@ $$;
 REVOKE ALL ON FUNCTION public.redact_expired_invoice_delivery_pii() FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.redact_expired_invoice_delivery_pii() TO service_role;
 
-SELECT cron.schedule(
-  'redact-expired-invoice-delivery-pii',
-  '15 3 * * *',
-  $$SELECT public.redact_expired_invoice_delivery_pii()$$
-);
+-- Scheduling lives in the cron container (/api/invoices/deliveries/redact/cron).
 
 COMMENT ON COLUMN public.invoice_deliveries.retention_expires_at IS
   'First date after the BFL 7 kap statutory minimum. Recipient and message PII is redacted on or after this date.';

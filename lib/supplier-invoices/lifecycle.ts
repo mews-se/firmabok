@@ -2,7 +2,7 @@
  * Supplier-invoice lifecycle helpers for the 'overdue' label.
  *
  * 'overdue' is derived state (an unpaid payable past its due date) that we
- * store as a lifecycle status: the daily pg_cron job
+ * store as a lifecycle status: the daily cron job
  * update_overdue_supplier_invoices() flips 'registered'/'approved' rows there.
  * Because it is stored rather than computed, every path that can change
  * due_date, or that gates on the status, has to use the same predicate as the

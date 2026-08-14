@@ -3,7 +3,7 @@
 -- Fix: supplier invoices showing "Förfallen" (overdue) even though
 -- "kvar att betala" (remaining_amount) is 0 kr.
 --
--- Root cause: update_overdue_supplier_invoices() (the daily pg_cron job from
+-- Root cause: update_overdue_supplier_invoices() (the daily cron job from
 -- 20260303145744_supplier_invoice_overdue_cron.sql) flipped EVERY row past its
 -- due_date whose status was 'registered'/'approved' to 'overdue', without ever
 -- looking at the outstanding balance.

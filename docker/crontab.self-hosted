@@ -25,3 +25,5 @@
 30 * * * *  curl -sf -H "Authorization: Bearer ${CRON_SECRET}" ${APP_URL}/api/idempotency/cleanup/cron
 30 2 * * *  curl -sf -H "Authorization: Bearer ${CRON_SECRET}" ${APP_URL}/api/pending-operations/expire/cron
 15 5 * * *  curl -sf -H "Authorization: Bearer ${CRON_SECRET}" ${APP_URL}/api/bookkeeping/accruals/post-due/cron
+0 6 * * *   curl -sf -H "Authorization: Bearer ${CRON_SECRET}" ${APP_URL}/api/supplier-invoices/overdue/cron
+15 3 * * *  curl -sf -H "Authorization: Bearer ${CRON_SECRET}" ${APP_URL}/api/invoices/deliveries/redact/cron

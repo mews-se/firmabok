@@ -1355,7 +1355,7 @@
   "settings_payment_links": {
     "heading": "Payment link",
     "enable_label": "Payment link on invoices",
-    "enable_help": "Shows the payment link field in the invoice editor. With Stripe connected, a payment link is created automatically when the invoice is sent.",
+    "enable_help": "Shows the payment link field in the invoice editor.",
     "toast_save_failed": "Could not save"
   },
   "settings_pdf_print": {
@@ -1980,8 +1980,6 @@
     "payment_link_label": "Payment link (optional)",
     "payment_link_placeholder": "https://buy.stripe.com/…",
     "payment_link_hint": "Paste a payment link created for this specific invoice (e.g. in Stripe). Make sure the amount matches and preferably limit the link to a single payment. The link is shown as a button in the invoice email and as a QR code on the PDF.",
-    "payment_link_auto_label": "Create a Stripe payment link automatically on send",
-    "payment_link_hint_auto": "Leave empty and a Stripe payment link is created automatically when the invoice is sent. If you paste your own link it is used instead.",
     "validation_payment_link_https": "The payment link must be an https address",
     "summary_card_title": "Summary",
     "subtotal_label": "Subtotal",

@@ -49,7 +49,6 @@ function existingDraft(overrides: Record<string, unknown> = {}) {
     our_reference: null,
     notes: null,
     payment_link_url: null,
-    payment_link_auto: true,
     ore_rounding: null,
     default_dimensions: {},
     deduction_personnummer_encrypted: null,

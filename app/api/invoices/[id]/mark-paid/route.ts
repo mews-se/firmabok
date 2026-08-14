@@ -18,9 +18,9 @@ ensureInitialized()
  * Faktureringsmetoden (accrual): Debit 1930, Credit 1510 (clearing entry)
  * Kontantmetoden (cash):         Debit 1930, Credit 30xx, Credit 26xx
  *
- * The booking + status transition live in settleInvoicePayment (shared with
- * the Stripe payment sync); this route owns request parsing, the payable
- * guard, and the duplicate-payment advisory.
+ * The booking + status transition live in settleInvoicePayment; this route
+ * owns request parsing, the payable guard, and the duplicate-payment
+ * advisory.
  */
 export const POST = withRouteContext(
   'invoice.mark_paid',

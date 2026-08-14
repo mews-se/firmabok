@@ -1531,7 +1531,7 @@ async function commitUpdateInvoice(
   const { data: existing, error: fetchError } = await supabase
     .from('invoices')
     .select(
-      'id, status, invoice_number, journal_entry_id, is_self_billed, credited_invoice_id, customer_id, document_type, invoice_date, due_date, delivery_date, currency, your_reference, our_reference, notes, payment_link_url, payment_link_auto, ore_rounding, default_dimensions, deduction_personnummer_encrypted, deduction_personnummer_last4',
+      'id, status, invoice_number, journal_entry_id, is_self_billed, credited_invoice_id, customer_id, document_type, invoice_date, due_date, delivery_date, currency, your_reference, our_reference, notes, payment_link_url, ore_rounding, default_dimensions, deduction_personnummer_encrypted, deduction_personnummer_last4',
     )
     .eq('id', invoiceId)
     .eq('company_id', companyId)
@@ -1598,7 +1598,6 @@ async function commitUpdateInvoice(
     // Not editable through this operation: fed back so the builder echoes the
     // stored values instead of clearing them.
     payment_link_url: existing.payment_link_url ?? undefined,
-    payment_link_auto: existing.payment_link_auto ?? undefined,
     ore_rounding: existing.ore_rounding ?? undefined,
     deduction_housing_designation: firstDeduction?.housing_designation ?? undefined,
     deduction_apartment_number: firstDeduction?.apartment_number ?? undefined,

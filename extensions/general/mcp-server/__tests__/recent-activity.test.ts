@@ -25,7 +25,7 @@ const REAL_COLUMNS: Record<string, Set<string>> = {
      delivery_date deduction_total deduction_personnummer_encrypted
      deduction_personnummer_last4 is_self_billed external_invoice_number
      self_billing_agreement_ref received_date journal_entry_id ore_rounding
-     default_dimensions payment_link_url stripe_payment_link_id payment_link_auto
+     default_dimensions payment_link_url
      creation_complete`.split(/\s+/)
   ),
 }

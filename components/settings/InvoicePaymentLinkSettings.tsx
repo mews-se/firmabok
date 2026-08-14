@@ -18,8 +18,7 @@ interface InvoicePaymentLinkSettingsProps {
 
 /**
  * Opt-in for the invoice payment-link feature. Off (the default) hides the
- * payment-link field in the invoice editor and stops automatic Stripe link
- * creation on send; the send routes enforce the same setting server-side.
+ * payment-link field in the invoice editor.
  */
 export function InvoicePaymentLinkSettings({ settings, onUpdate }: InvoicePaymentLinkSettingsProps) {
   const t = useTranslations('settings_payment_links')

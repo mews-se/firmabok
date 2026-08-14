@@ -1006,13 +1006,6 @@ export interface Invoice {
   // notes, conversions, recurring invoices). Optional in TS for pre-migration
   // fixtures.
   payment_link_url?: string | null
-  // Stripe Payment Link id (plink_...) when the link above was auto-created by
-  // the Stripe extension; NULL for manually pasted links. Deterministic
-  // matching key for checkout.session.completed events and the handle used to
-  // deactivate the link on credit/paid.
-  stripe_payment_link_id?: string | null
-  // Per-invoice opt-out for automatic payment link creation on send.
-  payment_link_auto?: boolean
 
   // Notes
   notes: string | null

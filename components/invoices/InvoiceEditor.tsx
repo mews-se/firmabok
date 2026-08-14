@@ -245,9 +245,6 @@ export default function InvoiceEditor(props: InvoiceEditorProps = { mode: 'creat
           },
           { message: t('validation_payment_link_https') },
         ),
-      // Opt-out for the automatic Stripe payment link on send (only rendered
-      // when the company has an active Stripe connection).
-      payment_link_auto: z.boolean().optional(),
       // Self-billing received (mottagen självfaktura). Present in the form for
       // both modes; required only in self_billed mode: enforced in onSubmit.
       external_invoice_number: z.string().optional(),
@@ -361,7 +358,6 @@ export default function InvoiceEditor(props: InvoiceEditorProps = { mode: 'creat
           our_reference: initial.our_reference ?? '',
           notes: initial.notes ?? '',
           payment_link_url: initial.payment_link_url ?? '',
-          payment_link_auto: initial.payment_link_auto ?? true,
           external_invoice_number: '',
           self_billing_agreement_ref: '',
           received_date: '',
@@ -400,7 +396,6 @@ export default function InvoiceEditor(props: InvoiceEditorProps = { mode: 'creat
             our_reference: copyInitial.our_reference,
             notes: copyInitial.notes,
             payment_link_url: '',
-            payment_link_auto: true,
             external_invoice_number: '',
             self_billing_agreement_ref: '',
             received_date: '',
@@ -415,7 +410,6 @@ export default function InvoiceEditor(props: InvoiceEditorProps = { mode: 'creat
           currency: 'SEK',
           document_type: 'invoice' as InvoiceDocumentType,
           payment_link_url: '',
-          payment_link_auto: true,
           external_invoice_number: '',
           self_billing_agreement_ref: '',
           received_date: '',

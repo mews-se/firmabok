@@ -1355,7 +1355,7 @@
   "settings_payment_links": {
     "heading": "Betalningslänk",
     "enable_label": "Betalningslänk på fakturor",
-    "enable_help": "Visar betalningslänksfältet i fakturaredigeraren. Med Stripe anslutet skapas en betalningslänk automatiskt när fakturan skickas.",
+    "enable_help": "Visar betalningslänksfältet i fakturaredigeraren.",
     "toast_save_failed": "Kunde inte spara"
   },
   "settings_pdf_print": {
@@ -1980,8 +1980,6 @@
     "payment_link_label": "Betalningslänk (valfritt)",
     "payment_link_placeholder": "https://buy.stripe.com/…",
     "payment_link_hint": "Klistra in en betalningslänk skapad för just denna faktura (t.ex. i Stripe). Kontrollera att beloppet stämmer och begränsa gärna länken till en betalning. Länken visas som en knapp i fakturamejlet och som QR-kod på PDF:en.",
-    "payment_link_auto_label": "Skapa Stripe-betalningslänk automatiskt vid utskick",
-    "payment_link_hint_auto": "Lämna tomt så skapas en Stripe-betalningslänk automatiskt när fakturan skickas. Klistrar du in en egen länk används den istället.",
     "validation_payment_link_https": "Betalningslänken måste vara en https-adress",
     "summary_card_title": "Summering",
     "subtotal_label": "Delsumma",

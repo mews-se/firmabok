@@ -487,9 +487,6 @@ export const CreateInvoiceSchema = z.object({
     ])
     .transform((v) => v || undefined)
     .optional(),
-  // Per-invoice opt-out for the automatic Stripe payment link on send.
-  // Omitted → true (create) / kept as sent by the form (edit).
-  payment_link_auto: z.boolean().optional(),
   // ROT/RUT claim info. The personnummer is plaintext on the wire and gets
   // encrypted server-side before it ever hits the DB (see encryptPersonnummer
   // in lib/personnummer.ts). `deduction_housing_designation` is the
@@ -1489,8 +1486,8 @@ export const UpdateSettingsSchema = z.object({
   invoice_company_name_position: z.enum(['header', 'footer']).optional(),
   invoice_late_fee_text: z.string().nullable().optional(),
   invoice_credit_terms_text: z.string().nullable().optional(),
-  // Opt-in for the invoice payment-link feature (editor field + automatic
-  // Stripe link on send). Default off at the DB level.
+  // Opt-in for the invoice payment-link feature (the editor field).
+  // Default off at the DB level.
   invoice_payment_links_enabled: z.boolean().optional(),
   // Editable invoice email texts: { sv?: {...}, en?: {...} }; null clears
   // all overrides. Without this entry the generic PUT would silently strip

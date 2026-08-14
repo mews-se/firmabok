@@ -16,9 +16,9 @@ import type { CreateJournalEntryInput, Customer, EntityType, Invoice } from '@/t
 
 /**
  * The core "apply a payment to an invoice" operation, extracted from the
- * mark-paid route so the Stripe payment sync (and any future automated payment
- * channel) shares the exact same booking, status transition, orphan handling
- * and event emission as the manual flow:
+ * mark-paid route so any automated payment channel shares the exact same
+ * booking, status transition, orphan handling and event emission as the
+ * manual flow:
  *
  *   1. planInvoicePayment: ledger math + overpayment guard
  *   2. journal entry: custom lines | cash entry (kontantmetoden, unbooked) |
@@ -28,14 +28,13 @@ import type { CreateJournalEntryInput, Customer, EntityType, Invoice } from '@/t
  *   4. invoice.paid event (best-effort)
  *
  * `settlementAccountNumber` routes the debit side: default 1930 (bank), 1686
- * for PSP-balance settlements (Stripe) where the money reaches the bank only
- * with the later payout.
+ * for PSP-balance settlements where the money reaches the bank only with the
+ * later payout.
  *
  * The function performs the write path only. Caller-owned concerns stay in
  * the callers: fetching the invoice, payable-status guards, request parsing,
- * the duplicate-payment guard (a UX advisory: the Stripe sync skips it
- * because the payment event IS the authoritative payment), and mapping the
- * result to a transport-specific response.
+ * the duplicate-payment guard (a UX advisory), and mapping the result to a
+ * transport-specific response.
  */
 
 export interface SettleCustomLine {
@@ -67,7 +66,7 @@ export interface SettleInvoicePaymentParams {
   exchangeRateDifference?: number
   /** Caller-supplied booking lines (manual dialog only); must balance. */
   customLines?: SettleCustomLine[]
-  /** Debit-side account; default '1930'. Stripe settlements pass '1686'. */
+  /** Debit-side account; default '1930'. PSP settlements pass '1686'. */
   settlementAccountNumber?: string
 }
 
@@ -132,8 +131,8 @@ export async function settleInvoicePayment(
   // stored öre total) ONLY when the lines actually carry the residual on
   // 3740, mirroring the bank-transaction match flow; lines that don't (e.g.
   // a deliberate sub-krona partial) get the strict plan instead. The
-  // generated-entry paths (Stripe sync, no-body mark-paid) always pay the
-  // exact remaining, so absorption is a no-op there.
+  // generated-entry path (no-body mark-paid) always pays the exact
+  // remaining, so absorption is a no-op there.
   const payment = planInvoicePaymentForLines(
     invoice,
     paymentAmountInInvoiceCurrency,
@@ -323,9 +322,9 @@ export async function settleInvoicePayment(
     await clearSettledInvoiceSuggestions(supabase, companyId, 'invoice', invoice.id)
   }
 
-  // Notify subscribers: invoice.paid fans out to registered webhooks and the
-  // Stripe extension's link-deactivation handler. Best-effort: the payment is
-  // already committed, so an emit failure must not fail the operation.
+  // Notify subscribers: invoice.paid fans out to registered webhooks.
+  // Best-effort: the payment is already committed, so an emit failure must
+  // not fail the operation.
   try {
     await eventBus.emit({
       type: 'invoice.paid',

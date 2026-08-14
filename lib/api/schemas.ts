@@ -1458,7 +1458,6 @@ export const UpdateSettingsSchema = z.object({
   email: z.string().email().optional().or(z.literal('')),
   website: z.string().optional().or(z.literal('')),
   pays_salaries: z.boolean().optional(),
-  sector_slug: z.string().nullable().optional(),
   // Bookkeeping lock
   bookkeeping_locked_through: z.string().regex(ISO_DATE_RE, ISO_DATE_MESSAGE_SV).nullable().optional(),
   auto_lock_period_days: z.number().int().positive().nullable().optional(),

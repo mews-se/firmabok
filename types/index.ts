@@ -412,9 +412,6 @@ export interface CompanySettings {
   initial_setup_completed_at?: string | null
   initial_setup_dismissed_at?: string | null
 
-  // Sector
-  sector_slug: string | null
-
   // Dimensions (kostnadsställe/projekt): UI-visibility toggle only, never
   // load-bearing for correctness. Free tier (founder decision 2026-07-02).
   dimensions_enabled: boolean

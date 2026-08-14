@@ -909,11 +909,6 @@ BEGIN
   END IF;
 
   -- User-scoped tables (no company_id — use auth.uid())
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='extension_toggles' AND cmd='DELETE') THEN
-    CREATE POLICY extension_toggles_delete ON public.extension_toggles FOR DELETE
-      USING (auth.uid() = user_id);
-  END IF;
-
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='notification_settings' AND cmd='DELETE') THEN
     CREATE POLICY notification_settings_delete ON public.notification_settings FOR DELETE
       USING (auth.uid() = user_id);

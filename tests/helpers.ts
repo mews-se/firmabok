@@ -632,7 +632,6 @@ export function makeCompanySettings(
     logo_url: null,
     onboarding_step: 6,
     onboarding_complete: true,
-    sector_slug: null,
     is_sandbox: false,
     created_at: '2024-01-01T00:00:00Z',
     updated_at: '2024-01-01T00:00:00Z',

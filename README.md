@@ -92,7 +92,9 @@ igenom onboardingen och stäng därefter registreringen:
 **Uppdatering.** Kör samma två kommandon som vid installationen:
 skriptet hämtar senaste versionen, kör bara de nya migrationerna och
 startar om med den nya appimagen, publicerad till
-`ghcr.io/mews-se/firmabok`.
+`ghcr.io/mews-se/firmabok` och speglad till Docker Hub som
+[`mewsse/firmabok`](https://hub.docker.com/r/mewsse/firmabok) — samma
+byggen, samma taggar.
 
 **Backup.** Ditt ansvar: `pg_dump` mot en annan maskin, gärna
 kompletterat med SIE-export per räkenskapsår.

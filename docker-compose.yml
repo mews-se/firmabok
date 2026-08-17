@@ -141,6 +141,8 @@ services:
       - -c
       - jit=off
     mem_limit: 256m
+    security_opt:
+      - no-new-privileges:true
     restart: unless-stopped
     logging: *logging
 
@@ -157,6 +159,8 @@ services:
     environment:
       PGPASSWORD: ${POSTGRES_PASSWORD}
     entrypoint: ["/bin/sh", "/migrate.sh"]
+    security_opt:
+      - no-new-privileges:true
     restart: "no"
     logging: *logging
 
@@ -208,6 +212,8 @@ services:
 
       GOTRUE_EXTERNAL_PHONE_ENABLED: "false"
       GOTRUE_SMS_AUTOCONFIRM: "false"
+    security_opt:
+      - no-new-privileges:true
     restart: unless-stopped
     logging: *logging
 
@@ -237,6 +243,8 @@ services:
       PGRST_APP_SETTINGS_JWT_SECRET: ${JWT_SECRET}
       PGRST_APP_SETTINGS_JWT_EXP: "3600"
     command: ["postgrest"]
+    security_opt:
+      - no-new-privileges:true
     restart: unless-stopped
     logging: *logging
 

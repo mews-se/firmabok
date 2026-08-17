@@ -4,6 +4,17 @@ All notable changes to Firmabok, newest first. Versions follow the
 tags in this repository; each one is published as a container image at
 `ghcr.io/mews-se/firmabok`.
 
+## 3.0.3 — 2026-08-17
+
+- Each migration and the row recording it now run in one transaction.
+  They were two separate `psql` calls, so a run interrupted between
+  them left the migration applied but unrecorded, and since the SQL is
+  not idempotent every later start failed on objects that already
+  existed, with no way out. A migration that fails midway is rolled
+  back completely instead.
+- The database, migration, auth and REST services get the same
+  `no-new-privileges` guard the rest of the stack already had.
+
 ## 3.0.2 — 2026-08-17
 
 - Documentation: the MCP stdio bridge is `npx gnubok-mcp`. The README

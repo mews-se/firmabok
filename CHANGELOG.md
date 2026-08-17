@@ -4,6 +4,25 @@ All notable changes to Firmabok, newest first. Versions follow the
 tags in this repository; each one is published as a container image at
 `ghcr.io/mews-se/firmabok`.
 
+## 3.0.2 — 2026-08-17
+
+- Documentation: the MCP stdio bridge is `npx gnubok-mcp`. The README
+  pointed at `accounted-mcp`, which was never published; the
+  architecture notes and the bridge package's own README said the same
+  thing and are corrected too.
+- Updates rebuild the cron sidecar: `docker compose pull` skips
+  build-only services, so changes to it never reached existing
+  installs. The install script also refuses `lock` without a `.env`,
+  points out when the update address differs from `DOMAIN`, and the
+  from-source recipe works on a fresh machine.
+- The Docker Hub mirror carries `latest` and the semver tags only, and
+  each mirrored tag's index is rebuilt from the platform images, so the
+  attestation manifests no longer render as an unknown/unknown platform
+  on Hub. GHCR keeps the fully attested index.
+- Housekeeping: the pre-nginx Caddyfile and other leftovers are gone,
+  compose pins the project name and fails fast on missing generated
+  secrets, and the docs describe the http-only stack as it is.
+
 ## 3.0.0 — 2026-08-14
 
 - The database is now the official `postgres` image (18.2, alpine)

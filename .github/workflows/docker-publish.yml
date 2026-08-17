@@ -267,7 +267,7 @@ jobs:
         # between publish and the blocking scan is the scan's own duration
         # (minutes), not a 24h cron window) plus a daily cron as a safety net.
         # Accepted residual risk: an image is live for that short scan window
-        # before the gate fires; see docs/SELF-HOSTING.md / the risk register.
+        # before the gate fires.
         continue-on-error: true
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
@@ -311,12 +311,34 @@ jobs:
           sudo apt-get install -yq skopeo
           # Trim whitespace/CR that easily sneaks in when secrets are pasted
           hub_user="$(printf %s "$DOCKERHUB_USERNAME" | tr -d '[:space:]')"
-          printf %s "$DOCKERHUB_TOKEN" | tr -d '[:space:]' \
-            | skopeo login -u "$hub_user" --password-stdin docker.io
-          hub_image="docker.io/${hub_user}/${IMAGE_NAME#*/}"
+          hub_pat="$(printf %s "$DOCKERHUB_TOKEN" | tr -d '[:space:]')"
+          printf %s "$hub_pat" | skopeo login -u "$hub_user" --password-stdin docker.io
+          hub_repo="${hub_user}/${IMAGE_NAME#*/}"
+          hub_image="docker.io/${hub_repo}"
+          # Bare commit-sha tags stay on GHCR only: on the mirror they are
+          # noise nobody pulls by. After each copy the tag's index is
+          # rewritten without the SBOM/provenance attestation manifests,
+          # which Docker Hub renders as a bogus unknown/unknown platform.
+          # The rewrite is a plain registry PUT: buildx imagetools create
+          # would quietly re-attach the attestations via the referrers API.
+          # GHCR keeps the fully attested index; the mirror shows
+          # amd64+arm64 and nothing else.
           jq -r '.tags[] | split(":")[1]' <<< "$DOCKER_METADATA_OUTPUT_JSON" \
+            | { grep -Ev '^[0-9a-f]{7,40}$' || true; } \
             | while read -r tag; do
                 skopeo copy --all \
                   "docker://${REGISTRY}/${IMAGE_NAME}:${tag}" \
                   "docker://${hub_image}:${tag}"
+                # fresh push token per tag: the copies above can outlive the TTL
+                hub_jwt=$(curl -fsS -u "${hub_user}:${hub_pat}" \
+                  "https://auth.docker.io/token?service=registry.docker.io&scope=repository:${hub_repo}:pull,push" \
+                  | jq -r .token)
+                idx=$(curl -fsS -H "Authorization: Bearer ${hub_jwt}" \
+                  -H "Accept: application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json" \
+                  "https://registry-1.docker.io/v2/${hub_repo}/manifests/${tag}")
+                clean=$(jq -c '.manifests |= map(select(.platform != null and .platform.os != "unknown"))' <<< "$idx")
+                mt=$(jq -r '.mediaType // "application/vnd.oci.image.index.v1+json"' <<< "$idx")
+                curl -fsS -X PUT -H "Authorization: Bearer ${hub_jwt}" \
+                  -H "Content-Type: ${mt}" --data-binary "$clean" \
+                  "https://registry-1.docker.io/v2/${hub_repo}/manifests/${tag}" > /dev/null
               done

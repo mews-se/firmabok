@@ -2,8 +2,8 @@
 #
 # LAN install on a fresh Debian server. Installs Docker if needed,
 # generates the stack's secrets and brings up
-# docker-compose.yml: the app, its cron sidecar and the three
-# Supabase services it uses, behind nginx on a single origin.
+# docker-compose.yml: the app, its cron sidecar, postgres, GoTrue and
+# PostgREST, behind nginx on a single origin.
 #
 #   ./install-debian.sh <lan-ip>   install, or update an existing install
 #   ./install-debian.sh lock       close signups after the first account
@@ -75,6 +75,8 @@ fi
 case "${1:-}" in
     lock)
         ensure_docker
+        [ -f "$REPO_DIR/.env" ] || fail 'no .env yet - run the install first'
+        grep -q '^AUTH_SIGNUPS_DISABLED=' "$REPO_DIR/.env" || echo 'AUTH_SIGNUPS_DISABLED=true' >> "$REPO_DIR/.env"
         sed -i 's|^AUTH_SIGNUPS_DISABLED=.*|AUTH_SIGNUPS_DISABLED=true|' "$REPO_DIR/.env"
         compose up -d
         echo 'Signups are closed.'
@@ -116,6 +118,8 @@ EOF
     umask 022
 else
     echo '.env already exists, leaving it alone'
+    current=$(sed -n 's/^DOMAIN=//p' .env)
+    [ "$current" = "$IP" ] || echo "Note: .env says DOMAIN=$current - the address you gave ($IP) is only used for the health check below."
 fi
 
 # ─── Start everything ───
@@ -124,8 +128,9 @@ fi
 # A genuinely missing image still fails cleanly at up.
 compose pull --ignore-pull-failures 2>/dev/null || true
 # --remove-orphans: a service renamed in an update must not linger and
-# hold its ports.
-compose up -d --remove-orphans
+# hold its ports. --build: the cron sidecar is built from the checkout,
+# and pull skips build-only services, so updates to it never landed.
+compose up -d --build --remove-orphans
 
 # ─── Wait for a green health check ───
 echo 'Waiting for the app to become healthy (first start takes a few minutes)...'

@@ -1,9 +1,6 @@
 node_modules
 .next
 .git
-# Runtime data from the self-hosted stack (root-owned; breaks the build
-# context if included)
-data/
 .gitignore
 .env*
 supabase/
@@ -18,6 +15,5 @@ tests/
 *.md
 !README.md
 docs/*.md
-!docs/DOCKER.md
 LICENSE
 docker-compose*.yml

@@ -11,8 +11,8 @@ parts are deliberately rigid.
 - **Database**: Supabase (PostgreSQL with Row Level Security), which also
   provides auth (email/password). The whole stack runs locally: see
   [docs/SELF-HOSTING.md](docs/SELF-HOSTING.md).
-- **Deployment**: Docker, behind a reverse proxy that terminates HTTPS
-  (secure cookies require it even on a LAN).
+- **Deployment**: Docker behind nginx on a single plain-HTTP origin,
+  built for a private LAN (see [docs/SELF-HOSTING.md](docs/SELF-HOSTING.md)).
 - **UI**: Tailwind CSS with shadcn/ui components. UI strings live in
   `messages/sv.json` and `messages/en.json`.
 
@@ -119,11 +119,11 @@ exception. See [LICENSE](LICENSE).
 | `lib/bokslut/enskild-firma/` | Egenavgifter, räntefördelning, fonder for the NE flow |
 | `components/` | React components (shadcn/ui based) |
 | `extensions/general/mcp-server/` | The MCP tool surface |
-| `packages/accounted-mcp` | stdio→HTTP MCP bridge (npm) |
+| `packages/gnubok-mcp` | stdio→HTTP MCP bridge (npm) |
 | `supabase/migrations/` | Database schema, RLS policies, enforcement triggers |
 | `packs/` | Konteringspaket (booking templates) as validated YAML |
 | `messages/` | Swedish and English UI strings |
-| `docs/` | Self-hosting, Docker and white-label guides |
+| `docs/` | Self-hosting and white-label guides |
 
 ## Testing
 

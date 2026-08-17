@@ -1,5 +1,6 @@
 # The self-hosted stack, driven by install-debian.sh (which also
 # generates the .env this file needs).
+name: firmabok
 services:
   proxy:
     image: nginx:stable-alpine-slim
@@ -39,10 +40,10 @@ services:
         condition: service_started
     environment:
       NEXT_PUBLIC_SUPABASE_URL: http://${DOMAIN:?set DOMAIN in .env}
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${ANON_KEY}
-      SUPABASE_SERVICE_ROLE_KEY: ${SERVICE_ROLE_KEY}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${ANON_KEY:?generated into .env by install-debian.sh}
+      SUPABASE_SERVICE_ROLE_KEY: ${SERVICE_ROLE_KEY:?generated into .env by install-debian.sh}
       NEXT_PUBLIC_APP_URL: http://${DOMAIN}
-      CRON_SECRET: ${CRON_SECRET}
+      CRON_SECRET: ${CRON_SECRET:?generated into .env by install-debian.sh}
       NEXT_PUBLIC_BRANDING_APP_NAME: Firmabok
       NEXT_PUBLIC_SELF_HOSTED: "true"
       AUTH_SIGNUPS_DISABLED: ${AUTH_SIGNUPS_DISABLED}
@@ -109,7 +110,7 @@ services:
       start_period: 120s
       start_interval: 5s
     environment:
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?generated into .env by install-debian.sh}
       POSTGRES_DB: postgres
       # icu because musl locales cannot sort å/ä/ö
       POSTGRES_INITDB_ARGS: --locale-provider=icu --icu-locale=sv-SE --locale=C.UTF-8
@@ -187,7 +188,7 @@ services:
       GOTRUE_JWT_AUD: authenticated
       GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
       GOTRUE_JWT_EXP: "3600"
-      GOTRUE_JWT_SECRET: ${JWT_SECRET}
+      GOTRUE_JWT_SECRET: ${JWT_SECRET:?generated into .env by install-debian.sh}
       # The app pins user-token issuers to <public url>/auth/v1.
       GOTRUE_JWT_ISSUER: http://${DOMAIN}/auth/v1
 

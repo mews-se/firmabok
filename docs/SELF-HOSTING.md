@@ -39,15 +39,13 @@ Designval som är bra att känna till:
 - **En adress, ren HTTP.** nginx skickar Supabase-prefixen till rätt
   tjänst och allt annat till appen. Ingen CORS, inga certifikat, inga
   varningar: stacken är byggd för ett privat LAN och appens cookies
-  följer adressens schema (`lib/auth/cookie-secure.ts`). Sätter du en
-  egen TLS-proxy framför på en https-adress slås Secure-cookies på av
-  sig själva.
+  följer adressens schema (`lib/auth/cookie-secure.ts`).
 - **Ingen Kong, ingen studio, ingen pooler, ingen realtime, ingen
   storage-api.** Tjänsterna sköter JWT-verifieringen själva;
   administrera databasen med `psql` genom `docker exec`. Appen frågar
   servern i bakgrunden efter ändringar gjorda utanför den egna fliken
   i stället för att hålla websockets öppna, och dokumentarkivet läses
-  och skrivs direkt av appen på volymen `storage_data` — de två
+  och skrivs direkt av appen på volymen `storage_data` – de två
   tyngsta vilotjänsterna i stacken behövdes inte.
 - **Migrationerna är en tjänst.** Engångscontainern `migrate` kör nya
   filer ur `supabase/migrations/` vid varje `up`, bokför dem i
@@ -81,7 +79,7 @@ om. Inget annat behöver skötas.
 
 ## Backup
 
-De namngivna volymerna är inte kopierbara — ta backuper logiskt:
+De namngivna volymerna är inte kopierbara – ta backuper logiskt:
 
 ```bash
 docker exec firmabok-db-1 pg_dump -U postgres -d postgres | gzip > firmabok-$(date +%F).sql.gz
@@ -89,7 +87,7 @@ docker exec firmabok-db-1 pg_dump -U postgres -d postgres | gzip > firmabok-$(da
 
 Överför den filen till någon lokal lagringsplats, gärna schemalagt. Som ett portabelt,
 leverantörsneutralt lager ovanpå: exportera varje räkenskapsår som SIE
-via appen (Rapporter → SIE) — vilket svenskt bokföringsprogram som
+via appen (Rapporter → SIE) – vilket svenskt bokföringsprogram som
 helst kan läsa in den igen. Dokumenten ligger i volymen
 `storage_data`; ta med den om du vill ha kopior på filnivå:
 
@@ -100,7 +98,8 @@ docker run --rm -v firmabok_storage_data:/data -v "$PWD":/out alpine tar czf /ou
 ## Bygga från källa
 
 Den publicerade imagen är `ghcr.io/mews-se/firmabok`. För att köra ett
-eget bygge i stället:
+eget bygge i stället: gör först en vanlig installation (den genererar
+`.env` med alla hemligheter), bygg sedan och peka om taggen:
 
 ```bash
 docker build -t ghcr.io/mews-se/firmabok:local .
@@ -110,13 +109,15 @@ echo 'IMAGE_TAG=local' >> .env
 
 ## Felsökning
 
-**Health check går ut.** Titta i loggarna (från utcheckningen):
+**Hälsokollen blir aldrig grön.** Titta i loggarna (från utcheckningen):
 `docker compose logs migrate app`. De vanliga orsakerna är ett
 migrationsfel (migrate slutar med fel och appen startar aldrig) eller
 felaktiga värden i `.env`.
 
 **Port 80 är upptagen.** Något annat på servern äger den; stoppa det
-eller ändra proxyns portmappning i Compose-filen.
+eller ändra proxyns portmappning i Compose-filen. Skriptets hälsokoll
+antar port 80, så efter en portändring är `docker compose up -d` från
+utcheckningen den enklare vägen, med den nya porten i `DOMAIN`.
 
 **Inloggningen studsar tillbaka till inloggningssidan.** Appens adress
 och adressen i webbläsaren måste stämma överens: `DOMAIN` styr båda.

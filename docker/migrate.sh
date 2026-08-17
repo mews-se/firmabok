@@ -30,7 +30,9 @@ for f in /migrations/*.sql; do
         continue
     fi
     echo "Applying $name"
-    psql -q -v ON_ERROR_STOP=1 -f "$f"
-    psql -q -v ON_ERROR_STOP=1 -c "insert into _firmabok.migrations (name) values ('$name')"
+    # one transaction for the file and its bookkeeping row, so a failure or an
+    # interrupted run can never leave a migration applied but unrecorded
+    psql -q -v ON_ERROR_STOP=1 -1 -f "$f" \
+        -c "insert into _firmabok.migrations (name) values ('$name')"
 done
 echo 'Migrations up to date'

@@ -4,6 +4,17 @@ All notable changes to Firmabok, newest first. Versions follow the
 tags in this repository; each one is published as a container image at
 `ghcr.io/mews-se/firmabok`.
 
+## 3.0.4 — 2026-08-18
+
+- js-yaml and nanoid are lifted out of two advisories the daily scan
+  flags as fixable: js-yaml 4.1.1 to 4.3.1 (CVE-2026-59869 and
+  GHSA-5p4m-2wfm-xmqj) and nanoid 3.3.16 to 3.3.18 (CVE-2026-67213).
+  Nothing in the application's behaviour changes.
+- The foreign key test accepts Postgres 18's wording. It matched the
+  error text, and 18 says "violates RESTRICT setting of foreign key
+  constraint" where earlier versions said "violates foreign key
+  constraint".
+
 ## 3.0.3 — 2026-08-17
 
 - Each migration and the row recording it now run in one transaction.

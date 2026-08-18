@@ -82,9 +82,11 @@ describe('transactions.document_id.pg', () => {
     const docId = await insertDocument({ userId, companyId })
     await insertTransaction({ userId, companyId, documentId: docId })
 
+    // postgres 18 says "violates RESTRICT setting of foreign key constraint"
+    // where earlier versions said "violates foreign key constraint"
     await expect(
       getPool().query(`DELETE FROM public.document_attachments WHERE id = $1`, [docId]),
-    ).rejects.toThrow(/violates foreign key constraint|still referenced/)
+    ).rejects.toThrow(/violates (?:RESTRICT setting of )?foreign key constraint|still referenced/)
   })
 
   it('detaching first then deleting the doc succeeds', async () => {

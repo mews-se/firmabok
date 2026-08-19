@@ -92,7 +92,7 @@ jobs:
         # scan step above failed the run. Same category as docker-publish.yml so
         # the two analyses share one alert set instead of duplicating.
         if: always()
-        uses: github/codeql-action/upload-sarif@5595ccaf912efad79be6eef63a5619ff05969be3 # v4
+        uses: github/codeql-action/upload-sarif@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd # v4
         with:
           sarif_file: trivy-results.sarif
           category: trivy
@@ -136,7 +136,7 @@ jobs:
         # step failed the run. Distinct category from the image scan so
         # dependency alerts and image alerts stay separately traceable.
         if: always()
-        uses: github/codeql-action/upload-sarif@5595ccaf912efad79be6eef63a5619ff05969be3 # v4
+        uses: github/codeql-action/upload-sarif@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd # v4
         with:
           sarif_file: trivy-sca.sarif
           category: trivy-sca

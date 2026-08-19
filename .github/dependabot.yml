@@ -1,0 +1,39 @@
+version: 2
+
+# Every action here is pinned to a commit SHA and the Docker base image to a
+# digest. That is the right call for supply-chain safety, but it trades silent
+# auto-updates for silent staleness: those lines never move on their own, so a
+# fixed base image or action release only arrives when somebody goes looking.
+# Pinning without an updater is half the practice. This file is the other half.
+#
+# Everything is grouped and monthly on purpose. Ungrouped, 43 direct npm
+# dependencies mean a pull request per dependency, which is the variant that
+# gets muted after three weeks and then ignores the security tab along with it.
+# Grouped, a month's minor and patch bumps arrive as one pull request per
+# ecosystem. Major bumps deliberately stay separate: those deserve to be read.
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      npm:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      actions:
+        patterns:
+          - "*"
+
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: monthly

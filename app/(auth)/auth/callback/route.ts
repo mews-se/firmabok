@@ -240,16 +240,12 @@ export async function GET(request: NextRequest) {
   // flow hint so the login page can show the right copy: a failed signup
   // confirmation must not be framed as a failed password reset. On the PKCE
   // (?code=) path there is no `type`, so recovery is identified by the
-  // next=/reset-password marker that resetPasswordForEmail sets, and OAuth
-  // by the flow=oauth marker that GoogleAuthButton puts in redirectTo
-  // (provider denials arrive here with ?error and no code); everything
+  // next=/reset-password marker that resetPasswordForEmail sets; everything
   // else defaults to the signup/confirmation framing.
   const failedFlow =
-    searchParams.get('flow') === 'oauth'
-      ? 'oauth'
-      : type === 'recovery' || next === '/reset-password'
-        ? 'recovery'
-        : 'signup'
+    type === 'recovery' || next === '/reset-password'
+      ? 'recovery'
+      : 'signup'
   const loginUrl = new URL('/login', origin)
   loginUrl.searchParams.set('error', 'auth_error')
   loginUrl.searchParams.set('flow', failedFlow)

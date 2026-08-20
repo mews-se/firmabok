@@ -20,8 +20,6 @@ import {
 } from '@/lib/auth/consume-invite-cookie'
 import { AuthPageSkeleton } from '@/components/auth/AuthPageSkeleton'
 import { AuthFormError } from '@/components/auth/AuthFormError'
-import { GoogleAuthButton } from '@/components/auth/GoogleAuthButton'
-import { isGoogleAuthEnabled } from '@/lib/auth/google-oauth'
 import { classifyAuthError, type AuthErrorKind } from '@/lib/auth/classify-auth-error'
 import { isValidPassword, passwordChecks, PASSWORD_MIN_LENGTH } from '@/lib/auth/password-policy'
 import { cn } from '@/lib/utils'
@@ -57,7 +55,7 @@ function RegisterPageContent() {
   // Signup failures render inline next to the form (see AuthFormError), never
   // as a toast. Field-level problems attach to their field; everything else
   // goes to the form-level alert above the form.
-  const [formError, setFormError] = useState<{ kind: AuthErrorKind | 'oauth'; message: string } | null>(null)
+  const [formError, setFormError] = useState<{ kind: AuthErrorKind; message: string } | null>(null)
   const [passwordError, setPasswordError] = useState<string | null>(null)
   const [confirmError, setConfirmError] = useState<string | null>(null)
   const [showPassword, setShowPassword] = useState(false)
@@ -67,13 +65,10 @@ function RegisterPageContent() {
   const { toast } = useToast()
   const router = useRouter()
   const supabase = createClient()
-  const googleAuthEnabled = isGoogleAuthEnabled()
   const t = useTranslations('register')
   const tAuth = useTranslations('auth')
   const tInvite = useTranslations('invite')
   const errorLocale = useLocale() as ErrorLocale
-
-  const chipCount = googleAuthEnabled ? 1 : 0
 
   // Accept a pending invite, if any, and report a non-definitive failure.
   // Returns true when the caller should land the user in the app directly.
@@ -499,29 +494,6 @@ function RegisterPageContent() {
             </Button>
           </form>
           </div>
-
-          {chipCount > 0 && (
-            <>
-              <div className="relative my-6">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-border" />
-                </div>
-                <div className="relative flex justify-center">
-                  <span className="bg-background px-3 text-xs text-muted-foreground">
-                    {tAuth('or_divider')}
-                  </span>
-                </div>
-              </div>
-              <div className="grid grid-cols-1 gap-3">
-                {googleAuthEnabled && (
-                  <GoogleAuthButton
-                    compact
-                    onError={(message) => setFormError({ kind: 'oauth', message })}
-                  />
-                )}
-              </div>
-            </>
-          )}
         </div>
 
         <p className="mt-6 text-center text-[13px] text-muted-foreground">

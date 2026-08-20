@@ -30,8 +30,6 @@ import {
   INVITE_PROBLEM_MESSAGE_KEYS,
 } from '@/lib/auth/consume-invite-cookie'
 import { AuthFormError } from '@/components/auth/AuthFormError'
-import { GoogleAuthButton } from '@/components/auth/GoogleAuthButton'
-import { isGoogleAuthEnabled } from '@/lib/auth/google-oauth'
 import { classifyAuthError, type AuthErrorKind } from '@/lib/auth/classify-auth-error'
 import { resetAnalyticsIdentity } from '@/lib/analytics/reset'
 import {
@@ -42,8 +40,7 @@ import {
 const branding = getBranding()
 
 /**
- * The login panel: the password form up front, with any remaining methods
- * as quiet chips under a single divider.
+ * The login panel: email and password, nothing else.
  */
 export function LoginClient() {
   const [email, setEmail] = useState('')
@@ -56,7 +53,7 @@ export function LoginClient() {
   const [resetCooldownRemaining, setResetCooldownRemaining] = useState(0)
   // Auth failures render inline (see AuthFormError / the field error line),
   // never as a toast: `kind` drives field highlighting and the recovery action.
-  const [formError, setFormError] = useState<{ kind: AuthErrorKind | 'oauth'; message: string } | null>(null)
+  const [formError, setFormError] = useState<{ kind: AuthErrorKind; message: string } | null>(null)
   // Consecutive credential failures; from the second one on, the error line
   // grows a reset-password action (extra help on repeated errors).
   const [failedAttempts, setFailedAttempts] = useState(0)
@@ -75,7 +72,6 @@ export function LoginClient() {
   // relative path; '/' means no explicit destination.
   const nextPath = safeReturnTo(searchParams.get('next'), '/')
   const supabase = createClient()
-  const googleAuthEnabled = isGoogleAuthEnabled()
   const tAuth = useTranslations('auth')
   const tCommon = useTranslations('common')
   const tInvite = useTranslations('invite')
@@ -251,13 +247,6 @@ export function LoginClient() {
     }
   }
 
-  // Credential/form failures attach to the form; Google failures belong to
-  // the panel (they originate outside the fields).
-  const panelError = formError && formError.kind === 'oauth'
-    ? formError
-    : null
-  const formLevelError = formError && !panelError ? formError : null
-
   // Email sent confirmation screen
   if (isEmailSent) {
     const webmailHint = detectWebmailHint(email, branding.authEmailFrom)
@@ -383,8 +372,6 @@ export function LoginClient() {
     )
   }
 
-  const chipCount = googleAuthEnabled ? 1 : 0
-
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-frame p-4">
       <div className="w-full max-w-sm animate-slide-up">
@@ -403,11 +390,7 @@ export function LoginClient() {
           )}
           {callbackError === 'auth_error' && (
             <div className="mb-4">
-              {callbackFlow === 'oauth' ? (
-                <AuthFormError
-                  message={`${tAuth('callback_error_title_oauth')}. ${tAuth('callback_error_body_oauth')}`}
-                />
-              ) : callbackFlow === 'recovery' ? (
+              {callbackFlow === 'recovery' ? (
                 <AuthFormError
                   message={`${tAuth('callback_error_title')}. ${tAuth('callback_error_body')}`}
                   action={
@@ -425,11 +408,6 @@ export function LoginClient() {
                   message={`${tAuth('callback_error_title_signup')}. ${tAuth('callback_error_body_signup')}`}
                 />
               )}
-            </div>
-          )}
-          {panelError && (
-            <div className="mb-4">
-              <AuthFormError message={panelError.message} />
             </div>
           )}
           <div className="animate-fade-in">
@@ -491,15 +469,15 @@ export function LoginClient() {
                       )}
                     </button>
                   </div>
-                  {formLevelError && (
+                  {formError && (
                     <p
                       role="alert"
                       className="animate-fade-in flex items-start gap-2 pt-1 text-[13px] leading-5 text-destructive"
                     >
                       <CircleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
                       <span>
-                        {formLevelError.message}
-                        {formLevelError.kind === 'invalid_credentials' && failedAttempts >= 2 && (
+                        {formError.message}
+                        {formError.kind === 'invalid_credentials' && failedAttempts >= 2 && (
                           <>
                             {' '}
                             <button
@@ -527,29 +505,6 @@ export function LoginClient() {
                 </Button>
               </form>
           </div>
-
-          {chipCount > 0 && (
-            <>
-              <div className="relative my-6">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-border" />
-                </div>
-                <div className="relative flex justify-center">
-                  <span className="bg-background px-3 text-xs text-muted-foreground">
-                    {tAuth('or_divider')}
-                  </span>
-                </div>
-              </div>
-              <div className="grid grid-cols-1 gap-3">
-                {googleAuthEnabled && (
-                  <GoogleAuthButton
-                    compact
-                    onError={(message) => setFormError({ kind: 'oauth', message })}
-                  />
-                )}
-              </div>
-            </>
-          )}
         </div>
 
         <p className="mt-6 text-center text-[13px] text-muted-foreground">

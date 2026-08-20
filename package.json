@@ -67,7 +67,6 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
-    "@types/js-yaml": "4.0.9",
     "@types/node": "^26",
     "@types/pg": "^8.21.0",
     "@types/qrcode": "^1.5.6",

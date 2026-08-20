@@ -2,7 +2,6 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { NextConfig } from "next";
 import createNextIntlPlugin from "next-intl/plugin";
-import { LEGACY_HOST_REDIRECT_EXCLUSIONS } from "./lib/domains/legacy-redirect";
 
 const withNextIntl = createNextIntlPlugin("./i18n/request.ts");
 
@@ -55,43 +54,12 @@ const nextConfig: NextConfig = {
     optimizePackageImports: ['recharts', 'date-fns', 'framer-motion'],
   },
   async redirects() {
-    const appUrlForRedirect = process.env.NEXT_PUBLIC_APP_URL?.trim().replace(/\/$/, '')
     return [
       {
         source: '/nyckeltal',
         destination: '/kpi',
         permanent: true,
       },
-      // Dual-domain cutover (2026-07): the user-facing app moves to
-      // app.accounted.se; app.gnubok.se stays alive for machine traffic
-      // (MCP connectors, API keys, the Skatteverket OAuth callback,
-      // webhooks, crons). Only browser page traffic is forwarded: /api and
-      // /.well-known must keep answering on the legacy host, and /_next is
-      // excluded so already-open tabs keep loading assets until their next
-      // navigation. The redirect arms itself only once NEXT_PUBLIC_APP_URL
-      // points somewhere other than the legacy host, so merging this is
-      // inert and the actual cutover is the env flip + redeploy. Kept
-      // non-permanent until the cutover has soaked.
-      //
-      // auth/ and reset-password are excluded so email links that carry a
-      // PKCE code (password reset, signup confirmation) sent before the
-      // cutover still complete on the legacy host, where their code
-      // verifier / recovery-session cookies live (#1092). login and MFA
-      // pages are deliberately NOT excluded: serving a usable login page
-      // on the legacy host would establish sessions there and bounce
-      // users in a redirect loop.
-      ...(appUrlForRedirect &&
-      appUrlForRedirect.startsWith('https://') &&
-      !appUrlForRedirect.includes('app.gnubok.se')
-        ? [
-            {
-              source: `/:path(${LEGACY_HOST_REDIRECT_EXCLUSIONS}.*)`,
-              has: [{ type: 'host' as const, value: 'app.gnubok.se' }],
-              destination: `${appUrlForRedirect}/:path`,
-              permanent: false,
-            },
-          ]
-        : []),
     ]
   },
   async headers() {

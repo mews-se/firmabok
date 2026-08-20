@@ -18,6 +18,7 @@ import {
   SettingsRowEnd,
   SettingsRowNote,
 } from '@/components/settings/SettingsRows'
+import { isValidPassword, PASSWORD_MIN_LENGTH } from '@/lib/auth/password-policy'
 
 const isSelfHosted = process.env.NEXT_PUBLIC_SELF_HOSTED === 'true'
 const mfaRequired = isMfaRequired()
@@ -56,13 +57,7 @@ export function SecuritySettings() {
     e.preventDefault()
     setIsChangingPassword(true)
 
-    const strong = newPassword.length >= 8
-      && /[a-z]/.test(newPassword)
-      && /[A-Z]/.test(newPassword)
-      && /[0-9]/.test(newPassword)
-      && /[^a-zA-Z0-9]/.test(newPassword)
-
-    if (!strong) {
+    if (!isValidPassword(newPassword)) {
       toast({
         title: t('toast_weak_password_title'),
         description: t('toast_weak_password_description'),
@@ -206,7 +201,7 @@ export function SecuritySettings() {
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
               required
-              minLength={8}
+              minLength={PASSWORD_MIN_LENGTH}
               disabled={isChangingPassword}
             />
           </SettingsRow>
@@ -223,7 +218,7 @@ export function SecuritySettings() {
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               required
-              minLength={8}
+              minLength={PASSWORD_MIN_LENGTH}
               disabled={isChangingPassword}
             />
             <SettingsRowEnd>

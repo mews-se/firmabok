@@ -11,6 +11,7 @@ import { useToast } from '@/components/ui/use-toast'
 import { Loader2, KeyRound } from 'lucide-react'
 import { INVITE_PROBLEM_MESSAGE_KEYS } from '@/lib/auth/consume-invite-cookie'
 import { handoffPendingInvite } from './invite-handoff'
+import { isValidPassword, PASSWORD_MIN_LENGTH } from '@/lib/auth/password-policy'
 
 /**
  * Three entry modes:
@@ -106,13 +107,7 @@ function ResetPasswordInner() {
     e.preventDefault()
     setIsLoading(true)
 
-    const strong = password.length >= 8
-      && /[a-z]/.test(password)
-      && /[A-Z]/.test(password)
-      && /[0-9]/.test(password)
-      && /[^a-zA-Z0-9]/.test(password)
-
-    if (!strong) {
+    if (!isValidPassword(password)) {
       toast({
         title: t('weak_title'),
         description: t('weak_description'),
@@ -310,7 +305,7 @@ function ResetPasswordInner() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  minLength={8}
+                  minLength={PASSWORD_MIN_LENGTH}
                   disabled={isLoading}
                   className="h-11"
                 />
@@ -325,7 +320,7 @@ function ResetPasswordInner() {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
-                  minLength={8}
+                  minLength={PASSWORD_MIN_LENGTH}
                   disabled={isLoading}
                   className="h-11"
                 />

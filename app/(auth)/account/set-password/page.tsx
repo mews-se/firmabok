@@ -10,6 +10,7 @@ import { useToast } from '@/components/ui/use-toast'
 import { Loader2, KeyRound } from 'lucide-react'
 import { userHasPassword } from '@/lib/auth/has-password'
 import { safeReturnTo } from '@/lib/auth/safe-return-to'
+import { isValidPassword, PASSWORD_MIN_LENGTH } from '@/lib/auth/password-policy'
 
 export default function SetPasswordPage() {
   return (
@@ -56,18 +57,10 @@ function SetPasswordContent() {
     e.preventDefault()
     setIsLoading(true)
 
-    const strong =
-      password.length >= 8 &&
-      /[a-z]/.test(password) &&
-      /[A-Z]/.test(password) &&
-      /[0-9]/.test(password) &&
-      /[^a-zA-Z0-9]/.test(password)
-
-    if (!strong) {
+    if (!isValidPassword(password)) {
       toast({
-        title: 'Lösenordet är för svagt',
-        description:
-          'Lösenordet måste vara minst 8 tecken och innehålla versaler, gemener, siffror och specialtecken.',
+        title: 'Lösenordet är för kort',
+        description: `Lösenordet måste vara minst ${PASSWORD_MIN_LENGTH} tecken.`,
         variant: 'destructive',
       })
       setIsLoading(false)
@@ -145,11 +138,11 @@ function SetPasswordContent() {
                 id="password"
                 type="password"
                 autoComplete="new-password"
-                placeholder="Minst 8 tecken, Aa1!"
+                placeholder={`Minst ${PASSWORD_MIN_LENGTH} tecken`}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                minLength={8}
+                minLength={PASSWORD_MIN_LENGTH}
                 disabled={isLoading}
                 className="h-11"
               />
@@ -164,7 +157,7 @@ function SetPasswordContent() {
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
-                minLength={8}
+                minLength={PASSWORD_MIN_LENGTH}
                 disabled={isLoading}
                 className="h-11"
               />

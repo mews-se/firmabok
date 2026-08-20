@@ -5,21 +5,14 @@ import { requireAuth } from '@/lib/auth/require-auth'
 import { validateBody } from '@/lib/api/validate'
 import { createLogger } from '@/lib/logger'
 import { getErrorMessage as getUserErrorMessage } from '@/lib/errors/get-error-message'
+import { PASSWORD_MIN_LENGTH } from '@/lib/auth/password-policy'
 
 const log = createLogger('api/account/password')
 
 const SetPasswordSchema = z.object({
   password: z
     .string()
-    .min(8, 'Lösenordet måste vara minst 8 tecken')
-    .refine(
-      (v) =>
-        /[a-z]/.test(v) &&
-        /[A-Z]/.test(v) &&
-        /[0-9]/.test(v) &&
-        /[^a-zA-Z0-9]/.test(v),
-      'Lösenordet måste innehålla versaler, gemener, siffror och specialtecken',
-    ),
+    .min(PASSWORD_MIN_LENGTH, `Lösenordet måste vara minst ${PASSWORD_MIN_LENGTH} tecken`),
 })
 
 /**

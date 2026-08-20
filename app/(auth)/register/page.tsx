@@ -23,6 +23,7 @@ import { AuthFormError } from '@/components/auth/AuthFormError'
 import { GoogleAuthButton } from '@/components/auth/GoogleAuthButton'
 import { isGoogleAuthEnabled } from '@/lib/auth/google-oauth'
 import { classifyAuthError, type AuthErrorKind } from '@/lib/auth/classify-auth-error'
+import { isValidPassword, passwordChecks, PASSWORD_MIN_LENGTH } from '@/lib/auth/password-policy'
 import { cn } from '@/lib/utils'
 
 const branding = getBranding()
@@ -113,22 +114,9 @@ function RegisterPageContent() {
       .catch(() => {})
   }, [searchParams])
 
-  // The live checklist under the password field mirrors these rules; the
+  // The live checklist under the password field mirrors the shared policy; the
   // aggregate check gates submission.
-  const passwordChecks = [
-    { key: 'password_req_length', met: password.length >= 8 },
-    { key: 'password_req_case', met: /[a-z]/.test(password) && /[A-Z]/.test(password) },
-    { key: 'password_req_number', met: /[0-9]/.test(password) },
-    { key: 'password_req_special', met: /[^a-zA-Z0-9]/.test(password) },
-  ] as const
-
-  function isStrongPassword(pw: string): boolean {
-    return pw.length >= 8
-      && /[a-z]/.test(pw)
-      && /[A-Z]/.test(pw)
-      && /[0-9]/.test(pw)
-      && /[^a-zA-Z0-9]/.test(pw)
-  }
+  const checks = passwordChecks(password)
 
   const handleRegister = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -143,7 +131,7 @@ function RegisterPageContent() {
 
     // Client-side checks run before isLoading so the inputs are still enabled
     // when focus moves to the offending field.
-    if (!isStrongPassword(passwordValue)) {
+    if (!isValidPassword(passwordValue)) {
       setPasswordError(t('password_error_requirements'))
       passwordInputRef.current?.focus()
       return
@@ -409,12 +397,12 @@ function RegisterPageContent() {
                   value={password}
                   onChange={(e) => {
                     setPassword(e.target.value)
-                    if (passwordError && isStrongPassword(e.target.value)) {
+                    if (passwordError && isValidPassword(e.target.value)) {
                       setPasswordError(null)
                     }
                   }}
                   required
-                  minLength={8}
+                  minLength={PASSWORD_MIN_LENGTH}
                   disabled={isLoading}
                   aria-invalid={passwordError ? true : undefined}
                   aria-describedby="password-requirements"
@@ -438,7 +426,7 @@ function RegisterPageContent() {
                 id="password-requirements"
                 className="grid grid-cols-2 gap-x-3 gap-y-1 pt-1"
               >
-                {passwordChecks.map((check) => (
+                {checks.map((check) => (
                   <li
                     key={check.key}
                     className={cn(
@@ -483,7 +471,7 @@ function RegisterPageContent() {
                   }
                 }}
                 required
-                minLength={8}
+                minLength={PASSWORD_MIN_LENGTH}
                 disabled={isLoading}
                 aria-invalid={confirmError ? true : undefined}
                 aria-describedby={confirmError ? 'confirm-password-error' : undefined}

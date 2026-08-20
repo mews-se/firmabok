@@ -4,6 +4,24 @@ All notable changes to Firmabok, newest first. Versions follow the
 tags in this repository; each one is published as a container image at
 `ghcr.io/mews-se/firmabok`.
 
+## 3.1.0 — 2026-08-20
+
+- Dependabot now watches the npm tree, the pinned GitHub Actions and the
+  Docker base image. Pinning to SHAs and digests is deliberate, but those
+  lines never move on their own, and one grouped pull request per
+  ecosystem each month is what keeps them from going quietly stale.
+- The container base image moves from node 22 to node 26, both the build
+  stage and the runtime stage.
+- The first month of updates lands: 34 minor and patch bumps across the
+  npm tree (next 16.2.12 to 16.3.1, react and react-dom 19.2.7 to 19.2.8,
+  the Radix set, pg, recharts, react-hook-form and the rest), five pinned
+  actions lifted to fresh SHAs, and @types/node and framer-motion to
+  their next majors. Nothing in the application's behaviour changes.
+- js-yaml moves to 5.3, which drops the default export. The pack loader
+  imports the namespace instead, and @types/js-yaml goes with it: the
+  package ships its own types now, and the old ones still declared the
+  default export the runtime no longer has.
+
 ## 3.0.4 — 2026-08-18
 
 - js-yaml and nanoid are lifted out of two advisories the daily scan

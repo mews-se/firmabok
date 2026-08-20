@@ -192,21 +192,10 @@ export async function updateSession(request: NextRequest) {
     return supabaseResponse
   }
 
-  // Reset-password is reachable in both auth states. The recovery flow lands
-  // here with a fresh session (created by the OTP exchange in /auth/callback)
-  // precisely so the user can call supabase.auth.updateUser({ password }). If
-  // we bounce authenticated users to '/', the recovery email link silently
-  // fails. An already-logged-in user typing /reset-password directly just gets
-  // the same "change password" experience as in settings: no security loss.
-  if (pathname.startsWith('/reset-password')) {
-    return supabaseResponse
-  }
-
   // Public auth routes: allow access
   if (
     pathname.startsWith('/login') ||
     pathname.startsWith('/register') ||
-    pathname.startsWith('/auth') ||
     pathname.startsWith('/sandbox')
   ) {
     // If user is logged in and trying to access auth pages, redirect to the
@@ -215,7 +204,7 @@ export async function updateSession(request: NextRequest) {
     // and by the bounce below; discarding the whole query string here
     // stranded an already-signed-in user on the dashboard instead of the
     // deep link they clicked. Only /login and /register carry `next`;
-    // /auth (the PKCE callback) and /sandbox bounce to '/' exactly as before.
+    // /sandbox bounces to '/' exactly as before.
     if (user) {
       const carriesDestination =
         pathname.startsWith('/login') || pathname.startsWith('/register')

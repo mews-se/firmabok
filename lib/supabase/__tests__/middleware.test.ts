@@ -343,9 +343,8 @@ describe('updateSession redirect destinations', () => {
       }
     })
 
-    it('still bounces /auth and /sandbox to the dashboard, query and all', async () => {
+    it('still bounces /sandbox to the dashboard, query and all', async () => {
       expect(locationOf(await run('/sandbox?next=%2Fsettings%2Ftax'))).toBe(`${ORIGIN}/`)
-      expect(locationOf(await run('/auth/callback?next=%2Fsettings%2Ftax'))).toBe(`${ORIGIN}/`)
     })
   })
 

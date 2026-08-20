@@ -9,10 +9,9 @@
  * service never disagree. Anything this accepts, GoTrue accepts too, and the
  * "weak password" round trip cannot happen.
  *
- * Every check lives here so the five call sites (register, reset-password,
- * set-password, the security settings panel and the account password route)
- * cannot drift apart again. The translated strings in messages/*.json spell
- * the number out in prose, so they have to be updated alongside it.
+ * Every check lives here so the password call sites cannot drift apart
+ * again. The translated strings in messages/*.json spell the number out in
+ * prose, so they have to be updated alongside it.
  */
 export const PASSWORD_MIN_LENGTH = 6
 

@@ -12,32 +12,23 @@ import { useToast } from '@/components/ui/use-toast'
 import { AttnLine } from '@/components/ui/attn-line'
 import {
   Loader2,
-  Mail,
-  ArrowLeft,
-  KeyRound,
-  ExternalLink,
   CircleAlert,
   Eye,
   EyeOff,
 } from 'lucide-react'
 import { BrandWordmark } from '@/components/branding/BrandWordmark'
 import { getErrorMessage, type ErrorLocale } from '@/lib/errors/get-error-message'
-import { getBranding } from '@/lib/branding/service'
-import { detectWebmailHint } from '@/lib/auth/webmail-search'
 import { safeReturnTo } from '@/lib/auth/safe-return-to'
 import {
   consumeInviteCookie,
   INVITE_PROBLEM_MESSAGE_KEYS,
 } from '@/lib/auth/consume-invite-cookie'
-import { AuthFormError } from '@/components/auth/AuthFormError'
 import { classifyAuthError, type AuthErrorKind } from '@/lib/auth/classify-auth-error'
 import { resetAnalyticsIdentity } from '@/lib/analytics/reset'
 import {
   setSessionAuthMethodHint,
   type SessionTimeoutReason,
 } from '@/lib/auth/session-timeout-shared'
-
-const branding = getBranding()
 
 /**
  * The login panel: email and password, nothing else.
@@ -47,23 +38,14 @@ export function LoginClient() {
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  const [isEmailSent, setIsEmailSent] = useState(false)
-  const [showResetPassword, setShowResetPassword] = useState(false)
-  const [resetCooldownUntil, setResetCooldownUntil] = useState<number | null>(null)
-  const [resetCooldownRemaining, setResetCooldownRemaining] = useState(0)
-  // Auth failures render inline (see AuthFormError / the field error line),
-  // never as a toast: `kind` drives field highlighting and the recovery action.
+  // Auth failures render inline (see the field error line), never as a
+  // toast: `kind` drives field highlighting.
   const [formError, setFormError] = useState<{ kind: AuthErrorKind; message: string } | null>(null)
-  // Consecutive credential failures; from the second one on, the error line
-  // grows a reset-password action (extra help on repeated errors).
-  const [failedAttempts, setFailedAttempts] = useState(0)
   const passwordInputRef = useRef<HTMLInputElement>(null)
   const emailInputRef = useRef<HTMLInputElement>(null)
   const { toast } = useToast()
   const router = useRouter()
   const searchParams = useSearchParams()
-  const callbackError = searchParams.get('error')
-  const callbackFlow = searchParams.get('flow')
   const reasonParam = searchParams.get('reason')
   const timeoutReason: SessionTimeoutReason | null =
     reasonParam === 'idle' || reasonParam === 'absolute' ? reasonParam : null
@@ -73,7 +55,6 @@ export function LoginClient() {
   const nextPath = safeReturnTo(searchParams.get('next'), '/')
   const supabase = createClient()
   const tAuth = useTranslations('auth')
-  const tCommon = useTranslations('common')
   const tInvite = useTranslations('invite')
   const errorLocale = useLocale() as ErrorLocale
 
@@ -90,16 +71,6 @@ export function LoginClient() {
       passwordInputRef.current?.select()
     }
   }, [formError])
-
-  const openResetForm = () => {
-    setFormError(null)
-    setShowResetPassword(true)
-  }
-
-  const closeResetForm = () => {
-    setFormError(null)
-    setShowResetPassword(false)
-  }
 
   // Accept a pending invite, if any, and report a non-definitive failure.
   // Returns true when the caller should land the user in the app directly.
@@ -118,19 +89,6 @@ export function LoginClient() {
     }
     return false
   }
-
-  // Reset cooldown timer
-  useEffect(() => {
-    if (!resetCooldownUntil) return
-    const tick = () => {
-      const remaining = Math.max(0, Math.ceil((resetCooldownUntil - Date.now()) / 1000))
-      setResetCooldownRemaining(remaining)
-      if (remaining <= 0) setResetCooldownUntil(null)
-    }
-    tick()
-    const interval = setInterval(tick, 1000)
-    return () => clearInterval(interval)
-  }, [resetCooldownUntil])
 
   const handlePasswordLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -154,9 +112,6 @@ export function LoginClient() {
           email_not_confirmed: tAuth('login_error_email_not_confirmed'),
           rate_limited: tAuth('login_error_rate_limited'),
           user_banned: tAuth('login_error_user_banned'),
-        }
-        if (kind === 'invalid_credentials') {
-          setFailedAttempts((count) => count + 1)
         }
         setFormError({
           kind,
@@ -207,171 +162,6 @@ export function LoginClient() {
     }
   }
 
-  const handleResetPassword = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    setFormError(null)
-    setIsLoading(true)
-
-    const formData = new FormData(e.currentTarget)
-    const emailValue = (formData.get('email') as string) || email
-
-    try {
-      const { error } = await supabase.auth.resetPasswordForEmail(emailValue, {
-        redirectTo: `${window.location.origin}/auth/callback?next=/reset-password`,
-      })
-
-      if (error) {
-        const kind = classifyAuthError(error)
-        setFormError({
-          kind,
-          message:
-            kind === 'rate_limited'
-              ? tAuth('login_error_rate_limited')
-              : getErrorMessage(error, { context: 'auth', locale: errorLocale }),
-        })
-        return
-      }
-
-      // The full-screen "check your email" confirmation below is the
-      // feedback; no toast needed on top of it.
-      setEmail(emailValue)
-      setResetCooldownUntil(Date.now() + 60_000)
-      setIsEmailSent(true)
-    } catch (error) {
-      setFormError({
-        kind: 'unknown',
-        message: getErrorMessage(error, { context: 'auth', locale: errorLocale }),
-      })
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  // Email sent confirmation screen
-  if (isEmailSent) {
-    const webmailHint = detectWebmailHint(email, branding.authEmailFrom)
-
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-frame p-4">
-        <div className="w-full max-w-sm animate-slide-up space-y-8">
-          <div className="flex justify-center">
-            <div className="h-14 w-14 rounded-2xl bg-primary/8 flex items-center justify-center">
-              <Mail className="h-7 w-7 text-primary" />
-            </div>
-          </div>
-
-          <div className="text-center space-y-2">
-            <h1 className="text-2xl font-medium tracking-tight">{tAuth('email_sent_title')}</h1>
-            <p className="text-muted-foreground text-sm leading-relaxed">
-              {showResetPassword
-                ? tAuth.rich('email_sent_body_reset', {
-                    email,
-                    strong: (chunks) => <span className="font-medium text-foreground">{chunks}</span>,
-                  })
-                : tAuth.rich('email_sent_body_login', {
-                    email,
-                    strong: (chunks) => <span className="font-medium text-foreground">{chunks}</span>,
-                  })}
-            </p>
-          </div>
-
-          <div className="rounded-xl border border-border bg-background p-4">
-            <p className="text-sm text-muted-foreground text-center leading-relaxed">
-              {showResetPassword ? tAuth('email_sent_hint_reset') : tAuth('email_sent_hint_login')}
-            </p>
-          </div>
-
-          <div className="space-y-2">
-            {webmailHint && (
-              <Button className="w-full" asChild>
-                <a href={webmailHint.url} target="_blank" rel="noopener noreferrer">
-                  {tAuth(webmailHint.hasSearch ? 'open_webmail_search' : 'open_webmail_inbox', {
-                    provider: webmailHint.name,
-                  })}
-                  <ExternalLink className="ml-2 h-4 w-4" />
-                </a>
-              </Button>
-            )}
-            <Button
-              variant="ghost"
-              className="w-full text-muted-foreground"
-              onClick={() => {
-                setIsEmailSent(false)
-                setShowResetPassword(false)
-              }}
-            >
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              {tCommon('back')}
-            </Button>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  // Reset password form
-  if (showResetPassword) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-frame p-4">
-        <div className="w-full max-w-sm animate-slide-up">
-          <div className="text-center mb-10">
-            <div className="flex justify-center mb-4">
-              <div className="h-14 w-14 rounded-2xl bg-primary/8 flex items-center justify-center">
-                <KeyRound className="h-7 w-7 text-primary" />
-              </div>
-            </div>
-            <h1 className="text-2xl font-medium tracking-tight">{tAuth('reset_title')}</h1>
-            <p className="text-muted-foreground text-sm mt-2">
-              {tAuth('reset_subtitle')}
-            </p>
-          </div>
-
-          <div className="rounded-xl border border-border bg-background p-6">
-            <form onSubmit={handleResetPassword} className="space-y-4">
-              {formError && <AuthFormError message={formError.message} />}
-              <div className="space-y-2">
-                <Label htmlFor="email">{tAuth('email_label')}</Label>
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  placeholder={tAuth('email_placeholder')}
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  disabled={isLoading}
-                  className="h-11"
-                />
-              </div>
-              <Button type="submit" className="w-full h-11" disabled={isLoading || !!resetCooldownUntil}>
-                {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    {tAuth('reset_sending')}
-                  </>
-                ) : resetCooldownUntil ? (
-                  tAuth('reset_cooldown', { seconds: resetCooldownRemaining })
-                ) : (
-                  tAuth('reset_button')
-                )}
-              </Button>
-            </form>
-          </div>
-
-          <Button
-            variant="ghost"
-            className="w-full mt-4 text-muted-foreground"
-            onClick={closeResetForm}
-          >
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            {tAuth('back_to_login')}
-          </Button>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-frame p-4">
       <div className="w-full max-w-sm animate-slide-up">
@@ -386,28 +176,6 @@ export function LoginClient() {
               <AttnLine>
                 {timeoutReason === 'idle' ? tAuth('session_idle') : tAuth('session_absolute')}
               </AttnLine>
-            </div>
-          )}
-          {callbackError === 'auth_error' && (
-            <div className="mb-4">
-              {callbackFlow === 'recovery' ? (
-                <AuthFormError
-                  message={`${tAuth('callback_error_title')}. ${tAuth('callback_error_body')}`}
-                  action={
-                    <button
-                      type="button"
-                      onClick={openResetForm}
-                      className="font-medium underline underline-offset-2"
-                    >
-                      {tAuth('request_new_reset_link')}
-                    </button>
-                  }
-                />
-              ) : (
-                <AuthFormError
-                  message={`${tAuth('callback_error_title_signup')}. ${tAuth('callback_error_body_signup')}`}
-                />
-              )}
             </div>
           )}
           <div className="animate-fade-in">
@@ -430,16 +198,7 @@ export function LoginClient() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="password">{tAuth('password_label')}</Label>
-                    <button
-                      type="button"
-                      onClick={openResetForm}
-                      className="text-xs text-muted-foreground hover:text-foreground transition-colors underline underline-offset-2"
-                    >
-                      {tAuth('forgot_password')}
-                    </button>
-                  </div>
+                  <Label htmlFor="password">{tAuth('password_label')}</Label>
                   <div className="relative">
                     <Input
                       ref={passwordInputRef}
@@ -475,21 +234,7 @@ export function LoginClient() {
                       className="animate-fade-in flex items-start gap-2 pt-1 text-[13px] leading-5 text-destructive"
                     >
                       <CircleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                      <span>
-                        {formError.message}
-                        {formError.kind === 'invalid_credentials' && failedAttempts >= 2 && (
-                          <>
-                            {' '}
-                            <button
-                              type="button"
-                              onClick={openResetForm}
-                              className="font-medium underline underline-offset-2"
-                            >
-                              {tAuth('login_error_reset_link')}
-                            </button>
-                          </>
-                        )}
-                      </span>
+                      <span>{formError.message}</span>
                     </p>
                   )}
                 </div>

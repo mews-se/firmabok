@@ -9,11 +9,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/use-toast'
-import { Check, Loader2, Mail, ArrowLeft, ExternalLink, Eye, EyeOff } from 'lucide-react'
+import { Check, Loader2, Eye, EyeOff } from 'lucide-react'
 import { BrandWordmark } from '@/components/branding/BrandWordmark'
 import { getErrorMessage, type ErrorLocale } from '@/lib/errors/get-error-message'
-import { getBranding } from '@/lib/branding/service'
-import { detectWebmailHint } from '@/lib/auth/webmail-search'
 import {
   consumeInviteCookie,
   INVITE_PROBLEM_MESSAGE_KEYS,
@@ -23,8 +21,6 @@ import { AuthFormError } from '@/components/auth/AuthFormError'
 import { classifyAuthError, type AuthErrorKind } from '@/lib/auth/classify-auth-error'
 import { isValidPassword, passwordChecks, PASSWORD_MIN_LENGTH } from '@/lib/auth/password-policy'
 import { cn } from '@/lib/utils'
-
-const branding = getBranding()
 
 export default function RegisterPage() {
   return (
@@ -40,17 +36,14 @@ function RegisterPageContent() {
   // lib/supabase/middleware.ts targets /login and the two MFA pages only, and
   // app/invite/[token]/page.tsx sends `?invite=`), the already-signed-in case
   // is handled in the middleware behind safeReturnTo, and the signup path
-  // has no destination to spend it on: it leaves through the confirmation
-  // mail and /auth/callback. If a destination is ever wanted here it MUST go through
-  // safeReturnTo (lib/auth/safe-return-to.ts); a hand-rolled check on this
-  // value is an open redirect.
+  // has no destination to spend it on. If a destination is ever wanted here
+  // it MUST go through safeReturnTo (lib/auth/safe-return-to.ts); a
+  // hand-rolled check on this value is an open redirect.
   const searchParams = useSearchParams()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const [isRegistered, setIsRegistered] = useState(false)
-  const [duplicateEmail, setDuplicateEmail] = useState<string | null>(null)
   const [inviteEmail, setInviteEmail] = useState<string | null>(null)
   // Signup failures render inline next to the form (see AuthFormError), never
   // as a toast. Field-level problems attach to their field; everything else
@@ -145,9 +138,6 @@ function RegisterPageContent() {
       const { data, error } = await supabase.auth.signUp({
         email: emailValue,
         password: passwordValue,
-        options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
-        },
       })
 
       if (error) {
@@ -175,7 +165,8 @@ function RegisterPageContent() {
       }
 
 
-      // If auto-confirmed (local dev), process invite immediately and redirect
+      // GoTrue runs with mailer autoconfirm, so a successful signup always
+      // carries a session: process any invite immediately and redirect.
       if (data.session) {
         const cookieMatch = document.cookie.match(/gnubok-invite-token=([^;]+)/)
         const inviteToken = cookieMatch?.[1]
@@ -204,17 +195,13 @@ function RegisterPageContent() {
         return
       }
 
-      // Supabase obfuscates duplicate signups (to prevent user enumeration):
-      // when the email already belongs to a confirmed account, it returns
-      // data.user with identities: [] and no error, and sends no email.
-      // Detect that case so we don't show a misleading "check your email" screen.
-      if (data.user && (data.user.identities?.length ?? 0) === 0) {
-        setDuplicateEmail(emailValue)
-        return
-      }
-
-      setEmail(emailValue)
-      setIsRegistered(true)
+      // No session without an error only happens when GoTrue obfuscates a
+      // duplicate signup (data.user with identities: [] to prevent user
+      // enumeration). Frame it as the account already existing.
+      setFormError({
+        kind: 'email_exists',
+        message: t('account_exists_description'),
+      })
     } catch (error) {
       console.error('[register] unexpected exception', error instanceof Error ? error.message : String(error))
       setFormError({
@@ -224,108 +211,6 @@ function RegisterPageContent() {
     } finally {
       setIsLoading(false)
     }
-  }
-
-  if (duplicateEmail) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-frame p-4">
-        <div className="w-full max-w-sm animate-slide-up space-y-8">
-          <div className="flex justify-center">
-            <div className="h-14 w-14 rounded-2xl bg-primary/8 flex items-center justify-center">
-              <Mail className="h-7 w-7 text-primary" />
-            </div>
-          </div>
-
-          <div className="text-center space-y-2">
-            <h1 className="text-2xl font-medium tracking-tight">{t('duplicate_title')}</h1>
-            <p className="text-muted-foreground text-sm leading-relaxed">
-              {t('duplicate_body_prefix')}{' '}
-              <span className="font-medium text-foreground">{duplicateEmail}</span>.
-            </p>
-          </div>
-
-          <div className="rounded-xl border border-border bg-background p-4">
-            <p className="text-sm text-muted-foreground text-center leading-relaxed">
-              {t('duplicate_hint')}
-            </p>
-          </div>
-
-          <div className="space-y-2">
-            {/*
-              Plain /login, no `email` parameter: app/(auth)/login/page.tsx
-              reads only `error`, `flow` and `next`, so the address was
-              travelling in the URL (browser history, Referer, every proxy
-              access log) and arriving nowhere. The address is already on
-              screen above, so nothing is lost by dropping it.
-            */}
-            <Button className="w-full" asChild>
-              <Link href="/login">
-                {t('sign_in')}
-              </Link>
-            </Button>
-            <Button
-              variant="ghost"
-              className="w-full text-muted-foreground"
-              onClick={() => setDuplicateEmail(null)}
-            >
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              {t('back')}
-            </Button>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  if (isRegistered) {
-    const webmailHint = detectWebmailHint(email, branding.authEmailFrom)
-
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-frame p-4">
-        <div className="w-full max-w-sm animate-slide-up space-y-8">
-          <div className="flex justify-center">
-            <div className="h-14 w-14 rounded-2xl bg-primary/8 flex items-center justify-center">
-              <Mail className="h-7 w-7 text-primary" />
-            </div>
-          </div>
-
-          <div className="text-center space-y-2">
-            <h1 className="text-2xl font-medium tracking-tight">{t('confirm_email_title')}</h1>
-            <p className="text-muted-foreground text-sm leading-relaxed">
-              {t.rich('confirm_email_body', {
-                email,
-                strong: (chunks) => <span className="font-medium text-foreground">{chunks}</span>,
-              })}
-            </p>
-          </div>
-
-          <div className="rounded-xl border border-border bg-background p-4">
-            <p className="text-sm text-muted-foreground text-center leading-relaxed">
-              {t('confirm_email_hint')}
-            </p>
-          </div>
-
-          <div className="space-y-2">
-            {webmailHint && (
-              <Button className="w-full" asChild>
-                <a href={webmailHint.url} target="_blank" rel="noopener noreferrer">
-                  {t(webmailHint.hasSearch ? 'open_webmail_search' : 'open_webmail_inbox', {
-                    provider: webmailHint.name,
-                  })}
-                  <ExternalLink className="ml-2 h-4 w-4" />
-                </a>
-              </Button>
-            )}
-            <Button variant="ghost" className="w-full text-muted-foreground" asChild>
-              <Link href="/login">
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                {t('back_to_login')}
-              </Link>
-            </Button>
-          </div>
-        </div>
-      </div>
-    )
   }
 
   return (

@@ -127,6 +127,28 @@ Kontrollera att du surfar till exakt `http://<DOMAIN>`.
 `AUTH_SIGNUPS_DISABLED=false` i `.env`, kör `docker compose up -d`,
 skapa kontot och kör sedan `./install-debian.sh lock` igen.
 
+**Glömt lösenord.** Stacken skickar ingen e-post, så appen har inget
+återställningsflöde. Sätt ett nytt lösenord via GoTrues admin-API i
+stället. Från utcheckningen (där `.env` ligger):
+
+```sh
+. ./.env
+curl -s "http://$DOMAIN/auth/v1/admin/users" \
+  -H "apikey: $SERVICE_ROLE_KEY" \
+  -H "Authorization: Bearer $SERVICE_ROLE_KEY"
+```
+
+Svaret listar kontona med `id` och e-postadress. Sätt sedan det nya
+lösenordet (minst 6 tecken) för rätt `id`:
+
+```sh
+curl -s -X PUT "http://$DOMAIN/auth/v1/admin/users/<id>" \
+  -H "apikey: $SERVICE_ROLE_KEY" \
+  -H "Authorization: Bearer $SERVICE_ROLE_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"password": "nytt-losenord"}'
+```
+
 **Docker säger att minnesgränserna kastas.** Meddelandet "Your kernel
 does not support memory limit capabilities or the cgroup is not mounted"
 kommer en gång per tjänst med `mem_limit`. Kärnan saknar då

@@ -19,12 +19,4 @@ describe('legacy-host redirect exclusions', () => {
     expect(isRedirectedFromLegacyHost('/.well-known/oauth-authorization-server')).toBe(false)
     expect(isRedirectedFromLegacyHost('/_next/static/chunk.js')).toBe(false)
   })
-
-  it('keeps PKCE-cookie-bound auth flows on the legacy host (#1092)', () => {
-    // Password reset and signup confirmation links sent before the
-    // cutover carry a PKCE code whose verifier cookie lives on the
-    // legacy host; forwarding them would break the exchange.
-    expect(isRedirectedFromLegacyHost('/auth/callback')).toBe(false)
-    expect(isRedirectedFromLegacyHost('/reset-password')).toBe(false)
-  })
 })

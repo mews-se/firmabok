@@ -6,22 +6,17 @@ import path from 'node:path'
  * Findings on the signup page, all about an address travelling (or not)
  * with the user.
  *
- * 1. The email field must be pre-filled and locked from the invitation:
- *    an invitee who typed a different address made POST /api/team/accept
- *    answer 403 on its email equality check and landed on /select-company
- *    with no membership. The token survives that 403
- *    (lib/auth/consume-invite-cookie.ts retains it on `wrong_email`, and
- *    /select-company re-runs acceptance server-side), so the dead end is
- *    recoverable; the signup still should not walk into it.
- * 2. The duplicate-email screen linked to `/login?email=...`, which
- *    app/(auth)/login/page.tsx never reads. The address rode along in the URL,
- *    the browser history, the Referer header and every proxy access log, and
- *    arrived nowhere.
+ * The email field must be pre-filled and locked from the invitation:
+ * an invitee who typed a different address made POST /api/team/accept
+ * answer 403 on its email equality check and landed on /select-company
+ * with no membership. The token survives that 403
+ * (lib/auth/consume-invite-cookie.ts retains it on `wrong_email`, and
+ * /select-company re-runs acceptance server-side), so the dead end is
+ * recoverable; the signup still should not walk into it.
  *
  * The page is a client component and this repo deliberately has no component
  * test harness (CLAUDE.md: scope is lib/ + app/api/), so these assert on the
  * page source, the same pattern used by
- * app/(auth)/reset-password/__tests__/invite-handoff.test.ts and
  * app/invite/[token]/__tests__/invite-cookie.test.ts.
  */
 const SRC = fs.readFileSync(path.resolve(__dirname, '../page.tsx'), 'utf8')
@@ -53,18 +48,6 @@ function inviteEffect(): string {
   const start = SRC.indexOf("searchParams.get('invite')")
   expect(start).toBeGreaterThan(-1)
   return SRC.slice(start, SRC.indexOf('}, [searchParams])', start))
-}
-
-/**
- * Just the duplicate-email screen. Scoped, because the page footer carries its
- * own bare `/login` link and would satisfy an unscoped assertion.
- */
-function duplicateScreen(): string {
-  const start = CODE.indexOf('if (duplicateEmail) {')
-  expect(start).toBeGreaterThan(-1)
-  const end = CODE.indexOf('if (isRegistered) {', start)
-  expect(end).toBeGreaterThan(start)
-  return CODE.slice(start, end)
 }
 
 describe('an invited signup', () => {
@@ -108,21 +91,6 @@ describe('a signup that did not come from an invitation', () => {
     for (const lock of locks) {
       expect(lock, `${lock} is not conditional on the invitation`).toContain('inviteEmail')
     }
-  })
-})
-
-describe('the duplicate-email screen', () => {
-  it('sends the user to plain /login', () => {
-    expect(duplicateScreen()).toContain('<Link href="/login">')
-  })
-
-  it('does not put the address in the URL of a page that never reads it', () => {
-    expect(duplicateScreen()).not.toMatch(/\/login\?/)
-    expect(CODE).not.toContain('encodeURIComponent(duplicateEmail)')
-  })
-
-  it('still shows the address, so nothing is lost by dropping the parameter', () => {
-    expect(duplicateScreen()).toContain('{duplicateEmail}')
   })
 })
 

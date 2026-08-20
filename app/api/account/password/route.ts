@@ -35,9 +35,9 @@ const SetPasswordSchema = z.object({
  *     user session so Supabase's AAL2 guard still fires. A stolen AAL1
  *     cookie must not be able to rotate a known password.
  *
- * This route is the single write path for setting a password. SecuritySettings,
- * the reset-password page, and the /account/set-password page all funnel
- * through here so the flag stays in sync: see lib/auth/has-password.ts.
+ * This route is the single write path for setting a password. Every password
+ * surface funnels through here so the flag stays in sync: see
+ * lib/auth/has-password.ts.
  *
  * If the password update succeeds but the flag write fails, we log and still
  * return success: the user has a working password and the banner will show one

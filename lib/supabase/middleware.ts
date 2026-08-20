@@ -1,10 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
-import { shouldEnforceMfa } from '@/lib/auth/mfa'
-import { apiPathSkipsMfaGate } from '@/lib/auth/api-mfa-gate'
 import { cookieSecure } from '@/lib/auth/cookie-secure'
 import { DEFAULT_LOCALE, LOCALE_COOKIE, isLocale } from '@/i18n/config'
-import { userHasPassword } from '@/lib/auth/has-password'
 import { safeReturnTo } from '@/lib/auth/safe-return-to'
 import {
   apiRequestSkipsSessionTimeout,
@@ -68,11 +65,11 @@ export async function updateSession(request: NextRequest) {
   // If the refresh token is stale/invalid, clear the session cookies so the
   // browser stops sending them on every request, INCLUDING /api requests,
   // which previously returned before this cleanup and replayed the dead
-  // token forever. Skip on auth routes, the callback needs PKCE cookies
-  // intact. scope: 'local' only clears cookies: the refresh token is already
-  // dead server-side, and the default global-revoke round-trip re-triggers
-  // the failed refresh, the exact AuthApiError this cleans up after.
-  if (authError && !user && !pathname.startsWith('/auth')) {
+  // token forever. scope: 'local' only clears cookies: the refresh token is
+  // already dead server-side, and the default global-revoke round-trip
+  // re-triggers the failed refresh, the exact AuthApiError this cleans up
+  // after.
+  if (authError && !user) {
     try {
       await supabase.auth.signOut({ scope: 'local' })
     } catch (signOutError) {
@@ -149,29 +146,9 @@ export async function updateSession(request: NextRequest) {
 
   // ── API routes ──────────────────────────────────────────────────────────
   // API routes authenticate themselves (requireAuth, API-key Bearer, cron
-  // secret, webhook signatures). Middleware runs on them for ONE reason: to
-  // close the MFA gap. Many legacy routes hand-roll supabase.auth.getUser()
-  // instead of requireAuth(), so without this an authenticated-but-not-MFA-
-  // verified (AAL1) cookie session could reach them on the hosted product.
-  // Gate ONLY cookie sessions. Bearer-auth SURFACES (/api/v1, the MCP
-  // endpoint) and the AAL1 escape-hatch / OAuth routes pass straight through
-  // (see apiPathSkipsMfaGate): header presence alone never skips the gate,
-  // since the header is attacker-controlled and cookie-authenticated routes
-  // ignore it. Pure Bearer callers (cron, webhooks) carry no cookie session,
-  // so the `user` guard below already excludes them. Everything else about
-  // /api auth stays the route's own responsibility.
+  // secret, webhook signatures); middleware only maintains the session
+  // cookies above and stays out of their way.
   if (pathname.startsWith('/api')) {
-    const skipMfaGate = apiPathSkipsMfaGate(
-      pathname,
-      hasAuthorizationHeader,
-    )
-    if (!skipMfaGate && user && shouldEnforceMfa(user)) {
-      const { data: aal } =
-        await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
-      if (aal?.nextLevel === 'aal2' && aal?.currentLevel === 'aal1') {
-        return NextResponse.json({ error: 'MFA-verifiering krävs.' }, { status: 403 })
-      }
-    }
     return supabaseResponse
   }
 
@@ -221,80 +198,14 @@ export async function updateSession(request: NextRequest) {
     return bounceToAuth(request, '/login')
   }
 
-  // /mfa/enroll: gate behind has-password. BankID-only users who reach this
-  // page can lock themselves out: Supabase requires AAL2 to change password
-  // or unenroll MFA, and AAL2 needs a prior password sign-in. Force them to
-  // set a password first. The /account/set-password page does that and routes
-  // back here via ?returnTo. Thread the inner returnTo through so the user
-  // ends up on their original destination after the full chain completes.
-  if (pathname.startsWith('/mfa/enroll')) {
-    if (!userHasPassword(user)) {
-      const innerReturnTo = request.nextUrl.searchParams.get('returnTo')
-      const mfaTarget = `/mfa/enroll${
-        innerReturnTo ? `?returnTo=${encodeURIComponent(innerReturnTo)}` : ''
-      }`
-      return NextResponse.redirect(
-        new URL(
-          `/account/set-password?returnTo=${encodeURIComponent(mfaTarget)}`,
-          request.url,
-        ),
-      )
-    }
-    return supabaseResponse
-  }
-
-  // Other MFA pages: accessible to authenticated users (AAL1+), skip MFA enforcement
-  if (pathname.startsWith('/mfa/')) {
-    return supabaseResponse
-  }
-
-  // /account/set-password is the escape hatch from the BankID/MFA lockout
-  // and must be reachable even when the user has no company yet (e.g. mid-
-  // onboarding) and is at AAL1.
-  if (pathname.startsWith('/account/set-password')) {
-    return supabaseResponse
-  }
-
-  // Resolve the active company at most once per request: both the MFA
-  // enrollment gate and the company-context block below need it, and the
-  // resolution costs DB round trips.
-  let resolvedCompany: {
-    companyId: string | null
-    locale: string | null
-    degraded: boolean
-  } | null = null
-  const resolveCompanyOnce = async () =>
-    (resolvedCompany ??= await resolveCompanyForMiddleware(supabase, user.id, request))
-
-  // MFA enforcement (application-side only, not RLS)
-  if (shouldEnforceMfa(user)) {
-    const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
-
-    // User has MFA enrolled but hasn't verified this session → redirect to verify
-    if (aal?.nextLevel === 'aal2' && aal?.currentLevel === 'aal1') {
-      return bounceToAuth(request, '/mfa/verify')
-    }
-
-    // MFA required but user has no factor enrolled yet → force enrollment
-    // Skip for users with no companies (still setting up)
-    const { companyId: companyIdForMfa } = await resolveCompanyOnce()
-    if (companyIdForMfa) {
-      const { data: factors } = await supabase.auth.mfa.listFactors()
-      const hasVerifiedFactor = factors?.totp?.some(f => f.status === 'verified')
-
-      if (!hasVerifiedFactor) {
-        return bounceToAuth(request, '/mfa/enroll')
-      }
-    }
-  }
-
   // Forward the pathname so server layouts can branch on it (e.g. render a
   // no-company shell for /settings/account).
   supabaseResponse.headers.set('x-pathname', pathname)
 
   // Company context resolution
   const cookieCompanyId = request.cookies.get('gnubok-company-id')?.value
-  const { companyId, locale: dbLocale, degraded } = await resolveCompanyOnce()
+  const { companyId, locale: dbLocale, degraded } =
+    await resolveCompanyForMiddleware(supabase, user.id, request)
 
   // If the cookie pointed at a company we can no longer resolve (e.g.
   // archived), clear it so the browser stops sending it. Never on degraded
@@ -471,15 +382,12 @@ function sessionTimeoutResponse(
 
 /**
  * Which query parameter each auth page reads its post-auth destination from.
- * /login reads `next` (app/(auth)/login/page.tsx), the MFA pages read
- * `returnTo` (app/(auth)/mfa/verify/page.tsx, app/(auth)/mfa/enroll/page.tsx).
- * Sending the wrong name is a silent no-op, so the mapping is explicit
- * rather than guessed per call site.
+ * /login reads `next` (app/(auth)/login/page.tsx). Sending the wrong name is
+ * a silent no-op, so the mapping is explicit rather than guessed per call
+ * site.
  */
 const AUTH_DESTINATION_PARAM = {
   '/login': 'next',
-  '/mfa/verify': 'returnTo',
-  '/mfa/enroll': 'returnTo',
 } as const
 
 /**
@@ -500,11 +408,6 @@ const AUTH_DESTINATION_PARAM = {
  * that normalise into one are rejected, and a rejected (or absent, or
  * root) destination degrades to a bare bounce with no parameter at all.
  * Nothing attacker-supplied is reflected unvalidated.
- *
- * MFA semantics are untouched: this only decorates the URL of a redirect
- * that was going to happen anyway, on exactly the same conditions. The auth
- * pages navigate to the destination only after the step-up succeeds, and the
- * next request re-runs this same gate regardless.
  */
 function bounceToAuth(
   request: NextRequest,

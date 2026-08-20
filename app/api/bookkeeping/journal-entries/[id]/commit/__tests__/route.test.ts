@@ -69,7 +69,7 @@ describe('POST /api/bookkeeping/journal-entries/[id]/commit', () => {
     expect(body).toEqual({ error: 'Unauthorized' })
   })
 
-  it('returns 403 when the caller lacks write permission (role/MFA write gate)', async () => {
+  it('returns 403 when the caller lacks write permission (role write gate)', async () => {
     requireWriteMock.mockResolvedValue({
       ok: false,
       response: NextResponse.json(

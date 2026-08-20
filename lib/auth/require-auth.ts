@@ -1,6 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
-import { shouldEnforceMfa } from './mfa'
 import type { User, SupabaseClient, JwtPayload } from '@supabase/supabase-js'
 
 type AuthResult =
@@ -46,10 +45,9 @@ function userFromClaims(claims: JwtPayload): User {
 }
 
 /**
- * Auth + MFA guard for API routes.
+ * Auth guard for API routes.
  *
  * Returns the authenticated user and Supabase client, or a JSON error response.
- * When MFA is required (hosted deployment), verifies AAL2 assurance level.
  *
  * Fast path: getClaims() performs local WebCrypto verification against the
  * shared 10-minute JWKS cache instead of a per-request network getUser()
@@ -58,9 +56,7 @@ function userFromClaims(claims: JwtPayload): User {
  * special-casing). Revocation is still checked on every request by proxy.ts
  * middleware getUser() before any route runs. Claims-sourced metadata
  * (email, app_metadata, is_anonymous) can be up to one access-token TTL
- * stale, which is acceptable for all current consumers: bankid_linked
- * staleness is covered because the middleware MFA gate
- * (lib/supabase/middleware.ts) uses the FRESH getUser result.
+ * stale, which is acceptable for all current consumers.
  */
 export async function requireAuth(): Promise<AuthResult> {
   const supabase = await createClient()
@@ -99,17 +95,6 @@ export async function requireAuth(): Promise<AuthResult> {
       user: null,
       supabase,
       error: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }),
-    }
-  }
-
-  if (shouldEnforceMfa(user)) {
-    const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
-    if (aal?.nextLevel === 'aal2' && aal?.currentLevel !== 'aal2') {
-      return {
-        user: null,
-        supabase,
-        error: NextResponse.json({ error: 'MFA verification required' }, { status: 403 }),
-      }
     }
   }
 

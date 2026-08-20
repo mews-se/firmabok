@@ -232,11 +232,8 @@ async function handleRequest(
     return decorateResponse(response, requestId)
   }
 
-  // Auth check: requireAuth() enforces MFA (AAL2) on hosted, which the previous
-  // inline supabase.auth.getUser() did not. This dispatcher is the single
-  // chokepoint for the entire enabled-extension surface (banking sync, document
-  // upload/booking, supplier-invoice flows, migration), so enforcing MFA here
-  // closes the gap across all of them at once.
+  // Auth check: this dispatcher is the single chokepoint for the entire
+  // enabled-extension surface, so requireAuth() here covers all of it at once.
   const auth = await requireAuth()
   if (auth.error) {
     return decorateResponse(auth.error, requestId)

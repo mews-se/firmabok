@@ -6,7 +6,7 @@ import {
   createQueuedMockSupabase,
 } from '@/tests/helpers'
 
-// Mock session auth (requireAuth enforces MFA; returns the request-scoped client)
+// Mock session auth (requireAuth returns the request-scoped client)
 const { supabase: mockSupabase, enqueue, reset } = createQueuedMockSupabase()
 
 const requireAuthMock = vi.fn()

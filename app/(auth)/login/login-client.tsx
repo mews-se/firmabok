@@ -124,18 +124,6 @@ export function LoginClient() {
 
       setSessionAuthMethodHint('password')
 
-      // Check MFA status
-      const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
-
-      if (aal?.nextLevel === 'aal2' && aal?.currentLevel === 'aal1') {
-        router.push(
-          nextPath === '/'
-            ? '/mfa/verify'
-            : `/mfa/verify?returnTo=${encodeURIComponent(nextPath)}`
-        )
-        return
-      }
-
       // Check for pending invite token
       if (await acceptPendingInvite()) {
         window.location.href = '/'

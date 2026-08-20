@@ -22,8 +22,8 @@ import { uploadDocument } from '@/lib/core/documents/document-service'
  * schema requires) is returned inline. The file only exists to be saved and
  * uploaded manually on skatteverket.se: there is no UI download surface for
  * this headless flow, and a document-reference indirection would dead-end the
- * user whenever the (best-effort) archive failed. Transport is TLS,
- * authenticated, MFA-gated and write-role-gated via withRouteContext.
+ * user whenever the (best-effort) archive failed. Transport is
+ * authenticated and write-role-gated via withRouteContext.
  */
 export const POST = withRouteContext(
   'rot_rut.payout_file',

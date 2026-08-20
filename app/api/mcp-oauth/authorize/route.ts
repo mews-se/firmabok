@@ -1,9 +1,7 @@
 import crypto from 'crypto'
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
-import type { SupabaseClient, User } from '@supabase/supabase-js'
 import { createAuthCode } from '@/lib/auth/oauth-codes'
-import { shouldEnforceMfa } from '@/lib/auth/mfa'
 import { requireCompanyId } from '@/lib/company/context'
 import { getBranding } from '@/lib/branding/service'
 import { isAllowedRedirectUri } from '@/lib/auth/oauth-allowlist'
@@ -108,31 +106,6 @@ function buildLoginRedirect(request: Request): Response {
   )
 }
 
-/**
- * Consent here mints a long-lived API key at /token, and that key bypasses
- * MFA on every subsequent call: so the consent session itself must be AAL2.
- * The middleware MFA gate deliberately exempts /api/mcp-oauth/* (the token
- * endpoint is Bearer-only), which makes this route responsible for its own
- * step-up. Returns null when the session is AAL2 (or MFA isn't required),
- * otherwise a redirect to /mfa/verify that returns to this authorize URL.
- */
-async function requireAal2(
-  supabase: SupabaseClient,
-  user: User,
-  request: Request,
-): Promise<Response | null> {
-  if (!shouldEnforceMfa(user)) return null
-  const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
-  if (aal?.nextLevel === 'aal2' && aal?.currentLevel !== 'aal2') {
-    const url = new URL(request.url)
-    const returnTo = `${url.pathname}${url.search}`
-    return NextResponse.redirect(
-      new URL(`/mfa/verify?returnTo=${encodeURIComponent(returnTo)}`, url.origin),
-    )
-  }
-  return null
-}
-
 function errorRedirect(request: Request, redirectUri: string, state: string | null, error: string, desc: string): Response {
   const url = new URL(redirectUri)
   url.searchParams.set('error', error)
@@ -196,9 +169,6 @@ export async function GET(request: Request) {
   if (!user) {
     return buildLoginRedirect(request)
   }
-
-  const mfaRedirect = await requireAal2(supabase, user, request)
-  if (mfaRedirect) return mfaRedirect
 
   // Validate redirect_uri against allowlist (prevents open redirect). Passing
   // the authenticated client makes the trust boundary explicit (SOC 2 CC6.1).
@@ -665,12 +635,6 @@ export async function POST(request: Request) {
   if (!user) {
     return buildLoginRedirect(request)
   }
-
-  // An AAL1 session must not be able to approve consent (the GET step-up can
-  // be bypassed by POSTing the form directly). The redirect lands back on the
-  // GET consent page after verification.
-  const mfaRedirect = await requireAal2(supabase, user, request)
-  if (mfaRedirect) return mfaRedirect
 
   // Pass the authenticated client so the lookup is bound to the same session
   // that the consent display ran under (SOC 2 CC6.1).

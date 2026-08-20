@@ -4,7 +4,7 @@
  *
  * Machine surfaces (api/, .well-known/) and assets (_next/) must keep
  * answering on the legacy host after the app.accounted.se cutover;
- * everything else forwards to the new domain. The login and MFA pages are
+ * everything else forwards to the new domain. The login page is
  * deliberately NOT excluded, since a usable login page on the legacy host
  * would establish sessions there and bounce users in a redirect loop.
  */

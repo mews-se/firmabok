@@ -6,11 +6,9 @@ describe('legacy-host redirect exclusions', () => {
     expect(isRedirectedFromLegacyHost('/')).toBe(true)
     expect(isRedirectedFromLegacyHost('/dashboard')).toBe(true)
     expect(isRedirectedFromLegacyHost('/reports')).toBe(true)
-    // login and MFA pages MUST redirect: a usable login page on the
-    // legacy host would establish sessions there and loop users between
-    // domains.
+    // The login page MUST redirect: a usable login page on the legacy
+    // host would establish sessions there and loop users between domains.
     expect(isRedirectedFromLegacyHost('/login')).toBe(true)
-    expect(isRedirectedFromLegacyHost('/mfa')).toBe(true)
   })
 
   it('keeps machine surfaces on the legacy host', () => {

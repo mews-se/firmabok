@@ -28,9 +28,8 @@ import { getErrorMessage as getUserErrorMessage } from '@/lib/errors/get-error-m
  * input: the create action rejects that separately as `org_number_invalid`.
  */
 export async function GET(request: Request) {
-  // requireAuth() (not a raw getUser()) so MFA AAL2 is enforced on hosted before
-  // we run the account-scoped lookup. The returned client carries the caller's
-  // RLS context, which is what scopes the companies SELECT below.
+  // requireAuth() rather than a raw getUser(). The returned client carries the
+  // caller's RLS context, which is what scopes the companies SELECT below.
   const { supabase, error: authError } = await requireAuth()
   if (authError) return authError
 

@@ -97,7 +97,7 @@ describe('a signup that did not come from an invitation', () => {
 describe('the post-auth destination parameter', () => {
   it('does not read `next`', () => {
     // Nothing links to /register with one: bounceToAuth (lib/supabase/
-    // middleware.ts) targets /login and the two MFA pages, and
+    // middleware.ts) targets /login, and
     // app/invite/[token]/page.tsx sends `?invite=`. An unread parameter cannot
     // redirect anyone.
     expect(CODE).not.toContain("searchParams.get('next')")

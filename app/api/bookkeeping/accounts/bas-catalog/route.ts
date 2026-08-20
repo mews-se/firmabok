@@ -13,7 +13,7 @@ import { BAS_REFERENCE } from '@/lib/bookkeeping/bas-reference'
  *
  * The payload is static reference data for the deploy and identical for every
  * company, so it's cached hard on the client. Wrapped in withRouteContext so it
- * stays behind auth (MFA on hosted) like every other bookkeeping route.
+ * stays behind auth like every other bookkeeping route.
  */
 export const GET = withRouteContext('bookkeeping.accounts.bas_catalog', async () => {
   const data = BAS_REFERENCE.map((a) => ({

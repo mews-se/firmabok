@@ -33,7 +33,7 @@ export default function RegisterPage() {
 function RegisterPageContent() {
   // `invite` is the only query parameter this page reads. It deliberately does
   // NOT read `next`: nothing links here with one (bounceToAuth in
-  // lib/supabase/middleware.ts targets /login and the two MFA pages only, and
+  // lib/supabase/middleware.ts targets /login only, and
   // app/invite/[token]/page.tsx sends `?invite=`), the already-signed-in case
   // is handled in the middleware behind safeReturnTo, and the signup path
   // has no destination to spend it on. If a destination is ever wanted here

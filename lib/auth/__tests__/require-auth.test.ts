@@ -42,8 +42,6 @@ function useSupabase(auth: MockAuth) {
 describe('requireAuth', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    // Deterministic baseline: MFA off unless a test stubs it on.
-    vi.stubEnv('NEXT_PUBLIC_REQUIRE_MFA', 'false')
     // Matches CLAIMS.iss so the fast path passes the issuer pinning.
     vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'https://test.supabase.co')
   })
@@ -142,53 +140,4 @@ describe('requireAuth', () => {
     expect(getUser).not.toHaveBeenCalled()
   })
 
-  it('returns 403 when MFA is required and AAL2 is not verified', async () => {
-    vi.stubEnv('NEXT_PUBLIC_REQUIRE_MFA', 'true')
-    vi.stubEnv('NEXT_PUBLIC_SELF_HOSTED', '')
-    const getClaims = vi.fn().mockResolvedValue({ data: { claims: CLAIMS }, error: null })
-    const getAuthenticatorAssuranceLevel = vi.fn().mockResolvedValue({
-      data: { currentLevel: 'aal1', nextLevel: 'aal2' },
-      error: null,
-    })
-    useSupabase({ getClaims, mfa: { getAuthenticatorAssuranceLevel } })
-
-    const result = await requireAuth()
-
-    expect(result.user).toBeNull()
-    expect(result.error?.status).toBe(403)
-    const body = await result.error?.json()
-    expect(body).toEqual({ error: 'MFA verification required' })
-  })
-
-  it('skips the MFA check for bankid_linked users', async () => {
-    vi.stubEnv('NEXT_PUBLIC_REQUIRE_MFA', 'true')
-    vi.stubEnv('NEXT_PUBLIC_SELF_HOSTED', '')
-    const claims = { ...CLAIMS, app_metadata: { provider: 'email', bankid_linked: true } }
-    const getClaims = vi.fn().mockResolvedValue({ data: { claims }, error: null })
-    const getAuthenticatorAssuranceLevel = vi.fn()
-    useSupabase({ getClaims, mfa: { getAuthenticatorAssuranceLevel } })
-
-    const result = await requireAuth()
-
-    expect(result.error).toBeNull()
-    expect(result.user?.id).toBe('user-1')
-    expect(getAuthenticatorAssuranceLevel).not.toHaveBeenCalled()
-  })
-
-  it('passes when MFA is required and the session is already AAL2', async () => {
-    vi.stubEnv('NEXT_PUBLIC_REQUIRE_MFA', 'true')
-    vi.stubEnv('NEXT_PUBLIC_SELF_HOSTED', '')
-    const getClaims = vi.fn().mockResolvedValue({ data: { claims: CLAIMS }, error: null })
-    const getAuthenticatorAssuranceLevel = vi.fn().mockResolvedValue({
-      data: { currentLevel: 'aal2', nextLevel: 'aal2' },
-      error: null,
-    })
-    useSupabase({ getClaims, mfa: { getAuthenticatorAssuranceLevel } })
-
-    const result = await requireAuth()
-
-    expect(result.error).toBeNull()
-    expect(result.user?.id).toBe('user-1')
-    expect(getAuthenticatorAssuranceLevel).toHaveBeenCalledTimes(1)
-  })
 })

@@ -30,9 +30,7 @@ const DeleteAccountSchema = z.object({
  *
  * Not wrapped in withRouteContext: deletion must work for users with zero
  * companies, so there is no company context to resolve. requireAuth() is
- * used directly so MFA (AAL2) is still enforced on hosted: a stolen AAL1
- * cookie must not be able to destroy the account. BankID-linked users are
- * exempt from the AAL2 gate (BankID is inherently 2FA, see shouldEnforceMfa).
+ * used directly.
  */
 export async function POST(request: Request) {
   const auth = await requireAuth()

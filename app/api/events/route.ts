@@ -70,10 +70,9 @@ function minimiseEventData(value: unknown): unknown {
 export async function GET(request: Request) {
   // Dual auth: API key or session. This is a deliberate withRouteContext
   // opt-out: the wrapper is cookie-session only and cannot express the API-key
-  // branch. The session branch below still goes through requireAuth(), so MFA
-  // (AAL2) stays enforced; the key branch runs the same guards the other two
-  // validateApiKey call site runs (extensions/general/mcp-server): scope,
-  // then company membership.
+  // branch. The session branch below still goes through requireAuth(); the
+  // key branch runs the same guards the other validateApiKey call site runs
+  // (extensions/general/mcp-server): scope, then company membership.
   let userId: string
   let supabase: SupabaseClient
   // When authenticated via an API key, the key is BOUND to a specific company.
@@ -116,8 +115,7 @@ export async function GET(request: Request) {
     // why the membership re-check further down is mandatory.
     supabase = createServiceClientNoCookies()
   } else {
-    // Session auth: requireAuth enforces MFA (AAL2) on hosted, unlike a bare
-    // getUser call which skips the assurance-level check.
+    // Session auth via requireAuth.
     const auth = await requireAuth()
     if (auth.error) return auth.error
     supabase = auth.supabase

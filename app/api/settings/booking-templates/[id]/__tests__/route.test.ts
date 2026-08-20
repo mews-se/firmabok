@@ -71,7 +71,7 @@ const validLines = [
 
 /** The pre-update fetch result for a template owned by the active company. */
 const OWN_TEMPLATE = {
-  data: { id: 'tpl-1', company_id: 'company-1', team_id: null, is_system: false },
+  data: { id: 'tpl-1', company_id: 'company-1', is_system: false },
 }
 
 beforeEach(() => {
@@ -158,7 +158,7 @@ describe('PUT /api/settings/booking-templates/[id]', () => {
     // B's templates while acting in A. The route must scope to the ACTIVE
     // company, so B's template reads as not-found here and no update runs.
     const { supabase, calls } = createCapturingSupabase([
-      { data: { id: 'tpl-1', company_id: 'company-2', team_id: null, is_system: false } },
+      { data: { id: 'tpl-1', company_id: 'company-2', is_system: false } },
     ])
     auth(supabase)
     const req = createMockRequest('/api/settings/booking-templates/tpl-1', {
@@ -173,40 +173,7 @@ describe('PUT /api/settings/booking-templates/[id]', () => {
 
   it('returns 404 for a system template', async () => {
     const { supabase, calls } = createCapturingSupabase([
-      { data: { id: 'tpl-1', company_id: null, team_id: null, is_system: true } },
-    ])
-    auth(supabase)
-    const req = createMockRequest('/api/settings/booking-templates/tpl-1', {
-      method: 'PUT',
-      body: { name: 'Nytt namn' },
-    })
-    const { status } = await parseJsonResponse(await PUT(req, idParams))
-    expect(status).toBe(404)
-    expect(calls.find((c) => c.method === 'update')).toBeUndefined()
-  })
-
-  it("updates a team template shared with the active company's team", async () => {
-    // Team templates carry company_id NULL: a blind company_id filter would
-    // have broken them. The scope check goes through the company's team_id.
-    const { supabase, calls } = createCapturingSupabase([
-      { data: { id: 'tpl-1', company_id: null, team_id: 'team-1', is_system: false } },
-      { data: { team_id: 'team-1' } }, // companies lookup
-      { data: { id: 'tpl-1', name: 'Nytt namn' } }, // update
-    ])
-    auth(supabase)
-    const req = createMockRequest('/api/settings/booking-templates/tpl-1', {
-      method: 'PUT',
-      body: { name: 'Nytt namn' },
-    })
-    const { status } = await parseJsonResponse(await PUT(req, idParams))
-    expect(status).toBe(200)
-    expect(updatePayload(calls)).toEqual({ name: 'Nytt namn' })
-  })
-
-  it("returns 404 for another team's template", async () => {
-    const { supabase, calls } = createCapturingSupabase([
-      { data: { id: 'tpl-1', company_id: null, team_id: 'team-other', is_system: false } },
-      { data: { team_id: 'team-1' } }, // companies lookup
+      { data: { id: 'tpl-1', company_id: null, is_system: true } },
     ])
     auth(supabase)
     const req = createMockRequest('/api/settings/booking-templates/tpl-1', {

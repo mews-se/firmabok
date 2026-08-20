@@ -4,7 +4,7 @@ import { getErrorMessage as getUserErrorMessage } from '@/lib/errors/get-error-m
 
 /**
  * GET /api/settings/booking-templates/export
- * Export company + team templates as JSON (excludes system templates).
+ * Export company templates as JSON (excludes system templates).
  * Useful for sharing templates between unrelated companies.
  */
 export const GET = withRouteContext(

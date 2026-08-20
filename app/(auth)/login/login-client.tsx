@@ -8,7 +8,6 @@ import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { useToast } from '@/components/ui/use-toast'
 import { AttnLine } from '@/components/ui/attn-line'
 import {
   Loader2,
@@ -19,10 +18,6 @@ import {
 import { BrandWordmark } from '@/components/branding/BrandWordmark'
 import { getErrorMessage, type ErrorLocale } from '@/lib/errors/get-error-message'
 import { safeReturnTo } from '@/lib/auth/safe-return-to'
-import {
-  consumeInviteCookie,
-  INVITE_PROBLEM_MESSAGE_KEYS,
-} from '@/lib/auth/consume-invite-cookie'
 import { classifyAuthError, type AuthErrorKind } from '@/lib/auth/classify-auth-error'
 import { resetAnalyticsIdentity } from '@/lib/analytics/reset'
 import {
@@ -43,7 +38,6 @@ export function LoginClient() {
   const [formError, setFormError] = useState<{ kind: AuthErrorKind; message: string } | null>(null)
   const passwordInputRef = useRef<HTMLInputElement>(null)
   const emailInputRef = useRef<HTMLInputElement>(null)
-  const { toast } = useToast()
   const router = useRouter()
   const searchParams = useSearchParams()
   const reasonParam = searchParams.get('reason')
@@ -55,7 +49,6 @@ export function LoginClient() {
   const nextPath = safeReturnTo(searchParams.get('next'), '/')
   const supabase = createClient()
   const tAuth = useTranslations('auth')
-  const tInvite = useTranslations('invite')
   const errorLocale = useLocale() as ErrorLocale
 
   useEffect(() => {
@@ -71,24 +64,6 @@ export function LoginClient() {
       passwordInputRef.current?.select()
     }
   }, [formError])
-
-  // Accept a pending invite, if any, and report a non-definitive failure.
-  // Returns true when the caller should land the user in the app directly.
-  // The invite cookie survives anything that is not a settled outcome, so
-  // /onboarding and /select-company can retry acceptance server-side.
-  const acceptPendingInvite = async (): Promise<boolean> => {
-    const invite = await consumeInviteCookie()
-    if (invite.accepted) return true
-    if (invite.problem) {
-      const keys = INVITE_PROBLEM_MESSAGE_KEYS[invite.problem]
-      toast({
-        title: tInvite(keys.title),
-        description: tInvite(keys.body),
-        variant: 'destructive',
-      })
-    }
-    return false
-  }
 
   const handlePasswordLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -123,12 +98,6 @@ export function LoginClient() {
       }
 
       setSessionAuthMethodHint('password')
-
-      // Check for pending invite token
-      if (await acceptPendingInvite()) {
-        window.location.href = '/'
-        return
-      }
 
       if (nextPath !== '/') {
         // Full navigation: the destination can be a route handler that

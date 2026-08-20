@@ -109,8 +109,10 @@ const UNRESOLVED_CEILING = 375
  * removed (chat, composer, intents, agent API routes): 7 535.
  * Re-baselined 2026-08-13 after the unreferenced-file sweep (dead widgets,
  * orphaned repair scripts, one-off backfills): 7 221.
+ * Re-baselined 2026-08-20 after invitations, the team layer and the
+ * multi-company surfaces were removed: 6 940.
  */
-const RESOLVED_COLUMN_FLOOR = 7_000
+const RESOLVED_COLUMN_FLOOR = 6_700
 
 let schema: SchemaModel
 let scan: ScanResult

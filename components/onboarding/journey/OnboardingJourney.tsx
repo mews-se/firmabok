@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
 import { useLocale, useTranslations } from 'next-intl'
 import { createCompanyFromOnboarding } from '@/lib/company/actions'
 import { computeFiscalPeriod } from '@/lib/company/compute-fiscal-period'
@@ -68,27 +67,18 @@ function captureBranch(choice: BranchChoice) {
 }
 
 interface OnboardingJourneyProps {
-  teamId: string
-  mode?: 'first' | 'add'
   initialOrgNumber?: string
-  /** A pending invitation exists for this user's email: an invitee has
-   *  likely landed here by mistake (lost invite cookie), so the first
-   *  question carries a "join via the link in the email" hint. */
-  hasPendingInvite?: boolean
 }
 
 export default function OnboardingJourney({
-  teamId,
-  mode = 'first',
   initialOrgNumber,
-  hasPendingInvite = false,
 }: OnboardingJourneyProps) {
   const router = useRouter()
   const t = useTranslations('onboarding')
   const locale = useLocale()
   const [state, dispatch] = useReducer(
     journeyReducer,
-    { mode, initialOrgNumber },
+    { initialOrgNumber },
     initJourney,
   )
 
@@ -199,7 +189,6 @@ export default function OnboardingJourney({
     })
 
     createCompanyFromOnboarding({
-      teamId,
       settings: s.settings as Record<string, unknown>,
       fiscalPeriod: {
         startDate: periodResult.startStr,
@@ -232,7 +221,7 @@ export default function OnboardingJourney({
         })
         dispatch({ type: 'SUBMIT_FAILED', code: 'generic' })
       })
-  }, [state, t, teamId])
+  }, [state, t])
 
   /* ── derived display ──────────────────────────────────────────── */
 
@@ -293,7 +282,6 @@ export default function OnboardingJourney({
         return (
           <Question
             title={t('journey_orgnr_title')}
-            sub={hasPendingInvite ? t('journey_pending_invite_note') : undefined}
             attn={
               state.serverError === 'org_number_invalid'
                 ? t('journey_err_org_invalid')
@@ -532,11 +520,9 @@ export default function OnboardingJourney({
           <DoneStep
             t={t}
             state={state}
-            mode={mode}
             fyAnswer={fyAnswer}
             momsAnswer={momsAnswer}
             methodAnswer={methodAnswer}
-            onOpen={() => router.push('/')}
             onBranch={(choice) => {
               // One choice only: rapid clicks on different chips must not
               // race two PATCHes (last-write-wins could persist the wrong
@@ -568,11 +554,6 @@ export default function OnboardingJourney({
   return (
     <div className="jny jny-fixed" style={{ ['--jny-dawn' as string]: String(station / 4) }}>
       <div className="jny-dawn" aria-hidden="true" />
-      {mode === 'add' && state.step !== 'done' ? (
-        <Link href="/" className="jny-btn-quiet jny-escape">
-          &lsaquo; {t('journey_cancel_add')}
-        </Link>
-      ) : null}
       <div className="jny-center">
         <div ref={bandRef} style={{ width: '100%' }}>
           <JourneyTrack
@@ -823,20 +804,16 @@ function FyEndStep({
 function DoneStep({
   t,
   state,
-  mode,
   fyAnswer,
   momsAnswer,
   methodAnswer,
-  onOpen,
   onBranch,
 }: {
   t: TFn
   state: JourneyState
-  mode: 'first' | 'add'
   fyAnswer: string | null
   momsAnswer: string | null
   methodAnswer: string | null
-  onOpen: () => void
   onBranch: (choice: BranchChoice) => void
 }) {
   const s = state.settings
@@ -886,8 +863,7 @@ function DoneStep({
           ))}
         </div>
       ) : null}
-      {mode === 'first' ? (
-        <Reveal delay={notes.length > 0 ? 1400 + notes.length * 260 : 1200}>
+      <Reveal delay={notes.length > 0 ? 1400 + notes.length * 260 : 1200}>
           <div className="jny-done-branch">
             <h2 className="jny-done-q">
               <InkText text={t('journey_done_source_title')} />
@@ -919,14 +895,7 @@ function DoneStep({
               </button>
             </div>
           </div>
-        </Reveal>
-      ) : (
-        <div className="jny-qactions">
-          <button type="button" className="jny-btn" onClick={onOpen}>
-            {t('journey_open_app')}
-          </button>
-        </div>
-      )}
+      </Reveal>
     </div>
   )
 }

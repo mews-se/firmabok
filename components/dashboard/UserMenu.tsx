@@ -6,21 +6,12 @@ import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { cn } from '@/lib/utils'
 import { useCompany } from '@/contexts/CompanyContext'
-import { performCompanySwitch } from '@/lib/company/switch-client'
-import { useToast } from '@/components/ui/use-toast'
 import { SupportLink } from '@/components/ui/support-link'
 import {
-  Building2,
-  Check,
   ChevronsUpDown,
-  ChevronRight,
   HelpCircle,
-  Loader2,
   LogOut,
-  Plus,
-  Search,
   Settings,
-  Users,
 } from 'lucide-react'
 
 // Community invite (Accounted's Discord). Deliberately a constant, not
@@ -70,19 +61,13 @@ export default function UserMenu({
   collapsed,
   onLogout,
 }: UserMenuProps) {
-  const { company, companies, isSandbox: companyCtxSandbox } = useCompany()
+  const { company, isSandbox: companyCtxSandbox } = useCompany()
   const tNav = useTranslations('nav')
   const tCommon = useTranslations('common')
-  const tSwitcher = useTranslations('company_switcher')
-  const { toast } = useToast()
 
   const [open, setOpen] = useState(false)
-  const [companiesOpen, setCompaniesOpen] = useState(false)
-  const [query, setQuery] = useState('')
-  const [isPending, setIsPending] = useState(false)
   const triggerRef = useRef<HTMLButtonElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
-  const searchRef = useRef<HTMLInputElement>(null)
   const [menuPos, setMenuPos] = useState({ top: 0, left: 0 })
 
   const sandbox = isSandbox || companyCtxSandbox
@@ -103,19 +88,10 @@ export default function UserMenu({
     if (!open) return
     const raf = requestAnimationFrame(() => updatePosition())
     return () => cancelAnimationFrame(raf)
-  }, [open, companiesOpen, updatePosition])
-
-  // Focus the search field when the company flyout opens.
-  useEffect(() => {
-    if (!companiesOpen) return
-    const raf = requestAnimationFrame(() => searchRef.current?.focus())
-    return () => cancelAnimationFrame(raf)
-  }, [companiesOpen])
+  }, [open, updatePosition])
 
   const close = useCallback(() => {
     setOpen(false)
-    setCompaniesOpen(false)
-    setQuery('')
   }, [])
 
   // Outside click. Two carve-outs: elements already removed from the DOM
@@ -143,41 +119,13 @@ export default function UserMenu({
     if (!open) return
     function handleKey(e: KeyboardEvent) {
       if (e.key !== 'Escape') return
-      // Esc closes the flyout first, then the menu; but never while the
-      // support dialog is open (it handles its own Esc).
+      // Never while the support dialog is open (it handles its own Esc).
       if (document.querySelector('[role="dialog"]')) return
-      if (companiesOpen) {
-        setCompaniesOpen(false)
-        setQuery('')
-      } else {
-        close()
-      }
+      close()
     }
     document.addEventListener('keydown', handleKey)
     return () => document.removeEventListener('keydown', handleKey)
-  }, [open, companiesOpen, close])
-
-  const handleSwitch = async (companyId: string) => {
-    if (company && companyId === company.id) {
-      close()
-      return
-    }
-    setIsPending(true)
-    const result = await performCompanySwitch(companyId)
-    if (result?.error) {
-      setIsPending(false)
-      toast({
-        title: tSwitcher(
-          result.error === 'not_member' ? 'error_no_access' : 'error_switch_failed',
-        ),
-        variant: 'destructive',
-      })
-    }
-  }
-
-  const filteredCompanies = companies.filter(({ company: c }) =>
-    c.name.toLowerCase().includes(query.trim().toLowerCase()),
-  )
+  }, [open, close])
 
   const menuRow =
     'flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-[13px] ' +
@@ -237,93 +185,11 @@ export default function UserMenu({
               </div>
             )}
 
-            {/* Company switcher flyout */}
-            <div className="relative px-1 pt-1">
-              <button
-                type="button"
-                onClick={() => setCompaniesOpen((v) => !v)}
-                aria-expanded={companiesOpen}
-                className={cn(menuRow, companiesOpen && 'bg-secondary/60 text-foreground')}
-              >
-                <Building2 className="h-4 w-4 flex-shrink-0" />
-                <span className="flex-1 truncate">
-                  {company?.name || tSwitcher('default_company_name')}
-                </span>
-                <ChevronRight className="h-3.5 w-3.5 flex-shrink-0 opacity-50" />
-              </button>
-
-              {companiesOpen && (
-                // Top-aligned with the company row, growing DOWNWARD
-                // (founder feedback 2026-07-23: never upward over the menu).
-                <div className="absolute top-0 left-full z-[61] ml-1.5 w-60 rounded-lg border border-border bg-popover py-1 shadow-lg animate-in fade-in slide-in-from-left-1 duration-150">
-                  <div className="flex items-center gap-2 border-b border-border/60 px-3 pb-2 pt-1.5">
-                    <Search className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" />
-                    <input
-                      ref={searchRef}
-                      value={query}
-                      onChange={(e) => setQuery(e.target.value)}
-                      placeholder={tSwitcher('search_placeholder')}
-                      className="w-full bg-transparent text-[13px] text-foreground placeholder:text-muted-foreground/60 focus:outline-none"
-                    />
-                  </div>
-                  <div className="max-h-56 overflow-y-auto px-1 py-1" role="listbox">
-                    {filteredCompanies.length === 0 && (
-                      <p className="px-2.5 py-2 text-[12px] text-muted-foreground">
-                        {tSwitcher('no_results')}
-                      </p>
-                    )}
-                    {filteredCompanies.map(({ company: c, role }) => (
-                      <button
-                        key={c.id}
-                        onClick={() => handleSwitch(c.id)}
-                        disabled={isPending}
-                        role="option"
-                        aria-selected={c.id === company?.id}
-                        className={cn(
-                          'flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-[13px] leading-snug transition-colors',
-                          c.id === company?.id
-                            ? 'bg-secondary/60 text-foreground'
-                            : 'text-muted-foreground hover:bg-secondary/60 hover:text-foreground',
-                          isPending && 'opacity-50',
-                        )}
-                      >
-                        <Building2 className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
-                        <span className="min-w-0 flex-1 truncate">{c.name}</span>
-                        {role !== 'owner' && (
-                          <span className="flex-shrink-0 text-[10px] text-muted-foreground/60">
-                            {role}
-                          </span>
-                        )}
-                        {c.id === company?.id && (
-                          <Check className="h-3.5 w-3.5 flex-shrink-0 text-primary" />
-                        )}
-                        {isPending && c.id !== company?.id && (
-                          <Loader2 className="h-3 w-3 flex-shrink-0 animate-spin text-muted-foreground" />
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                  {!sandbox && (
-                    <div className="border-t border-border/60 px-1 pt-1">
-                      <Link href="/select-company?choose=1" onClick={close} className={menuRow}>
-                        <Plus className="h-4 w-4 flex-shrink-0" />
-                        {tSwitcher('add_company')}
-                      </Link>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
             {/* Account links */}
             <div className="px-1 pb-1">
               <Link href="/settings" onClick={close} className={menuRow}>
                 <Settings className="h-4 w-4 flex-shrink-0" />
                 {tNav('settings')}
-              </Link>
-              <Link href="/settings/team" onClick={close} className={menuRow}>
-                <Users className="h-4 w-4 flex-shrink-0" />
-                {tNav('members_roles')}
               </Link>
               <div className="my-1 border-t border-border/60" />
               <Link href="/help" onClick={close} className={menuRow}>

@@ -5,9 +5,9 @@ import { validateBody } from '@/lib/api/validate'
 import { getErrorMessage as getUserErrorMessage } from '@/lib/errors/get-error-message'
 
 // The GET scope below builds a PostgREST .or() filter by string interpolation.
-// Guard every interpolated id against a strict UUID shape so a tainted value
-// can never inject filter syntax. Both ids are server-derived (companyId from
-// membership, teamId from a DB column), so this is defense-in-depth.
+// Guard the interpolated id against a strict UUID shape so a tainted value
+// can never inject filter syntax. The id is server-derived (companyId from
+// membership), so this is defense-in-depth.
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 const BookingTemplateLineSchema = z.object({
@@ -29,13 +29,12 @@ const CreateBookingTemplateSchema = z.object({
   ]).default('other'),
   entity_type: z.enum(['all', 'enskild_firma', 'aktiebolag']).default('all'),
   lines: z.array(BookingTemplateLineSchema).min(2),
-  team_id: z.string().uuid().optional(),
 })
 
 /**
  * GET /api/settings/booking-templates
  * Returns all templates visible to the current user:
- * system + company + team templates.
+ * system + company templates.
  *
  * Ordering: most recently used (per current company) first, then by category
  * and name for never-used templates. Usage is tracked in
@@ -46,31 +45,19 @@ export const GET = withRouteContext(
   async (_request, ctx) => {
     const { supabase, companyId } = ctx
 
-    // Resolve the team this company belongs to (if any) so team-shared
-    // templates stay visible while this company is selected.
-    const { data: company } = await supabase
-      .from('companies')
-      .select('team_id')
-      .eq('id', companyId)
-      .maybeSingle()
-    const teamId = company?.team_id ?? null
-
     // The wrapper only ever resolves a real membership UUID, but assert the
     // shape before interpolating it into the .or() filter.
     if (!UUID_RE.test(companyId)) {
       return NextResponse.json({ error: 'Invalid company context' }, { status: 400 })
     }
 
-    // Scope to the SELECTED company: system + this company + this company's team.
-    // RLS (btl_select) is membership-wide: it returns templates from *every*
-    // company the user belongs to: so the active-company narrowing must happen
-    // here in the API layer (mirrors counterparty-templates). Without this, a
-    // user who owns several companies sees all of their templates merged.
-    // Only interpolate a team id that passes the strict UUID guard.
+    // Scope to the SELECTED company: system + this company. RLS (btl_select)
+    // is membership-wide: it returns templates from *every* company the user
+    // belongs to: so the active-company narrowing must happen here in the API
+    // layer (mirrors counterparty-templates).
     const scope = [
       'is_system.eq.true',
       `company_id.eq.${companyId}`,
-      ...(teamId && UUID_RE.test(teamId) ? [`team_id.eq.${teamId}`] : []),
     ].join(',')
 
     const [templatesRes, usageRes] = await Promise.all([
@@ -127,7 +114,7 @@ export const GET = withRouteContext(
 
 /**
  * POST /api/settings/booking-templates
- * Create a company-scoped or team-scoped template.
+ * Create a company-scoped template.
  */
 export const POST = withRouteContext(
   'booking_template.create',
@@ -138,13 +125,11 @@ export const POST = withRouteContext(
     if (!result.success) return result.response
 
     const body = result.data
-    const companyId = body.team_id ? null : ctx.companyId
 
     const { data, error } = await supabase
       .from('booking_template_library')
       .insert({
-        company_id: companyId,
-        team_id: body.team_id ?? null,
+        company_id: ctx.companyId,
         created_by: user.id,
         name: body.name,
         description: body.description,
@@ -165,7 +150,7 @@ export const POST = withRouteContext(
 
 /**
  * DELETE /api/settings/booking-templates
- * Soft-delete a template by id (company or team scope only, never system).
+ * Soft-delete a template by id (company scope only, never system).
  */
 export const DELETE = withRouteContext(
   'booking_template.delete',

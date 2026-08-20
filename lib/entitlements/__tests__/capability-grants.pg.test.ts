@@ -1,12 +1,12 @@
 import { describe, it, expect } from 'vitest'
-import { randomUUID } from 'node:crypto'
 import { getPool, withUserContext } from '../../../tests/pg/setup'
 import { seedCompany, insertAuthUser, insertCompany } from '../../../tests/pg/fixtures'
 
 // pg-real coverage for migrations 20260628140000 (capability_grants /
 // company_capability_config / metered_events + company_has_capability RPC +
-// RLS) and 20260809200000 (trial seeding stopped). Required by
-// .claude/rules/database.md for any RPC/RLS/trigger change.
+// RLS), 20260809200000 (trial seeding stopped) and 20260820210000 (the
+// firm/team scope axis dropped). Required by .claude/rules/database.md for
+// any RPC/RLS/trigger change.
 //
 // NOTE: the 20260629120000 trial-seeding trigger is dropped by
 // 20260809200000, so a fresh company starts with no grants at all. The
@@ -16,16 +16,15 @@ const future = () => new Date(Date.now() + 86_400_000).toISOString()
 const past = () => new Date(Date.now() - 86_400_000).toISOString()
 
 async function insertGrant(p: {
-  companyId?: string | null
-  teamId?: string | null
+  companyId: string
   key: string
   source?: string
   expiresAt?: string | null
 }): Promise<void> {
   await getPool().query(
-    `INSERT INTO public.capability_grants (company_id, team_id, capability_key, source, expires_at)
-     VALUES ($1, $2, $3, $4, $5)`,
-    [p.companyId ?? null, p.teamId ?? null, p.key, p.source ?? 'manual', p.expiresAt ?? null],
+    `INSERT INTO public.capability_grants (company_id, capability_key, source, expires_at)
+     VALUES ($1, $2, $3, $4)`,
+    [p.companyId, p.key, p.source ?? 'manual', p.expiresAt ?? null],
   )
 }
 
@@ -70,21 +69,6 @@ describe('company_has_capability (entitlement axis)', () => {
     expect(await rpc(companyId, 'ai')).toBe(false)
   })
 
-  it('cascades a firm/team-scoped grant to the client company', async () => {
-    const { userId, companyId } = await seedCompany()
-    await clearGrants(companyId)
-    const teamId = randomUUID()
-    await getPool().query(
-      `INSERT INTO public.teams (id, name, created_by) VALUES ($1, 'Firm', $2)`,
-      [teamId, userId],
-    )
-    await getPool().query(`UPDATE public.companies SET team_id = $1 WHERE id = $2`, [
-      teamId,
-      companyId,
-    ])
-    await insertGrant({ teamId, key: 'skatteverket', expiresAt: future() })
-    expect(await rpc(companyId, 'skatteverket')).toBe(true)
-  })
 })
 
 describe('company_has_capability (enablement axis)', () => {
@@ -168,22 +152,12 @@ describe('capability_grants RLS', () => {
 })
 
 describe('capability_grants scope constraint', () => {
-  it('rejects a grant with neither company_id nor team_id', async () => {
+  it('rejects a grant without a company_id', async () => {
     await expect(
       getPool().query(
         `INSERT INTO public.capability_grants (capability_key, source) VALUES ('ai', 'manual')`,
       ),
     ).rejects.toThrow()
-  })
-
-  it('rejects a grant with both company_id and team_id', async () => {
-    const { userId, companyId } = await seedCompany()
-    const teamId = randomUUID()
-    await getPool().query(
-      `INSERT INTO public.teams (id, name, created_by) VALUES ($1, 'Firm', $2)`,
-      [teamId, userId],
-    )
-    await expect(insertGrant({ companyId, teamId, key: 'ai' })).rejects.toThrow()
   })
 })
 

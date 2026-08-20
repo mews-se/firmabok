@@ -71,13 +71,11 @@ export interface JourneyState extends JourneySnapshot {
   /** Entry snapshot of the CURRENT step (what Back from a later step restores). */
   entry: JourneySnapshot
   history: JourneySnapshot[]
-  mode: 'first' | 'add'
   submitting: boolean
   serverError: JourneyServerError
 }
 
 export interface JourneyInit {
-  mode?: 'first' | 'add'
   /** ?org_number= deep link. The component auto-submits it on mount. */
   initialOrgNumber?: string
 }
@@ -126,7 +124,6 @@ export function initJourney(init: JourneyInit = {}): JourneyState {
     ...base,
     entry: snapshotOf(base),
     history: [],
-    mode: init.mode ?? 'first',
     submitting: false,
     serverError: null,
   }

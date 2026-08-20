@@ -41,7 +41,7 @@ export function BookingTemplatesPanel() {
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [showCreate, setShowCreate] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
-  // Shared dialog for editing a company/team template or customizing (duplicating)
+  // Shared dialog for editing a company template or customizing (duplicating)
   // a read-only system template. Mode is derived from is_system.
   const [activeTemplate, setActiveTemplate] = useState<BookingTemplateLibrary | null>(null)
   const importRef = useRef<HTMLInputElement>(null)
@@ -135,7 +135,6 @@ export function BookingTemplatesPanel() {
 
   // Group templates by scope
   const systemTemplates = templates.filter((tt) => tt.is_system)
-  const teamTemplates = templates.filter((tt) => tt.team_id && !tt.is_system)
   const companyTemplates = templates.filter((tt) => tt.company_id && !tt.is_system)
 
   // Names of existing company templates: used for a soft "name already exists"
@@ -241,22 +240,6 @@ export function BookingTemplatesPanel() {
           />
         )}
 
-        {/* Team templates */}
-        {teamTemplates.length > 0 && (
-          <TemplateSection
-            title={t('section_team')}
-            templates={teamTemplates}
-            expandedId={expandedId}
-            onToggle={setExpandedId}
-            deletingId={deletingId}
-            onDelete={handleDelete}
-            canDelete={canWrite}
-            canEdit={canWrite}
-            onEdit={setActiveTemplate}
-            entityLabels={ENTITY_LABELS}
-          />
-        )}
-
         {/* Company templates */}
         {companyTemplates.length > 0 && (
           <TemplateSection
@@ -275,9 +258,9 @@ export function BookingTemplatesPanel() {
       </>
     )}
 
-    {/* Shared edit / customize dialog. Editing a company or team template uses
-        PUT; customizing a read-only system template creates a company-scoped
-        copy via POST. The form is keyed by template id so it re-seeds state when
+    {/* Shared edit / customize dialog. Editing a company template uses PUT;
+        customizing a read-only system template creates a company-scoped copy
+        via POST. The form is keyed by template id so it re-seeds state when
         switching between rows. */}
     <Dialog open={!!activeTemplate} onOpenChange={(open) => { if (!open) setActiveTemplate(null) }}>
       <DialogContent className="max-w-lg">

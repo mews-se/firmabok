@@ -112,7 +112,6 @@ let _counter = 0
 const nextId = () => `test-${++_counter}`
 
 export function makeCompany(overrides: Partial<Company> = {}): Company {
-  const { team_id = null, ...rest } = overrides
   return {
     id: 'company-1',
     name: 'Test Company',
@@ -120,11 +119,10 @@ export function makeCompany(overrides: Partial<Company> = {}): Company {
     entity_type: 'enskild_firma',
     accounting_framework: 'k2',
     created_by: 'user-1',
-    team_id,
     archived_at: null,
     created_at: '2024-01-01T00:00:00Z',
     updated_at: '2024-01-01T00:00:00Z',
-    ...rest,
+    ...overrides,
   }
 }
 

@@ -2,7 +2,6 @@ import { redirect } from 'next/navigation'
 import { headers } from 'next/headers'
 import DashboardNav from '@/components/dashboard/DashboardNav'
 import { MainContainer } from '@/components/dashboard/MainContainer'
-import CompanyTabSync from '@/components/dashboard/CompanyTabSync'
 import AnalyticsIdentify from '@/components/AnalyticsIdentify'
 import { computeIdentityHash } from '@/lib/analytics/identity-hash'
 import LazyCommandPalette from '@/components/common/LazyCommandPalette'
@@ -12,7 +11,7 @@ import { SandboxBanner } from '@/components/dashboard/SandboxBanner'
 import { CompanyProvider } from '@/contexts/CompanyContext'
 import { getCompanyEntitlements } from '@/lib/entitlements/has-capability'
 import { getBranding } from '@/lib/branding/service'
-import type { AccountingFramework, EntityType, CompanyRole, Team } from '@/types'
+import type { AccountingFramework, EntityType, CompanyRole } from '@/types'
 import {
   getDashboardAuthContext,
   getDashboardCompanyId,
@@ -60,29 +59,16 @@ export default async function DashboardLayout({
   // `getActiveCompanyId` reads from user_preferences, matching what RLS
   // sees via `current_active_company_id()`. Keeping both sides on the same
   // source avoids cross-tab / cookie divergence.
-  // Team membership (with the team row embedded) only depends on user.id,
-  // so it resolves in parallel, this layout is on the critical path of
-  // every dashboard page, so sequential round-trips are wall-clock time.
-  const [companyId, headerStore, { data: teamMembership }] = await Promise.all([
+  const [companyId, headerStore] = await Promise.all([
     getDashboardCompanyId(),
     // Read the pathname forwarded by middleware so we can branch on it.
     headers(),
-    supabase
-      .from('team_members')
-      .select('team_id, role, teams:team_id(*)')
-      .eq('user_id', user.id)
-      .limit(1)
-      .maybeSingle(),
   ])
 
   const pathname = headerStore.get('x-pathname') ?? ''
   const isNoCompanyAllowed = NO_COMPANY_ALLOWED_PATHS.some((p) =>
     pathname.startsWith(p)
   )
-
-  const team: Team | null =
-    (teamMembership?.teams as unknown as Team | null) ?? null
-  const isTeamMember = !!teamMembership
 
   // No companies: redirect to onboarding, except for allowed escape-hatch
   // routes (so the user can still reach /settings/account to delete their
@@ -97,15 +83,11 @@ export default async function DashboardLayout({
         value={{
           company: null,
           role: null,
-          companies: [],
-          isTeamMember,
-          team,
           isSandbox: false,
           capabilities: [],
         }}
       >
         <SessionTimeoutController />
-        <CompanyTabSync />
         <div className="min-h-screen bg-frame md:flex md:flex-col">
           <DashboardNav
             companyName={getBranding().appName.toLowerCase()}
@@ -136,16 +118,13 @@ export default async function DashboardLayout({
   const [
     { data: companyRow },
     { data: memberRow },
-    { data: allMemberships },
     { data: settings },
     { data: userProfile },
     entitlements,
-    { data: allSettingsNames },
     { data: userPrefs },
   ] = await Promise.all([
     supabase.from('companies').select('*').eq('id', companyId).single(),
     supabase.from('company_members').select('role').eq('company_id', companyId).eq('user_id', user.id).single(),
-    supabase.from('company_members').select('company_id, role, companies:company_id(id, name, org_number, entity_type, accounting_framework, created_by, team_id, archived_at, created_at, updated_at)').eq('user_id', user.id),
     getDashboardSettings(),
     // Nav badge counts (unbooked transactions, pending operations) are NOT
     // fetched here anymore: DashboardNav loads them client-side after mount
@@ -156,37 +135,18 @@ export default async function DashboardLayout({
     // in, distinct from the active company shown at the top.
     supabase.from('profiles').select('full_name').eq('id', user.id).maybeSingle(),
     getCompanyEntitlements(supabase, companyId),
-    // Current display names for ALL the user's companies (the switcher list).
-    // RLS scopes company_settings SELECT to user_company_ids(), so this bare
-    // select returns exactly the caller's companies, letting non-active rows
-    // show company_settings.company_name instead of the frozen companies.name.
-    supabase.from('company_settings').select('company_id, company_name'),
     // Per-user UI state (nav collapse/fold state), server-rendered so the
     // sidebar width is right on first paint. Batched here so it costs no
     // extra round-trip on the dashboard critical path.
     supabase.from('user_preferences').select('ui_state').eq('user_id', user.id).maybeSingle(),
   ])
 
-  // company_id -> current display name for every company the user belongs to.
-  const nameByCompany = new Map(
-    (allSettingsNames || []).map((s) => [s.company_id, s.company_name as string | null]),
-  )
-
   if (!companyRow || !memberRow) {
-    // Stale cookie pointing to a deleted/inaccessible company.
-    // Render the empty-state dashboard so user can switch or create a company.
+    // Stale preference pointing to a deleted/inaccessible company.
+    // Render the empty-state dashboard so the user can create a company.
     const companyContextValue = {
       company: null,
       role: null,
-      companies: (allMemberships || []).filter(m => m.companies).map((m) => {
-        const c = m.companies as unknown as import('@/types').Company
-        return {
-          company: { ...c, name: nameByCompany.get(c.id) || c.name },
-          role: m.role as CompanyRole,
-        }
-      }),
-      isTeamMember,
-      team,
       isSandbox: false,
       capabilities: [],
     }
@@ -194,7 +154,6 @@ export default async function DashboardLayout({
     return (
       <CompanyProvider value={companyContextValue}>
         <SessionTimeoutController />
-        <CompanyTabSync />
         <div className="min-h-screen bg-frame md:flex md:flex-col">
           <DashboardNav
             companyName={getBranding().appName.toLowerCase()}
@@ -251,18 +210,6 @@ export default async function DashboardLayout({
   const companyContextValue = {
     company: companyWithName,
     role: memberRow.role as CompanyRole,
-    companies: (allMemberships || []).map((m) => {
-      const c = m.companies as unknown as import('@/types').Company
-      // Current display name for every company (company_settings.company_name,
-      // falling back to the frozen companies.name) so non-active switcher rows
-      // are current too. For the active company this equals `displayName`.
-      return {
-        company: { ...c, name: nameByCompany.get(c.id) || c.name },
-        role: m.role as CompanyRole,
-      }
-    }),
-    isTeamMember,
-    team,
     isSandbox,
     capabilities: entitlements.capabilities,
   }
@@ -270,7 +217,6 @@ export default async function DashboardLayout({
   return (
     <CompanyProvider value={companyContextValue}>
       <SessionTimeoutController />
-      <CompanyTabSync />
       <div
         id="dash-shell"
         className="min-h-screen bg-frame md:flex md:flex-col"

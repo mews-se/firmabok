@@ -1946,7 +1946,6 @@ export default function JournalEntryForm({
               initialTemplate={{
                 id: '',
                 company_id: null,
-                team_id: null,
                 created_by: null,
                 name: description.trim(),
                 description: '',

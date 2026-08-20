@@ -962,7 +962,6 @@ export const ARCHIVE_EXCLUDED_TABLES: Record<string, string> = {
   booking_template_usage: 'usage telemetry',
   capability_grants: 'entitlement state',
   company_capability_config: 'entitlement state',
-  company_invitations: 'membership state, meaningless outside the platform',
   company_members: 'membership state, meaningless outside the platform',
   deadlines: 'regenerable operational calendar state',
   dimension_retag_log: 'operation log',

@@ -56,7 +56,6 @@ export const POST = withRouteContext(
 
     const rows = parsed.data.templates.map((t) => ({
       company_id: companyId,
-      team_id: null,
       created_by: user.id,
       name: t.name,
       description: t.description,

@@ -9,7 +9,7 @@ import { PAID_CAPABILITIES, type CapabilityKey } from './keys'
  *
  * Two orthogonal axes, AND-ed together (see migration
  * 20260628140000_capability_grants_and_metered_events):
- *   ENTITLEMENT: an unexpired capability_grant on the company OR its firm/team.
+ *   ENTITLEMENT: an unexpired capability_grant on the company.
  *   ENABLEMENT : not explicitly disabled in company_capability_config (absent == enabled).
  *
  * Mirrors the shape of lib/sandbox/guard.ts so it drops in at the same call
@@ -25,7 +25,7 @@ function isPaywallBypassed(): boolean {
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 /**
  * Only server-resolved UUIDs may be interpolated into the PostgREST `.or()`
- * filter below: commas/dots/parens are filter syntax. companyId/teamId always
+ * filter below: commas/dots/parens are filter syntax. companyId always
  * come from the DB, but we validate at this boundary as defense in depth.
  */
 function isUuid(v: string): boolean {
@@ -64,10 +64,9 @@ export async function getCompanyIdsWithCapability(
   if (validCompanyIds.length === 0) return new Set()
   if (isPaywallBypassed()) return new Set(validCompanyIds)
 
-  type CompanyScope = { id: string; team_id: string | null }
+  type CompanyScope = { id: string }
   type GrantScope = {
     company_id: string | null
-    team_id: string | null
     expires_at: string | null
   }
   type DisabledConfig = { company_id: string }
@@ -78,7 +77,7 @@ export async function getCompanyIdsWithCapability(
   for (const chunk of chunksOf(validCompanyIds, CAPABILITY_SCOPE_CHUNK_SIZE)) {
     const [{ data: companyRows, error: companiesError }, { data: configRows, error: configError }] =
       await Promise.all([
-        supabase.from('companies').select('id, team_id').in('id', chunk),
+        supabase.from('companies').select('id').in('id', chunk),
         supabase
           .from('company_capability_config')
           .select('company_id')
@@ -93,36 +92,23 @@ export async function getCompanyIdsWithCapability(
     disabledConfigs.push(...((configRows ?? []) as DisabledConfig[]))
   }
 
-  const teamIds = [...new Set(companies.map(company => company.team_id).filter((id): id is string => !!id))]
   const grants: GrantScope[] = []
 
   for (const chunk of chunksOf(validCompanyIds, CAPABILITY_SCOPE_CHUNK_SIZE)) {
     const { data, error } = await supabase
       .from('capability_grants')
-      .select('company_id, team_id, expires_at')
+      .select('company_id, expires_at')
       .eq('capability_key', key)
       .in('company_id', chunk)
     if (error) throw new Error(`Failed to resolve company capability grants: ${error.message}`)
     grants.push(...((data ?? []) as GrantScope[]))
   }
 
-  for (const chunk of chunksOf(teamIds, CAPABILITY_SCOPE_CHUNK_SIZE)) {
-    const { data, error } = await supabase
-      .from('capability_grants')
-      .select('company_id, team_id, expires_at')
-      .eq('capability_key', key)
-      .in('team_id', chunk)
-    if (error) throw new Error(`Failed to resolve firm capability grants: ${error.message}`)
-    grants.push(...((data ?? []) as GrantScope[]))
-  }
-
   const now = Date.now()
   const activeCompanyGrants = new Set<string>()
-  const activeTeamGrants = new Set<string>()
   for (const grant of grants) {
     if (!grantIsActive(grant.expires_at, now)) continue
     if (grant.company_id) activeCompanyGrants.add(grant.company_id)
-    if (grant.team_id) activeTeamGrants.add(grant.team_id)
   }
 
   const disabledCompanyIds = new Set(disabledConfigs.map(config => config.company_id))
@@ -130,8 +116,7 @@ export async function getCompanyIdsWithCapability(
     companies
       .filter(company =>
         !disabledCompanyIds.has(company.id) &&
-        (activeCompanyGrants.has(company.id) ||
-          (company.team_id !== null && activeTeamGrants.has(company.team_id))),
+        activeCompanyGrants.has(company.id),
       )
       .map(company => company.id),
   )
@@ -145,24 +130,12 @@ export async function hasCapability(
   if (isPaywallBypassed()) return true
   if (!isUuid(companyId)) return false // fail-closed: never interpolate a non-UUID
 
-  // Resolve the company's firm/team (firm-scoped grants cascade to clients).
-  const { data: company } = await supabase
-    .from('companies')
-    .select('team_id')
-    .eq('id', companyId)
-    .maybeSingle()
-  const rawTeamId = (company as { team_id: string | null } | null)?.team_id ?? null
-  const teamId = rawTeamId && isUuid(rawTeamId) ? rawTeamId : null
-
-  // ENTITLEMENT axis: any unexpired grant on the company or its team.
-  const scopeFilter = teamId
-    ? `company_id.eq.${companyId},team_id.eq.${teamId}`
-    : `company_id.eq.${companyId}`
+  // ENTITLEMENT axis: any unexpired grant on the company.
   const { data: grants, error: grantsError } = await supabase
     .from('capability_grants')
     .select('expires_at')
     .eq('capability_key', key)
-    .or(scopeFilter)
+    .eq('company_id', companyId)
 
   if (grantsError) return false // fail-closed on any read error
   const now = Date.now()
@@ -263,28 +236,18 @@ export async function getCompanyEntitlements(
   if (isPaywallBypassed()) return { capabilities: [...PAID_CAPABILITIES] }
   if (!isUuid(companyId)) return { capabilities: [] } // fail-closed: never interpolate a non-UUID
 
-  // The disabled-config subtraction only needs companyId, so it runs in
-  // parallel with the team lookup — this function sits on the dashboard
-  // layout's critical path, where each serialized round-trip is latency.
-  const [{ data: company }, { data: configs }] = await Promise.all([
-    supabase.from('companies').select('team_id').eq('id', companyId).maybeSingle(),
+  const [{ data: grants }, { data: configs }] = await Promise.all([
+    supabase
+      .from('capability_grants')
+      .select('capability_key, expires_at')
+      .in('capability_key', PAID_CAPABILITIES as unknown as string[])
+      .eq('company_id', companyId),
     supabase
       .from('company_capability_config')
       .select('capability_key, enabled')
       .eq('company_id', companyId)
       .eq('enabled', false),
   ])
-  const rawTeamId = (company as { team_id: string | null } | null)?.team_id ?? null
-  const teamId = rawTeamId && isUuid(rawTeamId) ? rawTeamId : null
-
-  const scopeFilter = teamId
-    ? `company_id.eq.${companyId},team_id.eq.${teamId}`
-    : `company_id.eq.${companyId}`
-  const { data: grants } = await supabase
-    .from('capability_grants')
-    .select('capability_key, expires_at')
-    .in('capability_key', PAID_CAPABILITIES as unknown as string[])
-    .or(scopeFilter)
 
   const now = Date.now()
   const entitled = new Set<string>()

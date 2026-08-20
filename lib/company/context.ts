@@ -307,9 +307,8 @@ export async function setActiveCompany(
   // Refresh the cookie as a compat hint: only after the DB write is
   // confirmed, so the cookie can never diverge from user_preferences.
   // Best-effort: Next only allows cookie mutation in Server Actions and
-  // Route Handlers, and setActiveCompany is also called from Server
-  // Component render (the /select-company single-company auto-forward),
-  // where cookies() is sealed and set() throws. The cookie is a write-only
+  // Route Handlers, and setActiveCompany can also run during Server
+  // Component render, where cookies() is sealed and set() throws. The cookie is a write-only
   // legacy hint that nothing reads anymore (see CLAUDE.md tenancy notes),
   // and the authoritative DB write above is already verified, so a skipped
   // refresh cannot desync anything. Swallowing here mirrors the setAll

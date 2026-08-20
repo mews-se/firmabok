@@ -1,7 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { setActiveCompany, CompanyContextError } from '@/lib/company/context'
+import { setActiveCompany } from '@/lib/company/context'
 import { revalidatePath } from 'next/cache'
 import { normalizeOrgNumber } from '@/lib/invariants/org-number'
 import { normalizeVatNumber, isValidSwedishVatNumber, deriveSwedishVatNumber } from '@/lib/vat/vat-number'
@@ -11,38 +11,6 @@ import {
 } from '@/lib/tax/deadline-generator'
 import type { CompanySettingsForDeadlines } from '@/lib/tax/deadline-config'
 import { getErrorMessage } from '@/lib/errors/get-error-message'
-
-/**
- * Switch the active company. Returns an error *code* (translated by the
- * caller, same pattern as `org_number_invalid` below): 'not_member' when the
- * user lacks membership, 'persist_failed' when the user_preferences write
- * failed or could not be verified (#701).
- */
-export async function switchCompany(companyId: string): Promise<{ error?: string }> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-
-  if (!user) {
-    return { error: 'Unauthorized' }
-  }
-
-  try {
-    await setActiveCompany(supabase, user.id, companyId)
-    // No revalidatePath: the client performs a hard navigation
-    // (window.location.assign) after this action returns, which wipes
-    // every React/router/fetch cache wholesale. revalidatePath would be a
-    // no-op and would just race with the hard reload.
-    return {}
-  } catch (err) {
-    console.error('[switchCompany] failed', err)
-    if (err instanceof CompanyContextError && err.code === 'not_member') {
-      return { error: 'not_member' }
-    }
-    // persist_failed and anything unexpected: a retryable failure, not a
-    // permissions problem: don't tell the user they lack access.
-    return { error: 'persist_failed' }
-  }
-}
 
 /**
  * Create a company from onboarding wizard data.
@@ -55,7 +23,6 @@ export async function switchCompany(companyId: string): Promise<{ error?: string
  * is rolled back to avoid partial state.
  */
 export async function createCompanyFromOnboarding(params: {
-  teamId: string
   settings: Record<string, unknown>
   fiscalPeriod: {
     startDate: string
@@ -76,7 +43,6 @@ export async function createCompanyFromOnboarding(params: {
 }
 
 async function createCompanyFromOnboardingImpl(params: {
-  teamId: string
   settings: Record<string, unknown>
   fiscalPeriod: { startDate: string; endDate: string; name: string }
 }): Promise<{ companyId?: string; error?: string }> {
@@ -112,7 +78,6 @@ async function createCompanyFromOnboardingImpl(params: {
   const { data: newCompanyId, error: companyError } = await supabase.rpc('create_company_with_owner', {
     p_name: companyName,
     p_entity_type: entityType,
-    p_team_id: params.teamId,
   })
 
   if (companyError || !newCompanyId) {

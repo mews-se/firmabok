@@ -4,7 +4,6 @@ import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { CompanyDangerZone } from '@/components/settings/CompanyDangerZone'
 import { CompanyInfoForm } from '@/components/settings/CompanyInfoForm'
-import { CompanyMembersSection } from '@/components/settings/CompanyMembersSection'
 import { CompanyProfileSection } from '@/components/settings/CompanyProfileSection'
 import { FiscalPeriodEditor } from '@/components/settings/FiscalPeriodEditor'
 import { LogoUpload } from '@/components/settings/LogoUpload'
@@ -50,8 +49,8 @@ export function CompanySettingsContent() {
       updates,
       onSuccess: (data: Record<string, unknown>) => {
         updateSettings(data as Partial<CompanySettings>)
-        // Refresh server components so the company switcher and DashboardNav
-        // pick up the new company_name (rendered from server in the dashboard layout).
+        // Refresh server components so DashboardNav picks up the new
+        // company_name (rendered from server in the dashboard layout).
         if ('company_name' in updates) {
           router.refresh()
         }
@@ -76,8 +75,6 @@ export function CompanySettingsContent() {
         logoUrl={settings.logo_url}
         onUpdate={(url) => updateSettings({ logo_url: url })}
       />
-
-      <CompanyMembersSection />
 
       <FiscalPeriodEditor />
 

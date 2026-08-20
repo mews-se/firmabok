@@ -43,7 +43,6 @@ import {
 import { getBranding } from '@/lib/branding/service'
 import { resetAnalyticsIdentity } from '@/lib/analytics/reset'
 import { SupportLink } from '@/components/ui/support-link'
-import CompanySwitcher from '@/components/dashboard/CompanySwitcher'
 import UserMenu from '@/components/dashboard/UserMenu'
 import { useCompany } from '@/contexts/CompanyContext'
 import { createClient } from '@/lib/supabase/client'
@@ -62,7 +61,7 @@ interface DashboardNavProps {
   isSandbox?: boolean
   // Signed-in user's full name + email: drives the bottom-left account
   // popover trigger so the user can see WHO they're logged in as,
-  // distinct from the active COMPANY shown by CompanySwitcher up top.
+  // distinct from the active COMPANY shown up top.
   userName?: string | null
   userEmail?: string | null
   // Server-read user_preferences.ui_state: seeds sidebar collapse + fold
@@ -726,8 +725,10 @@ export default function DashboardNav({ companyName: _companyName, entityType, di
 
             {/* Header */}
             <div className="px-4 pb-2 flex items-center justify-between">
-              <div className="flex-1 min-w-0 mr-2">
-                <CompanySwitcher />
+              <div className="flex-1 min-w-0 mr-2 px-1 py-1.5">
+                <p className="text-[13px] font-semibold text-foreground truncate tracking-[-0.01em]">
+                  {company?.name || _companyName}
+                </p>
               </div>
               <Button
                 variant="ghost"
@@ -741,8 +742,8 @@ export default function DashboardNav({ companyName: _companyName, entityType, di
             </div>
 
             {/* Navigation. data-ph-unmask: static i18n labels only; the
-                CompanySwitcher above stays outside so it remains masked,
-                and count bubbles inside carry data-ph-mask. */}
+                company name above stays outside so it remains masked, and
+                count bubbles inside carry data-ph-mask. */}
             <div data-ph-unmask className="px-2">
               {/* Top items (Hem) */}
               <div className="space-y-0.5">

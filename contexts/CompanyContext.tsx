@@ -1,15 +1,12 @@
 'use client'
 
 import { createContext, useContext } from 'react'
-import type { Company, CompanyRole, Team } from '@/types'
+import type { Company, CompanyRole } from '@/types'
 import type { CapabilityKey } from '@/lib/entitlements/keys'
 
 interface CompanyContextValue {
   company: Company | null
   role: CompanyRole | null
-  companies: { company: Company; role: CompanyRole }[]
-  isTeamMember: boolean
-  team: Team | null
   isSandbox: boolean
   /** PAID capability keys the active company currently holds (entitled + enabled). */
   capabilities: CapabilityKey[]

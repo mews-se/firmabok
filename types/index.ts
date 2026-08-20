@@ -11,17 +11,7 @@ export type AccountingFramework = 'k2' | 'k3'
 export type CompanyRole = 'owner' | 'admin' | 'member' | 'viewer'
 
 // Team (consulting firm) roles and source tracking
-export type TeamRole = 'owner' | 'admin' | 'member'
 export type MemberSource = 'direct' | 'team'
-
-// Team (consulting firm grouping)
-export interface Team {
-  id: string
-  name: string
-  created_by: string
-  created_at: string
-  updated_at: string
-}
 
 // Company (multi-tenant identity)
 export interface Company {
@@ -31,7 +21,6 @@ export interface Company {
   entity_type: EntityType
   accounting_framework: AccountingFramework
   created_by: string
-  team_id: string | null
   archived_at: string | null
   created_at: string
   updated_at: string
@@ -1911,11 +1900,10 @@ export interface BookingTemplateLibraryLine {
   vat_rate?: number
 }
 
-// Booking template library entry (system, team, or company-scoped)
+// Booking template library entry (system or company-scoped)
 export interface BookingTemplateLibrary {
   id: string
   company_id: string | null
-  team_id: string | null
   created_by: string | null
   name: string
   description: string

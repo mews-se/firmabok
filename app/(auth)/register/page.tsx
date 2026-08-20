@@ -1,21 +1,15 @@
 'use client'
 
 import { useState, useEffect, useRef, Suspense } from 'react'
-import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useLocale, useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { useToast } from '@/components/ui/use-toast'
 import { Check, Loader2, Eye, EyeOff } from 'lucide-react'
 import { BrandWordmark } from '@/components/branding/BrandWordmark'
 import { getErrorMessage, type ErrorLocale } from '@/lib/errors/get-error-message'
-import {
-  consumeInviteCookie,
-  INVITE_PROBLEM_MESSAGE_KEYS,
-} from '@/lib/auth/consume-invite-cookie'
 import { AuthPageSkeleton } from '@/components/auth/AuthPageSkeleton'
 import { AuthFormError } from '@/components/auth/AuthFormError'
 import { classifyAuthError, type AuthErrorKind } from '@/lib/auth/classify-auth-error'
@@ -31,20 +25,17 @@ export default function RegisterPage() {
 }
 
 function RegisterPageContent() {
-  // `invite` is the only query parameter this page reads. It deliberately does
-  // NOT read `next`: nothing links here with one (bounceToAuth in
-  // lib/supabase/middleware.ts targets /login only, and
-  // app/invite/[token]/page.tsx sends `?invite=`), the already-signed-in case
-  // is handled in the middleware behind safeReturnTo, and the signup path
-  // has no destination to spend it on. If a destination is ever wanted here
-  // it MUST go through safeReturnTo (lib/auth/safe-return-to.ts); a
-  // hand-rolled check on this value is an open redirect.
-  const searchParams = useSearchParams()
+  // This page reads no query parameters. It deliberately does NOT read
+  // `next`: nothing links here with one (bounceToAuth in
+  // lib/supabase/middleware.ts targets /login only), the already-signed-in
+  // case is handled in the middleware behind safeReturnTo, and the signup
+  // path has no destination to spend it on. If a destination is ever wanted
+  // here it MUST go through safeReturnTo (lib/auth/safe-return-to.ts); a
+  // hand-rolled check on such a value is an open redirect.
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const [inviteEmail, setInviteEmail] = useState<string | null>(null)
   // Signup failures render inline next to the form (see AuthFormError), never
   // as a toast. Field-level problems attach to their field; everything else
   // goes to the form-level alert above the form.
@@ -55,52 +46,10 @@ function RegisterPageContent() {
   const passwordInputRef = useRef<HTMLInputElement>(null)
   const confirmInputRef = useRef<HTMLInputElement>(null)
   const emailInputRef = useRef<HTMLInputElement>(null)
-  const { toast } = useToast()
-  const router = useRouter()
   const supabase = createClient()
   const t = useTranslations('register')
   const tAuth = useTranslations('auth')
-  const tInvite = useTranslations('invite')
   const errorLocale = useLocale() as ErrorLocale
-
-  // Accept a pending invite, if any, and report a non-definitive failure.
-  // Returns true when the caller should land the user in the app directly.
-  // The invite cookie survives anything that is not a settled outcome, so
-  // /onboarding and /select-company can retry acceptance server-side.
-  const acceptPendingInvite = async (): Promise<boolean> => {
-    const invite = await consumeInviteCookie()
-    if (invite.accepted) return true
-    if (invite.problem) {
-      const keys = INVITE_PROBLEM_MESSAGE_KEYS[invite.problem]
-      toast({
-        title: tInvite(keys.title),
-        description: tInvite(keys.body),
-        variant: 'destructive',
-      })
-    }
-    return false
-  }
-
-  // When arriving from an invite link, fetch the invite info to pre-fill
-  // and lock the email field so the user registers with the correct address:
-  // a mismatched address makes POST /api/team/accept answer 403 on the email
-  // equality check. The token survives that 403
-  // (lib/auth/consume-invite-cookie.ts) so it is recoverable rather than
-  // terminal, but the signup should not walk into it at all.
-  useEffect(() => {
-    const inviteToken = searchParams.get('invite')
-    if (!inviteToken) return
-
-    fetch(`/api/team/accept?token=${encodeURIComponent(inviteToken)}`)
-      .then((res) => res.ok ? res.json() : null)
-      .then((data) => {
-        if (data?.data?.email) {
-          setInviteEmail(data.data.email)
-          setEmail(data.data.email)
-        }
-      })
-      .catch(() => {})
-  }, [searchParams])
 
   // The live checklist under the password field mirrors the shared policy; the
   // aggregate check gates submission.
@@ -166,31 +115,8 @@ function RegisterPageContent() {
 
 
       // GoTrue runs with mailer autoconfirm, so a successful signup always
-      // carries a session: process any invite immediately and redirect.
+      // carries a session: straight to onboarding.
       if (data.session) {
-        const cookieMatch = document.cookie.match(/gnubok-invite-token=([^;]+)/)
-        const inviteToken = cookieMatch?.[1]
-
-        if (inviteToken) {
-          try {
-            const res = await fetch('/api/team/accept', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ token: inviteToken }),
-            })
-
-            if (res.ok) {
-              document.cookie = 'gnubok-invite-token=; path=/; max-age=0'
-              window.location.href = '/'
-              return
-            }
-          } catch (err) {
-            console.error('[register] invite acceptance failed:', err instanceof Error ? err.message : String(err))
-          }
-        }
-
-        // Auto-confirmed but no invite or invite failed: go to onboarding
-        // (invite cookie is preserved so the onboarding fallback can retry)
         window.location.href = '/'
         return
       }
@@ -254,15 +180,9 @@ function RegisterPageContent() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                disabled={isLoading || !!inviteEmail}
-                readOnly={!!inviteEmail}
+                disabled={isLoading}
                 className="h-11"
               />
-              {inviteEmail && (
-                <p className="text-xs text-muted-foreground">
-                  {t('invite_email_hint')}
-                </p>
-              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">{t('password_label')}</Label>

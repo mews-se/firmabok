@@ -72,17 +72,14 @@ export function applyTemplate(
  */
 export function getTemplateScope(template: {
   is_system: boolean
-  team_id: string | null
   company_id: string | null
-}): 'system' | 'team' | 'company' {
+}): 'system' | 'company' {
   if (template.is_system) return 'system'
-  if (template.team_id) return 'team'
   return 'company'
 }
 
 export const SCOPE_LABELS: Record<ReturnType<typeof getTemplateScope>, string> = {
   system: 'Standard',
-  team: 'Team',
   company: 'Företag',
 }
 

@@ -6,7 +6,6 @@ function makeLibraryTemplate(lines: BookingTemplateLibraryLine[], overrides: Par
   return {
     id: 'tpl-1',
     company_id: 'co-1',
-    team_id: null,
     created_by: 'user-1',
     name: 'Test template',
     description: '',
@@ -122,7 +121,7 @@ describe('deriveTemplateLinesFromBooking', () => {
 
     // Exactly one business + one settlement → convertible for the tx picker.
     expect(convertLibraryToBookingTemplate(
-      { id: 'x', company_id: null, team_id: null, created_by: null, name: 'n', description: '', category: 'other', entity_type: 'all', lines, is_system: false, is_active: true, created_at: '', updated_at: '' },
+      { id: 'x', company_id: null, created_by: null, name: 'n', description: '', category: 'other', entity_type: 'all', lines, is_system: false, is_active: true, created_at: '', updated_at: '' },
     )).not.toBeNull()
   })
 
@@ -184,15 +183,11 @@ describe('deriveTemplateLinesFromBooking', () => {
 
 describe('getTemplateScope', () => {
   it('identifies system templates', () => {
-    expect(getTemplateScope({ is_system: true, team_id: null, company_id: null })).toBe('system')
-  })
-
-  it('identifies team templates', () => {
-    expect(getTemplateScope({ is_system: false, team_id: 'team-1', company_id: null })).toBe('team')
+    expect(getTemplateScope({ is_system: true, company_id: null })).toBe('system')
   })
 
   it('identifies company templates', () => {
-    expect(getTemplateScope({ is_system: false, team_id: null, company_id: 'comp-1' })).toBe('company')
+    expect(getTemplateScope({ is_system: false, company_id: 'comp-1' })).toBe('company')
   })
 })
 

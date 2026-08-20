@@ -140,7 +140,6 @@ export function TemplateForm({
     const draft: BookingTemplateLibrary = {
       id: initialTemplate?.id ?? '',
       company_id: null,
-      team_id: null,
       created_by: null,
       name,
       description,

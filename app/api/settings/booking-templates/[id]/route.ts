@@ -28,7 +28,7 @@ const UpdateBookingTemplateSchema = z.object({
 
 /**
  * PUT /api/settings/booking-templates/[id]
- * Update a non-system template belonging to the active company (or its team).
+ * Update a non-system template belonging to the active company.
  */
 export const PUT = withRouteContext<{ params: Promise<{ id: string }> }>(
   'booking_template.update',
@@ -48,7 +48,7 @@ export const PUT = withRouteContext<{ params: Promise<{ id: string }> }>(
     // the 500 branch and left the 404 below unreachable.
     const { data: existing, error: fetchError } = await supabase
       .from('booking_template_library')
-      .select('id, company_id, team_id, is_system')
+      .select('id, company_id, is_system')
       .eq('id', id)
       .maybeSingle()
 
@@ -62,27 +62,10 @@ export const PUT = withRouteContext<{ params: Promise<{ id: string }> }>(
     }
 
     // Defense in depth alongside RLS (which is membership-wide): only
-    // templates scoped to the ACTIVE company, or shared with its team, are
-    // editable in this context. Without this, a user who belongs to several
-    // companies could edit company B's template while acting in company A.
-    // Team templates carry company_id NULL, so a plain company_id filter on
-    // the update would break them: check the applicable scope explicitly.
-    if (existing.company_id) {
-      if (existing.company_id !== companyId) {
-        return NextResponse.json({ error: 'Mallen hittades inte' }, { status: 404 })
-      }
-    } else if (existing.team_id) {
-      const { data: company } = await supabase
-        .from('companies')
-        .select('team_id')
-        .eq('id', companyId)
-        .maybeSingle()
-      if (!company?.team_id || company.team_id !== existing.team_id) {
-        return NextResponse.json({ error: 'Mallen hittades inte' }, { status: 404 })
-      }
-    } else {
-      // Non-system template with neither company nor team scope should not
-      // exist; refuse rather than let anyone edit an orphan.
+    // templates scoped to the ACTIVE company are editable in this context.
+    // Without this, a user who belongs to several companies could edit
+    // company B's template while acting in company A.
+    if (existing.company_id !== companyId) {
       return NextResponse.json({ error: 'Mallen hittades inte' }, { status: 404 })
     }
 

@@ -152,15 +152,6 @@ export async function updateSession(request: NextRequest) {
     return supabaseResponse
   }
 
-  // Invite pages: accessible to everyone, signed in or not. A user who
-  // already has an account and is signed in should still be able to land on
-  // /invite/[token] to accept the invite with one click (see
-  // app/invite/[token]/page.tsx). If we bounce them to '/', they never see
-  // the invite at all.
-  if (pathname.startsWith('/invite')) {
-    return supabaseResponse
-  }
-
   // Public payslip pages, the token in the URL is the authentication
   // (resolved server-side against salary_payslip_links). Employees have no
   // account; bouncing them to /login would make every emailed payslip link
@@ -233,7 +224,6 @@ export async function updateSession(request: NextRequest) {
   // their account without being trapped on /onboarding forever.
   const isNoCompanyAllowed =
     pathname.startsWith('/onboarding') ||
-    pathname.startsWith('/select-company') ||
     pathname.startsWith('/settings/account') ||
     pathname.startsWith('/api/account/') ||
     pathname.startsWith('/api/company')
@@ -266,8 +256,8 @@ export async function updateSession(request: NextRequest) {
     maxAge: 60 * 60 * 24 * 365,
   })
 
-  // Allow access to onboarding (for adding new companies), select-company, and companies/new
-  if (pathname.startsWith('/select-company') || pathname.startsWith('/companies/new') || pathname.startsWith('/onboarding')) {
+  // Allow access to onboarding
+  if (pathname.startsWith('/onboarding')) {
     return supabaseResponse
   }
 

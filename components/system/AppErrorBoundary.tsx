@@ -11,8 +11,8 @@ import { SupportLink } from '@/components/ui/support-link'
  * its own sibling layout, only a parent boundary does).
  *
  * Those segments fire several Supabase auth/DB queries at the exact moment a
- * session is established (BankID login -> /auth/callback -> the /select-company
- * picker). A transient failure there, most often a Supabase refresh-token
+ * session is established (login -> onboarding). A transient
+ * failure there, most often a Supabase refresh-token
  * rotation race in the first request after the cookies are set, or a stale JS
  * chunk right after a deploy, used to escape every boundary and hit
  * app/global-error.tsx, which blanks the whole document with a bare "Nagot gick

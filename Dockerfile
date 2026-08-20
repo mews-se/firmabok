@@ -1,5 +1,5 @@
 # ── Stage 1: Base ──
-FROM node:22-alpine@sha256:968df39aedcea65eeb078fb336ed7191baf48f972b4479711397108be0966920 AS base
+FROM node:26-alpine@sha256:aadf416b2cdce311a8811ba3f0608a61b77dbf997500e2eafe781b51f6a0b019 AS base
 # `apk upgrade` patches OS packages (e.g. libssl3/libcrypto3) that have fixes
 # published after the pinned base digest was built, so the Trivy image scan in
 # CI doesn't fail on fixable Alpine CVEs. The digest stays pinned for a
@@ -46,7 +46,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 
 # ── Stage 4: Runner ──
-FROM node:22-alpine@sha256:968df39aedcea65eeb078fb336ed7191baf48f972b4479711397108be0966920 AS runner
+FROM node:26-alpine@sha256:aadf416b2cdce311a8811ba3f0608a61b77dbf997500e2eafe781b51f6a0b019 AS runner
 WORKDIR /app
 
 # Patch OS packages (libssl3/libcrypto3, …) with fixes published after the

@@ -18,13 +18,3 @@ export const PASSWORD_MIN_LENGTH = 6
 export function isValidPassword(password: string): boolean {
   return password.length >= PASSWORD_MIN_LENGTH
 }
-
-/**
- * The live checklist under the password field. One entry per rule, keyed by
- * its translation id, so the list and `isValidPassword` stay in step.
- */
-export function passwordChecks(password: string) {
-  return [
-    { key: 'password_req_length', met: password.length >= PASSWORD_MIN_LENGTH },
-  ] as const
-}

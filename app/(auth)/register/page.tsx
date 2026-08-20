@@ -7,14 +7,13 @@ import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Check, Loader2, Eye, EyeOff } from 'lucide-react'
+import { Loader2, Eye, EyeOff } from 'lucide-react'
 import { BrandWordmark } from '@/components/branding/BrandWordmark'
 import { getErrorMessage, type ErrorLocale } from '@/lib/errors/get-error-message'
 import { AuthPageSkeleton } from '@/components/auth/AuthPageSkeleton'
 import { AuthFormError } from '@/components/auth/AuthFormError'
 import { classifyAuthError, type AuthErrorKind } from '@/lib/auth/classify-auth-error'
-import { isValidPassword, passwordChecks, PASSWORD_MIN_LENGTH } from '@/lib/auth/password-policy'
-import { cn } from '@/lib/utils'
+import { isValidPassword, PASSWORD_MIN_LENGTH } from '@/lib/auth/password-policy'
 
 export default function RegisterPage() {
   return (
@@ -50,10 +49,6 @@ function RegisterPageContent() {
   const t = useTranslations('register')
   const tAuth = useTranslations('auth')
   const errorLocale = useLocale() as ErrorLocale
-
-  // The live checklist under the password field mirrors the shared policy; the
-  // aggregate check gates submission.
-  const checks = passwordChecks(password)
 
   const handleRegister = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -222,32 +217,9 @@ function RegisterPageContent() {
                   )}
                 </button>
               </div>
-              <ul
-                id="password-requirements"
-                className="grid grid-cols-2 gap-x-3 gap-y-1 pt-1"
-              >
-                {checks.map((check) => (
-                  <li
-                    key={check.key}
-                    className={cn(
-                      'flex items-center gap-2 text-xs transition-colors duration-150',
-                      check.met ? 'text-foreground' : 'text-muted-foreground',
-                    )}
-                  >
-                    <span
-                      aria-hidden
-                      className="flex h-3 w-3 items-center justify-center"
-                    >
-                      {check.met ? (
-                        <Check className="h-3 w-3" />
-                      ) : (
-                        <span className="h-1 w-1 rounded-full bg-current opacity-60" />
-                      )}
-                    </span>
-                    {t(check.key)}
-                  </li>
-                ))}
-              </ul>
+              <p id="password-requirements" className="pt-1 text-xs text-muted-foreground">
+                {t('password_req_length')}
+              </p>
               {passwordError && (
                 <p role="alert" className="text-xs text-destructive">
                   {passwordError}

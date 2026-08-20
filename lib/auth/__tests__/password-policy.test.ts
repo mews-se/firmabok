@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { PASSWORD_MIN_LENGTH, isValidPassword, passwordChecks } from '../password-policy'
+import { PASSWORD_MIN_LENGTH, isValidPassword } from '../password-policy'
 
 describe('isValidPassword', () => {
   it('accepts a password exactly at the minimum length', () => {
@@ -25,20 +25,3 @@ describe('isValidPassword', () => {
   })
 })
 
-describe('passwordChecks', () => {
-  it('reports the length rule unmet for a short password', () => {
-    const [length] = passwordChecks('abc')
-    expect(length.key).toBe('password_req_length')
-    expect(length.met).toBe(false)
-  })
-
-  it('reports it met once the password is long enough', () => {
-    expect(passwordChecks('a'.repeat(PASSWORD_MIN_LENGTH))[0].met).toBe(true)
-  })
-
-  it('agrees with isValidPassword, so the checklist cannot drift from the gate', () => {
-    for (const pw of ['', 'a', 'abcde', 'abcdef', 'abcdefghij']) {
-      expect(passwordChecks(pw).every((c) => c.met)).toBe(isValidPassword(pw))
-    }
-  })
-})

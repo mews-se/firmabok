@@ -39,7 +39,6 @@ All branding can be set via env vars. Public ones use `NEXT_PUBLIC_BRANDING_*` (
 | `BRANDING_SUPPORT_EMAIL` | `supportEmail` | `support@gnubok.se` |
 | `BRANDING_PRIVACY_EMAIL` | `privacyEmail` | `privacy@gnubok.se` |
 | `BRANDING_SECURITY_EMAIL` | `securityEmail` | `security@arcim.io` |
-| `NEXT_PUBLIC_BRANDING_AUTH_EMAIL_FROM` | `authEmailFrom`: From address Supabase Auth sends verification / reset emails from. Used to pre-populate the `from:` query on the "open in Gmail" button after signup. Set to whatever you configured in your Supabase Auth SMTP. | `noreply@gnubok.se` |
 | `NEXT_PUBLIC_APP_URL` | `appUrl` | `https://app.gnubok.se` |
 | `NEXT_PUBLIC_BRANDING_LOGO_PATH` | `logoPath` | `/gnubokiceon-removebg-preview.png` |
 | `NEXT_PUBLIC_BRANDING_FAVICON_PATH` | `faviconPath` | `/favicon.ico` |
@@ -80,14 +79,12 @@ Resolution order (last wins): **defaults → env vars → extension override**.
 
 ## Things you MUST NOT change
 
-These are stable contracts. Renaming them breaks existing data, sessions, or external clients (npm package consumers, MCP connectors, browser sessions, invite links). Leave them alone in your fork:
+These are stable contracts. Renaming them breaks existing data, sessions, or external clients (npm package consumers, MCP connectors, browser sessions). Leave them alone in your fork:
 
 | Identifier | Where | Why |
 |---|---|---|
 | `gnubok-company-id` | cookie | Active company context: renaming breaks logged-in sessions |
-| `gnubok-invite-token` | cookie | Pre-auth invite token holding: renaming drops in-flight invites |
 | `gnubok_sk_` | API key prefix | All issued API keys; existing clients fail validation |
-| `gnubok_inv_` | invite token prefix | All sent invite links break |
 | `gnubok_*` | MCP tool names (`gnubok_list_invoices`, etc.) | Published MCP API: Claude clients have these cached |
 | `gnubok-mcp` | npm package name | Whitelabel users still install `npx gnubok-mcp`. Document `GNUBOK_URL=https://app.your-brand.se/api/extensions/ext/mcp-server/mcp` so they hit your endpoint |
 | `GNUBOK_API_KEY` | env var read by `gnubok-mcp` package | Same reason: npm consumer expects this name |
@@ -193,7 +190,6 @@ After deploying:
 - [ ] Visit `/`: browser tab title shows your brand.
 - [ ] Visit `/login` and `/register`: your logo renders.
 - [ ] View source of `/manifest.webmanifest`: `name`, `short_name`, `theme_color` reflect your overrides.
-- [ ] Trigger an invite email: From line says `<your-brand> <noreply@...>`, body uses your name.
 - [ ] Visit `/dpa` and `/privacy`: legal entity and contact email are yours.
 - [ ] Open OAuth flow (`/api/mcp-oauth/authorize?...`) from a test MCP client: consent page references your brand.
 - [ ] Submit support form (Settings → Support): internal subject prefix is `[<your-brand> support]`.

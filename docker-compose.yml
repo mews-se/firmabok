@@ -185,7 +185,6 @@ services:
       GOTRUE_DB_DATABASE_URL: postgres://supabase_auth_admin:${POSTGRES_PASSWORD}@db:5432/postgres
 
       GOTRUE_SITE_URL: http://${DOMAIN}
-      GOTRUE_URI_ALLOW_LIST: http://${DOMAIN}/auth/callback,http://${DOMAIN}/api/auth/callback
       GOTRUE_DISABLE_SIGNUP: ${AUTH_SIGNUPS_DISABLED}
 
       GOTRUE_JWT_ADMIN_ROLES: service_role
@@ -205,10 +204,6 @@ services:
       GOTRUE_SMTP_USER: ""
       GOTRUE_SMTP_PASS: ""
       GOTRUE_SMTP_SENDER_NAME: Firmabok
-      GOTRUE_MAILER_URLPATHS_INVITE: /auth/v1/verify
-      GOTRUE_MAILER_URLPATHS_CONFIRMATION: /auth/v1/verify
-      GOTRUE_MAILER_URLPATHS_RECOVERY: /auth/v1/verify
-      GOTRUE_MAILER_URLPATHS_EMAIL_CHANGE: /auth/v1/verify
 
       GOTRUE_EXTERNAL_PHONE_ENABLED: "false"
       GOTRUE_SMS_AUTOCONFIRM: "false"

@@ -70,9 +70,12 @@ Two smaller invariants that show up everywhere in the codebase:
 
 ## Multi-tenancy and security
 
-The multi-tenant machinery from upstream is intact (removing it would mean
-rewriting hundreds of RLS policies for no gain). Users belong to companies
-through `company_members`, and every business table carries a `company_id`:
+The multi-tenant backbone from upstream is intact (removing it would mean
+rewriting hundreds of RLS policies for no gain), even though the surfaces
+that used it for sharing are gone: invitations, teams and the company
+switcher have been removed, so an installation is one operator with one
+company. Users belong to companies through `company_members`, and every
+business table carries a `company_id`:
 
 - **Row Level Security** in PostgreSQL restricts rows to companies the user
   belongs to.
@@ -82,8 +85,8 @@ through `company_members`, and every business table carries a `company_id`:
   authenticated user and the active company in one place. Routes never
   hand-roll their own auth.
 
-`NEXT_PUBLIC_SELF_HOSTED=true` (the default here) disables MFA enforcement,
-session timeouts, analytics and the upstream paywall.
+`NEXT_PUBLIC_SELF_HOSTED=true` (the default here) disables session
+timeouts, analytics and the upstream paywall.
 
 ## The one extension: MCP
 

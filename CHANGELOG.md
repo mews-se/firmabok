@@ -4,6 +4,37 @@ All notable changes to Firmabok, newest first. Versions follow the
 tags in this repository; each one is published as a container image at
 `ghcr.io/mews-se/firmabok`.
 
+## 4.0.0 — 2026-08-20
+
+The auth and sharing layer is cut down to what a LAN installation with one
+operator actually uses: email plus password, nothing else. About 9 800 lines
+leave the tree.
+
+- The Google sign-in option is gone. Self-hosted installations never had
+  the provider configured, so the button was already dark; now the code
+  behind it is gone too.
+- The email password-reset flow is gone. The stack ships without SMTP and
+  GoTrue autoconfirms signups, so no email ever left the system: the
+  reset page, the auth callback that consumed recovery and confirmation
+  links, and the check-your-email screens were all unreachable. A
+  forgotten password is instead reset through GoTrue's admin API; the
+  recipe is under Troubleshooting in SELF-HOSTING.
+- The MFA machinery is gone. It could never be switched on self-hosted
+  (the flag is baked into the image), yet the enroll and verify pages and
+  the assurance-level gates ran on every request path.
+- Invitations, teams and multi-company support are gone. Without email
+  the invitation flow could only hand out links by hand, and a single
+  operator has no one to invite and no second company to switch to. The
+  company switcher, the member management panel and the team settings go
+  with it.
+- BREAKING: the migration drops the `company_invitations`, `teams`,
+  `team_members` and `team_invitations` tables permanently, together with
+  every `team_id` column and the team-scoped booking templates. An
+  installation that somehow used invitations or teams loses that data on
+  upgrade; single-operator installations lose nothing. `company_members`
+  stays, it is the backbone every row-level security policy resolves
+  through.
+
 ## 3.2.0 — 2026-08-20
 
 - The password policy is a length rule again: at least six characters, and

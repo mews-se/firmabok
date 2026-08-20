@@ -4,6 +4,20 @@ All notable changes to Firmabok, newest first. Versions follow the
 tags in this repository; each one is published as a container image at
 `ghcr.io/mews-se/firmabok`.
 
+## 3.1.1 — 2026-08-20
+
+- The installer says something when the kernel has no memory cgroup.
+  Raspberry Pi firmware boots with `cgroup_disable=memory`, and Compose
+  then drops every `mem_limit` in the stack while `docker stats` reports
+  nothing at all, with one terse warning per service to go on.
+  SELF-HOSTING carries the fix: `cgroup_enable=memory` on the single line
+  in `/boot/firmware/cmdline.txt`, a reboot, and then `docker compose up
+  -d --force-recreate`, because containers keep their old host config
+  across the reboot and the limits do not apply until they are recreated.
+- The README spells out the update commands instead of pointing back at
+  the install section. Both paths are there now: the standalone wget, and
+  `git pull` from an existing checkout.
+
 ## 3.1.0 — 2026-08-20
 
 - Dependabot now watches the npm tree, the pinned GitHub Actions and the

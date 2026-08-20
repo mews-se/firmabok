@@ -88,12 +88,25 @@ igenom onboardingen och stäng därefter registreringen:
 ~/firmabok/install-debian.sh lock
 ```
 
-**Uppdatering.** Kör samma två kommandon som vid installationen:
-skriptet hämtar senaste versionen, kör bara de nya migrationerna och
-startar om med den nya appimagen, publicerad till
-`ghcr.io/mews-se/firmabok` och speglad till Docker Hub som
-[`mewsse/firmabok`](https://hub.docker.com/r/mewsse/firmabok) – samma
-byggen, samma taggar.
+**Uppdatering.** När en ny release är ute kör du samma två kommandon som
+vid installationen:
+
+```bash
+wget -O install-debian.sh https://raw.githubusercontent.com/mews-se/firmabok/main/install-debian.sh
+sh install-debian.sh 10.0.0.30
+```
+
+Har du utcheckningen kvar går det lika bra därifrån, men då måste du
+hämta hem den nya versionen själv först:
+
+```bash
+cd ~/firmabok && git pull --ff-only && ./install-debian.sh 10.0.0.30
+```
+
+Båda vägarna kör bara de nya migrationerna och startar om med den nya
+appimagen, publicerad till `ghcr.io/mews-se/firmabok` och speglad till
+Docker Hub som [`mewsse/firmabok`](https://hub.docker.com/r/mewsse/firmabok),
+samma byggen och samma taggar. Din `.env` och dina volymer lämnas orörda.
 
 **Backup.** Ditt ansvar: `pg_dump` mot en annan maskin, gärna
 kompletterat med SIE-export per räkenskapsår.

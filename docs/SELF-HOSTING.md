@@ -126,3 +126,15 @@ Kontrollera att du surfar till exakt `http://<DOMAIN>`.
 **Registreringen är stängd och jag behöver ett konto till.** Sätt
 `AUTH_SIGNUPS_DISABLED=false` i `.env`, kör `docker compose up -d`,
 skapa kontot och kör sedan `./install-debian.sh lock` igen.
+
+**Docker säger att minnesgränserna kastas.** Meddelandet "Your kernel
+does not support memory limit capabilities or the cgroup is not mounted"
+kommer en gång per tjänst med `mem_limit`. Kärnan saknar då
+memory-cgroupen: gränserna i Compose-filen faller bort och `docker stats`
+visar 0 B för alla containrar. Stacken fungerar ändå. På en Raspberry Pi
+sätter firmware `cgroup_disable=memory` vid start, så lägg till
+`cgroup_enable=memory` sist på den enda raden i
+`/boot/firmware/cmdline.txt` och starta om. Containrarna behåller sin
+gamla inställning över omstarten, så kör
+`docker compose up -d --force-recreate` efteråt för att gränserna ska
+börja gälla.

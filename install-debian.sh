@@ -99,6 +99,23 @@ if ! command -v docker >/dev/null 2>&1 || ! command -v curl >/dev/null 2>&1 || !
 fi
 ensure_docker
 
+# ─── Memory limits need the kernel's memory cgroup ───
+# Raspberry Pi firmware boots with cgroup_disable=memory. The mem_limit
+# values in the Compose file are then dropped and docker stats reports
+# nothing, so say so before Compose prints its own terse warning.
+if [ -n "$DOCKER_SUDO" ]; then
+    memory_cgroup=$(sudo docker info --format '{{.MemoryLimit}}' 2>/dev/null || true)
+else
+    memory_cgroup=$(docker info --format '{{.MemoryLimit}}' 2>/dev/null || true)
+fi
+if [ "$memory_cgroup" = false ]; then
+    echo 'Note: this kernel has no memory cgroup, so the memory limits in'
+    echo 'docker-compose.yml are discarded and docker stats stays empty.'
+    echo 'The stack still runs. On a Raspberry Pi, append cgroup_enable=memory'
+    echo 'to the single line in /boot/firmware/cmdline.txt and reboot, then'
+    echo 'run: docker compose up -d --force-recreate'
+fi
+
 # ─── Secrets (first install only) ───
 cd "$REPO_DIR"
 if [ ! -f .env ]; then

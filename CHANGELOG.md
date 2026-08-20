@@ -4,6 +4,21 @@ All notable changes to Firmabok, newest first. Versions follow the
 tags in this repository; each one is published as a container image at
 `ghcr.io/mews-se/firmabok`.
 
+## 3.2.0 — 2026-08-20
+
+- The password policy is a length rule again: at least six characters, and
+  no demand for mixed case, a digit or a special character. Six matches
+  GoTrue's own floor, so the form and the auth service can no longer
+  disagree and the "weak password" round trip is gone. Firmabok serves one
+  operator over plain HTTP on the local network, where a long list of
+  composition rules buys little and mostly pushes people towards writing
+  the password on a note.
+- That rule lived in five copies: register, reset-password, set-password,
+  the security settings panel and the account password route. It now lives
+  in `lib/auth/password-policy.ts`, which the form `minLength` attributes
+  and both message catalogues read from, so the copies cannot drift apart
+  again.
+
 ## 3.1.1 — 2026-08-20
 
 - The installer says something when the kernel has no memory cgroup.

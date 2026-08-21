@@ -86,14 +86,13 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4
 
-      - name: Resolve app version
-        id: version
+      # The user menu shows the package.json version, so a release tag must
+      # match it or the image would claim the wrong version.
+      - name: Check the tag against package.json
+        if: github.ref_type == 'tag'
         run: |
-          if [ "$GITHUB_REF_TYPE" = tag ]; then
-            echo "value=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
-          else
-            echo "value=${GITHUB_REF_NAME}-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
-          fi
+          pkg=$(node -p "require('./package.json').version")
+          [ "${GITHUB_REF_NAME#v}" = "$pkg" ] || { echo "tag $GITHUB_REF_NAME but package.json says $pkg"; exit 1; }
 
       # No setup-qemu-action. That was the whole point: each runner now builds
       # its own architecture natively.
@@ -106,7 +105,7 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             EXTENSIONS_PRESET=self-hosted
-            APP_VERSION=${{ steps.version.outputs.value }}
+            APP_COMMIT=${{ github.sha }}
           # SBOM (software bill of materials) + SLSA provenance are attached as
           # OCI attestations, queryable via `docker buildx imagetools inspect`.
           provenance: mode=max

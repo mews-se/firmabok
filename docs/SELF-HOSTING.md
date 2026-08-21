@@ -102,13 +102,12 @@ eget bygge i stället: gör först en vanlig installation (den genererar
 `.env` med alla hemligheter), bygg sedan och peka om taggen:
 
 ```bash
-docker build --build-arg APP_VERSION=$(git describe --tags --always) -t ghcr.io/mews-se/firmabok:local .
+docker build -t ghcr.io/mews-se/firmabok:local .
 echo 'IMAGE_TAG=local' >> .env
 ./install-debian.sh <ip>
 ```
 
-Versionen visas längst ned i användarmenyn. Utan `--build-arg` står det
-`local`.
+Versionen (ur `package.json`) visas längst ned i användarmenyn.
 
 ## Felsökning
 

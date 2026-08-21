@@ -13,9 +13,10 @@ import {
   Settings,
 } from 'lucide-react'
 
-// Baked into the image at build time (Dockerfile ARG APP_VERSION); empty
-// under `next dev`, where the row is hidden.
+// Both inlined at build time (next.config.ts env): the package.json version
+// and, for image builds, the git commit.
 const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION ?? ''
+const APP_COMMIT = process.env.NEXT_PUBLIC_APP_COMMIT ?? ''
 
 interface UserMenuProps {
   userName: string | null
@@ -199,7 +200,10 @@ export default function UserMenu({
 
             {APP_VERSION && (
               <div className="border-t border-border/60 px-3 pt-2 pb-1">
-                <p className="text-[11px] tabular-nums text-muted-foreground">
+                <p
+                  className="text-[11px] tabular-nums text-muted-foreground"
+                  title={APP_COMMIT ? APP_COMMIT.slice(0, 7) : undefined}
+                >
                   {tNav('version', { version: APP_VERSION })}
                 </p>
               </div>

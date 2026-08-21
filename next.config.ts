@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { NextConfig } from "next";
@@ -6,6 +7,8 @@ import createNextIntlPlugin from "next-intl/plugin";
 const withNextIntl = createNextIntlPlugin("./i18n/request.ts");
 
 const projectRoot = path.dirname(fileURLToPath(import.meta.url));
+
+const appVersion = JSON.parse(readFileSync(path.join(projectRoot, "package.json"), "utf8")).version as string;
 
 const isDev = process.env.NODE_ENV === "development";
 
@@ -43,6 +46,10 @@ const nextConfig: NextConfig = {
   // the check. The /api/version route reads the same var at runtime to compare.
   env: {
     NEXT_PUBLIC_BUILD_ID: process.env.VERCEL_GIT_COMMIT_SHA ?? '',
+    // Shown in the user menu. The version is the package.json field, bumped
+    // in the release commit; the commit comes from the image build.
+    NEXT_PUBLIC_APP_VERSION: appVersion,
+    NEXT_PUBLIC_APP_COMMIT: process.env.APP_COMMIT ?? '',
   },
   // Multiple lockfiles exist above this project (e.g. a parent yarn.lock),
   // which makes Turbopack infer the wrong workspace root. Pin it explicitly.

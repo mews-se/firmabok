@@ -17,6 +17,9 @@ FROM base AS builder
 WORKDIR /app
 
 ARG EXTENSIONS_PRESET=self-hosted
+# Shown in the user menu: the release tag, or main-<sha> for :latest.
+ARG APP_VERSION=local
+ENV NEXT_PUBLIC_APP_VERSION=$APP_VERSION
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .

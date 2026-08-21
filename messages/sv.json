@@ -133,7 +133,8 @@
     "fold_register": "Register",
     "fold_bokslut": "Bokslut",
     "collapse_nav": "Minimera menyn",
-    "expand_nav": "Expandera menyn"
+    "expand_nav": "Expandera menyn",
+    "version": "Version {version}"
   },
   "auth": {
     "login_title": "Logga in",

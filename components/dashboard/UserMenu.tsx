@@ -13,6 +13,10 @@ import {
   Settings,
 } from 'lucide-react'
 
+// Baked into the image at build time (Dockerfile ARG APP_VERSION); empty
+// under `next dev`, where the row is hidden.
+const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION ?? ''
+
 interface UserMenuProps {
   userName: string | null
   userEmail: string | null
@@ -192,6 +196,14 @@ export default function UserMenu({
                 {sandbox ? tNav('logout_sandbox') : tCommon('logout')}
               </button>
             </div>
+
+            {APP_VERSION && (
+              <div className="border-t border-border/60 px-3 pt-2 pb-1">
+                <p className="text-[11px] tabular-nums text-muted-foreground">
+                  {tNav('version', { version: APP_VERSION })}
+                </p>
+              </div>
+            )}
           </div>,
           document.body,
         )}

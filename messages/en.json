@@ -133,7 +133,8 @@
     "fold_register": "Registers",
     "fold_bokslut": "Year-end",
     "collapse_nav": "Collapse menu",
-    "expand_nav": "Expand menu"
+    "expand_nav": "Expand menu",
+    "version": "Version {version}"
   },
   "auth": {
     "login_title": "Sign in",

@@ -133,9 +133,29 @@ Rapporter, och vid årets slut finns NE-bilaga och årsbokslut för enskild
 firma.
 
 Claude kopplas via MCP: skapa en API-nyckel under Inställningar → API och
-peka klienten mot
-`/api/extensions/ext/mcp-server/mcp?tool_namespace=accounted` på din egen
-host (stdio-brygga: `npx gnubok-mcp`). Uppströms finns dessutom
+koppla Claude Desktop med stdio-bryggan `npx gnubok-mcp`. Bryggan går
+som standard mot uppströms molntjänst, så `GNUBOK_URL` måste peka på din
+egen server, annars svarar varje nyckel med 401. Så här ska posten i
+`claude_desktop_config.json` se ut, med serverns adress och nyckeln
+ifyllda:
+
+```json
+"firmabok": {
+  "command": "npx",
+  "args": ["gnubok-mcp"],
+  "env": {
+    "GNUBOK_URL": "http://<lan-ip>/api/extensions/ext/mcp-server/mcp?tool_namespace=accounted",
+    "GNUBOK_API_KEY": "gnubok_sk_...",
+    "GNUBOK_CLIENT": "claude-desktop"
+  }
+}
+```
+
+Starta om Claude Desktop helt efteråt; bryggan läser inställningarna
+bara vid start. Andra MCP-klienter pekas mot samma adress med nyckeln
+som `Authorization: Bearer`.
+
+Uppströms finns dessutom
 [swedish-accounting-skills](https://github.com/erp-mafia/swedish-accounting-skills)
 – fristående Claude-skills som täcker mer än Firmabok gör (AB-bokslut,
 lön, skatteplanering) och fungerar utan någon appkoppling.

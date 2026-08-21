@@ -30,7 +30,7 @@ describe('gnubok_update_invoice: registration', () => {
     expect(tool().annotations.readOnlyHint).toBe(false)
     expect(tool().annotations.destructiveHint).toBe(false)
     expect(tool().annotations.idempotentHint).toBe(true)
-    expect(tool().catalogVisibility).toBe('search')
+    expect(tool().catalogVisibility).toBeUndefined()
     expect(TOOL_SCOPE_MAP.gnubok_update_invoice).toBe('invoices:write')
     expect(OPERATION_RISK_TIERS.update_invoice).toBe('medium')
   })

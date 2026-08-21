@@ -19,7 +19,7 @@ Tool definitions (name, description, inputSchema, outputSchema, annotations) are
 
 ## Payload-size watchdog
 
-`payload-size.bench.test.ts` enforces a `tools/list` JSON payload ceiling. If the test fires, the right answer is rarely "raise the ceiling". Instead, trim descriptions or set specialized wide tools to `catalogVisibility: 'search'`. Those tools remain discoverable with full schemas through `gnubok_search_tools` and callable through `tools/call` without bloating the default catalog.
+`payload-size.bench.test.ts` enforces a `tools/list` JSON payload ceiling. If the test fires, the right answer is rarely "raise the ceiling": trim descriptions and output schemas first. Every tool is listed in `tools/list`; `catalogVisibility: 'search'` still exists in the tool type but is unused, because clients such as Claude Desktop only call tools they received from `tools/list`, and a search-only tool answers "Tool not found" there.
 
 ## Where things live
 

@@ -2197,7 +2197,6 @@ export const tools: McpTool[] = [
       idempotentHint: true,
       openWorldHint: false,
     },
-    catalogVisibility: 'search',
     async execute(_args, companyId, _userId, supabase) {
       const { data, error } = await supabase
         .from('company_settings')
@@ -2287,7 +2286,6 @@ export const tools: McpTool[] = [
       idempotentHint: true,
       openWorldHint: false,
     },
-    catalogVisibility: 'search',
     async execute(args, companyId, userId, supabase, actor) {
       const rawChanges: Record<string, unknown> = {}
       for (const key of [
@@ -3539,7 +3537,6 @@ export const tools: McpTool[] = [
       idempotentHint: true,
       openWorldHint: false,
     },
-    catalogVisibility: 'search',
     async execute(args, companyId, userId, supabase, actor) {
       const changes: Record<string, unknown> = {}
       for (const key of [
@@ -4719,10 +4716,6 @@ export const tools: McpTool[] = [
       idempotentHint: true,
       openWorldHint: false,
     },
-    // Specialized per-invoice diagnostic: keep it out of the default tools/list
-    // (context budget, payload-size.bench.test.ts) and let agents chasing an
-    // unpaid invoice find it via gnubok_search_tools (delivery, bounce, email).
-    catalogVisibility: 'search',
     async execute(args, companyId, userId, supabase) {
       const invoiceId = args.invoice_id as string
       if (!invoiceId) throw new Error('invoice_id is required')
@@ -9486,7 +9479,6 @@ export const tools: McpTool[] = [
       idempotentHint: true,
       openWorldHint: false,
     },
-    catalogVisibility: 'search',
     async execute(args, companyId, userId, supabase, actor) {
       const invoiceId = args.invoice_id as string
       if (!invoiceId) throw new Error('invoice_id is required. Use gnubok_list_invoices to find IDs.')
@@ -11215,7 +11207,6 @@ export const tools: McpTool[] = [
       idempotentHint: true,
       openWorldHint: false,
     },
-    catalogVisibility: 'search',
     async execute(args, companyId, userId, supabase) {
       const limit = Math.min(Math.max(1, Number(args.limit) || 50), 100)
       const offset = Math.max(0, Math.floor(Number(args.offset) || 0))
@@ -11373,7 +11364,6 @@ export const tools: McpTool[] = [
       idempotentHint: true,
       openWorldHint: false,
     },
-    catalogVisibility: 'search',
     async execute(args, companyId, userId, supabase, actor) {
       // Resolve-don't-select: parse the schedule-level default bag + each
       // item's own bag, then resolve codes AND natural-language names against
@@ -11566,7 +11556,6 @@ export const tools: McpTool[] = [
       idempotentHint: true,
       openWorldHint: false,
     },
-    catalogVisibility: 'search',
     async execute(args, companyId, userId, supabase, actor) {
       // Resolve-don't-select for both the replacement default bag and any
       // per-item bags (mirrors gnubok_create_recurring_schedule). An explicit

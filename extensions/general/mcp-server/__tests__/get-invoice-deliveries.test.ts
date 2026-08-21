@@ -13,7 +13,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { createQueuedMockSupabase } from '@/tests/helpers'
 import { TOOL_SCOPE_MAP } from '@/lib/auth/api-keys'
 
-import { tools } from '../server'
+import { tools, isDefaultCatalogTool } from '../server'
 
 const getDeliveries = tools.find((t) => t.name === 'gnubok_get_invoice_deliveries')!
 
@@ -76,11 +76,10 @@ describe('gnubok_get_invoice_deliveries: registration', () => {
     expect(TOOL_SCOPE_MAP.gnubok_get_invoice_deliveries).toBe('invoices:read')
   })
 
-  it('is search-only in the catalog (tools/list context budget)', () => {
-    // Deliberate: a specialized per-invoice diagnostic stays out of the
-    // default tools/list (payload-size.bench.test.ts ceiling) and is found
-    // through gnubok_search_tools, like the company-settings tools.
-    expect(getDeliveries.catalogVisibility).toBe('search')
+  it('is listed in the default tools/list catalog', () => {
+    // Clients such as Claude Desktop can only call tools they received from
+    // tools/list, so nothing is hidden behind gnubok_search_tools.
+    expect(isDefaultCatalogTool(getDeliveries)).toBe(true)
   })
 
   it('uses only qualified identifiers in the output schema', () => {

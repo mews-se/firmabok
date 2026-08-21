@@ -162,9 +162,9 @@ describe('tools/list payload size guard', () => {
     //     upload_id/upload_url/expires_at (method, size cap and echo fields
     //     moved to description prose) and mime_type made optional on complete;
     //     the ~360-token remainder is the two tools' wire contract.
-    // Long-term answer to growth is leaning harder on gnubok_search_tools: if this
-    // fires again, prefer trimming descriptions or making a tool opt-in via search
-    // before bumping further.
+    // If this fires again, trim descriptions and output schemas before bumping.
+    // Do not hide tools behind gnubok_search_tools: Claude Desktop only calls
+    // tools it received from tools/list, so a search-only tool is unreachable.
     expect(approxTokens).toBeLessThan(59_000)
   })
 })

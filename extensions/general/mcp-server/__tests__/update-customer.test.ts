@@ -36,7 +36,7 @@ describe('gnubok_update_customer: registration', () => {
     expect(tool().inputSchema.additionalProperties).toBe(false)
     expect(tool().annotations.readOnlyHint).toBe(false)
     expect(tool().annotations.idempotentHint).toBe(true)
-    expect(tool().catalogVisibility).toBe('search')
+    expect(tool().catalogVisibility).toBeUndefined()
     expect(TOOL_SCOPE_MAP.gnubok_update_customer).toBe('customers:write')
     expect(OPERATION_RISK_TIERS.update_customer).toBe('low')
   })

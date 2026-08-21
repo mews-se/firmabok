@@ -20,8 +20,6 @@ import {
   ChevronUp,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { SupportLink } from '@/components/ui/support-link'
-import { Mail } from 'lucide-react'
 
 interface GlossaryTerm {
   term: string
@@ -465,22 +463,6 @@ export default function HelpPage() {
               </p>
             </HelpLink>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Support section */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <Mail className="h-5 w-5 text-muted-foreground" />
-            <CardTitle>{t('support_title')}</CardTitle>
-          </div>
-          <CardDescription>
-            {t('support_subtitle')}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <SupportLink variant="inline" subject="Fråga från hjälpsidan" />
         </CardContent>
       </Card>
     </div>

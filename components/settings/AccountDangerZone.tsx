@@ -19,7 +19,6 @@ import {
 } from '@/components/ui/dialog'
 import { RetentionNotice } from '@/components/ui/retention-notice'
 import { ExternalLink, Loader2 } from 'lucide-react'
-import { SupportLink } from '@/components/ui/support-link'
 import { getErrorMessage as getUserErrorMessage, type ErrorLocale } from '@/lib/errors/get-error-message'
 import {
   canDeleteAccount,
@@ -227,13 +226,6 @@ export function AccountDangerZone() {
         {error && !showDialog && (
           <p className="px-1 text-sm text-destructive">{error}</p>
         )}
-
-        <p className="px-1 pt-3">
-          <SettingsRowNote>
-            {t('support_question')}{' '}
-            <SupportLink variant="inline" subject={t('support_subject')} />
-          </SettingsRowNote>
-        </p>
       </SettingsDangerZone>
 
       <Dialog

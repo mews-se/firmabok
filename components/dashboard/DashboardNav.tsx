@@ -42,7 +42,6 @@ import {
 } from 'lucide-react'
 import { getBranding } from '@/lib/branding/service'
 import { resetAnalyticsIdentity } from '@/lib/analytics/reset'
-import { SupportLink } from '@/components/ui/support-link'
 import UserMenu from '@/components/dashboard/UserMenu'
 import { useCompany } from '@/contexts/CompanyContext'
 import { createClient } from '@/lib/supabase/client'
@@ -897,11 +896,8 @@ export default function DashboardNav({ companyName: _companyName, entityType, di
               </div>
             </div>
 
-            {/* Support + Logout */}
+            {/* Logout */}
             <div className="px-2 py-2 mt-1 border-t border-border space-y-1">
-              <div className="px-3 py-2">
-                <SupportLink variant="muted" />
-              </div>
               <Button
                 variant="ghost"
                 className="w-full justify-start text-muted-foreground active:text-foreground text-sm h-11 px-3"

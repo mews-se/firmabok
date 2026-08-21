@@ -28,9 +28,7 @@ interface NewUserChecklistProps {
 }
 
 /**
- * Activation funnel events, mirroring the one existing product-event site
- * (lib/support/submit-feedback.ts): guarded, try/caught, no PII in
- * properties. Sandbox companies never render this block (their
+ * Activation funnel events: guarded, try/caught, no PII in properties. Sandbox companies never render this block (their
  * initial_setup is seeded completed+dismissed), so no sandbox gate needed.
  */
 function captureSetup(event: string, properties?: Record<string, unknown>) {

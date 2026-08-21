@@ -55,6 +55,6 @@ export const POST = withRouteContext<{ params: Promise<{ id: string }> }>(
 - `/api/reconciliation/bank/*`, `/api/settings/*`, `/api/company/*`, `/api/team/*`
 - `/api/deadlines/*`, `/api/tax-deadlines/*`: CRUD + crons
 - `/api/pending-operations/*`, `/api/events/*`, `/api/audit-trail/*`
-- `/api/calendar/feed/[token]`, `/api/mcp-oauth/*`, `/api/support/contact`, `/api/account/delete`
+- `/api/calendar/feed/[token]`, `/api/mcp-oauth/*`, `/api/account/delete`
 - `/api/log`, `/api/health`, `/api/vat/validate`, `/api/currency/rate`, `/api/sandbox/*`
 - `/api/extensions/ext/[...path]`: dynamic extension routes (catch-all → `/api/extensions/ext/{extensionId}/{routePath}`, path params as `_paramName` query)

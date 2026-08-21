@@ -16,7 +16,6 @@ import {
   Plus,
   type LucideIcon,
 } from 'lucide-react'
-import { SupportLink } from '@/components/ui/support-link'
 
 interface EmptyStateProps {
   icon?: LucideIcon
@@ -27,7 +26,6 @@ interface EmptyStateProps {
   onAction?: () => void
   secondaryActionLabel?: string
   secondaryActionHref?: string
-  supportHint?: boolean
   className?: string
   children?: React.ReactNode
 }
@@ -44,11 +42,9 @@ export function EmptyState({
   onAction,
   secondaryActionLabel,
   secondaryActionHref,
-  supportHint,
   className,
   children,
 }: EmptyStateProps) {
-  const t = useTranslations('empty')
   return (
     <div className={cn('flex flex-col items-center justify-center py-12 px-4 text-center', className)}>
       {Icon && (
@@ -60,14 +56,6 @@ export function EmptyState({
       )}
       <h3 className="text-lg font-medium mb-2">{title}</h3>
       <p className="text-sm text-muted-foreground max-w-sm mb-6 text-balance">{description}</p>
-
-      {supportHint && (
-        <div className="mb-6">
-          <SupportLink variant="muted" subject={t('support_hint_subject')}>
-            {t('support_hint_label')}
-          </SupportLink>
-        </div>
-      )}
 
       {(actionLabel || children) && (
         <div className="flex flex-col sm:flex-row items-center gap-3">
@@ -136,7 +124,6 @@ export function EmptyTransactions() {
       description={t('preset_transactions_description')}
       actionLabel={t('preset_transactions_action')}
       actionHref="/import"
-      supportHint
     />
   )
 }
@@ -174,7 +161,6 @@ export function NoBankConnected() {
       description={t('preset_no_bank_description')}
       actionLabel={t('preset_no_bank_action')}
       actionHref="/import"
-      supportHint
     />
   )
 }

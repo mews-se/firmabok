@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { SupportLink } from '@/components/ui/support-link'
 
 /**
  * App-wide error boundary (rendered from app/error.tsx). It catches any render
@@ -94,11 +93,7 @@ export function AppErrorBoundary({
     <div className="flex min-h-[50vh] flex-col items-center justify-center gap-4 px-6 text-center">
       <h2 className="text-xl font-semibold">Något gick fel</h2>
       <p className="max-w-md text-sm text-muted-foreground">
-        Ett oväntat fel uppstod. Försök igen eller{' '}
-        <SupportLink variant="inline" subject="Oväntat fel">
-          kontakta support
-        </SupportLink>{' '}
-        om problemet kvarstår.
+        Ett oväntat fel uppstod. Försök igen.
       </p>
       <Button onClick={() => window.location.reload()}>Försök igen</Button>
     </div>

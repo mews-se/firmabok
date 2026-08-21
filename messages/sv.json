@@ -133,8 +133,7 @@
     "fold_register": "Register",
     "fold_bokslut": "Bokslut",
     "collapse_nav": "Minimera menyn",
-    "expand_nav": "Expandera menyn",
-    "discord_community": "Discord-community"
+    "expand_nav": "Expandera menyn"
   },
   "auth": {
     "login_title": "Logga in",
@@ -244,8 +243,6 @@
     "templates_title": "Dokument & Mallar",
     "templates_subtitle": "Lagstadgade mallar för din bokföring: ladda ner, fyll i och spara",
     "external_resources_title": "Externa resurser",
-    "support_title": "Behöver du mer hjälp?",
-    "support_subtitle": "Hittar du inte svaret? Kontakta oss så hjälper vi dig.",
     "category_skatt": "Skatt",
     "category_moms": "Moms",
     "category_faktura": "Faktura",
@@ -1115,8 +1112,6 @@
     "blockers_description": "Kontot kan raderas först när du har raderat eller överlåtit alla företag du äger.",
     "blockers_manage": "Hantera",
     "blocked_reason": "Du kan radera kontot först när du har raderat eller överlåtit {count, plural, =1 {företaget} other {dina # företag}}.",
-    "support_question": "Har du frågor?",
-    "support_subject": "Fråga om kontoradering",
     "export_sie": "Exportera bokföringsdata (SIE)",
     "delete_button": "Radera mitt konto",
     "dialog_title": "Radera konto permanent",
@@ -2709,19 +2704,6 @@
     "account_body_link": "säkerhetsbackup",
     "account_body_suffix": " innan du fortsätter."
   },
-  "support_link": {
-    "default_label": "Kontakta support",
-    "dialog_title": "Kontakta support",
-    "dialog_description": "Beskriv ditt ärende så återkommer vi så snart vi kan.",
-    "thanks": "Tack! Vi har mottagit ditt meddelande.",
-    "placeholder": "Beskriv vad du behöver hjälp med...",
-    "char_count": "{count}/5000 tecken",
-    "cancel": "Avbryt",
-    "send": "Skicka",
-    "sending": "Skickar...",
-    "send_failed_title": "Kunde inte skicka",
-    "send_failed_fallback": "Försök igen."
-  },
   "journal_list": {
     "mode_vouchers": "Verifikat",
     "mode_drafts": "Utkast",
@@ -4018,8 +4000,6 @@
     "suppliers_description": "Lägg till din första leverantör.",
     "no_results": "Inga resultat",
     "no_data": "Inga uppgifter att visa",
-    "support_hint_subject": "Behöver hjälp att komma igång",
-    "support_hint_label": "Behöver du hjälp? Kontakta support",
     "preset_invoices_title": "Inga fakturor ännu",
     "preset_invoices_description": "Skapa din första faktura på under 60 sekunder. Vi fyller i dina uppgifter automatiskt.",
     "preset_invoices_action": "Skapa faktura",

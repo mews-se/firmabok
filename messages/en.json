@@ -133,8 +133,7 @@
     "fold_register": "Registers",
     "fold_bokslut": "Year-end",
     "collapse_nav": "Collapse menu",
-    "expand_nav": "Expand menu",
-    "discord_community": "Discord community"
+    "expand_nav": "Expand menu"
   },
   "auth": {
     "login_title": "Sign in",
@@ -244,8 +243,6 @@
     "templates_title": "Documents & Templates",
     "templates_subtitle": "Statutory templates for your bookkeeping: download, fill in, and save",
     "external_resources_title": "External resources",
-    "support_title": "Need more help?",
-    "support_subtitle": "Can't find what you're looking for? Contact us and we'll help.",
     "category_skatt": "Tax",
     "category_moms": "VAT",
     "category_faktura": "Invoice",
@@ -1115,8 +1112,6 @@
     "blockers_description": "The account can only be deleted once you have deleted or handed over every company you own.",
     "blockers_manage": "Manage",
     "blocked_reason": "You can delete the account once you have deleted or handed over {count, plural, =1 {your company} other {your # companies}}.",
-    "support_question": "Questions?",
-    "support_subject": "Question about account deletion",
     "export_sie": "Export accounting data (SIE)",
     "delete_button": "Delete my account",
     "dialog_title": "Permanently delete account",
@@ -2709,19 +2704,6 @@
     "account_body_link": "backup",
     "account_body_suffix": " before continuing."
   },
-  "support_link": {
-    "default_label": "Contact support",
-    "dialog_title": "Contact support",
-    "dialog_description": "Describe your issue and we'll get back to you as soon as we can.",
-    "thanks": "Thank you! We've received your message.",
-    "placeholder": "Describe what you need help with...",
-    "char_count": "{count}/5000 characters",
-    "cancel": "Cancel",
-    "send": "Send",
-    "sending": "Sending...",
-    "send_failed_title": "Could not send",
-    "send_failed_fallback": "Please try again."
-  },
   "journal_list": {
     "mode_vouchers": "Vouchers",
     "mode_drafts": "Drafts",
@@ -4018,8 +4000,6 @@
     "suppliers_description": "Add your first supplier.",
     "no_results": "No results",
     "no_data": "No data to display",
-    "support_hint_subject": "Need help getting started",
-    "support_hint_label": "Need help? Contact support",
     "preset_invoices_title": "No invoices yet",
     "preset_invoices_description": "Create your first invoice in under 60 seconds. We fill in your details automatically.",
     "preset_invoices_action": "Create invoice",

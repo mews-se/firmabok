@@ -4,6 +4,25 @@ All notable changes to Firmabok, newest first. Versions follow the
 tags in this repository; each one is published as a container image at
 `ghcr.io/mews-se/firmabok`.
 
+## 4.1.0 — 2026-08-21
+
+- Every MCP tool is listed in `tools/list`. Eight tools (update customer,
+  update invoice, company settings, invoice deliveries, recurring
+  schedules) were marked search-only and left out of the list; Claude
+  Desktop only calls tools it received there, so they answered "Tool not
+  found" even though the server accepted the call. The full catalog fits
+  the context budget with room to spare.
+- The user menu shows the running version as its last row. Release images
+  carry their tag (`4.1.0`); `:latest` builds from main carry
+  `main-<sha>`, so a server can always say which commit it runs.
+- The Discord link and the "Kontakta support" dialog are gone from the
+  user menu, the mobile nav, the help page, the account danger zone, the
+  empty states and the error screens. The dialog mailed upstream's support
+  address through an email service a LAN installation never configures.
+  The `/api/support/contact` route goes with it.
+- The legacy-host redirect in `next.config.ts` is gone; it only ever armed
+  on an https host other than app.gnubok.se.
+
 ## 4.0.0 — 2026-08-20
 
 The auth and sharing layer is cut down to what a LAN installation with one

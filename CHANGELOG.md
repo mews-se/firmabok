@@ -4,6 +4,21 @@ All notable changes to Firmabok, newest first. Versions follow the
 tags in this repository; each one is published as a container image at
 `ghcr.io/mews-se/firmabok`.
 
+## 4.1.1 — 2026-08-22
+
+Nothing in the image changes; this release only covers the workflows that
+build it.
+
+- Every pinned action now comments the exact release its commit belongs to
+  rather than the major. A major tag moves, so `# v4` stopped being true the
+  moment upstream retagged it, and the workflow audit raised eight
+  mismatches for pins nobody had touched.
+- Dependabot waits a week before proposing an update. A release that is
+  yanked or found compromised is usually pulled well inside that window.
+- `docker/setup-buildx-action` moves to v4.3.0, the release the private
+  variant already ran: the two repositories share a dependabot config but
+  happened to run it a day apart.
+
 ## 4.1.0 — 2026-08-21
 
 - Every MCP tool is listed in `tools/list`. Eight tools (update customer,

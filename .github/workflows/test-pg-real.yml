@@ -20,7 +20,7 @@ jobs:
     # (<reason>)` comments inside the migration.
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # Full history so the merge-base with the PR base branch exists.
           fetch-depth: 0
@@ -62,7 +62,7 @@ jobs:
       PGPASSWORD: postgres
 
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # Full history so the merge-base with the PR base branch exists.
           fetch-depth: 0
@@ -167,7 +167,7 @@ jobs:
       PGPASSWORD: postgres
 
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 

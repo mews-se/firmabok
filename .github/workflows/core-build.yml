@@ -24,7 +24,7 @@ jobs:
     name: Checks
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # Nothing here pushes, so leaving the token in .git/config only widens
           # what a compromised dependency in the build could reach.
@@ -78,7 +78,7 @@ jobs:
     name: Build (zero extensions)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # Nothing here pushes, so leaving the token in .git/config only widens
           # what a compromised dependency in the build could reach.
@@ -101,7 +101,7 @@ jobs:
       matrix:
         shard: [1, 2, 3, 4]
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # Nothing here pushes, so leaving the token in .git/config only widens
           # what a compromised dependency in the build could reach.

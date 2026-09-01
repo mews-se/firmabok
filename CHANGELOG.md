@@ -4,6 +4,17 @@ All notable changes to Firmabok, newest first. Versions follow the
 tags in this repository; each one is published as a container image at
 `ghcr.io/mews-se/firmabok`.
 
+## 4.1.2 — 2026-09-01
+
+Dependency refresh from dependabot's monthly sweep; no functional changes.
+
+- Seventeen minor and patch npm updates, among them next and
+  eslint-config-next at 16.3.2.
+- The pinned node base image digest and the CodeQL actions move along
+  with their groups.
+- ESLint 10 was proposed and declined again: eslint-plugin-react 7.37.5
+  still breaks on it, tracked in jsx-eslint/eslint-plugin-react#3977.
+
 ## 4.1.1 — 2026-08-22
 
 Nothing in the image changes; this release only covers the workflows that

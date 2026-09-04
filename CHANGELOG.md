@@ -4,6 +4,17 @@ All notable changes to Firmabok, newest first. Versions follow the
 tags in this repository; each one is published as a container image at
 `ghcr.io/mews-se/firmabok`.
 
+## 4.1.3 — 2026-09-04
+
+Security update from dependabot; nothing in the image changes.
+
+- @humanfs/node moves to 0.16.8 to clear GHSA-p498-v437-472g, where the
+  recursive copy followed symlinked files outside the source tree. The
+  package sits under the eslint chain and is only ever installed for
+  development.
+- From this release on, every dependabot patch gets a release of its own,
+  so that a change that lands is also visible as a version.
+
 ## 4.1.2 — 2026-09-01
 
 Dependency refresh from dependabot's monthly sweep; no functional changes.

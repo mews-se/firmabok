@@ -4,6 +4,16 @@ All notable changes to Firmabok, newest first. Versions follow the
 tags in this repository; each one is published as a container image at
 `ghcr.io/mews-se/firmabok`.
 
+## 4.1.4 — 2026-09-04
+
+Security update from dependabot; nothing in the image changes.
+
+- browserslist moves from 4.28.1 to 4.28.8 to clear GHSA-73wf-gq98-2v4g,
+  where a crafted browserslist-stats.json could crash the process or
+  write to the prototype. Its data packages (caniuse-lite,
+  electron-to-chromium, node-releases) refresh with it. The package is
+  build tooling and is only ever installed for development.
+
 ## 4.1.3 — 2026-09-04
 
 Security update from dependabot; nothing in the image changes.

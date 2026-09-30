@@ -4,6 +4,23 @@ All notable changes to Firmabok, newest first. Versions follow the
 tags in this repository; each one is published as a container image at
 `ghcr.io/mews-se/firmabok`.
 
+## 4.2.3 — 2026-09-30
+
+Security update from dependabot; the image rebuilds with the patched
+packages.
+
+- next moves from 16.3.4 to 16.3.8 to clear GHSA-vcvr-r3jv-pc5j, remote
+  code execution in next/og ImageResponse, fixed in 16.3.6. A LAN
+  installation is not exposed to the internet, but the fix is a plain
+  patch bump.
+- dompurify moves from 3.4.13 to 3.4.16 to clear GHSA-p98j-92pf-mc4p,
+  where a node-removing afterSanitize hook could leave event handlers
+  armed on the detached subtree.
+- The two brace-expansion copies under the build tooling move to 1.1.21
+  and 2.1.7 to clear GHSA-q2hr-2g5m-vwhr, a quadratic-time expansion of
+  the `{a},b}` rewrite. Development only.
+
+
 ## 4.2.2 — 2026-09-30
 
 Security update from dependabot; the image rebuilds with the patched

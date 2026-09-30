@@ -4,6 +4,22 @@ All notable changes to Firmabok, newest first. Versions follow the
 tags in this repository; each one is published as a container image at
 `ghcr.io/mews-se/firmabok`.
 
+## 4.2.2 — 2026-09-30
+
+Security update from dependabot; the image rebuilds with the patched
+js-yaml.
+
+- js-yaml moves from 5.4.0 to 5.4.1 to clear GHSA-r3ph-w7gj-g6xm, where
+  maxTotalMergeKeys did not count empty merge sources, so a crafted
+  document could keep the loader busy far past the configured limit.
+  js-yaml reads the template packs.
+- @babel/core moves from 7.28.6 to 7.29.7 to clear GHSA-4x5r-pxfx-6jf8,
+  an arbitrary file read through a sourceMappingURL comment. The package
+  is only reachable via eslint-plugin-react-hooks and is only ever
+  installed for development; the rest of the babel chain and
+  browserslist's data packages move with it.
+
+
 ## 4.2.1 — 2026-09-11
 
 Security update; the image rebuilds with the patched packages.

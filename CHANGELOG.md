@@ -4,6 +4,29 @@ All notable changes to Firmabok, newest first. Versions follow the
 tags in this repository; each one is published as a container image at
 `ghcr.io/mews-se/firmabok`.
 
+## 4.3.0 — 2026-10-01
+
+Dependabot's monthly batch; the image rebuilds on the current
+node:26-alpine with the updated runtime packages. No code change.
+
+- react and react-dom move from 19.2.8 to 19.3.0, zod from 4.4.3 to
+  4.6.5, next-intl from 4.13.7 to 4.14.7, @supabase/ssr from 0.12.5 to
+  0.12.7, @react-pdf/renderer from 4.8.1 to 4.9.0, framer-motion from
+  13.1.1 to 13.4.3, lucide-react from 1.34.0 to 1.48.0, react-hook-form
+  from 7.86.0 to 7.88.0, tailwind-merge from 3.6.0 to 3.7.0, js-yaml from
+  5.4.1 to 5.4.2, jszip from 3.10.1 to 3.10.2, posthog-js and posthog-node
+  to 1.434.12 and 5.53.0, @upstash/ratelimit and @upstash/redis to 2.2.0
+  and 1.39.0. eslint-config-next moves from 16.3.2 to 16.3.6 (development).
+- The node:26-alpine base image moves to the current digest.
+- vitest moves from 4.1.11 to 5.0.1 and dotenv from 17.4.2 to 18.0.3,
+  both development only. Vitest 5 requires Node 22, so the workflows that
+  pin a Node version move from 20 to 22.
+- github/codeql-action moves to 4.38.2, docker/setup-buildx-action to
+  4.4.1 and docker/build-push-action to 7.4.0 in the workflows.
+- eslint stays on 9 for now: the eslint-plugin-react bundled with
+  eslint-config-next does not run on ESLint 10 yet.
+
+
 ## 4.2.3 — 2026-09-30
 
 Security update from dependabot; the image rebuilds with the patched

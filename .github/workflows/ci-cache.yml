@@ -39,7 +39,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: 20
+          node-version: 22
 
       # Populates ~/.npm. `npm ci` deletes node_modules first, so this measures
       # a cold install the same way a PR job will.
@@ -51,4 +51,4 @@ jobs:
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.npm
-          key: npm-${{ runner.os }}-node20-${{ hashFiles('package-lock.json') }}
+          key: npm-${{ runner.os }}-node22-${{ hashFiles('package-lock.json') }}

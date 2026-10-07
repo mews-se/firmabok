@@ -1320,9 +1320,9 @@ function toCompletenessFindings(checks: VatDeclarationCheck[]): VatCompletenessF
 // ── VAT close check (composes VAT report + blocker scans + sanity ratios) ──
 //
 // Intent-shaped tool: answers "can I close VAT for this period?" in one call.
-// Replaces the 5-7 chained tool calls (vat_report + uncategorized + supplier
-// invoices + reconciliation + voucher gaps + prior-period compare) the agent
-// would otherwise need to assemble the same answer.
+// Replaces the chained tool calls (vat_report + supplier invoices + voucher
+// gaps + prior-period compare) the agent would otherwise need to assemble the
+// same answer.
 
 interface VatCloseBlocker {
   kind:
@@ -3351,9 +3351,6 @@ export const tools: McpTool[] = [
   },
 
 
-  // ── Receipt matcher tool ──────────────────────────────────────
-
-
   // ── Customer tools ───────────────────────────────────────────
 
   {
@@ -4287,7 +4284,7 @@ export const tools: McpTool[] = [
   {
     name: 'gnubok_vat_close_check',
     title: 'VAT Close Check (Momsdeklaration)',
-    description: "Answer 'can I close VAT?' in one call. Returns SKV 4700 rutor, blockers (uncategorized, unapproved supplier invoices, reconciliation diff, missing receipts) plus declaration_checks: the momsdeklaration completeness gate the web filing UI uses. ready_to_close covers both.",
+    description: "Answer 'can I close VAT?' in one call. Returns SKV 4700 rutor, blockers (unapproved supplier invoices, missing underlag, reverse-charge input VAT) plus declaration_checks: the completeness gate the web filing UI uses. ready_to_close covers both.",
     inputSchema: {
       type: 'object',
       additionalProperties: false,
@@ -6560,11 +6557,6 @@ export const tools: McpTool[] = [
       return await generateSupplierLedger(supabase, companyId, asOfDate)
     },
   },
-
-  // ── Transaction Matching ─────────────────────────────────────
-
-
-
 
 
 

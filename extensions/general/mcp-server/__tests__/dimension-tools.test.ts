@@ -26,8 +26,6 @@ const listDimensionValues = tools.find((t) => t.name === 'gnubok_list_dimension_
 const createDimensionValue = tools.find((t) => t.name === 'gnubok_create_dimension_value')!
 const createVoucher = tools.find((t) => t.name === 'gnubok_create_voucher')!
 const createInvoice = tools.find((t) => t.name === 'gnubok_create_invoice')!
-const categorizeTransaction = tools.find((t) => t.name === 'gnubok_categorize_transaction')!
-const bulkBookTransactions = tools.find((t) => t.name === 'gnubok_bulk_book_transactions')!
 
 beforeEach(() => {
   vi.clearAllMocks()

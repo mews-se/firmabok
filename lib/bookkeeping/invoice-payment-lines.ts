@@ -339,8 +339,7 @@ export function buildInvoicePaymentClearingLines(
   ]
 
   // Tolerance of 0.005 SEK is for floating-point equalisation only, not a
-  // rounding allowance per BFL 5 kap 4-5§. Same rationale as the balance
-  // pre-check in gnubok_bulk_book_transactions.
+  // rounding allowance per BFL 5 kap 4-5§.
   if (Math.abs(fxDiffSek) > 0.005) {
     if (fxDiffSek > 0) {
       // arSek > bankSek → bank received fewer SEK than booked. Loss → 7960 debit.

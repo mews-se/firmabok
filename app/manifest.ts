@@ -8,9 +8,8 @@ ensureInitialized()
 export default function manifest(): MetadataRoute.Manifest {
   const b = getBranding()
   const sizes = [72, 96, 128, 144, 152, 192, 384, 512]
-  // Next.js's Icon type doesn't accept the space-separated "any maskable" purpose
-  // that the original public/manifest.json used. Cast preserves the same JSON
-  // output so PWA install prompts behave identically to before.
+  // Next.js's Icon type doesn't accept the space-separated "any maskable"
+  // purpose, hence the cast.
   const icons = sizes.map((size) => ({
     src: `${b.pwaIconBasePath}/icon-${size}.png`,
     sizes: `${size}x${size}`,
@@ -27,7 +26,6 @@ export default function manifest(): MetadataRoute.Manifest {
     theme_color: b.manifestThemeColor,
     orientation: 'portrait-primary',
     icons,
-    categories: ['business', 'finance', 'productivity'],
     lang: 'sv-SE',
   }
 }

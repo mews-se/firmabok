@@ -8,7 +8,6 @@ import { Sun, Moon, Monitor, LogOut } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { createClient } from '@/lib/supabase/client'
 import { SecuritySettings } from '@/components/settings/SecuritySettings'
-import { InstallAppSection } from '@/components/settings/InstallAppSection'
 import {
   SettingsGroup,
   SettingsInput,
@@ -227,9 +226,6 @@ export function AccountSettingsContent() {
             }))}
           />
         </SettingsRow>
-
-        {/* Install as app: renders nothing when already running installed */}
-        <InstallAppSection />
       </SettingsGroup>
 
       {/* Security: BankID, password, 2FA (renders its own group) */}

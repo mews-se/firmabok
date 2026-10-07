@@ -51,17 +51,15 @@ mkdir -p /app/.next/cache
 
 # ─── Replace build-time placeholder sentinels with runtime env vars ───
 # Substitution covers /app/.next (client static + server bundles + manifests;
-# the manifests at .next/ root hold the CSP/headers from next.config.ts) and
-# /app/public (sw.js: the service worker is served raw, so Next's build-time
-# inlining doesn't reach it). server.js needs no substitution and lives on the
-# read-only image layer, so it is deliberately excluded.
+# the manifests at .next/ root hold the CSP/headers from next.config.ts).
+# server.js needs no substitution and lives on the read-only image layer, so
+# it is deliberately excluded.
 #
 # `sed -i` rewrites every file it touches, so we prefilter with `grep -l` and
 # only sed files that actually contain a placeholder. busybox grep has no -Z,
 # so we rely on Next.js build outputs not having newlines in filenames.
 SUBST_PATHS=""
-[ -d /app/.next ]  && SUBST_PATHS="$SUBST_PATHS /app/.next"
-[ -d /app/public ] && SUBST_PATHS="$SUBST_PATHS /app/public"
+[ -d /app/.next ] && SUBST_PATHS="$SUBST_PATHS /app/.next"
 
 if [ -n "$SUBST_PATHS" ]; then
   # Escape sed replacement metacharacters (backslash, & whole-match, and the |
@@ -78,7 +76,6 @@ if [ -n "$SUBST_PATHS" ]; then
   E_SUPABASE_URL=$(sed_esc "$NEXT_PUBLIC_SUPABASE_URL")
   E_SUPABASE_ANON_KEY=$(sed_esc "$NEXT_PUBLIC_SUPABASE_ANON_KEY")
   E_APP_URL=$(sed_esc "$NEXT_PUBLIC_APP_URL")
-  E_VAPID_PUBLIC_KEY=$(sed_esc "${NEXT_PUBLIC_VAPID_PUBLIC_KEY:-}")
   E_SELF_HOSTED=$(sed_esc "${NEXT_PUBLIC_SELF_HOSTED:-true}")
   E_SESSION_IDLE_TIMEOUT_MS=$(sed_esc "${NEXT_PUBLIC_SESSION_IDLE_TIMEOUT_MS:-}")
   E_SESSION_ABSOLUTE_TIMEOUT_MS=$(sed_esc "${NEXT_PUBLIC_SESSION_ABSOLUTE_TIMEOUT_MS:-}")
@@ -90,7 +87,7 @@ if [ -n "$SUBST_PATHS" ]; then
   #   *.json: routes-manifest.json (CSP/headers), build-manifest.json, etc.
   #   *.html: prerendered pages (e.g. /login title contains BRANDING_APP_NAME)
   #   *.rsc: RSC payloads with the same inlined values
-  #   *.body: metadata-route bodies, e.g. manifest.webmanifest.body (PWA name)
+  #   *.body: metadata-route bodies, e.g. manifest.webmanifest.body (app name)
   # shellcheck disable=SC2086
   find $SUBST_PATHS -type f \
         \( -name '*.js' -o -name '*.json' -o -name '*.html' -o -name '*.rsc' -o -name '*.body' \) \
@@ -100,7 +97,6 @@ if [ -n "$SUBST_PATHS" ]; then
         -e "s|__NEXT_PUBLIC_SUPABASE_URL__|${E_SUPABASE_URL}|g" \
         -e "s|__NEXT_PUBLIC_SUPABASE_ANON_KEY__|${E_SUPABASE_ANON_KEY}|g" \
         -e "s|__NEXT_PUBLIC_APP_URL__|${E_APP_URL}|g" \
-        -e "s|__NEXT_PUBLIC_VAPID_PUBLIC_KEY__|${E_VAPID_PUBLIC_KEY}|g" \
         -e "s|__NEXT_PUBLIC_SELF_HOSTED__|${E_SELF_HOSTED}|g" \
         -e "s|__NEXT_PUBLIC_SESSION_IDLE_TIMEOUT_MS__|${E_SESSION_IDLE_TIMEOUT_MS}|g" \
         -e "s|__NEXT_PUBLIC_SESSION_ABSOLUTE_TIMEOUT_MS__|${E_SESSION_ABSOLUTE_TIMEOUT_MS}|g" \
@@ -116,6 +112,5 @@ fi
 chmod -R a-w /app/.next/static 2>/dev/null || true
 [ -d /app/.next/server ] && chmod -R a-w /app/.next/server 2>/dev/null || true
 find /app/.next -maxdepth 1 -type f -exec chmod a-w {} + 2>/dev/null || true
-[ -f /app/public/sw.js ] && chmod a-w /app/public/sw.js 2>/dev/null || true
 
 exec "$@"

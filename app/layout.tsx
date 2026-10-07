@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Hedvig_Letters_Serif } from "next/font/google";
-import Script from "next/script";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
 import { Toaster } from "@/components/ui/toaster";
@@ -101,7 +100,6 @@ export default async function RootLayout({
             </PaletteProvider>
           </ThemeProvider>
         </NextIntlClientProvider>
-        <Script src="/sw-register.js" strategy="afterInteractive" />
       </body>
     </html>
   );

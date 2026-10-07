@@ -1,7 +1,6 @@
 'use client'
 
 import Link from 'next/link'
-import { useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { SettingsFormWrapper } from '@/components/settings/SettingsFormWrapper'
 import { SettingsLoadError } from '@/components/settings/SettingsLoadError'
@@ -13,7 +12,6 @@ import { VoucherSeriesPerSourceTypeForm } from '@/components/settings/VoucherSer
 import { applyDefaultSeriesToMap } from '@/lib/bookkeeping/voucher-series-resolver'
 import { PeriodiseringAutoDetectToggle } from '@/components/settings/PeriodiseringAutoDetectToggle'
 import { DimensionsToggle } from '@/components/settings/DimensionsToggle'
-import { AccountingFrameworkForm } from '@/components/settings/AccountingFrameworkForm'
 import {
   SettingsGroup,
   SettingsRow,
@@ -21,9 +19,8 @@ import {
   SettingsSelect,
 } from '@/components/settings/SettingsRows'
 import { useSettings } from '@/components/settings/useSettings'
-import { useCompany } from '@/contexts/CompanyContext'
 import { ExternalLink } from 'lucide-react'
-import type { AccountingFramework, CompanySettings } from '@/types'
+import type { CompanySettings } from '@/types'
 
 const SERIES_OPTIONS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')
 
@@ -32,14 +29,6 @@ export function BookkeepingSettingsContent() {
   const tNav = useTranslations('settings_nav')
   const tIntro = useTranslations('settings_intro')
   const { settings, isLoading, updateSettings, refetch } = useSettings()
-  const { company } = useCompany()
-  // Local mirror of the company-level accounting_framework so the K2/K3
-  // selector can reflect its own saves without waiting for the layout to
-  // re-render through the server. Falls back to k2 (matches the column
-  // default) until the company row is loaded.
-  const [framework, setFramework] = useState<AccountingFramework>(
-    company?.accounting_framework ?? 'k2',
-  )
 
   if (isLoading) return <SettingsLoadingSkeleton />
   if (!settings) return <SettingsLoadError onRetry={refetch} />
@@ -89,26 +78,13 @@ export function BookkeepingSettingsContent() {
     }
   }
 
-  // K2/K3 selector is only meaningful for AB. EF stays on EF rules and never
-  // picks a framework. Use the company row (source of truth) since
-  // company_settings.entity_type can be stale on legacy data.
-  const isAktiebolag = company?.entity_type === 'aktiebolag'
-
   return (
     <div>
       <SettingsSectionHeader title={tNav('bookkeeping')} intro={tIntro('bookkeeping')} />
 
       <SettingsFormWrapper onSave={handleSave}>
-        {/* Grunder: framework (AB only), method, deferred booking, default
-            series. The framework row saves through its own PATCH and opts out
-            of this wrapper's dirty tracking; the rest read via FormData. */}
+        {/* Grunder: method, deferred booking, default series, read via FormData. */}
         <SettingsGroup label={t('group_basics')}>
-          {isAktiebolag && (
-            <AccountingFrameworkForm
-              current={framework}
-              onSaved={(next) => setFramework(next)}
-            />
-          )}
           <SettingsRow
             label={t('method_label')}
             htmlFor="accounting_method"

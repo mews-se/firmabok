@@ -152,8 +152,6 @@ function validateAccrualPeriod(
 
 export const EntityTypeSchema = z.enum(['enskild_firma', 'aktiebolag'])
 
-export const AccountingFrameworkSchema = z.enum(['k2', 'k3'])
-
 /**
  * Single K3 component (BFNAR 2012:1 ch.17.4, komponentavskrivning).
  *

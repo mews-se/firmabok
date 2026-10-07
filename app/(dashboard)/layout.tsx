@@ -7,7 +7,7 @@ import { SettingsHotkey } from '@/components/settings/SettingsHotkey'
 import { SessionTimeoutController } from '@/components/auth/SessionTimeoutController'
 import { SandboxBanner } from '@/components/dashboard/SandboxBanner'
 import { CompanyProvider } from '@/contexts/CompanyContext'
-import { getBranding } from '@/lib/branding/service'
+import { APP_NAME } from '@/lib/brand'
 import type { EntityType, CompanyRole } from '@/types'
 import {
   getDashboardAuthContext,
@@ -85,7 +85,7 @@ export default async function DashboardLayout({
         <SessionTimeoutController />
         <div className="min-h-screen bg-frame md:flex md:flex-col">
           <DashboardNav
-            companyName={getBranding().appName.toLowerCase()}
+            companyName={APP_NAME.toLowerCase()}
             entityType="enskild_firma"
             isSandbox={false}
           />
@@ -148,7 +148,7 @@ export default async function DashboardLayout({
         <SessionTimeoutController />
         <div className="min-h-screen bg-frame md:flex md:flex-col">
           <DashboardNav
-            companyName={getBranding().appName.toLowerCase()}
+            companyName={APP_NAME.toLowerCase()}
             entityType="enskild_firma"
             isSandbox={false}
           />

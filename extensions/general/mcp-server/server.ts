@@ -28,7 +28,7 @@ import { eventBus } from '@/lib/events/bus'
 import { ACCOUNT_NUMBER_RE } from '@/lib/invariants/account-number'
 import { getVatRules, getPermittedVatRates, getArticleVatRateAdoptionSet } from '@/lib/invoices/vat-rules'
 import { fetchExchangeRate, convertToSEK } from '@/lib/currency/riksbanken'
-import { getBranding } from '@/lib/branding/service'
+import { APP_NAME } from '@/lib/brand'
 import { generateIncomeStatement } from '@/lib/reports/income-statement'
 import {
   calculateGrossMargin,
@@ -618,7 +618,7 @@ async function stagePendingOperation(
       ? { ...params, ...(changesBag as Record<string, unknown>) }
       : params
   const riskLevel = getRiskLevel(operationType, riskParams)
-  const branding = getBranding().appName.toLowerCase()
+  const branding = APP_NAME.toLowerCase()
 
   // Resolve period_status once. The caller can pass `dateForPeriodCheck`
   // explicitly; otherwise we scan params for a known affärshändelse-date

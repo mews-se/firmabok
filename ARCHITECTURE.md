@@ -126,7 +126,7 @@ exception. See [LICENSE](LICENSE).
 | `supabase/migrations/` | Database schema, RLS policies, enforcement triggers |
 | `packs/` | Konteringspaket (booking templates) as validated YAML |
 | `messages/` | Swedish and English UI strings |
-| `docs/` | Self-hosting and white-label guides |
+| `docs/` | Self-hosting guide |
 
 ## Testing
 

@@ -10,7 +10,7 @@ import { calculateVatDeclaration } from './vat-declaration'
 import { getAuditLog } from '@/lib/core/audit/audit-service'
 import { downloadDocumentObject } from '@/lib/core/documents/document-service'
 import { fetchAllRows } from '@/lib/supabase/fetch-all'
-import { getBranding } from '@/lib/branding/service'
+import { APP_NAME } from '@/lib/brand'
 import {
   trialBalanceToCsv,
   incomeStatementToCsv,
@@ -197,7 +197,7 @@ export async function generateFullArchive(
       generatedAt: new Date().toISOString(),
       scope: options.scope,
       periodLabel: options.scope === 'period' ? periodLabel(periods[0]) : undefined,
-      appName: getBranding().appName,
+      appName: APP_NAME,
     })
   )
 
@@ -241,7 +241,7 @@ export async function generateBaseDataArchive(
       companyName: company.company_name || 'Okänt företag',
       orgNumber: company.org_number,
       generatedAt: new Date().toISOString(),
-      appName: getBranding().appName,
+      appName: APP_NAME,
     })
   )
 
@@ -1300,12 +1300,11 @@ async function buildSystemDoc(
     voucherSeriesQuery,
   ])
 
-  const branding = getBranding()
   return {
     system: {
-      name: branding.appName.toLowerCase(),
+      name: APP_NAME.toLowerCase(),
       description: 'Bokforingssystem for enskild firma och aktiebolag',
-      url: branding.appUrl,
+      url: process.env.NEXT_PUBLIC_APP_URL ?? '',
     },
     kontoplan: {
       standard: 'BAS 2026',

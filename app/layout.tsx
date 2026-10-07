@@ -10,7 +10,7 @@ import { PaletteProvider } from "@/components/providers/PaletteProvider";
 import { SWRProvider } from "@/components/providers/SWRProvider";
 import { ScrollbarReveal } from "@/components/ScrollbarReveal";
 import { ensureInitialized } from "@/lib/init";
-import { getBranding } from "@/lib/branding/service";
+import { APP_NAME } from "@/lib/brand";
 import { APP_TIME_ZONE } from "@/i18n/config";
 import "./globals.css";
 
@@ -40,22 +40,21 @@ const hedvigSerif = Hedvig_Letters_Serif({
 });
 
 export function generateMetadata(): Metadata {
-  const b = getBranding();
   return {
-    title: b.appName,
-    description: b.appDescription,
+    title: APP_NAME,
+    description: "Ekonomihantering",
     manifest: "/manifest.webmanifest",
     appleWebApp: {
       capable: true,
       statusBarStyle: "default",
-      title: b.appName,
+      title: APP_NAME,
     },
   };
 }
 
 export function generateViewport(): Viewport {
   return {
-    themeColor: getBranding().themeColor,
+    themeColor: "#304D83",
     width: "device-width",
     initialScale: 1,
     viewportFit: "cover",
@@ -67,13 +66,12 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const branding = getBranding();
   const locale = await getLocale();
   const messages = await getMessages();
   return (
     <html lang={locale} suppressHydrationWarning className={`${geistSans.variable} ${geistMono.variable} ${hedvigSerif.variable}`}>
       <head>
-        <link rel="apple-touch-icon" href={branding.appleTouchIconPath} />
+        <link rel="apple-touch-icon" href="/icons/icon-192.png" />
       </head>
       <body
         className="antialiased"

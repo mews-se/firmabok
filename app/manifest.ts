@@ -1,29 +1,24 @@
 import type { MetadataRoute } from 'next'
-import { ensureInitialized } from '@/lib/init'
-import { getBranding } from '@/lib/branding/service'
-
-// Guarantee branding extensions have registered before the manifest is built.
-ensureInitialized()
+import { APP_NAME } from '@/lib/brand'
 
 export default function manifest(): MetadataRoute.Manifest {
-  const b = getBranding()
   const sizes = [72, 96, 128, 144, 152, 192, 384, 512]
   // Next.js's Icon type doesn't accept the space-separated "any maskable"
   // purpose, hence the cast.
   const icons = sizes.map((size) => ({
-    src: `${b.pwaIconBasePath}/icon-${size}.png`,
+    src: `/icons/icon-${size}.png`,
     sizes: `${size}x${size}`,
     type: 'image/png',
     purpose: 'any maskable',
   })) as unknown as MetadataRoute.Manifest['icons']
   return {
-    name: b.appName,
-    short_name: b.appName,
-    description: b.appDescription,
+    name: APP_NAME,
+    short_name: APP_NAME,
+    description: 'Ekonomihantering',
     start_url: '/',
     display: 'standalone',
-    background_color: b.manifestBackgroundColor,
-    theme_color: b.manifestThemeColor,
+    background_color: '#ffffff',
+    theme_color: '#1a1a1a',
     orientation: 'portrait-primary',
     icons,
     lang: 'sv-SE',

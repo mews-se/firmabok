@@ -1,5 +1,5 @@
 import { cn } from '@/lib/utils'
-import { getBranding } from '@/lib/branding/service'
+import { APP_NAME } from '@/lib/brand'
 
 interface BrandWordmarkProps {
   /**
@@ -18,8 +18,8 @@ interface BrandWordmarkProps {
 
 /**
  * Text-only wordmark used in place of the legacy logo image on auth /
- * onboarding / sandbox / invite surfaces. Renders the active brand's
- * `appName` in Hedvig Letters Serif at weight 700: the display font is
+ * onboarding / sandbox / invite surfaces. Renders the app
+ * name in Hedvig Letters Serif at weight 700: the display font is
  * single-weight on Google Fonts so 700 ends up synthetically bolded, but
  * that matches the requested aesthetic.
  */
@@ -28,8 +28,7 @@ export function BrandWordmark({
   lowercase = true,
   className,
 }: BrandWordmarkProps) {
-  const branding = getBranding()
-  const name = lowercase ? branding.appName.toLowerCase() : branding.appName
+  const name = lowercase ? APP_NAME.toLowerCase() : APP_NAME
   return (
     <span
       className={cn(

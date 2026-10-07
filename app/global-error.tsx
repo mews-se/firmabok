@@ -23,7 +23,7 @@ function reloadKey(): string {
 }
 
 // support@gnubok.se is hardcoded on purpose: this boundary renders when the root
-// layout failed, so the branding service and any provider are unavailable here.
+// layout failed, so providers are unavailable here.
 const SUPPORT_EMAIL = "support@gnubok.se";
 
 function decideInitialPhase(): "reloading" | "fallback" {

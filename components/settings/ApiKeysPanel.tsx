@@ -24,13 +24,12 @@ import { AttnLine } from '@/components/ui/attn-line'
 import { Loader2, Plus, Copy, Check, Trash2, Key, AlertTriangle } from 'lucide-react'
 import { cn, formatDateLong } from '@/lib/utils'
 import { copyToClipboard } from '@/lib/browser/copy-to-clipboard'
-import { getBranding } from '@/lib/branding/service'
+import { APP_NAME } from '@/lib/brand'
 import { ILLUSTRATIONS, illustrationSrc } from '@/components/onboarding/onboarding-illustrations'
 import { STAGING_SCOPES } from '@/lib/auth/api-keys'
 import type { ApiKeyScope } from '@/lib/auth/api-keys'
 
-const branding = getBranding()
-const connectorName = branding.appName.toLowerCase()
+const connectorName = APP_NAME.toLowerCase()
 
 type ScopeEntry = {
   scope: ApiKeyScope

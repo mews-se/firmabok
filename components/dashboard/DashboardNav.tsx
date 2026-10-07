@@ -40,7 +40,7 @@ import {
   Library,
   BookCheck,
 } from 'lucide-react'
-import { getBranding } from '@/lib/branding/service'
+import { APP_NAME } from '@/lib/brand'
 import UserMenu from '@/components/dashboard/UserMenu'
 import { useCompany } from '@/contexts/CompanyContext'
 import { createClient } from '@/lib/supabase/client'
@@ -311,8 +311,6 @@ export default function DashboardNav({ companyName: _companyName, entityType, di
     }, 200)
   }
 
-  const hiddenNavHrefs = new Set(getBranding().hiddenNavHrefs)
-
   const renderNavIcon = (
     item: { href: string; icon: typeof LayoutDashboard },
     className: string,
@@ -323,7 +321,6 @@ export default function DashboardNav({ companyName: _companyName, entityType, di
 
   const filteredItems = navItems.filter(item => {
     if (item.hidden) return false
-    if (hiddenNavHrefs.has(item.href)) return false
     // Dimension surfaces are hidden until the company opts in via the
     // bookkeeping settings toggle (company_settings.dimensions_enabled).
     if (item.requiresDimensions && !dimensionsEnabled) return false
@@ -516,11 +513,11 @@ export default function DashboardNav({ companyName: _companyName, entityType, di
           >
             <Link
               href="/"
-              aria-label={getBranding().appName}
+              aria-label={APP_NAME}
               className="flex items-center rounded-lg"
             >
               <Image
-                src={getBranding().logoPath}
+                src="/accounted-icon.png"
                 alt=""
                 width={26}
                 height={26}

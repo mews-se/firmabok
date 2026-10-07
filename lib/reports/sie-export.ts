@@ -1,7 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { fetchAllRows } from '@/lib/supabase/fetch-all'
 import { fetchLinesByEntryIds } from '@/lib/bookkeeping/entry-lines'
-import { getBranding } from '@/lib/branding/service'
+import { APP_NAME } from '@/lib/brand'
 import { formatOrgNumber } from '@/lib/utils'
 import { createLogger } from '@/lib/logger'
 import { getOpeningBalances } from './opening-balances'
@@ -165,7 +165,7 @@ export async function generateSIEExport(
   // the output is served as UTF-8.
   lines.push('#FORMAT PC8')
   lines.push('#SIETYP 4')
-  const programName = sanitizeProgramName(options.program_name || getBranding().appName)
+  const programName = sanitizeProgramName(options.program_name || APP_NAME)
   lines.push(`#PROGRAM "${programName}" "1.0"`)
   lines.push(`#GEN ${formatSIEDate(now)}`)
 

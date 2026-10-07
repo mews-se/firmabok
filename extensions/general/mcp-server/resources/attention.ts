@@ -128,7 +128,7 @@ export const attentionResource: McpResource = {
         count: overdueAll.length,
         samples: overdueAll.slice(0, SAMPLE_LIMIT),
         next: {
-          description: 'Granska förfallna fakturor och skicka påminnelser.',
+          description: 'Granska förfallna fakturor.',
           resource: 'Accounted://recent-activity?limit=20',
         },
       })

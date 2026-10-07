@@ -380,17 +380,6 @@ export interface CompanySettings {
   invoice_email_cc_addresses?: string[] | null
   invoice_email_bcc_addresses?: string[] | null
 
-  // Automation
-  send_invoice_reminders: boolean
-  reminder_days_level_1: number
-  reminder_days_level_2: number
-  reminder_days_level_3: number
-
-  // Reminder surcharges (dröjsmålsränta + lagstadgad påminnelseavgift)
-  reminder_fee_enabled: boolean
-  reminder_fee_amount: number
-  reminder_interest_rate_override: number | null
-
   // Logo
   logo_url: string | null
 
@@ -3434,50 +3423,6 @@ export interface PeriodStatus {
   has_opening_balances: boolean
   draft_count: number
   next_period_exists: boolean
-}
-
-// ============================================================
-// Invoice Reminder Types (Betalningspåminnelser)
-// ============================================================
-
-// Response type from customer action
-export type ReminderResponseType = 'marked_paid' | 'disputed'
-
-// Invoice reminder record
-export interface InvoiceReminder {
-  id: string
-  invoice_id: string
-  user_id: string
-  company_id: string
-  reminder_level: 1 | 2 | 3
-  sent_at: string
-  email_to: string
-  response_type: ReminderResponseType | null
-  response_at: string | null
-  action_token: string
-  action_token_used: boolean
-  created_at: string
-  // Dröjsmålsränta + lagstadgad påminnelseavgift (Räntelagen §6, Lag 1981:739)
-  interest_amount: number
-  interest_rate: number | null
-  interest_from_date: string | null
-  interest_days: number | null
-  reminder_fee: number
-  fee_journal_entry_id: string | null
-}
-
-// Swedish labels for reminder levels
-export const REMINDER_LEVEL_LABELS: Record<1 | 2 | 3, string> = {
-  1: 'Vänlig påminnelse',
-  2: 'Andra påminnelsen',
-  3: 'Slutlig påminnelse'
-}
-
-// Reminder level descriptions
-export const REMINDER_LEVEL_DESCRIPTIONS: Record<1 | 2 | 3, string> = {
-  1: '15 dagar efter förfallodatum',
-  2: '30 dagar efter förfallodatum',
-  3: '45 dagar efter förfallodatum'
 }
 
 // ── Invoice extraction (used by invoice-inbox extension and core utils) ──

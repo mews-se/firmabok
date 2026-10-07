@@ -159,10 +159,7 @@ describe('readVercelCrons', () => {
  * Every app/api/**\/cron route must either be in vercel.json (and therefore in
  * both crontabs) or be named here with a reason.
  */
-const INTENTIONALLY_UNSCHEDULED: Readonly<Record<string, string>> = {
-  '/api/invoices/reminders/cron':
-    'Feature switched off: the route is a tombstone that logs and returns 503 { disabled: true }.',
-}
+const INTENTIONALLY_UNSCHEDULED: Readonly<Record<string, string>> = {}
 
 function findCronRoutes(dir: string, urlPrefix: string): string[] {
   const found: string[] = []

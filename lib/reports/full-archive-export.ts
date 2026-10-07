@@ -827,7 +827,6 @@ export const MASTER_DATA_DUMP_TABLES: MasterDataTableSpec[] = [
     denormalize: { prefix: 'invoice_', columns: ['currency', 'exchange_rate'] },
   },
   { name: 'invoice_payments', file: 'invoice_payments.json', orderBy: 'payment_date' },
-  { name: 'invoice_reminders', file: 'invoice_reminders.json' },
   { name: 'recurring_invoice_schedules', file: 'recurring_invoice_schedules.json' },
   // Supplier invoicing
   { name: 'supplier_invoices', file: 'supplier_invoices.json', orderBy: 'invoice_date' },
@@ -984,6 +983,7 @@ export const ARCHIVE_EXCLUDED_TABLES: Record<string, string> = {
   graph_transaction_counterparties: 'derived AI context graph, regenerable',
   idempotency_keys: 'infrastructure',
   invoice_deliveries: 'e-mail delivery log of the retired invoice send path, no rows are written any more',
+  invoice_reminders: 'payment reminder log of the retired reminder stack, no rows are written any more',
   inbox_rate_counters: 'infrastructure',
   mcp_tasks: 'MCP task handles: transient tool-call state with a 1-hour TTL',
   metered_events: 'billing telemetry',

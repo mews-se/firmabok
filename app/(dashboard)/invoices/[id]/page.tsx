@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { useToast } from '@/components/ui/use-toast'
@@ -29,9 +29,7 @@ import {
   XCircle,
   ReceiptText,
   ExternalLink,
-  Bell,
   AlertTriangle,
-  MessageSquare,
   Trash2,
   Lock,
   CalendarClock,
@@ -52,7 +50,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import type { Invoice, InvoiceItem, Customer, InvoiceStatus, InvoiceReminder, InvoiceDocumentType } from '@/types'
+import type { Invoice, InvoiceItem, Customer, InvoiceStatus, InvoiceDocumentType } from '@/types'
 import { getErrorMessage as getUserErrorMessage } from '@/lib/errors/get-error-message'
 
 const statusVariantMap: Record<InvoiceStatus, 'default' | 'secondary' | 'success' | 'warning' | 'destructive'> = {
@@ -91,7 +89,6 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
   const t = useTranslations('invoice_detail')
 
   const [invoice, setInvoice] = useState<InvoiceWithRelations | null>(null)
-  const [reminders, setReminders] = useState<InvoiceReminder[]>([])
   // Payment history backing the new Betalningsstatus card. Fetched alongside
   // the invoice itself so the card stays in sync with paid_amount /
   // remaining_amount on the invoice row.
@@ -127,12 +124,8 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
   const [deferInvoiceBooking, setDeferInvoiceBooking] = useState(false)
   const [showBookConfirm, setShowBookConfirm] = useState(false)
   const [bookVoucherPreview, setBookVoucherPreview] = useState<string | null>(null)
-  const [reminderDays, setReminderDays] = useState<[number, number, number]>([15, 30, 45])
-  // null = settings row not loaded; don't promise a reminder schedule then.
-  const [autoRemindersEnabled, setAutoRemindersEnabled] = useState<boolean | null>(null)
 
   const statusLabel = (status: InvoiceStatus): string => t(`status_${status}`)
-  const reminderLevelLabel = (level: 1 | 2 | 3): string => t(`reminder_level_${level}`)
 
   useEffect(() => {
     fetchInvoice()
@@ -146,14 +139,14 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
     const settingsPromise = company?.id
       ? supabase
           .from('company_settings')
-          .select('ore_rounding, vat_registered, accounting_method, defer_invoice_booking, reminder_days_level_1, reminder_days_level_2, reminder_days_level_3, send_invoice_reminders')
+          .select('ore_rounding, vat_registered, accounting_method, defer_invoice_booking')
           .eq('company_id', company.id)
           .maybeSingle()
       : Promise.resolve(null)
 
-    // Invoice, reminders and payments all key on the route id: one parallel
-    // batch. Only the follow-ups below need the invoice row.
-    const [{ data, error }, { data: reminderData }, { data: paymentData }] =
+    // Invoice and payments key on the route id: one parallel batch. Only the
+    // follow-ups below need the invoice row.
+    const [{ data, error }, { data: paymentData }] =
       await Promise.all([
         supabase
           .from('invoices')
@@ -164,11 +157,6 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
           `)
           .eq('id', id)
           .single(),
-        supabase
-          .from('invoice_reminders')
-          .select('*')
-          .eq('invoice_id', id)
-          .order('sent_at', { ascending: false }),
         // Payment history for the Betalningsstatus card. Joins the
         // journal_entries row to get voucher_series + voucher_number so each
         // payment row can link to its verifikat. Manual payments (no tx, no
@@ -198,10 +186,6 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
     }
 
     setInvoice(data as InvoiceWithRelations)
-
-    if (reminderData) {
-      setReminders(reminderData as InvoiceReminder[])
-    }
 
     if (paymentData) {
       type PaymentRow = {
@@ -234,14 +218,6 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
       }
       setAccountingMethod(settings?.accounting_method === 'cash' ? 'cash' : 'accrual')
       setDeferInvoiceBooking(!!settings?.defer_invoice_booking)
-      setReminderDays([
-        settings?.reminder_days_level_1 ?? 15,
-        settings?.reminder_days_level_2 ?? 30,
-        settings?.reminder_days_level_3 ?? 45,
-      ])
-      if (settings) {
-        setAutoRemindersEnabled(settings.send_invoice_reminders ?? true)
-      }
     }
 
     // Related documents need the invoice row but do not gate the main detail
@@ -1202,77 +1178,6 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
                     </ul>
                   )}
                 </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Reminders Card */}
-          {(invoice.status === 'sent' || invoice.status === 'overdue' || reminders.length > 0) && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Bell className="h-5 w-5" />
-                  {t('reminders_card_title')}
-                </CardTitle>
-                {reminders.length === 0 && autoRemindersEnabled !== null && (
-                  <CardDescription>
-                    {autoRemindersEnabled
-                      ? t('reminders_description', {
-                          day1: reminderDays[0],
-                          day2: reminderDays[1],
-                          day3: reminderDays[2],
-                        })
-                      : t('reminders_disabled')}
-                  </CardDescription>
-                )}
-              </CardHeader>
-              <CardContent>
-                {reminders.length > 0 ? (
-                  <div className="space-y-3">
-                    {reminders.map((reminder) => (
-                      <div
-                        key={reminder.id}
-                        className="flex items-start justify-between p-3 bg-muted rounded-lg"
-                      >
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <Badge
-                              variant={reminder.reminder_level === 3 ? 'destructive' : reminder.reminder_level === 2 ? 'default' : 'secondary'}
-                              className="text-xs"
-                            >
-                              {t('reminder_level_label', { level: reminder.reminder_level })}
-                            </Badge>
-                            <span className="text-sm font-medium">
-                              {reminderLevelLabel(reminder.reminder_level as 1 | 2 | 3)}
-                            </span>
-                          </div>
-                          <p className="text-xs text-muted-foreground">
-                            {t('reminder_sent_to', { date: formatDate(reminder.sent_at), email: reminder.email_to })}
-                          </p>
-                          {reminder.response_type && (
-                            <div className="flex items-center gap-1 mt-1">
-                              {reminder.response_type === 'marked_paid' ? (
-                                <>
-                                  <CheckCircle className="h-3 w-3 text-success" />
-                                  <span className="text-xs text-success">{t('reminder_marked_paid')}</span>
-                                </>
-                              ) : (
-                                <>
-                                  <MessageSquare className="h-3 w-3 text-destructive" />
-                                  <span className="text-xs text-destructive">{t('reminder_objection')}</span>
-                                </>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">
-                    {t('reminders_empty')}
-                  </p>
-                )}
               </CardContent>
             </Card>
           )}

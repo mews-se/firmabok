@@ -1506,24 +1506,6 @@ export const UpdateSettingsSchema = z.object({
     .optional(),
   invoice_header_text: z.string().max(200).nullable().optional(),
   invoice_footer_text: z.string().max(500).nullable().optional(),
-  // Automation
-  send_invoice_reminders: z.boolean().optional(),
-  reminder_days_level_1: z.number().int().min(1).max(365).optional(),
-  reminder_days_level_2: z.number().int().min(1).max(365).optional(),
-  reminder_days_level_3: z.number().int().min(1).max(365).optional(),
-  // Reminder surcharges (dröjsmålsränta + lagstadgad påminnelseavgift)
-  reminder_fee_enabled: z.boolean().optional(),
-  reminder_fee_amount: z
-    .number()
-    .min(0, 'Påminnelseavgift kan inte vara negativ')
-    .max(60, 'Lagstadgad maxgräns för påminnelseavgift är 60 kr (Lag 1981:739)')
-    .optional(),
-  reminder_interest_rate_override: z
-    .number()
-    .min(0, 'Räntesats kan inte vara negativ')
-    .max(0.9999, 'Ange räntesatsen som en decimal mindre än 1 (t.ex. 0.115 för 11,5%)')
-    .nullable()
-    .optional(),
   // AI agent flow
   ai_flow_enabled: z.boolean().optional(),
   // Dimensions (kostnadsställe/projekt): UI-visibility toggle only, never

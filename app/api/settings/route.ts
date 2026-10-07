@@ -48,7 +48,7 @@ export const PUT = withRouteContext(
     // Fetch current settings to check for tax-relevant changes
     const { data: oldSettings } = await supabase
       .from('company_settings')
-      .select(`${DEADLINE_SETTINGS_SELECT}, vat_number, onboarding_complete, reminder_days_level_1, reminder_days_level_2, reminder_days_level_3, aktiekapital, antal_aktier`)
+      .select(`${DEADLINE_SETTINGS_SELECT}, vat_number, onboarding_complete, aktiekapital, antal_aktier`)
       .eq('company_id', companyId)
       .single()
 
@@ -87,18 +87,6 @@ export const PUT = withRouteContext(
           details: { required_roles: ['owner', 'admin'] },
         })
       }
-    }
-
-    const reminderDays = [
-      body.reminder_days_level_1 ?? oldSettings?.reminder_days_level_1 ?? 15,
-      body.reminder_days_level_2 ?? oldSettings?.reminder_days_level_2 ?? 30,
-      body.reminder_days_level_3 ?? oldSettings?.reminder_days_level_3 ?? 45,
-    ]
-    if (!(reminderDays[0] < reminderDays[1] && reminderDays[1] < reminderDays[2])) {
-      return NextResponse.json(
-        { error: 'Påminnelsedagarna måste ligga i stigande ordning.' },
-        { status: 400 },
-      )
     }
 
     // Lock org_number after onboarding is complete (legal identifier: changing it

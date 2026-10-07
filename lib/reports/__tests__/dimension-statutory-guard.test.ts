@@ -59,13 +59,12 @@ describe('dimension filter: statutory exclusion', () => {
     expect([...DIMENSION_FILTER_SLUGS].sort()).toEqual([...FILTERABLE_SLUGS].sort())
   })
 
-  it('the dimension-pnl report is gated on dimensions being enabled, never entity/employees', () => {
+  it('the dimension-pnl report is gated on dimensions being enabled, never on entity type', () => {
     const entry = REPORT_CATALOG.find((r) => r.slug === 'dimension-pnl')
     expect(entry).toBeDefined()
     expect(entry?.needsDimensions).toBe(true)
     // Free tier for everyone (founder decision 2026-07-02): no other gate.
     expect(entry?.entityType).toBeUndefined()
-    expect(entry?.needsEmployees).toBeUndefined()
   })
 
   it('no statutory report route imports the dimension filter parser', () => {

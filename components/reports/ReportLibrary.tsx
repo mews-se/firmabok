@@ -22,13 +22,11 @@ import type { EntityType } from '@/types'
  */
 export function ReportLibrary({
   entityType,
-  hasEmployees,
   dimensionsEnabled,
   openedAt,
   onOpen,
 }: {
   entityType?: EntityType
-  hasEmployees?: boolean
   dimensionsEnabled?: boolean
   /** slug -> epoch ms for the "Senast öppnad" column. */
   openedAt: Record<string, number>
@@ -36,7 +34,7 @@ export function ReportLibrary({
 }) {
   const t = useTranslations('reports')
   const [query, setQuery] = useState('')
-  const allSections = getLibrarySections(entityType, hasEmployees, dimensionsEnabled)
+  const allSections = getLibrarySections(entityType, dimensionsEnabled)
 
   // Matched against the translated name and description plus the descriptor's
   // synonyms, so the vocabulary someone arrives with ("verifikat per konto")

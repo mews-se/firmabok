@@ -42,8 +42,6 @@ export interface ReportDescriptor {
   category: ReportCategory
   /** When set, the report only appears for this entity type. */
   entityType?: EntityType
-  /** When true, only shown if the company has employees. */
-  needsEmployees?: boolean
   params: ReportParams
   /** On-page export formats handled by the focused view's export menu. */
   exports?: ReportExportFormat[]
@@ -52,11 +50,6 @@ export interface ReportDescriptor {
    * of /reports/[slug] (e.g. reports that own their own route, or live elsewhere).
    */
   route?: string
-  /**
-   * Hidden from the legacy desktop rail; surfaced only on the library landing.
-   * Used for reports that were never in the nav (e.g. the SIE export).
-   */
-  libraryOnly?: boolean
   /**
    * Accepts the per-dimension value filter (?dim_no/&dim_code → jsonb @>).
    * P&L-safe reports ONLY: statutory outputs (balance sheet, balansrapport,
@@ -81,14 +74,6 @@ export interface ReportDescriptor {
    */
   standalone?: boolean
 }
-
-/** Categories shown in the legacy desktop rail, in order. */
-export const NAV_CATEGORIES: ReportCategory[] = [
-  'interim',
-  'year_end',
-  'tax_vat',
-  'ledgers',
-]
 
 /** All categories shown on the library landing, in order. */
 export const LIBRARY_CATEGORIES: ReportCategory[] = [
@@ -251,7 +236,6 @@ export const REPORT_CATALOG: ReportDescriptor[] = [
     category: 'export',
     params: 'fiscal',
     route: '/import?view=export#sie-export',
-    libraryOnly: true,
   },
 ]
 
@@ -272,11 +256,9 @@ export function getReport(slug: string): ReportDescriptor | undefined {
 function isVisible(
   r: ReportDescriptor,
   entityType?: EntityType,
-  hasEmployees?: boolean,
   dimensionsEnabled?: boolean,
 ): boolean {
   if (r.entityType && r.entityType !== entityType) return false
-  if (r.needsEmployees && !hasEmployees) return false
   if (r.needsDimensions && !dimensionsEnabled) return false
   return true
 }
@@ -287,34 +269,16 @@ export interface ReportSection {
   items: ReportDescriptor[]
 }
 
-/** Grouped reports for the legacy desktop rail (excludes library-only items). */
-export function getNavSections(
-  entityType?: EntityType,
-  dimensionsEnabled?: boolean,
-): ReportSection[] {
-  return NAV_CATEGORIES.map((category) => ({
-    category,
-    labelKey: CATEGORY_LABEL_KEY[category],
-    items: REPORT_CATALOG.filter(
-      (r) =>
-        r.category === category &&
-        !r.libraryOnly &&
-        isVisible(r, entityType, undefined, dimensionsEnabled),
-    ),
-  })).filter((s) => s.items.length > 0)
-}
-
 /** Grouped reports for the library landing (includes everything visible). */
 export function getLibrarySections(
   entityType?: EntityType,
-  hasEmployees?: boolean,
   dimensionsEnabled?: boolean,
 ): ReportSection[] {
   return LIBRARY_CATEGORIES.map((category) => ({
     category,
     labelKey: CATEGORY_LABEL_KEY[category],
     items: REPORT_CATALOG.filter(
-      (r) => r.category === category && isVisible(r, entityType, hasEmployees, dimensionsEnabled),
+      (r) => r.category === category && isVisible(r, entityType, dimensionsEnabled),
     ),
   })).filter((s) => s.items.length > 0)
 }

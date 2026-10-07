@@ -3,7 +3,6 @@
 import { useLocale, useTranslations } from 'next-intl'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { HelpPopover } from '@/components/ui/help-popover'
 import { useToast } from '@/components/ui/use-toast'
 import {
@@ -15,7 +14,7 @@ import {
 } from '@/components/ui/dialog'
 import { SettingsGroup } from '@/components/settings/SettingsRows'
 import { Loader2, Trash2, Plus, ChevronDown, Download, Upload, Pencil, Copy } from 'lucide-react'
-import { TEMPLATE_CATEGORY_LABELS, convertLibraryToBookingTemplate } from '@/lib/bookkeeping/template-library'
+import { TEMPLATE_CATEGORY_LABELS } from '@/lib/bookkeeping/template-library'
 import { useCanWrite } from '@/lib/hooks/use-can-write'
 import { TemplateForm } from '@/components/settings/TemplateForm'
 import { downloadFile } from '@/lib/browser/download-file'
@@ -327,7 +326,6 @@ function TemplateSection({
       <div>
         {templates.map((tt) => {
           const isExpanded = expandedId === tt.id
-          const isConvertible = convertLibraryToBookingTemplate(tt) !== null
           return (
             <div key={tt.id} className="border-b border-border">
               <div className="flex items-center gap-3 px-1 py-3 transition-colors duration-150 hover:bg-secondary/60">
@@ -349,11 +347,6 @@ function TemplateSection({
                       {TEMPLATE_CATEGORY_LABELS[tt.category]}
                       {tt.entity_type !== 'all' && ` · ${entityLabels[tt.entity_type]}`}
                     </span>
-                    {!isConvertible && (
-                      <Badge variant="warning" className="px-1.5 py-0 text-[10px]">
-                        {t('unconvertible_badge')}
-                      </Badge>
-                    )}
                   </span>
                 </button>
                 {canCustomize && onCustomize && (

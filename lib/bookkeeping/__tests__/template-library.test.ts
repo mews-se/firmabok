@@ -1,24 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { applyTemplate, convertLibraryToBookingTemplate, deriveTemplateLinesFromBooking, getTemplateScope, LIBRARY_TEMPLATE_PREFIX, TEMPLATE_CATEGORY_LABELS } from '../template-library'
-import type { BookingTemplateLibrary, BookingTemplateLibraryLine } from '@/types'
-
-function makeLibraryTemplate(lines: BookingTemplateLibraryLine[], overrides: Partial<BookingTemplateLibrary> = {}): BookingTemplateLibrary {
-  return {
-    id: 'tpl-1',
-    company_id: 'co-1',
-    created_by: 'user-1',
-    name: 'Test template',
-    description: '',
-    category: 'other',
-    entity_type: 'all',
-    lines,
-    is_system: false,
-    is_active: true,
-    created_at: '2026-01-01T00:00:00Z',
-    updated_at: '2026-01-01T00:00:00Z',
-    ...overrides,
-  }
-}
+import { applyTemplate, deriveTemplateLinesFromBooking, getTemplateScope, TEMPLATE_CATEGORY_LABELS } from '../template-library'
+import type { BookingTemplateLibraryLine } from '@/types'
 
 describe('applyTemplate', () => {
   it('creates simple two-line debit/credit entries', () => {
@@ -172,11 +154,6 @@ describe('deriveTemplateLinesFromBooking', () => {
     expect(settlement.type).toBe('settlement')
     expect(settlement.ratio).toBe(1)
     expect(settlement.side).toBe('credit')
-
-    // Exactly one business + one settlement → convertible for the tx picker.
-    expect(convertLibraryToBookingTemplate(
-      { id: 'x', company_id: null, created_by: null, name: 'n', description: '', category: 'other', entity_type: 'all', lines, is_system: false, is_active: true, created_at: '', updated_at: '' },
-    )).not.toBeNull()
   })
 
   it('re-applying the derived template reproduces the original split (± öre)', () => {
@@ -253,111 +230,9 @@ describe('TEMPLATE_CATEGORY_LABELS', () => {
   })
 })
 
-describe('convertLibraryToBookingTemplate', () => {
-  it('converts a simple 2-line business + settlement template', () => {
-    const tpl = makeLibraryTemplate([
-      { account: '6072', label: 'Representation', side: 'debit', type: 'business', ratio: 1 },
-      { account: '1930', label: 'Företagskonto', side: 'credit', type: 'settlement', ratio: 1 },
-    ])
-    const result = convertLibraryToBookingTemplate(tpl)
-    expect(result).not.toBeNull()
-    expect(result!.id).toBe(`${LIBRARY_TEMPLATE_PREFIX}tpl-1`)
-    expect(result!.direction).toBe('expense')
-    expect(result!.debit_account).toBe('6072')
-    expect(result!.credit_account).toBe('1930')
-    expect(result!.vat_treatment).toBeNull()
-  })
-
-  it('identifies direction "income" when business line is on credit', () => {
-    const tpl = makeLibraryTemplate([
-      { account: '3001', label: 'Försäljning', side: 'credit', type: 'business', ratio: 1 },
-      { account: '1930', label: 'Företagskonto', side: 'debit', type: 'settlement', ratio: 1 },
-    ])
-    const result = convertLibraryToBookingTemplate(tpl)
-    expect(result).not.toBeNull()
-    expect(result!.direction).toBe('income')
-    expect(result!.debit_account).toBe('1930')
-    expect(result!.credit_account).toBe('3001')
-  })
-
-  it.each([
-    [0.25, 'standard_25'],
-    [0.12, 'reduced_12'],
-    [0.06, 'reduced_6'],
-  ] as const)('extracts VAT treatment for rate %f', (rate, treatment) => {
-    const tpl = makeLibraryTemplate([
-      { account: '4010', label: 'Varor', side: 'debit', type: 'business', ratio: 1 },
-      { account: '2641', label: 'Ingående moms', side: 'debit', type: 'vat', vat_rate: rate },
-      { account: '1930', label: 'Bank', side: 'credit', type: 'settlement', ratio: 1 },
-    ])
-    const result = convertLibraryToBookingTemplate(tpl)
-    expect(result).not.toBeNull()
-    expect(result!.vat_treatment).toBe(treatment)
-    expect(result!.vat_rate).toBe(rate)
-  })
-
-  it('detects reverse charge via 2614 fictitious output VAT', () => {
-    const tpl = makeLibraryTemplate([
-      { account: '4056', label: 'EU-varor', side: 'debit', type: 'business', ratio: 1 },
-      { account: '2614', label: 'Utg. moms omv.', side: 'credit', type: 'vat', vat_rate: 0.25 },
-      { account: '2645', label: 'Ing. moms omv.', side: 'debit', type: 'vat', vat_rate: 0.25 },
-      { account: '1930', label: 'Bank', side: 'credit', type: 'settlement', ratio: 1 },
-    ])
-    const result = convertLibraryToBookingTemplate(tpl)
-    expect(result).not.toBeNull()
-    expect(result!.vat_treatment).toBe('reverse_charge')
-  })
-
-  it('returns null when there are 2 business lines', () => {
-    const tpl = makeLibraryTemplate([
-      { account: '6072', label: 'A', side: 'debit', type: 'business', ratio: 0.5 },
-      { account: '6073', label: 'B', side: 'debit', type: 'business', ratio: 0.5 },
-      { account: '1930', label: 'Bank', side: 'credit', type: 'settlement', ratio: 1 },
-    ])
-    expect(convertLibraryToBookingTemplate(tpl)).toBeNull()
-  })
-
-  it('returns null when there is no settlement line', () => {
-    const tpl = makeLibraryTemplate([
-      { account: '6072', label: 'A', side: 'debit', type: 'business', ratio: 1 },
-      { account: '2641', label: 'Moms', side: 'debit', type: 'vat', vat_rate: 0.25 },
-    ])
-    expect(convertLibraryToBookingTemplate(tpl)).toBeNull()
-  })
-
-  it('returns null when business and settlement are on the same side', () => {
-    const tpl = makeLibraryTemplate([
-      { account: '6072', label: 'A', side: 'debit', type: 'business', ratio: 1 },
-      { account: '1930', label: 'Bank', side: 'debit', type: 'settlement', ratio: 1 },
-    ])
-    expect(convertLibraryToBookingTemplate(tpl)).toBeNull()
-  })
-
-  it('returns null when lines is not an array', () => {
-    const tpl = makeLibraryTemplate([], { lines: null as unknown as BookingTemplateLibraryLine[] })
-    expect(convertLibraryToBookingTemplate(tpl)).toBeNull()
-  })
-
-  // Real-world shape from before the editor defaulted new lines to 'vat': users
-  // would tap "add line" twice and end up with three lines all typed 'business'
-  // (the dropdown default at the time). The converter rightly rejects this;
-  // the transaction picker now still surfaces these templates and routes the
-  // click to the manual booking editor instead of hiding them.
-  it('returns null when every line is typed "business" (pre-#589 default)', () => {
-    const tpl = makeLibraryTemplate([
-      { account: '5420', label: 'Programvara', side: 'debit', type: 'business', ratio: 1 },
-      { account: '2640', label: 'Ingående moms', side: 'debit', type: 'business', ratio: 0.25 },
-      { account: '1930', label: 'Företagskonto', side: 'credit', type: 'business', ratio: 1 },
-    ])
-    expect(convertLibraryToBookingTemplate(tpl)).toBeNull()
-  })
-})
-
-describe('applyTemplate on shapes the converter rejects', () => {
-  // The transaction picker's fallback for unconvertible templates is to open
-  // the manual booking dialog with initialLines = applyTemplate(raw.lines, |amount|).
-  // These tests pin that path: even when the shape is too rich for the simple
-  // debit/credit summary, applyTemplate still produces a usable FormLine[].
+describe('applyTemplate on rich shapes', () => {
+  // Even when the shape is too rich for a single debit/credit pair,
+  // applyTemplate still produces a usable FormLine[].
   it('still produces lines for a split-expense template (two business legs)', () => {
     const lines: BookingTemplateLibraryLine[] = [
       { account: '5420', label: 'Programvara', side: 'debit', type: 'business', ratio: 0.7 },
@@ -388,10 +263,10 @@ describe('library mall books its literal accounts (regression)', () => {
   // (kundfordran). The QuickReview fast path used to reduce a library template
   // to a category + one account_override and book D 6991 / K 1930: or, with a
   // VAT line, D 1930 / K 1930 / K 2611: silently dropping the chosen accounts.
-  // The transaction picker now routes EVERY library template through the
-  // journal-entry editor, whose lines come from applyTemplate. These tests pin
-  // the guarantee the editor path relies on: applyTemplate books exactly the
-  // accounts/sides the user defined, and never re-derives a counter account.
+  // Every library template goes through the journal-entry editor, whose lines
+  // come from applyTemplate. These tests pin the guarantee the editor path
+  // relies on: applyTemplate books exactly the accounts/sides the user
+  // defined, and never re-derives a counter account.
   const AMOUNT = 5000
 
   const customerPaymentLines: BookingTemplateLibraryLine[] = [
@@ -413,9 +288,8 @@ describe('library mall books its literal accounts (regression)', () => {
   })
 
   it('is blind to business/settlement tagging: same accounts either way', () => {
-    // The old converter keyed "direction" (and thus the whole booking) off which
-    // leg was tagged business vs settlement. applyTemplate must not: swapping the
-    // tags leaves the same accounts on the same sides.
+    // applyTemplate must not key off which leg is tagged business vs
+    // settlement: swapping the tags leaves the same accounts on the same sides.
     const swappedTags: BookingTemplateLibraryLine[] = [
       { account: '1930', label: 'Inbetalning', side: 'debit', type: 'business', ratio: 1 },
       { account: '1510', label: 'Kundfordran', side: 'credit', type: 'settlement', ratio: 1 },

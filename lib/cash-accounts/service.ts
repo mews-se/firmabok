@@ -76,22 +76,3 @@ export async function getPrimary(
 
   return null
 }
-
-export async function findByIban(
-  supabase: SupabaseClient,
-  companyId: string,
-  iban: string,
-): Promise<CashAccount | null> {
-  if (!iban) return null
-  const { data, error } = await supabase
-    .from('cash_accounts')
-    .select('*')
-    .eq('company_id', companyId)
-    .eq('iban', iban)
-    .maybeSingle()
-  if (error) {
-    log.warn('findByIban failed', { companyId, iban, error: error.message })
-    return null
-  }
-  return (data as CashAccount | null) ?? null
-}

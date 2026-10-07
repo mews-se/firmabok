@@ -27,12 +27,6 @@ vi.mock('@/lib/bookkeeping/counterparty-templates', () => ({
   upsertCounterpartyTemplate: vi.fn().mockResolvedValue(undefined),
 }))
 
-// Mock createTransactionJournalEntry
-const mockCreateJournalEntry = vi.fn()
-vi.mock('@/lib/bookkeeping/transaction-entries', () => ({
-  createTransactionJournalEntry: (...args: unknown[]) => mockCreateJournalEntry(...args),
-}))
-
 // Mock VAT validation
 vi.mock('@/lib/vat/vies-client', () => ({
   validateVatNumber: vi.fn().mockResolvedValue({ valid: true }),
@@ -55,7 +49,6 @@ describe('POST /api/pending-operations/:id/commit', () => {
     eventBus.clear()
     reset()
     mockSupabase.auth.getUser.mockResolvedValue({ data: { user: mockUser } })
-    mockCreateJournalEntry.mockResolvedValue({ id: 'je-1' })
   })
 
   it('returns 401 when not authenticated', async () => {

@@ -13,8 +13,6 @@
  * the monetary item carrying the whole document amount:
  *   lib/bookkeeping/invoice-entries.ts          → 1510, amount = invoice.total
  *   lib/bookkeeping/supplier-invoice-entries.ts → 2440, amount = invoice.total
- *   lib/bookkeeping/transaction-entries.ts      → the settlement/cash leg,
- *                                                 amount = |transaction.amount|
  * Never on a VAT leg, never on a P&L leg, never on two legs at once. Note that
  * the account prefix is NOT the rule: 1510, 2440 and 19xx all appear.
  *

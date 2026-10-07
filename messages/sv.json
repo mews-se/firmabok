@@ -1198,8 +1198,6 @@
     "vat_rate_12": "12 %",
     "vat_rate_6": "6 %",
     "vat_rate_0": "0 % (export/omvänd/momsfri)",
-    "unconvertible_hint": "Den här mallen kan inte väljas direkt vid bokföring av en transaktion: den används från ett verifikat. För att visas i transaktionslistan krävs exakt en kostnads-/intäktsrad och en betalningsrad på motsatt sida.",
-    "unconvertible_badge": "Endast i verifikat",
     "ratio_label": "Andel",
     "ratio_help": "Andel av totalbeloppet som bokförs på raden. Summan av andelarna ska bli 1,0.",
     "ratio_sum_warning": "Andelarna för kostnadsrader summerar inte till 1,0.",

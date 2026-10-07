@@ -550,8 +550,7 @@ export function buildMappingResultFromCounterpartyTemplate(
     ),
     default_private: isPrivate,
     vat_lines: vatLines,
-    // Learned bag tags the business line (buildTransactionEntryLines); an
-    // explicitly supplied bag on the categorize call overwrites it afterwards.
+    // Learned bag tags the business line.
     ...(tmpl.default_dimensions && Object.keys(tmpl.default_dimensions).length > 0
       ? { dimensions: tmpl.default_dimensions }
       : {}),

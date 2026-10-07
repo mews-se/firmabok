@@ -71,8 +71,7 @@ describe('resolveFxLineSlot', () => {
       // NO-REGRESSION guard, not a bug pin: the old rule reached 1930 here too.
       // It exists so a later narrowing of MONETARY_ACCOUNT_PREFIXES cannot
       // break the common case. A EUR purchase paid from the SEK company
-      // account: the cash leg is the document leg, exactly as
-      // transaction-entries.ts stamps it.
+      // account: the cash leg is the document leg.
       const lines = [line('5410', 11500, 0), line('1930', 0, 11500)]
 
       const result = resolveFxLineSlot(lines, EUR_1000)

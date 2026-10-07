@@ -1198,8 +1198,6 @@
     "vat_rate_12": "12%",
     "vat_rate_6": "6%",
     "vat_rate_0": "0% (export/reverse-charge/exempt)",
-    "unconvertible_hint": "This template can't be picked directly when booking a transaction: it's used from a journal entry. To appear in the transaction list, it needs exactly one cost/revenue line and one settlement line on opposite sides.",
-    "unconvertible_badge": "Journal entries only",
     "ratio_label": "Share",
     "ratio_help": "Share of the total amount booked on this line. The shares should sum to 1.0.",
     "ratio_sum_warning": "The shares for cost lines do not sum to 1.0.",

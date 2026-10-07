@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useToast } from '@/components/ui/use-toast'
 import { Loader2, Trash2, Plus } from 'lucide-react'
-import { TEMPLATE_CATEGORY_LABELS, convertLibraryToBookingTemplate, applyTemplate } from '@/lib/bookkeeping/template-library'
+import { TEMPLATE_CATEGORY_LABELS, applyTemplate } from '@/lib/bookkeeping/template-library'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { formatCurrency } from '@/lib/utils'
 import type { BookingTemplateLibrary, BookingTemplateCategory, BookingTemplateLibraryLine } from '@/types'
@@ -132,27 +132,6 @@ export function TemplateForm({
     mode !== 'edit' &&
     name.trim().length > 0 &&
     duplicateNamePool.some((n) => n.trim().toLowerCase() === name.trim().toLowerCase())
-
-  // Real-time check: can this draft be picked from the transaction sheet?
-  // If not, we show a hint — save remains allowed (templates may still be
-  // useful from the journal-entry form).
-  const isConvertible = (() => {
-    const draft: BookingTemplateLibrary = {
-      id: initialTemplate?.id ?? '',
-      company_id: null,
-      created_by: null,
-      name,
-      description,
-      category,
-      entity_type: entityType,
-      lines,
-      is_system: false,
-      is_active: true,
-      created_at: '',
-      updated_at: '',
-    }
-    return convertLibraryToBookingTemplate(draft) !== null
-  })()
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -363,14 +342,6 @@ export function TemplateForm({
         <div className="rounded-lg border border-warning/30 bg-warning/[0.03] px-3 py-2">
           <p className="text-xs text-warning-foreground leading-snug">
             {t('duplicate_name_warning')}
-          </p>
-        </div>
-      )}
-
-      {!isConvertible && (
-        <div className="rounded-lg border border-warning/30 bg-warning/[0.03] px-3 py-2">
-          <p className="text-xs text-warning-foreground leading-snug">
-            {t('unconvertible_hint')}
           </p>
         </div>
       )}

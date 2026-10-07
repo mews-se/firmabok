@@ -9958,7 +9958,7 @@ export const tools: McpTool[] = [
         if (inbox.created_journal_entry_id) {
           throw new Error(
             `Inbox item is already booked as journal entry ${inbox.created_journal_entry_id}. ` +
-            'Use gnubok_correct_entry or gnubok_reverse_entry if it needs to be changed.'
+            'Use gnubok_correct_entry or gnubok_reverse_journal_entry if it needs to be changed.'
           )
         }
         if (inbox.created_supplier_invoice_id) {

@@ -334,7 +334,6 @@ const BOOKKEEPING: Record<string, StructuredErrorEntry> = {
     message_en: 'The period contains uncategorized business transactions.',
     remediation: {
       description: 'Categorize or mark uncategorized transactions before locking.',
-      tool: 'gnubok_list_uncategorized_transactions',
     },
   },
   YEAR_END_NOT_RUN: {
@@ -349,8 +348,8 @@ const BOOKKEEPING: Record<string, StructuredErrorEntry> = {
     message_en: 'The transaction already has a journal entry.',
     remediation: {
       description:
-        'Use gnubok_uncategorize_transaction first if you need to recategorize.',
-      tool: 'gnubok_uncategorize_transaction',
+        'Use gnubok_reverse_journal_entry on the existing verifikat first if you need to rebook it.',
+      tool: 'gnubok_reverse_journal_entry',
     },
   },
   INVOICE_ALREADY_SENT: {

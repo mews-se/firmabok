@@ -40,7 +40,7 @@ describe('getStructuredError', () => {
       new Error('Kan inte låsa period: 3 affärstransaktion(er) saknar bokföring.')
     )
     expect(result.code).toBe('PERIOD_HAS_UNBOOKED_TRANSACTIONS')
-    expect(result.remediation?.tool).toBe('gnubok_list_uncategorized_transactions')
+    expect(result.remediation?.tool).toBeUndefined()
   })
 
   it('produces INSUFFICIENT_SCOPE remediation with attempted scope', () => {
@@ -56,7 +56,7 @@ describe('getStructuredError', () => {
   it('infers TRANSACTION_ALREADY_CATEGORIZED', () => {
     const result = getStructuredError(new Error('Transaction already has a journal entry'))
     expect(result.code).toBe('TRANSACTION_ALREADY_CATEGORIZED')
-    expect(result.remediation?.tool).toBe('gnubok_uncategorize_transaction')
+    expect(result.remediation?.tool).toBe('gnubok_reverse_journal_entry')
   })
 
   it('falls back to UNKNOWN_ERROR when no code or pattern matches', () => {

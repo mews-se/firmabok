@@ -223,7 +223,7 @@ describe('schema replay (parser fidelity)', () => {
     // Independent anchor. tests/pg/full-archive-coverage.pg.test.ts asserts this
     // same contract against information_schema on a live database, so agreement
     // here means the migration replay reproduces prod's company_id topology for
-    // 58 dump tables plus every classified table. A drift means the replay is
+    // 36 dump tables plus every classified table. A drift means the replay is
     // wrong, not the contract.
     const direct = MASTER_DATA_DUMP_TABLES.filter((t) => !t.via)
     expect(

@@ -869,29 +869,6 @@ export const MASTER_DATA_DUMP_TABLES: MasterDataTableSpec[] = [
   { name: 'mapping_rules', file: 'mapping_rules.json' },
   { name: 'categorization_templates', file: 'categorization_templates.json' },
   { name: 'booking_template_library', file: 'booking_template_library.json' },
-  { name: 'skattekonto_rules', file: 'skattekonto_rules.json' },
-  // Salary (räkenskapsinformation with 7-year retention)
-  { name: 'employees', file: 'employees.json', orderBy: 'created_at' },
-  { name: 'employee_benefits', file: 'employee_benefits.json', orderBy: 'created_at' },
-  { name: 'salary_runs', file: 'salary_runs.json', orderBy: 'created_at' },
-  { name: 'salary_run_employees', file: 'salary_run_employees.json', orderBy: 'created_at' },
-  { name: 'salary_line_items', file: 'salary_line_items.json', orderBy: 'created_at' },
-  { name: 'salary_absence_days', file: 'salary_absence_days.json' },
-  // Cutover state (payroll gap-closure 2.1): part of the payroll underlag a
-  // switching company brings; belongs in the archive like the run data it
-  // seeds.
-  { name: 'employee_opening_balances', file: 'employee_opening_balances.json' },
-  // Vacation ledger + year closures (payroll gap-closure 3.1). The closure
-  // report is the underlag for the drift-adjustment verifikation (BFL 7 kap).
-  { name: 'employee_vacation_balances', file: 'employee_vacation_balances.json' },
-  { name: 'vacation_year_closures', file: 'vacation_year_closures.json' },
-  { name: 'salary_worked_days', file: 'salary_worked_days.json' },
-  { name: 'salary_payslip_links', file: 'salary_payslip_links.json' },
-  { name: 'shift_premium_rules', file: 'shift_premium_rules.json' },
-  { name: 'agi_declarations', file: 'agi_declarations.json', orderBy: 'created_at' },
-  // Körjournal: trip log underlag for milersättning verifikat (BFL 7-year
-  // retention per Skatteverket's körjournal documentation requirement).
-  { name: 'mileage_trips', file: 'mileage_trips.json', orderBy: 'trip_date' },
   // Assets and accruals
   { name: 'assets', file: 'assets.json', orderBy: 'created_at' },
   { name: 'depreciation_schedules', file: 'depreciation_schedules.json', orderBy: 'created_at' },
@@ -915,14 +892,7 @@ export const MASTER_DATA_DUMP_TABLES: MasterDataTableSpec[] = [
   // A HUS-avdrag claim to Skatteverket is SEK by statute, so there is no unit
   // to copy down and asserting one here would fabricate it.
   { name: 'rot_rut_payout_request_items', file: 'rot_rut_payout_request_items.json', via: { parent: 'rot_rut_payout_requests', fk: 'request_id' } },
-  { name: 'fiscal_period_tax_adjustments', file: 'fiscal_period_tax_adjustments.json', orderBy: 'created_at' },
   { name: 'tax_assessment_notices', file: 'tax_assessment_notices.json', orderBy: 'created_at' },
-  { name: 'arsredovisning_narratives', file: 'arsredovisning_narratives.json' },
-  { name: 'annual_report_profiles', file: 'annual_report_profiles.json', orderBy: 'created_at' },
-  { name: 'annual_report_versions', file: 'annual_report_versions.json', orderBy: 'created_at' },
-  { name: 'annual_report_validation_runs', file: 'annual_report_validation_runs.json', orderBy: 'created_at' },
-  { name: 'arsredovisning_signature_requests', file: 'arsredovisning_signature_requests.json', orderBy: 'created_at' },
-  { name: 'arsredovisning_submissions', file: 'arsredovisning_submissions.json' },
   // Settings
   { name: 'company_settings', file: 'company_settings.json' },
 ]
@@ -951,7 +921,14 @@ export const ARCHIVE_EXCLUDED_TABLES: Record<string, string> = {
   agent_conversations: 'AI assistant state, not räkenskapsinformation',
   agent_memory: 'AI assistant state, not räkenskapsinformation',
   agent_profiles: 'AI assistant state, not räkenskapsinformation',
+  agi_declarations: 'payroll module removed, no rows are written any more',
+  annual_report_profiles: 'annual report module of the retired aktiebolag path, no rows are written any more',
+  annual_report_validation_runs: 'annual report module of the retired aktiebolag path, no rows are written any more',
+  annual_report_versions: 'annual report module of the retired aktiebolag path, no rows are written any more',
   api_keys: 'secrets',
+  arsredovisning_narratives: 'annual report module of the retired aktiebolag path, no rows are written any more',
+  arsredovisning_signature_requests: 'annual report module of the retired aktiebolag path, no rows are written any more',
+  arsredovisning_submissions: 'annual report module of the retired aktiebolag path, no rows are written any more',
   bank_connections: 'PSD2 connection state and tokens, not portable',
   bolagsverket_avtal_acceptances: 'service agreement acceptance state',
   bolagsverket_subscriptions: 'integration subscription state',
@@ -977,8 +954,13 @@ export const ARCHIVE_EXCLUDED_TABLES: Record<string, string> = {
   // document_attachments when the underlying data is legally removed.
   document_integrity_checks:
     'WORM verification log (SHA-256 recompute outcomes); failures reach the archive via audit_log in revision/behandlingshistorik.json',
+  employee_benefits: 'payroll module removed, no rows are written any more',
+  employee_opening_balances: 'payroll module removed, no rows are written any more',
+  employee_vacation_balances: 'payroll module removed, no rows are written any more',
+  employees: 'payroll module removed, no rows are written any more',
   event_log: '30-day TTL event bus log',
   extension_data: 'extension runtime state (includes this backup\'s own state)',
+  fiscal_period_tax_adjustments: 'tax adjustments of the retired aktiebolag year-end dispositions, no rows are written any more',
   graph_counterparties: 'derived AI context graph, regenerable',
   graph_transaction_counterparties: 'derived AI context graph, regenerable',
   idempotency_keys: 'infrastructure',
@@ -987,16 +969,26 @@ export const ARCHIVE_EXCLUDED_TABLES: Record<string, string> = {
   inbox_rate_counters: 'infrastructure',
   mcp_tasks: 'MCP task handles: transient tool-call state with a 1-hour TTL',
   metered_events: 'billing telemetry',
+  mileage_trips: 'payroll module removed, no rows are written any more',
   notification_log: 'notification dedup log',
   operations: 'staged-operation workflow state',
   payment_match_log: 'derived matching log',
   pending_operations: 'staged-operation workflow state',
   processing_history: 'internal processing log; behandlingshistorik exports from audit_log',
+  salary_absence_days: 'payroll module removed, no rows are written any more',
+  salary_line_items: 'payroll module removed, no rows are written any more',
   salary_payslip_deliveries: 'delivery log',
+  salary_payslip_links: 'payroll module removed, no rows are written any more',
+  salary_run_employees: 'payroll module removed, no rows are written any more',
+  salary_runs: 'payroll module removed, no rows are written any more',
+  salary_worked_days: 'payroll module removed, no rows are written any more',
+  shift_premium_rules: 'payroll module removed, no rows are written any more',
+  skattekonto_rules: 'rules of the retired skattekonto sync, no rows are written any more',
   skattekonto_transactions: 'mirror of Skatteverket skattekonto, re-fetchable at source',
   skatteverket_api_audit_log: 'integration audit log',
   skatteverket_company_connections: 'integration connection state',
   skatteverket_tokens: 'secrets',
+  vacation_year_closures: 'payroll module removed, no rows are written any more',
   webhook_deliveries: 'automation delivery log',
   webhooks: 'automation config with signing secrets',
 }

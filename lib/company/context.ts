@@ -186,40 +186,6 @@ export async function getCompanyEntityType(
 }
 
 /**
- * Resolve a company's current display name.
- *
- * `company_settings.company_name` is the read-primary source (what the user
- * edits in Settings and what the invoice PDF renders), with the canonical
- * `companies.name` as the fallback. `companies.name` is written once at
- * onboarding (via create_company_with_owner) and never updated afterwards, so
- * reading it directly shows a stale name after a rename (e.g. a lagerbolag
- * renamed post-signup). Mirrors getCompanyEntityType and the invoice surfaces.
- *
- * Returns null only if the company can't be resolved from either table.
- */
-export async function getCompanyDisplayName(
-  supabase: SupabaseClient,
-  companyId: string
-): Promise<string | null> {
-  const { data: settings } = await supabase
-    .from('company_settings')
-    .select('company_name')
-    .eq('company_id', companyId)
-    .maybeSingle()
-
-  // Truthiness (not != null) so an empty string falls through to companies.name.
-  if (settings?.company_name) return settings.company_name as string
-
-  const { data: company } = await supabase
-    .from('companies')
-    .select('name')
-    .eq('id', companyId)
-    .maybeSingle()
-
-  return (company?.name as string | undefined) ?? null
-}
-
-/**
  * Get all companies the user is a member of, with their roles.
  */
 export async function getUserCompanies(

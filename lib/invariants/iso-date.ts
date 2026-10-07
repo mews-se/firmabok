@@ -23,11 +23,9 @@ import { parseISO, isValid } from 'date-fns'
  * - {@link isSaneDateString} additionally requires the date to exist and to sit
  *   in a plausible year range. Use it for anything a human typed.
  *
- * `isSaneDateString` moved here from `lib/utils.ts`, where it was already
- * documented as "the ONE authoritative date rule shared by the client form and
- * the server-side saneIsoDate schema". `lib/utils.ts` re-exports it so
- * existing imports keep working; this module is now its home because the same
- * rule is needed by consumers that must not import UI helpers.
+ * `isSaneDateString` is the ONE authoritative date rule shared by the client
+ * forms and the server-side saneIsoDate schema. It lives here, not in
+ * `lib/utils.ts`, because consumers that must not import UI helpers need it.
  */
 
 /** `YYYY-MM-DD` shape. Does not check that the date exists. */

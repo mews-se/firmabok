@@ -30,9 +30,8 @@ const isoDate = isoDateSchema
 
 /**
  * ISO date that must also be a real, in-range calendar date: not just the
- * right shape. Backed by the shared `isSaneDateString` rule (also used by the
- * transaction form) so a 6-digit year or impossible date can't slip through
- * for user-entered dates. Use this over `isoDate` for free-text date input.
+ * right shape. Backed by the shared `isSaneDateString` rule so a 6-digit year
+ * or impossible date can't slip through for user-entered dates. Use this over `isoDate` for free-text date input.
  */
 const saneIsoDate = saneIsoDateSchema
 

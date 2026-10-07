@@ -2,7 +2,6 @@ import { describe, it, expect } from 'vitest'
 import { isAccountNumber, accountClass, ACCOUNT_NUMBER_RE } from '@/lib/invariants/account-number'
 import { isIsoDateShaped, isSaneDateString, ISO_DATE_RE } from '@/lib/invariants/iso-date'
 import { isFiscalYear, FISCAL_YEAR_RE } from '@/lib/invariants/fiscal-year'
-import { isSaneDateString as isSaneDateStringFromUtils } from '@/lib/utils'
 
 describe('account number', () => {
   it('accepts exactly four digits, as a string', () => {
@@ -47,10 +46,6 @@ describe('iso date', () => {
     expect(isSaneDateString('202403-02-05')).toBe(false)
     expect(isSaneDateString('1899-12-31')).toBe(false)
     expect(isSaneDateString('2101-01-01')).toBe(false)
-  })
-
-  it('is the same function utils re-exports, not a second copy', () => {
-    expect(isSaneDateStringFromUtils).toBe(isSaneDateString)
   })
 })
 

@@ -2,7 +2,6 @@ import crypto from 'crypto'
 import { createClient } from '@supabase/supabase-js'
 
 const KEY_PREFIX = 'gnubok_sk_'
-const REFRESH_TOKEN_PREFIX = 'gnubok_rt_'
 
 // ── API Key Scopes ──────────────────────────────────────────
 
@@ -46,51 +45,6 @@ export const DEFAULT_SCOPES: ApiKeyScope[] = [
   'suppliers:read',
   'reports:read',
 ]
-
-/**
- * Default scope grant for OAuth-issued keys when the client did not pass an
- * explicit `scope` parameter at /authorize. Read-only by design: every
- * write or approval scope must be requested explicitly by the client AND
- * affirmatively ticked by the user on the consent screen.
- *
- * Rationale (do not weaken without a documented security decision):
- *   - GDPR Art. 25(2) data-protection-by-default: the minimum-necessary
- *     access set must be the silent baseline.
- *   - ISO 27001:2022 A.5.18 / A.8.2 / SOC 2 CC6.3: privileged capabilities
- *     (write, approve) must not be bundled into a default grant.
- *   - Segregation of Duties (findStageApproveConflict below): granting any
- *     STAGING_SCOPES member together with `pending_operations:approve` on a
- *     single key lets an automated agent both stage AND commit financial
- *     postings without a human-in-the-loop review. Keeping the default
- *     read-only prevents this combination from being silently issued.
- *   - BFL 5 kap 5§ / BFNAR 2013:2 behandlingshistorik: write paths that
- *     create or modify verifikationer must be opt-in at the authorization
- *     layer; conversational acknowledgement at the agent layer is not an
- *     auditable substitute.
- */
-export const DEFAULT_OAUTH_SCOPES: ApiKeyScope[] = [
-  'transactions:read',
-  'customers:read',
-  'articles:read',
-  'invoices:read',
-  'suppliers:read',
-  'reports:read',
-  'companies:read',
-  'events:read',
-  'operations:read',
-  'documents:read',
-  'compliance:read',
-  'pending_operations:read',
-]
-
-/**
- * Scopes advertised in the RFC 8414 authorization-server metadata document
- * (/.well-known/oauth-authorization-server). Restricted to the same set that
- * /authorize will grant by default: destructive scopes still work when
- * requested explicitly, they just aren't enumerated for unauthenticated
- * callers (defense-in-depth against scope-escalation reconnaissance).
- */
-export const PUBLIC_OAUTH_METADATA_SCOPES: ApiKeyScope[] = [...DEFAULT_OAUTH_SCOPES]
 
 /**
  * Scopes that allow staging a pending_operation. Used to detect a
@@ -340,21 +294,6 @@ export function hashApiKey(key: string): string {
   return crypto.createHash('sha256').update(key).digest('hex')
 }
 
-export function generateRefreshToken(): { token: string; hash: string } {
-  const random = crypto.randomBytes(32).toString('base64url')
-  const token = `${REFRESH_TOKEN_PREFIX}${random}`
-  const hash = crypto.createHash('sha256').update(token).digest('hex')
-  return { token, hash }
-}
-
-export function hashRefreshToken(token: string): string {
-  return crypto.createHash('sha256').update(token).digest('hex')
-}
-
-export function isRefreshToken(token: string): boolean {
-  return token.startsWith(REFRESH_TOKEN_PREFIX)
-}
-
 export function extractBearerToken(request: Request): string | null {
   const authHeader = request.headers.get('authorization')
   if (!authHeader?.startsWith('Bearer ')) return null
@@ -393,13 +332,6 @@ export async function validateApiKey(
     }
   | { error: string; status: number }
 > {
-  if (isRefreshToken(key)) {
-    return {
-      error: 'Refresh token cannot be used as access token; exchange it at /api/mcp-oauth/token',
-      status: 401,
-    }
-  }
-
   if (!key.startsWith(KEY_PREFIX)) {
     return { error: 'Invalid API key format', status: 401 }
   }

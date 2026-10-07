@@ -47,10 +47,6 @@ Restart Claude Desktop. The Accounted tools appear in the client and you can sta
 | `GNUBOK_URL` | no | `https://app.gnubok.se/api/extensions/ext/mcp-server/mcp` | Override the MCP endpoint (e.g. for self-hosted Accounted). |
 | `GNUBOK_CLIENT` | no | - | Distribution-channel marker (e.g. `openclaw`), sent as `X-Gnubok-Client`. Telemetry only: never affects auth or behavior. |
 
-## Alternative: claude.ai connector (no API key)
-
-If you use **claude.ai** or Claude Desktop's custom-connector flow, you can skip this bridge entirely and add Accounted as an OAuth 2.1 custom connector instead: paste the connector URL `https://app.gnubok.se/api/extensions/ext/mcp-server/mcp?client=claude-connector` and authorise on the Accounted consent screen (read-only scopes by default; write scopes are ticked explicitly).
-
 ## Docs
 
 Full setup, sample prompts, and a 10-minute reviewer test: **[Connect with Claude](https://app.gnubok.se/docs/api/connect-claude)**.

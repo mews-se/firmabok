@@ -1,7 +1,6 @@
 ---
 paths:
   - "extensions/general/mcp-server/**"
-  - "packages/accounted-mcp/**"
   - "packages/gnubok-mcp/**"
 ---
 
@@ -11,9 +10,9 @@ Accounted exposes its bookkeeping engine as an MCP server for Claude Desktop/Cod
 
 **MCP extension** (`extensions/general/mcp-server/`): 90+ tools covering transactions, categorization, customers/suppliers, invoices, accounts, fiscal periods, reports (trial balance, GL, BS, IS, AR/supplier ledger, VAT, KPI), reconciliation, salary runs, AGI, year-end, document upload, and loadable skills. JSON-RPC 2.0. Endpoint: `/api/extensions/ext/mcp-server/mcp`.
 
-**OAuth 2.1** for Claude and ChatGPT connectors: `.well-known/oauth-protected-resource` + `.well-known/oauth-authorization-server` discovery; `/api/mcp-oauth/authorize`, `/token` (PKCE), `/register`. Stateless AES-256-GCM auth codes (`lib/auth/oauth-codes.ts`). Single-use via `oauth_used_codes`. Allowlist: `claude.ai/api/*`, `claude.com/api/*`, `chatgpt.com/connector/oauth/*`, `chatgpt.com/connector_platform_oauth_redirect`, `localhost`.
+**Auth**: scoped `gnubok_sk_` API keys only (`lib/auth/api-keys.ts`), sent as `Authorization: Bearer`. A 401 carries no `WWW-Authenticate` challenge: there is no OAuth flow.
 
-**npm packages**: `packages/accounted-mcp` is the Accounted stdio-to-HTTP bridge for new installs. `packages/gnubok-mcp` is the permanent compatibility package for existing configurations.
+**npm package**: `packages/gnubok-mcp` is the stdio-to-HTTP bridge.
 
 **Tool namespaces**: internal tool ids and authorization maps remain canonical `gnubok_*`. The Accounted MCP surface is explicitly selected with `?tool_namespace=accounted`; it advertises `accounted_*` and accepts both aliases. Requests without the selector must retain the legacy server identity, catalog, and behavior.
 

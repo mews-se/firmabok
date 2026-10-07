@@ -122,8 +122,8 @@ describe('gnubok_approve_pending_operation', () => {
   })
 
   // No 'mcp_oauth' row: handleMcpRequest hardcodes actor.type='api_key' for
-  // ALL MCP traffic (the OAuth connector's access_token is a minted API key),
-  // so 'api_key' is the only agent-credential value a live request produces.
+  // ALL MCP traffic, so 'api_key' is the only agent-credential value a live
+  // request produces.
   it.each([
     { actorType: 'api_key', expected: 'api_key' },
     { actorType: 'user', expected: 'user_accept' },

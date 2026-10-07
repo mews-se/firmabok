@@ -30,11 +30,8 @@ export const mcpServerExtension: Extension = {
       skipAuth: true,
       // This server is stateless and offers no server-initiated SSE stream, so
       // the Streamable HTTP spec requires 405 Method Not Allowed here. Returning
-      // 401 (as we previously did) makes spec-compliant clients (Claude
-      // connector, Claude Desktop, Cursor) treat the SSE GET as an auth failure
-      // and retry-loop: refresh token → re-open GET → 401 → …: which storms
-      // the endpoint and churns OAuth key rotation. OAuth discovery is
-      // bootstrapped on the POST 401 (WWW-Authenticate), not here.
+      // 401 makes spec-compliant clients treat the SSE GET as an auth failure
+      // and retry-loop against the endpoint.
       handler: async (request: Request) => {
         if (isForbiddenOrigin(request)) return forbiddenOriginResponse()
         return new Response('Method Not Allowed', {

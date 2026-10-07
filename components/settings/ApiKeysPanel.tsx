@@ -19,14 +19,9 @@ import { DestructiveConfirmDialog, useDestructiveConfirm } from '@/components/ui
 import { EmptyState } from '@/components/ui/empty-state'
 import { HelpPopover } from '@/components/ui/help-popover'
 import { useToast } from '@/components/ui/use-toast'
-import {
-  SettingsGroup,
-  SettingsReveal,
-  SettingsRow,
-  SettingsRowNote,
-} from '@/components/settings/SettingsRows'
+import { SettingsGroup } from '@/components/settings/SettingsRows'
 import { AttnLine } from '@/components/ui/attn-line'
-import { Loader2, Plus, Copy, Check, Trash2, Key, ChevronDown, AlertTriangle } from 'lucide-react'
+import { Loader2, Plus, Copy, Check, Trash2, Key, AlertTriangle } from 'lucide-react'
 import { cn, formatDateLong } from '@/lib/utils'
 import { copyToClipboard } from '@/lib/browser/copy-to-clipboard'
 import { getBranding } from '@/lib/branding/service'
@@ -260,7 +255,6 @@ export function ApiKeysPanel() {
   const [isCreating, setIsCreating] = useState(false)
   const [showCreateDialog, setShowCreateDialog] = useState(false)
   const [showKeyDialog, setShowKeyDialog] = useState(false)
-  const [showApiKeyMethods, setShowApiKeyMethods] = useState(false)
   const [newKeyName, setNewKeyName] = useState('')
   // 'live' by default: this is the general MCP-key surface and the dominant case
   // is a key for the user's real company. 'test' is an explicit opt-in: a
@@ -485,55 +479,15 @@ export function ApiKeysPanel() {
           </div>
           <p className="text-xs text-muted-foreground">{t('works_with_ai')}</p>
         </div>
-        <SettingsRow
-          label="Claude.ai"
-          align="baseline"
-          help={t.rich('claude_ai_instructions', {
-            connectorName,
-            path: (chunks) => <strong>{chunks}</strong>,
-          })}
-        >
-          <SettingsRowNote>{t('recommended_badge')}</SettingsRowNote>
-          <div className="w-full min-w-0">
-            <CopyBlock text={mcpUrl('claude-connector')} copyAriaLabel={t('copy_aria')} />
-          </div>
-        </SettingsRow>
-
-        <SettingsRow
-          label={t('claude_code_cursor')}
-          align="baseline"
-          help={t('terminal_runs_browser_login')}
-        >
-          {/* URL is quoted: unquoted `?` in the query string trips zsh globbing. */}
-          <div className="w-full min-w-0">
-            <CopyBlock text={`claude mcp add ${connectorName} --transport http "${mcpUrl('claude-code')}"`} copyAriaLabel={t('copy_aria')} />
-          </div>
-        </SettingsRow>
-
-        <button
-          type="button"
-          aria-expanded={showApiKeyMethods}
-          onClick={() => setShowApiKeyMethods(!showApiKeyMethods)}
-          className="flex items-center gap-2 px-1 py-3 text-xs text-muted-foreground transition-colors duration-150 hover:text-foreground"
-        >
-          <ChevronDown
-            className={cn(
-              'h-3.5 w-3.5 transition-transform duration-150',
-              !showApiKeyMethods && '-rotate-90',
-            )}
-          />
-          {t('connect_with_api_key')}
-        </button>
-        <SettingsReveal open={showApiKeyMethods}>
-          <div className="space-y-6 pb-3 pt-1">
-            <div>
-              <p className="mb-1 text-sm">Claude Desktop</p>
-              <p className="mb-2 text-xs text-muted-foreground">
-                {t.rich('claude_desktop_instructions', {
-                  code: (chunks) => <code className="text-xs">{chunks}</code>,
-                })}
-              </p>
-              <CopyBlock text={`{
+        <div className="space-y-6 pb-3 pt-3">
+          <div>
+            <p className="mb-1 text-sm">Claude Desktop</p>
+            <p className="mb-2 text-xs text-muted-foreground">
+              {t.rich('claude_desktop_instructions', {
+                code: (chunks) => <code className="text-xs">{chunks}</code>,
+              })}
+            </p>
+            <CopyBlock text={`{
   "mcpServers": {
     "${connectorName}": {
       "command": "npx",
@@ -545,19 +499,18 @@ export function ApiKeysPanel() {
     }
   }
 }`} copyAriaLabel={t('copy_aria')} />
-            </div>
+          </div>
 
-            <div>
-              <p className="mb-1 text-sm">{t('claude_code_cursor')}</p>
-              <p className="mb-2 text-xs text-muted-foreground">
-                {t('terminal_with_api_key')}
-              </p>
-              <CopyBlock text={`claude mcp add ${connectorName} --transport http \\
+          <div>
+            <p className="mb-1 text-sm">{t('claude_code_cursor')}</p>
+            <p className="mb-2 text-xs text-muted-foreground">
+              {t('terminal_with_api_key')}
+            </p>
+            <CopyBlock text={`claude mcp add ${connectorName} --transport http \\
   --url "${mcpUrl('claude-code')}" \\
   --header "Authorization: Bearer gnubok_sk_..."`} copyAriaLabel={t('copy_aria')} />
-            </div>
           </div>
-        </SettingsReveal>
+        </div>
       </SettingsGroup>
 
       {/* Create key dialog */}

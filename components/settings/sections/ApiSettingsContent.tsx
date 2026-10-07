@@ -2,7 +2,6 @@
 
 import { useTranslations } from 'next-intl'
 import { ApiKeysPanel } from '@/components/settings/ApiKeysPanel'
-import { OAuthClientsPanel } from '@/components/settings/OAuthClientsPanel'
 import { SettingsSectionHeader } from '@/components/settings/SettingsRows'
 
 export function ApiSettingsContent() {
@@ -13,7 +12,6 @@ export function ApiSettingsContent() {
     <div>
       <SettingsSectionHeader title={tNav('api')} intro={tIntro('api')} />
       <ApiKeysPanel />
-      <OAuthClientsPanel />
     </div>
   )
 }

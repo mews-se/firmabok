@@ -97,7 +97,7 @@ its own API key and its own model account, can operate the ledger. There is
 no LLM call anywhere in this codebase.
 
 - Authentication uses scoped API keys (`gnubok_sk_*`, stored as SHA-256
-  hashes) created under `/settings/api`, or MCP OAuth.
+  hashes) created under `/settings/api`.
 - Posting operations are staged: the agent proposes, and a human approves on
   the `/pending` page before anything is committed to the journal.
 - The Swedish accounting skills under `.claude/skills/swedish-*` are compiled

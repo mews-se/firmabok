@@ -314,11 +314,7 @@ export function apiRequestSkipsSessionTimeout(
   pathname: string,
   hasAuthorizationHeader: boolean,
 ): boolean {
-  if (
-    pathname === '/api/health' ||
-    pathname === '/api/log' ||
-    pathname.startsWith('/api/mcp-oauth/')
-  ) {
+  if (pathname === '/api/health' || pathname === '/api/log') {
     return true
   }
 

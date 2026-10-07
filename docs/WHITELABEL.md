@@ -96,9 +96,8 @@ A few things that look brand-related but are configured elsewhere:
 - **Supabase auth emails** (password reset, magic link): set in the Supabase dashboard for your project, not in code.
 - **Resend sending domain**: verify `noreply@your-brand.se` (or wherever) in Resend, set `RESEND_FROM_EMAIL`.
 - **DNS / domain**: point `app.your-brand.se` at your Vercel deployment.
-- **OAuth redirect allowlist for MCP**: `app/api/mcp-oauth/authorize/route.ts` lists `claude.ai/api/*`, `claude.com/api/*`, and localhost. Your domain is the OAuth issuer, not a redirect target: no change needed unless you're integrating with new MCP clients.
 - **iCal feed PRODID** (`lib/calendar/ics-generator.ts`): defaults to `erp-base.se`, callers may pass their domain.
-- **`NEXT_PUBLIC_APP_URL`**: used as the OAuth issuer. Set this to your domain (e.g. `https://app.your-brand.se`).
+- **`NEXT_PUBLIC_APP_URL`**: used for absolute links and the skills catalogue URLs. Set this to your domain (e.g. `https://app.your-brand.se`).
 - **Skatteverket submission identity**: `extensions/general/skatteverket/lib/api-client.ts` does not set a custom `User-Agent`; submissions go out with the Node/Vercel runtime default. If your deployment needs to identify itself to Skatteverket under a different brand, that's a future enhancement (env var + header), not something the current branding service covers.
 
 ## Staying in sync with upstream
@@ -191,5 +190,4 @@ After deploying:
 - [ ] Visit `/login` and `/register`: your logo renders.
 - [ ] View source of `/manifest.webmanifest`: `name`, `short_name`, `theme_color` reflect your overrides.
 - [ ] Visit `/dpa` and `/privacy`: legal entity and contact email are yours.
-- [ ] Open OAuth flow (`/api/mcp-oauth/authorize?...`) from a test MCP client: consent page references your brand.
 - [ ] Submit support form (Settings → Support): internal subject prefix is `[<your-brand> support]`.

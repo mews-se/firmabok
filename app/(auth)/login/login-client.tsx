@@ -43,9 +43,9 @@ export function LoginClient() {
   const reasonParam = searchParams.get('reason')
   const timeoutReason: SessionTimeoutReason | null =
     reasonParam === 'idle' || reasonParam === 'absolute' ? reasonParam : null
-  // Post-login destination, set e.g. by the MCP OAuth authorize endpoint
-  // (/login?next=/api/mcp-oauth/authorize?...). Sanitized to a same-origin
-  // relative path; '/' means no explicit destination.
+  // Post-login destination, set by the auth bounce (/login?next=...).
+  // Sanitized to a same-origin relative path; '/' means no explicit
+  // destination.
   const nextPath = safeReturnTo(searchParams.get('next'), '/')
   const supabase = createClient()
   const tAuth = useTranslations('auth')
@@ -101,8 +101,7 @@ export function LoginClient() {
 
       if (nextPath !== '/') {
         // Full navigation: the destination can be a route handler that
-        // returns raw HTML (the MCP OAuth consent page), which the client
-        // router cannot render.
+        // returns raw HTML, which the client router cannot render.
         window.location.assign(nextPath)
         return
       }

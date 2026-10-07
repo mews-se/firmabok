@@ -13,7 +13,6 @@ import {
   validateApiKey,
   findStageApproveConflict,
   DEFAULT_SCOPES,
-  DEFAULT_OAUTH_SCOPES,
   STAGING_SCOPES,
   TOOL_SCOPE_MAP,
   API_KEY_SCOPES,
@@ -221,7 +220,6 @@ describe('agent:write scope', () => {
 
   it('is excluded from the default scope grants', () => {
     expect(DEFAULT_SCOPES).not.toContain('agent:write')
-    expect(DEFAULT_OAUTH_SCOPES).not.toContain('agent:write')
   })
 })
 
@@ -241,10 +239,10 @@ describe('validateApiKey', () => {
     expect(result).toEqual({ error: 'Invalid API key format', status: 401 })
   })
 
-  it('rejects a refresh token presented as Bearer with a specific message', async () => {
+  it('rejects a gnubok_rt_ token without touching the database', async () => {
     const result = await validateApiKey('gnubok_rt_some_refresh_token')
-    expect('status' in result && result.status).toBe(401)
-    expect('error' in result && result.error).toContain('Refresh token')
+    expect(result).toEqual({ error: 'Invalid API key format', status: 401 })
+    expect(mockCreateClient).not.toHaveBeenCalled()
   })
 
   it('rejects when RPC returns error', async () => {

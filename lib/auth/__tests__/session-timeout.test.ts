@@ -187,7 +187,6 @@ describe('API exclusions', () => {
     expect(apiRequestSkipsSessionTimeout('/api/extensions/ext/mcp-server/mcp', true)).toBe(true)
     expect(apiRequestSkipsSessionTimeout('/api/extensions/ext/mcp-server/mcp', false)).toBe(false)
     expect(apiRequestSkipsSessionTimeout('/api/invoices', true)).toBe(false)
-    expect(apiRequestSkipsSessionTimeout('/api/mcp-oauth/token', false)).toBe(true)
     expect(apiRequestSkipsSessionTimeout('/api/health', false)).toBe(true)
   })
 })

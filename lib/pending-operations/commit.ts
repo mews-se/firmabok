@@ -181,7 +181,7 @@ export interface CommitOptions {
    *
    * Web-UI single-approval passes 'user_accept'; bulk-approval passes
    * 'bulk_accept'. MCP approvals pass the relaying credential: 'api_key'
-   * (gnubok-mcp bridge) or 'agent' (OAuth connector), so the immutable layer
+   * (gnubok-mcp bridge) or 'agent' (agent surface), so the immutable layer
    * records that the acknowledgment was agent-relayed rather than a
    * first-party human session (agent_first_vision.md §8 P0-1). Every path is
    * still human-approval-gated; agent auto-commit was removed in

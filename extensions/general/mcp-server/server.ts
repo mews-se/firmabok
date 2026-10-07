@@ -11039,13 +11039,11 @@ export const tools: McpTool[] = [
       // a first-party human session; an auditor reading the GL can now tell
       // the difference (BFNAR 2013:2 kap 8 behandlingshistorik).
       //
-      // ALL MCP traffic authenticates as an api_key actor: the claude.ai
-      // OAuth connector's access_token is itself a minted gnubok_sk_ key
-      // (app/api/mcp-oauth/token/route.ts), indistinguishable from the
-      // bridge at this layer: so 'api_key' is the truthful value for every
-      // path through this handler. 'agent' (also in the CHECK) is reserved
-      // for first-party agent surfaces (e.g. in-app agent chat) once they
-      // commit through this layer with a distinguishable actor type.
+      // ALL MCP traffic authenticates as an api_key actor, so 'api_key' is
+      // the truthful value for every path through this handler. 'agent'
+      // (also in the CHECK) is reserved for first-party agent surfaces
+      // (e.g. in-app agent chat) once they commit through this layer with a
+      // distinguishable actor type.
       //
       // commitMethod reaches the journal only for create_voucher ops
       // (pre-existing); the actor option below covers EVERY journal commit
@@ -12309,12 +12307,6 @@ function emitWorkflowStarted(payload: {
  */
 export async function handleMcpRequest(request: Request): Promise<Response> {
   const toolNamespace = resolveMcpToolNamespace(request)
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
-  const resourceMetadataUrl = new URL('/.well-known/oauth-protected-resource', appUrl)
-  if (toolNamespace === 'accounted') {
-    resourceMetadataUrl.searchParams.set('tool_namespace', 'accounted')
-  }
-  const wwwAuth = `Bearer resource_metadata="${resourceMetadataUrl.toString()}"`
 
   // ── Pre-auth: handle fire-and-forget notifications before auth check ──
   // MCP notifications have no id and don't expect error responses.
@@ -12332,10 +12324,7 @@ export async function handleMcpRequest(request: Request): Promise<Response> {
   // ── Auth ──
   const token = extractBearerToken(request)
   if (!token) {
-    return new Response('Unauthorized', {
-      status: 401,
-      headers: { 'WWW-Authenticate': wwwAuth },
-    })
+    return new Response('Unauthorized', { status: 401 })
   }
 
   const authResult = await validateApiKey(token)
@@ -12347,10 +12336,7 @@ export async function handleMcpRequest(request: Request): Promise<Response> {
         headers: { 'Content-Type': 'text/plain', 'Retry-After': '60' },
       })
     }
-    return new Response('Unauthorized', {
-      status: 401,
-      headers: { 'WWW-Authenticate': wwwAuth },
-    })
+    return new Response('Unauthorized', { status: 401 })
   }
 
   const { userId, companyId, scopes: keyScopes, apiKeyId, apiKeyName, mode: keyMode } = authResult

@@ -56,10 +56,7 @@ export async function getActiveCompanyId(
     // PGRST202: function not in the schema cache (self-hosted instance not
     // migrated yet, or a deploy racing the branch merge).
     // 42501: EXECUTE is granted to `authenticated` only, so a service-role
-    // client is refused. These fallbacks are LOAD-BEARING, not defensive:
-    // app/api/mcp-oauth/token/route.ts and app/api/events/route.ts (API-key
-    // branch) call requireCompanyId with createServiceClientNoCookies(), and
-    // must silently resolve via the query path or the OAuth token flow breaks.
+    // client is refused and resolves via the query path instead.
     if (error.code === 'PGRST202' || error.code === '42501') {
       return getActiveCompanyIdViaQueries(supabase, userId)
     }

@@ -285,10 +285,9 @@ describe('getActiveCompanyId via resolve_active_company RPC', () => {
   })
 
   it('falls back to the query path on 42501 (service-role client lacks EXECUTE)', async () => {
-    // The mcp-oauth token route and the events route (API-key branch) call
-    // requireCompanyId with createServiceClientNoCookies(): EXECUTE is
-    // granted to `authenticated` only, so the RPC refuses with 42501 and the
-    // query path (filtered by the explicit userId param) must take over.
+    // EXECUTE is granted to `authenticated` only, so a service-role client's
+    // RPC refuses with 42501 and the query path (filtered by the explicit
+    // userId param) must take over.
     const { supabase } = buildSupabase(
       {
         user_preferences: { maybeSingle: { data: { active_company_id: 'company-1' } } },

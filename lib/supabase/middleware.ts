@@ -168,11 +168,10 @@ export async function updateSession(request: NextRequest) {
   ) {
     // If user is logged in and trying to access auth pages, redirect to the
     // destination the auth page would have sent them to, dashboard otherwise.
-    // /login?next=… is set by callers like the MCP OAuth authorize endpoint
-    // and by the bounce below; discarding the whole query string here
-    // stranded an already-signed-in user on the dashboard instead of the
-    // deep link they clicked. Only /login and /register carry `next`;
-    // /sandbox bounces to '/' exactly as before.
+    // /login?next=… is set by the bounce below; discarding the whole query
+    // string here stranded an already-signed-in user on the dashboard
+    // instead of the deep link they clicked. Only /login and /register carry
+    // `next`; /sandbox bounces to '/' exactly as before.
     if (user) {
       const carriesDestination =
         pathname.startsWith('/login') || pathname.startsWith('/register')

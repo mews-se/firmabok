@@ -121,8 +121,10 @@ const UNRESOLVED_CEILING = 375
  * transactions: 6 297.
  * Re-baselined 2026-10-07 after the bank transaction duplicate guards were
  * removed: 6 214.
+ * Re-baselined 2026-10-07 after the bank transaction readers were removed:
+ * 6 103.
  */
-const RESOLVED_COLUMN_FLOOR = 6_100
+const RESOLVED_COLUMN_FLOOR = 6_000
 
 let schema: SchemaModel
 let scan: ScanResult

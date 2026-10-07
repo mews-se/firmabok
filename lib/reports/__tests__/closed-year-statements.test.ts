@@ -16,12 +16,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 vi.mock('@/lib/reports/trial-balance', () => ({
   generateTrialBalance: vi.fn(),
 }))
-vi.mock('@/lib/bokslut/tax-provision/tax-adjustment-service', () => ({
-  loadTaxAdjustmentSnapshot: vi.fn(),
-}))
 
 import { generateTrialBalance } from '@/lib/reports/trial-balance'
-import { loadTaxAdjustmentSnapshot } from '@/lib/bokslut/tax-provision/tax-adjustment-service'
 import { generateIncomeStatement } from '../income-statement'
 import { generateResultatrapport } from '../resultatrapport'
 import { generateNEDeclaration } from '../ne-bilaga/ne-engine'
@@ -142,10 +138,6 @@ function revenueFromSections(report: any): number {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  vi.mocked(loadTaxAdjustmentSnapshot).mockResolvedValue(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    { nonDeductibleExpenses: 0, nonTaxableIncome: 0 } as any,
-  )
   vi.mocked(generateTrialBalance).mockImplementation(async (_s, _c, _p, opts) => ({
     rows: rowsForMode(opts.closingEntry),
     totalDebit: 0,

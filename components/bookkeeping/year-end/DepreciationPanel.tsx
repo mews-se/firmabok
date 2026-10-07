@@ -93,8 +93,8 @@ interface TaxView {
 
 interface DepreciationPanelProps {
   periodId: string
-  /** Called after a successful post: parent refetches dispositions because
-   *  posted avskrivningar change the result which affects bolagsskatt etc. */
+  /** Called after a successful post: parent refetches the booked result
+   *  because posted avskrivningar change it. */
   onPosted: () => void
   onTaxDirtyChange?: (dirty: boolean) => void
 }

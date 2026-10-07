@@ -10387,7 +10387,7 @@ export const tools: McpTool[] = [
     name: 'gnubok_propose_dispositioner',
     title: 'Propose Year-End Dispositioner',
     description:
-      'Read-only proposal of bokslutsdispositioner for a fiscal period: periodiseringsfond (avsättning + obligatorisk återföring), överavskrivningar, SLP, bolagsskatt. No dedicated MCP poster: stage entries via gnubok_create_voucher (web bokslut UI) before gnubok_run_year_end.',
+      'Read-only: the booked result of a fiscal period before year-end, with the company entity type. An enskild firma books no bokslutsdispositioner: egenavgifter, räntefördelning, periodiseringsfond and expansionsfond are declared in the NE-bilaga (see gnubok_preview_ef_declaration).',
     inputSchema: {
       type: 'object',
       additionalProperties: false,

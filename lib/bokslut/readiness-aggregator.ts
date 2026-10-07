@@ -56,7 +56,7 @@ export interface BokslutReadinessReport {
     locked_at: string | null
     closing_entry_id: string | null
   }
-  /** Entity type drives which dispositions apply (e.g. bolagsskatt only for AB). */
+  /** Entity type drives which year-end reminders apply. */
   entityType: 'aktiebolag' | 'enskild_firma' | 'handelsbolag' | 'kommanditbolag' | 'ekonomisk_forening'
   /** The full raw validation, for callers that want every field. */
   rawValidation: YearEndValidation
@@ -215,9 +215,8 @@ export async function buildBokslutReadinessReport(
   }
 
   // Periodiseringar (accruals) are still manual: no wizard step ships in
-  // Phases 1-3. Depreciation, bolagsskatt and periodiseringsfond now have
-  // dedicated calculators (DepreciationPanel + DispositionsStep) so they're
-  // no longer surfaced as manual reminders.
+  // Phases 1-3. Depreciation has a dedicated panel (DepreciationPanel in
+  // DispositionsStep) so it is no longer surfaced as a manual reminder.
   reminders.push({
     code: 'accruals_manual',
     severity: 'info',

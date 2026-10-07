@@ -113,8 +113,10 @@ const UNRESOLVED_CEILING = 375
  * multi-company surfaces were removed: 6 940.
  * Re-baselined 2026-10-07 after the invoice e-mail, delivery and reminder
  * paths were removed: 6 594.
+ * Re-baselined 2026-10-07 after the aktiebolag year-end dispositions were
+ * removed: 6 480.
  */
-const RESOLVED_COLUMN_FLOOR = 6_500
+const RESOLVED_COLUMN_FLOOR = 6_400
 
 let schema: SchemaModel
 let scan: ScanResult

@@ -8,7 +8,6 @@ import type {
   JournalEntry,
   JournalEntryLine,
   DocumentAttachment,
-  TaxCode,
   Invoice,
   InvoicePayment,
   Customer,
@@ -18,7 +17,6 @@ import type {
   InvoiceInboxItem,
   CategorizationTemplate,
   Company,
-  CompanyMember,
 } from '@/types'
 import type { SIEVoucher, SIETransactionLine } from '@/lib/import/types'
 
@@ -119,20 +117,6 @@ export function makeCompany(overrides: Partial<Company> = {}): Company {
     accounting_framework: 'k2',
     created_by: 'user-1',
     archived_at: null,
-    created_at: '2024-01-01T00:00:00Z',
-    updated_at: '2024-01-01T00:00:00Z',
-    ...overrides,
-  }
-}
-
-export function makeCompanyMember(overrides: Partial<CompanyMember> = {}): CompanyMember {
-  return {
-    id: 'member-1',
-    company_id: 'company-1',
-    user_id: 'user-1',
-    role: 'owner',
-    invited_by: null,
-    joined_at: '2024-01-01T00:00:00Z',
     created_at: '2024-01-01T00:00:00Z',
     updated_at: '2024-01-01T00:00:00Z',
     ...overrides,
@@ -284,28 +268,6 @@ export function makeDocumentAttachment(
     last_integrity_check_at: null,
     created_at: '2024-06-15T14:30:00Z',
     updated_at: '2024-06-15T14:30:00Z',
-    ...overrides,
-  }
-}
-
-export function makeTaxCode(overrides: Partial<TaxCode> = {}): TaxCode {
-  return {
-    id: nextId(),
-    user_id: null,
-    code: 'MP1',
-    description: 'Utgående moms 25%',
-    rate: 25,
-    moms_basis_boxes: ['05'],
-    moms_tax_boxes: ['10'],
-    moms_input_boxes: [],
-    is_output_vat: true,
-    is_reverse_charge: false,
-    is_eu: false,
-    is_export: false,
-    is_oss: false,
-    is_system: true,
-    created_at: '2024-01-01T00:00:00Z',
-    updated_at: '2024-01-01T00:00:00Z',
     ...overrides,
   }
 }

@@ -10,9 +10,6 @@ export type AccountingFramework = 'k2' | 'k3'
 // Company role for multi-tenant access
 export type CompanyRole = 'owner' | 'admin' | 'member' | 'viewer'
 
-// Team (consulting firm) roles and source tracking
-export type MemberSource = 'direct' | 'team'
-
 // Company (multi-tenant identity)
 export interface Company {
   id: string
@@ -22,30 +19,6 @@ export interface Company {
   accounting_framework: AccountingFramework
   created_by: string
   archived_at: string | null
-  created_at: string
-  updated_at: string
-}
-
-// Company membership
-export interface CompanyMember {
-  id: string
-  company_id: string
-  user_id: string
-  role: CompanyRole
-  invited_by: string | null
-  joined_at: string
-  created_at: string
-  updated_at: string
-}
-
-// User preferences (cross-company)
-export interface UserPreferences {
-  id: string
-  user_id: string
-  active_company_id: string | null
-  // Client-driven UI preferences (nav collapse/fold state, last-used create
-  // modes). jsonb DEFAULT '{}'. Cosmetic only, never load-bearing.
-  ui_state?: UserUiState
   created_at: string
   updated_at: string
 }
@@ -145,23 +118,6 @@ export type ProcessingHistoryAggregateType =
   | 'Period'
   | 'Migration'
   | 'System'
-
-export interface ProcessingHistoryEvent {
-  event_id: string
-  seq: number
-  company_id: string
-  correlation_id: string
-  causation_id: string | null
-  aggregate_type: ProcessingHistoryAggregateType
-  aggregate_id: string
-  event_type: string // open type: validated at runtime against processing_event_types registry
-  payload: Record<string, unknown>
-  payload_schema_version: number
-  actor: ProcessingHistoryActor
-  rubric_version: string | null
-  occurred_at: string
-  appended_at: string
-}
 
 // Currency types
 export type Currency = 'SEK' | 'EUR' | 'USD' | 'GBP' | 'NOK' | 'DKK'
@@ -1084,24 +1040,6 @@ export interface RecurringInvoiceScheduleItem {
   created_at: string
 }
 
-// Tax Rates (reference table)
-export interface TaxRate {
-  id: string
-
-  // Type
-  rate_type: 'egenavgifter' | 'bolagsskatt' | 'arbetsgivaravgifter' | 'vat' | 'municipal'
-
-  // Rate
-  rate: number
-
-  // Validity
-  valid_from: string
-  valid_to: string | null
-
-  // Description
-  description: string
-}
-
 // Form types for creating/updating
 
 export interface CreateCustomerInput {
@@ -1145,40 +1083,6 @@ export interface CreateSupplierInput {
   default_payment_terms?: number
   default_currency?: string
   notes?: string
-}
-
-export interface CreateSupplierInvoiceInput {
-  supplier_id: string
-  supplier_invoice_number: string
-  invoice_date: string
-  due_date: string
-  delivery_date?: string
-  currency?: string
-  exchange_rate?: number
-  vat_treatment?: VatTreatment
-  reverse_charge?: boolean
-  payment_reference?: string
-  notes?: string
-  /** Per-invoice öresavrundning override (display-only). Omitted = null (off). */
-  ore_rounding?: boolean
-  items: CreateSupplierInvoiceItemInput[]
-}
-
-export interface CreateSupplierInvoiceItemInput {
-  description: string
-  amount: number
-  account_number: string
-  vat_rate?: number
-  // Manual override. See CreateSupplierInvoiceItemSchema for rationale.
-  vat_amount?: number
-  // Self-assessed VAT rate for omvänd skattskyldighet (0.06/0.12/0.25). When
-  // set, the engine books fiktiv moms at this rate while vat_rate stays 0.
-  reverse_charge_rate?: number
-  vat_code?: string
-  // Legacy fields (backward compat, ignored when amount is set)
-  quantity?: number
-  unit?: string
-  unit_price?: number
 }
 
 export interface CreateInvoiceInput {
@@ -1225,20 +1129,6 @@ export interface CreateInvoiceItemInput {
   apartment_number?: string | null
 }
 
-// API Response types
-export interface ApiResponse<T> {
-  data?: T
-  error?: string
-}
-
-export interface PaginatedResponse<T> {
-  data: T[]
-  count: number
-  page: number
-  pageSize: number
-  totalPages: number
-}
-
 // VAT validation response
 export interface VatValidationResult {
   valid: boolean
@@ -1254,54 +1144,6 @@ export interface ExchangeRate {
   currency: Currency
   rate: number
   date: string
-}
-
-// Dashboard summary types
-export interface DashboardSummary {
-  // Income
-  total_income_ytd: number
-  total_income_mtd: number
-
-  // Expenses
-  total_expenses_ytd: number
-  total_expenses_mtd: number
-
-  // Net
-  net_income_ytd: number
-  net_income_mtd: number
-
-  // Tax estimates
-  estimated_tax: TaxEstimate
-
-  // Alerts
-  uncategorized_count: number
-  unpaid_invoices_count: number
-  unpaid_invoices_total: number
-  overdue_invoices_count: number
-
-  // Bank
-  bank_balance: number | null
-  available_balance: number | null  // After tax reservations
-}
-
-export interface TaxEstimate {
-  // For EF
-  egenavgifter?: number
-  income_tax?: number // Municipal tax (kommunalskatt)
-  state_tax?: number // State tax (statlig skatt) - 20% on high incomes
-  grundavdrag?: number // Basic deduction applied
-
-  // For AB
-  bolagsskatt?: number
-
-  // Common
-  moms_to_pay: number
-  total_tax_liability: number
-
-  // Comparison with preliminary
-  preliminary_paid_ytd: number
-  difference: number  // Positive = underpaying
-
 }
 
 // ============================================================
@@ -1685,24 +1527,6 @@ export interface BookingTemplateLibrary {
   updated_at: string
 }
 
-// Account Balance (cached)
-export interface AccountBalance {
-  id: string
-  user_id: string
-  company_id: string
-  fiscal_period_id: string
-  account_number: string
-  account_id: string | null
-  opening_debit: number
-  opening_credit: number
-  period_debit: number
-  period_credit: number
-  closing_debit: number
-  closing_credit: number
-  created_at: string
-  updated_at: string
-}
-
 // Report types
 export interface TrialBalanceRow {
   account_number: string
@@ -1917,12 +1741,6 @@ export interface CreateJournalEntryLineInput {
   project?: string
 }
 
-export interface CreateFiscalPeriodInput {
-  name: string
-  period_start: string
-  period_end: string
-}
-
 // ── Pending Operations ────────────────────────────────────────
 
 export type PendingOperationType =
@@ -2091,50 +1909,9 @@ export interface PendingOperation {
 
 export type InitialSetupPath = 'migration' | 'bank' | 'fresh'
 
-// Onboarding step data
-export interface OnboardingStepData {
-  step1?: {
-    entity_type: EntityType
-  }
-  step2?: {
-    company_name: string
-    org_number?: string
-    address_line1?: string
-    postal_code?: string
-    city?: string
-  }
-  step3?: {
-    f_skatt: boolean
-    fiscal_year_start_month: number
-    is_first_fiscal_year?: boolean
-    first_year_start?: string
-    first_year_end?: string
-    vat_registered: boolean
-    vat_number?: string
-    moms_period?: MomsPeriod
-  }
-  step4?: {
-    preliminary_tax_monthly?: number
-  }
-  step5?: {
-    bank_name?: string
-    clearing_number?: string
-    account_number?: string
-    iban?: string
-    bic?: string
-  }
-  step6?: {
-    bank_connected: boolean
-    bank_connection_id?: string
-  }
-}
-
 // ============================================================
 // Calendar & Deadline Types
 // ============================================================
-
-// Calendar view mode
-export type CalendarViewMode = 'month' | 'week' | 'day'
 
 // Tax deadline types (Swedish Skatteverket)
 export type TaxDeadlineType =
@@ -2214,154 +1991,6 @@ export interface Deadline {
 
   // Relations
   customer?: Customer
-}
-
-// Input for creating a deadline
-export interface CreateDeadlineInput {
-  title: string
-  due_date: string
-  due_time?: string
-  deadline_type: DeadlineType
-  priority?: DeadlinePriority
-  customer_id?: string
-  notes?: string
-  // Tax deadline fields
-  tax_deadline_type?: TaxDeadlineType
-  tax_period?: string
-  source?: DeadlineSource
-  linked_report_type?: string
-  linked_report_period?: Record<string, unknown>
-}
-
-// ============================================================
-// Push Notification Types
-// ============================================================
-
-// Push subscription for Web Push API
-export interface PushSubscription {
-  id: string
-  user_id: string
-  endpoint: string
-  p256dh: string
-  auth: string
-  user_agent: string | null
-  is_active: boolean
-  last_used_at: string | null
-  created_at: string
-}
-
-// Notification settings per user
-export interface NotificationSettings {
-  id: string
-  user_id: string
-  tax_deadlines_enabled: boolean
-  invoice_reminders_enabled: boolean
-  quiet_start: string // time format "HH:MM"
-  quiet_end: string   // time format "HH:MM"
-  email_enabled: boolean
-  push_enabled: boolean
-  period_locked_enabled: boolean
-  period_year_closed_enabled: boolean
-  invoice_sent_enabled: boolean
-  receipt_extracted_enabled: boolean
-  receipt_matched_enabled: boolean
-  missing_underlag_enabled: boolean
-  created_at: string
-  updated_at: string
-}
-
-// Notification type for logging
-export type NotificationType =
-  | 'tax_deadline'
-  | 'invoice_due'
-  | 'invoice_overdue'
-  | 'period_locked'
-  | 'period_year_closed'
-  | 'receipt_extracted'
-  | 'receipt_matched'
-  | 'invoice_sent'
-  | 'missing_underlag'
-  | 'skv_kvittens'
-  | 'skv_connection_expired'
-
-// Notification log entry
-export interface NotificationLog {
-  id: string
-  user_id: string
-  company_id: string | null
-  notification_type: NotificationType
-  reference_id: string
-  days_before: number
-  sent_at: string
-  delivery_status: 'sent' | 'delivered' | 'failed'
-}
-
-// Swedish labels for deadline status
-export const DEADLINE_STATUS_LABELS: Record<DeadlineStatus, string> = {
-  upcoming: 'Kommande',
-  action_needed: 'Åtgärd krävs',
-  in_progress: 'Pågår',
-  submitted: 'Inskickad',
-  confirmed: 'Bekräftad',
-  overdue: 'Försenad'
-}
-
-// Swedish labels for tax deadline types
-export const TAX_DEADLINE_TYPE_LABELS: Record<TaxDeadlineType, string> = {
-  moms_monthly: 'Momsdeklaration (månad)',
-  moms_quarterly: 'Momsdeklaration (kvartal)',
-  moms_yearly: 'Momsdeklaration (år)',
-  f_skatt: 'Preliminärskatt (F-skatt)',
-  inkomstdeklaration_ef: 'Inkomstdeklaration EF',
-  periodisk_sammanstallning: 'Periodisk sammanställning',
-  rot_rut_begaran: 'ROT/RUT-begäran om utbetalning',
-  fyllnadsinbetalning: 'Fyllnadsinbetalning',
-  kvarskatt: 'Kvarskatt'
-}
-
-// ============================================================
-// SIE Import Types
-// ============================================================
-
-// SIE import status
-export type SIEImportStatus = 'pending' | 'mapped' | 'completed' | 'failed'
-
-// SIE import record
-export interface SIEImport {
-  id: string
-  user_id: string
-  company_id: string
-  filename: string
-  file_hash: string
-  org_number: string | null
-  company_name: string | null
-  sie_type: number
-  fiscal_year_start: string | null
-  fiscal_year_end: string | null
-  accounts_count: number
-  transactions_count: number
-  opening_balance_total: number | null
-  status: SIEImportStatus
-  error_message: string | null
-  fiscal_period_id: string | null
-  opening_balance_entry_id: string | null
-  imported_at: string | null
-  created_at: string
-  updated_at: string
-}
-
-// SIE account mapping record
-export interface SIEAccountMapping {
-  id: string
-  user_id: string
-  company_id: string
-  source_account: string
-  source_name: string | null
-  target_account: string
-  confidence: number
-  match_type: 'exact' | 'name' | 'class' | 'manual'
-  created_at: string
-  updated_at: string
 }
 
 // ============================================================
@@ -2540,13 +2169,6 @@ export interface VatDeclaration {
   }
 }
 
-// VAT declaration request parameters
-export interface VatDeclarationRequest {
-  periodType: VatPeriodType
-  year: number
-  period: number
-}
-
 // Labels for VAT rutor
 export const VAT_RUTA_LABELS: Record<keyof VatDeclarationRutor, string> = {
   ruta05: 'Momspliktig försäljning',
@@ -2589,52 +2211,6 @@ export interface CreditNote extends Invoice {
   credited_invoice_id: string
 }
 
-/** Generic key-value store record for extensions */
-export interface ExtensionDataRecord {
-  id: string
-  user_id: string
-  company_id: string
-  extension_id: string
-  key: string
-  value: Record<string, unknown>
-  created_at: string
-  updated_at: string
-}
-
-// ============================================================
-// Tax Code Types
-// ============================================================
-
-// Tax code identifiers (standard Swedish codes)
-export type TaxCodeId =
-  | 'MP1' | 'MP2' | 'MP3'       // Output VAT 25%, 12%, 6%
-  | 'MPI' | 'MPI12' | 'MPI6'    // Input VAT 25%, 12%, 6%
-  | 'IV'                          // Intra-EU acquisition
-  | 'EUS'                         // EU sale (reverse charge)
-  | 'IP'                          // Import
-  | 'EXP'                         // Export outside EU
-  | 'OSS'                         // One Stop Shop
-  | 'NONE'                        // VAT exempt
-
-export interface TaxCode {
-  id: string
-  user_id: string | null
-  code: string
-  description: string
-  rate: number
-  moms_basis_boxes: string[]
-  moms_tax_boxes: string[]
-  moms_input_boxes: string[]
-  is_output_vat: boolean
-  is_reverse_charge: boolean
-  is_eu: boolean
-  is_export: boolean
-  is_oss: boolean
-  is_system: boolean
-  created_at: string
-  updated_at: string
-}
-
 // ============================================================
 // Document Archive Types
 // ============================================================
@@ -2672,17 +2248,6 @@ export interface DocumentAttachment {
   updated_at: string
 }
 
-export interface CreateDocumentAttachmentInput {
-  storage_path: string
-  file_name: string
-  file_size_bytes?: number
-  mime_type?: string
-  sha256_hash: string
-  upload_source?: DocumentUploadSource
-  journal_entry_id?: string
-  journal_entry_line_id?: string
-}
-
 // ============================================================
 // Audit Log Types
 // ============================================================
@@ -2718,32 +2283,6 @@ export interface AuditLogEntry {
 }
 
 // ============================================================
-// Dimension Types (Kostnadsställen & Projekt)
-// ============================================================
-
-export interface CostCenter {
-  id: string
-  company_id: string
-  code: string
-  name: string
-  is_active: boolean
-  created_at: string
-  updated_at: string
-}
-
-export interface Project {
-  id: string
-  company_id: string
-  code: string
-  name: string
-  is_active: boolean
-  start_date: string | null
-  end_date: string | null
-  created_at: string
-  updated_at: string
-}
-
-// ============================================================
 // Voucher Gap Detection
 // ============================================================
 
@@ -2751,19 +2290,6 @@ export interface VoucherGap {
   gap_start: number
   gap_end: number
   series: string
-}
-
-export interface VoucherGapExplanation {
-  id: string
-  company_id: string
-  user_id: string
-  fiscal_period_id: string
-  voucher_series: string
-  gap_start: number
-  gap_end: number
-  explanation: string
-  created_at: string
-  updated_at: string
 }
 
 export interface SequenceMismatch {
@@ -2943,19 +2469,6 @@ export interface Asset {
    *  companies (the API rejects writes for accounting_framework='k2'). */
   k3_components: K3Component[] | null
   notes: string | null
-  created_at: string
-  updated_at: string
-}
-
-export interface DepreciationSchedule {
-  id: string
-  user_id: string
-  company_id: string
-  asset_id: string
-  fiscal_period_id: string
-  planned_depreciation: number
-  journal_entry_id: string | null
-  posted_at: string | null
   created_at: string
   updated_at: string
 }

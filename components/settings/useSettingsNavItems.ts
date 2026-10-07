@@ -39,9 +39,6 @@ export function useSettingsNavItems(): { items: SettingsNavItem[]; groups: Setti
   const hasCompany = !!company
   const hasMcpExtension = ENABLED_EXTENSION_IDS.has('mcp-server')
 
-  // Företagsprofil (TIC-snapshot) lives under Företag; Skatteverket under
-  // Skatt; säkerhetsbackup under Importera/Exportera. Team stays hidden
-  // (show:false) until enabled.
   const defs: Array<SettingsNavItem & { show: boolean }> = [
     { id: 'account', href: '/settings/account', label: t('account'), group: 'account', show: true },
     { id: 'company', href: '/settings/company', label: t('company'), group: 'company', show: hasCompany },

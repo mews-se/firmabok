@@ -253,8 +253,8 @@ async function handleRequest(
     })
   }
 
-  // Routes that are authenticated but run before a company exists (TIC
-  // /lookup during onboarding, for example) opt out of company resolution.
+  // Routes that are authenticated but run before a company exists opt out of
+  // company resolution.
   // Dispatch without a context: handlers that opt in must not rely on ctx.
   if (matchedRoute.skipCompanyContext) {
     const response = await matchedRoute.handler(handlerRequest)

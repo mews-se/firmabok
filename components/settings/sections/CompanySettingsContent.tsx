@@ -3,7 +3,6 @@
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { CompanyInfoForm } from '@/components/settings/CompanyInfoForm'
-import { CompanyProfileSection } from '@/components/settings/CompanyProfileSection'
 import { FiscalPeriodEditor } from '@/components/settings/FiscalPeriodEditor'
 import { LogoUpload } from '@/components/settings/LogoUpload'
 import { SettingsFormWrapper } from '@/components/settings/SettingsFormWrapper'
@@ -60,8 +59,6 @@ export function CompanySettingsContent() {
       />
 
       <FiscalPeriodEditor />
-
-      <CompanyProfileSection />
     </div>
   )
 }

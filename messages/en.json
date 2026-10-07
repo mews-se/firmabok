@@ -165,7 +165,6 @@
     "salary": "Defaults for payroll runs. Tax table and vacation are set per employee.",
     "invoicing": "Numbers, terms and the look of your invoices.",
     "templates": "Reusable postings and patterns learned from your bookkeeping.",
-    "banking": "Transactions are fetched automatically. Accounted can only read, never move money.",
     "assistant": "What the assistant knows, remembers and can do.",
     "api": "Keys for MCP clients like Claude and Cursor, and for your own integrations."
   },
@@ -175,7 +174,6 @@
     "invoicing": "Invoicing",
     "bookkeeping": "Bookkeeping",
     "tax": "Tax",
-    "banking": "Bank (PSD2)",
     "salary": "Payroll",
     "templates": "Templates",
     "agent_profile": "Company profile",
@@ -1021,19 +1019,6 @@
     "fy_action_error": "The action could not be completed",
     "related_heading": "Related",
     "related_chart_of_accounts": "Chart of accounts (BAS)"
-  },
-  "settings_banking": {
-    "connect_failed_title": "Connection failed",
-    "bank_server_error": "The bank rejected the connection.",
-    "hb_business_poa_hint": "Handelsbanken requires a power of attorney before business accounts can be connected: log in to the corporate online bank, go to Powers of attorney → Self-service services and enable \"Internet Företag – tilläggstjänst API Företag\". Then link the power of attorney to the person who will approve the connection and try again.",
-    "hb_business_poa_link": "See the step-by-step guide",
-    "access_denied_hint": "{bankName} denied access. If you're using a personal account you can try connecting with the account type \"Privatkonto\" in the bank picker below.",
-    "import_fallback_text": "You can also ",
-    "import_fallback_link": "import transactions from a bank file",
-    "import_fallback_suffix": " instead.",
-    "dismiss_aria": "Close",
-    "not_enabled_title": "Bank integration (PSD2) is not enabled",
-    "not_enabled_description": "Enable the Enable Banking extension to link your bank account and fetch transactions automatically."
   },
   "settings_invoice_form": {
     "default_our_reference_label": "Default \"Our reference\"",
@@ -3547,8 +3532,6 @@
     "revenue": "Revenue",
     "expenses": "Expenses",
     "to_be_paid": "To be paid",
-    "bank_balance": "Bank balance",
-    "connect_bank": "Connect bank",
     "todo": "To do",
     "all_done": "All done!",
     "units": "",
@@ -3567,9 +3550,6 @@
     "stale_transactions_detail": "{count} transactions older than 14 days are not posted",
     "anomalies_title": "Anomalies",
     "anomalies_detail": "{count} to address",
-    "bank_consent_expiring": "Bank consent expiring",
-    "bank_consent_detail_one": "{bank}: {days} day left",
-    "bank_consent_detail_other": "{bank}: {days} days left",
     "att_gora_title": "To do",
     "att_gora_left": "{count} left",
     "att_gora_empty_title": "All caught up!",
@@ -3702,8 +3682,6 @@
     "tab_import": "Import",
     "tab_export": "Export",
     "back_to_choices": "Back to choices",
-    "bankfile_title": "Bank file",
-    "bankfile_description": "CSV, OFX or your bank's own formats: SEB, Swedbank, Nordea",
     "csv_data_title": "CSV or Excel",
     "csv_data_description": "Opening balances, customers, suppliers and articles",
     "csv_chip_opening_balances": "Opening balances",
@@ -3769,8 +3747,7 @@
     "sie_history_undo_gap_warning": "This import contains many vouchers: if anything was booked after the import, gaps can appear in the voucher numbering, and gaps require a documented explanation.",
     "sie_history_undo_success_title": "Import undone",
     "sie_history_undo_success": "{count, plural, =1 {1 voucher was deleted} other {# vouchers were deleted}}.",
-    "sie_history_undo_failed": "Could not undo import",
-    "bank_format_wise_statement": "Wise balance statement"
+    "sie_history_undo_failed": "Could not undo import"
   },
   "empty": {
     "invoices_title": "No invoices yet",

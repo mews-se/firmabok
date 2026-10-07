@@ -30,12 +30,9 @@ export default async function DashboardPage() {
     redirect('/onboarding')
   }
 
-  const now = new Date()
-
   // Fetch all data in parallel
   const [
     settingsRes,
-    { data: bankConnections },
     { count: postedEntryCount, error: postedEntryError },
     { data: profile },
     worklist,
@@ -43,7 +40,6 @@ export default async function DashboardPage() {
     resumeItems,
   ] = await Promise.all([
     getDashboardSettings(),
-    supabase.from('bank_connections').select('id, status, consent_expires, bank_name').eq('company_id', companyId).eq('status', 'active'),
     // Posted entries distinguish "brand-new empty ledger" from "all caught
     // up" in the Att göra empty state (hits the partial posted/reversed index).
     supabase.from('journal_entries').select('*', { count: 'exact', head: true }).eq('company_id', companyId).in('status', ['posted', 'reversed']),
@@ -76,29 +72,11 @@ export default async function DashboardPage() {
   // normal all-clear copy.
   const emptyLedger = !postedEntryError && (postedEntryCount || 0) === 0
 
-  const nowMs = now.getTime()
-  const expiringBankConnections = (bankConnections || [])
-    .filter(conn => {
-      if (!conn.consent_expires) return false
-      const daysLeft = Math.ceil(
-        (new Date(conn.consent_expires).getTime() - nowMs) / (1000 * 60 * 60 * 24)
-      )
-      return daysLeft > 0 && daysLeft <= 14
-    })
-    .map(conn => ({
-      id: conn.id as string,
-      bank_name: conn.bank_name as string,
-      days_left: Math.ceil(
-        (new Date(conn.consent_expires!).getTime() - nowMs) / (1000 * 60 * 60 * 24)
-      ),
-    }))
-
   const userFirstName = profile?.full_name?.trim().split(/\s+/)[0] ?? null
 
   return (
     <DashboardContent
       userFirstName={userFirstName}
-      expiringBankConnections={expiringBankConnections}
       worklist={worklist}
       suggestedMatches={suggestedMatches}
       resumeItems={resumeItems}

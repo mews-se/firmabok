@@ -78,10 +78,7 @@ export type FxSlotResolution =
     }
 
 /**
- * BAS account conventionally denominated in a given currency. Mirrors
- * CURRENCY_LEDGER_DEFAULTS in lib/cash-accounts/service.ts; copied rather than
- * imported because this module is pulled into a client bundle and that one
- * reaches the server logger and the SIE account-sync path.
+ * BAS account conventionally denominated in a given currency.
  *
  * Used ONLY to break a tie between two otherwise equal monetary legs (a
  * SEK↔EUR växling hits both legs with the same SEK amount, so the amount alone

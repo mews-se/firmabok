@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/dialog'
 import { useToast } from '@/components/ui/use-toast'
 import { getErrorMessage } from '@/lib/errors/get-error-message'
-import { ArrowLeft, Landmark, Loader2, ChevronRight, Download, AlertTriangle } from 'lucide-react'
+import { ArrowLeft, Loader2, ChevronRight, Download, AlertTriangle } from 'lucide-react'
 import { cn, formatDate } from '@/lib/utils'
 import { useCompany } from '@/contexts/CompanyContext'
 import { DestructiveConfirmDialog, useDestructiveConfirm } from '@/components/ui/destructive-confirm-dialog'
@@ -1604,7 +1604,7 @@ function CSVDataImportWizard() {
 // Import Page with Selection Cards
 // ============================================================
 
-type ImportMode = null | 'psd2' | 'sie' | 'csv_data'
+type ImportMode = null | 'sie' | 'csv_data'
 
 export default function ImportPage() {
   const { role } = useCompany()
@@ -1621,7 +1621,7 @@ export default function ImportPage() {
   // Sync mode + view from URL search params (reacts to client-side navigation changes)
   const searchParams = useSearchParams()
   useEffect(() => {
-    const allowedModes = ['psd2', 'sie', 'csv_data']
+    const allowedModes = ['sie', 'csv_data']
     const modeParam = searchParams.get('mode')
     if (modeParam && allowedModes.includes(modeParam)) {
       setMode(modeParam as ImportMode)
@@ -1803,17 +1803,6 @@ export default function ImportPage() {
         </Button>
       )}
 
-      {mode === 'psd2' && (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-            <Landmark className="mb-4 h-10 w-10 text-muted-foreground/40" />
-            <p className="mb-1 font-medium">Bankintegration (PSD2) är inte aktiverad</p>
-            <p className="max-w-md text-sm text-muted-foreground">
-              Aktivera tillägget Enable Banking för att koppla ditt bankkonto.
-            </p>
-          </CardContent>
-        </Card>
-      )}
       {mode === 'sie' && <SIEImportWizard />}
       {mode === 'csv_data' && <CSVDataImportWizard />}
     </div>

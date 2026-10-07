@@ -5,11 +5,7 @@ import { listForCompany } from '@/lib/cash-accounts/service'
 /**
  * GET /api/cash-accounts
  *
- * Returns the active company's cash accounts (cash_accounts table). Used by the
- * reconciliation CashAccountSelector (Item 5) and any other surface that needs
- * the canonical list of routable cash accounts. UI panels that just display PSD2
- * connection state may still read bank_connections.accounts_data until that
- * column is dropped in a follow-up migration.
+ * Returns the active company's cash accounts (cash_accounts table).
  *
  * Query params:
  *   - enabled_only=true → only accounts with enabled=true (default returns all)

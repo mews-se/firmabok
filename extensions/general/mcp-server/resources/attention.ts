@@ -28,7 +28,7 @@ export const attentionResource: McpResource = {
   uri: 'Accounted://attention',
   name: 'What Needs Attention',
   description:
-    'One-shot summary of outstanding work for the active company: overdue invoices, pending approvals, voucher gaps, upcoming deadlines, bank consent expiry, and period-lock alerts. Each category includes a count, up to 5 sample rows, and a suggested next tool call. Use this at session start to orient before chaining read tools.',
+    'One-shot summary of outstanding work for the active company: overdue invoices, pending approvals, voucher gaps, upcoming deadlines, and period-lock alerts. Each category includes a count, up to 5 sample rows, and a suggested next tool call. Use this at session start to orient before chaining read tools.',
   mimeType: 'application/json',
   read: async ({ supabase, companyId }) => {
     const now = new Date()
@@ -44,7 +44,6 @@ export const attentionResource: McpResource = {
       pendingOpsSamples,
       voucherSeriesRows,
       deadlineRows,
-      bankConnRows,
       activePeriodRow,
       companySettingsRow,
     ] = await Promise.all([
@@ -92,12 +91,6 @@ export const attentionResource: McpResource = {
         .lte('due_date', horizon)
         .order('due_date', { ascending: true })
         .limit(20),
-      supabase
-        .from('bank_connections')
-        .select('id, bank_name, status, consent_expires')
-        .eq('company_id', companyId)
-        .eq('status', 'active')
-        .not('consent_expires', 'is', null),
       supabase
         .from('fiscal_periods')
         .select('id, name, period_start, period_end, locked_at, is_closed')
@@ -240,33 +233,6 @@ export const attentionResource: McpResource = {
         samples: deadlines.slice(0, SAMPLE_LIMIT),
         next: {
           description: 'Granska kommande deadlines i /deadlines.',
-        },
-      })
-    }
-
-    // ── Bank consent expiring ───────────────────────────────────────
-    const bankConns = bankConnRows.data ?? []
-    const expiring = bankConns
-      .map((c) => {
-        const daysLeft = c.consent_expires ? daysBetween(today, c.consent_expires) : null
-        return { ...c, days_left: daysLeft }
-      })
-      .filter((c) => c.days_left != null && c.days_left <= ACTION_NEEDED_THRESHOLD_DAYS)
-    if (expiring.length > 0) {
-      const anyExpired = expiring.some((c) => (c.days_left ?? 0) <= 0)
-      categories.push({
-        key: 'bank_consent_expiring',
-        label_sv: 'Bankanslutningar med samtycke som löper ut',
-        severity: anyExpired ? 'critical' : 'warning',
-        count: expiring.length,
-        samples: expiring.slice(0, SAMPLE_LIMIT).map((c) => ({
-          id: c.id,
-          bank_name: c.bank_name,
-          consent_expires: c.consent_expires,
-          days_left: c.days_left,
-        })),
-        next: {
-          description: 'Be användaren förnya bank-samtycket innan det löper ut.',
         },
       })
     }

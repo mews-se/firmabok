@@ -165,7 +165,6 @@
     "salary": "Standarder för lönekörningen. Skattetabell och semester ställs in per anställd.",
     "invoicing": "Nummer, villkor och utseende på dina fakturor.",
     "templates": "Återanvändbara konteringar och mönster som lärts in från din bokföring.",
-    "banking": "Transaktioner hämtas automatiskt. Accounted kan bara läsa, aldrig flytta pengar.",
     "assistant": "Vad assistenten vet, minns och kan.",
     "api": "Nycklar för MCP-klienter som Claude och Cursor, och för egna integrationer."
   },
@@ -175,7 +174,6 @@
     "invoicing": "Fakturering",
     "bookkeeping": "Bokföring",
     "tax": "Skatt",
-    "banking": "Bank (PSD2)",
     "salary": "Löner",
     "templates": "Mallar",
     "agent_profile": "Företagsprofil",
@@ -1021,19 +1019,6 @@
     "fy_action_error": "Åtgärden kunde inte slutföras",
     "related_heading": "Relaterat",
     "related_chart_of_accounts": "Kontoplan (BAS)"
-  },
-  "settings_banking": {
-    "connect_failed_title": "Anslutning misslyckades",
-    "bank_server_error": "Banken avvisade anslutningen.",
-    "hb_business_poa_hint": "Handelsbanken kräver en fullmakt innan företagskonton kan kopplas: logga in i internetbanken för företag, gå till Fullmakter → Självbetjäningstjänster och aktivera \"Internet Företag – tilläggstjänst API Företag\". Koppla sedan fullmakten till den person som ska godkänna anslutningen och försök igen.",
-    "hb_business_poa_link": "Se steg-för-steg-guiden",
-    "access_denied_hint": "{bankName} nekade åtkomst. Om du använder ett privatkonto kan du prova att ansluta med kontotypen \"Privatkonto\" i bankväljaren nedan.",
-    "import_fallback_text": "Du kan också ",
-    "import_fallback_link": "importera transaktioner via bankfil",
-    "import_fallback_suffix": " istället.",
-    "dismiss_aria": "Stäng",
-    "not_enabled_title": "Bankintegration (PSD2) är inte aktiverad",
-    "not_enabled_description": "Aktivera tillägget Enable Banking för att koppla ditt bankkonto och automatiskt hämta transaktioner."
   },
   "settings_invoice_form": {
     "default_our_reference_label": "Standard för Vår referens",
@@ -3547,8 +3532,6 @@
     "revenue": "Intäkter",
     "expenses": "Kostnader",
     "to_be_paid": "Att få betalt",
-    "bank_balance": "Banksaldo",
-    "connect_bank": "Koppla bank",
     "todo": "Att göra",
     "all_done": "Allt klart!",
     "units": "st",
@@ -3567,9 +3550,6 @@
     "stale_transactions_detail": "{count} transaktioner äldre än 14 dagar saknar bokföring",
     "anomalies_title": "Avvikelser",
     "anomalies_detail": "{count} att åtgärda",
-    "bank_consent_expiring": "Banksamtycke löper ut",
-    "bank_consent_detail_one": "{bank}: {days} dag kvar",
-    "bank_consent_detail_other": "{bank}: {days} dagar kvar",
     "att_gora_title": "Att göra",
     "att_gora_left": "{count} kvar",
     "att_gora_empty_title": "Allt klart!",
@@ -3702,8 +3682,6 @@
     "tab_import": "Importera",
     "tab_export": "Exportera",
     "back_to_choices": "Tillbaka till val",
-    "bankfile_title": "Bankfil",
-    "bankfile_description": "CSV, OFX eller bankens egna format: SEB, Swedbank, Nordea",
     "csv_data_title": "CSV eller Excel",
     "csv_data_description": "Ingående balanser, kunder, leverantörer och artiklar",
     "csv_chip_opening_balances": "Ingående balanser",
@@ -3769,8 +3747,7 @@
     "sie_history_undo_gap_warning": "Importen innehåller många verifikat: om annat har bokförts efter importen kan luckor uppstå i verifikatnumreringen, och luckor kräver en dokumenterad förklaring.",
     "sie_history_undo_success_title": "Import ångrad",
     "sie_history_undo_success": "{count, plural, =1 {1 verifikation raderades} other {# verifikationer raderades}}.",
-    "sie_history_undo_failed": "Kunde inte ångra import",
-    "bank_format_wise_statement": "Wise kontoutdrag"
+    "sie_history_undo_failed": "Kunde inte ångra import"
   },
   "empty": {
     "invoices_title": "Inga fakturor ännu",

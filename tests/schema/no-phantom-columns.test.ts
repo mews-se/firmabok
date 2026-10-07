@@ -115,8 +115,10 @@ const UNRESOLVED_CEILING = 375
  * paths were removed: 6 594.
  * Re-baselined 2026-10-07 after the aktiebolag year-end dispositions were
  * removed: 6 480.
+ * Re-baselined 2026-10-07 after the bank connection reads were removed:
+ * 6 370.
  */
-const RESOLVED_COLUMN_FLOOR = 6_400
+const RESOLVED_COLUMN_FLOOR = 6_300
 
 let schema: SchemaModel
 let scan: ScanResult

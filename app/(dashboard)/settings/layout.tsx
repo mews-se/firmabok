@@ -12,7 +12,6 @@ const TAB_TO_ROUTE: Record<string, string> = {
   invoicing: '/settings/invoicing',
   bookkeeping: '/settings/bookkeeping',
   tax: '/settings/tax',
-  banking: '/settings/banking',
   templates: '/settings/templates',
   account: '/settings/account',
   api: '/settings/api',

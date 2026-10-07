@@ -26,10 +26,6 @@ const TemplatesSettingsContent = dynamic(() =>
   import('./TemplatesSettingsContent').then((module) => ({ default: module.TemplatesSettingsContent })),
   { loading: SettingsLoadingSkeleton },
 )
-const BankingSettingsContent = dynamic(() =>
-  import('./BankingSettingsContent').then((module) => ({ default: module.BankingSettingsContent })),
-  { loading: SettingsLoadingSkeleton },
-)
 const ApiSettingsContent = dynamic(() =>
   import('./ApiSettingsContent').then((module) => ({ default: module.ApiSettingsContent })),
   { loading: SettingsLoadingSkeleton },
@@ -48,7 +44,6 @@ export const SETTINGS_SECTIONS: Record<string, ComponentType> = {
   tax: TaxSettingsContent,
   invoicing: InvoicingSettingsContent,
   templates: TemplatesSettingsContent,
-  banking: BankingSettingsContent,
   api: ApiSettingsContent,
 }
 

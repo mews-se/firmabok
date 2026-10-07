@@ -19,7 +19,6 @@ import {
   Eye,
   FileWarning,
   Inbox,
-  Landmark,
   Loader2,
   ReceiptText,
   ShieldCheck,
@@ -40,16 +39,9 @@ import type { SuggestedMatch, WorklistCounts } from '@/lib/worklist/types'
  * and the counts refetch from /api/worklist/counts.
  */
 
-interface ExpiringBankConnection {
-  id: string
-  bank_name: string
-  days_left: number
-}
-
 interface AttGoraSectionProps {
   worklist: WorklistCounts
   suggestedMatches: SuggestedMatch[]
-  expiringBankConnections?: ExpiringBankConnection[]
   /**
    * True when the company has zero posted journal entries. An empty ledger
    * is not an achievement: the all-clear state then says "nothing here yet"
@@ -102,7 +94,6 @@ function BandHeader({ children }: { children: React.ReactNode }) {
 export default function AttGoraSection({
   worklist,
   suggestedMatches,
-  expiringBankConnections = [],
   emptyLedger = false,
 }: AttGoraSectionProps) {
   const t = useTranslations('dashboard')
@@ -183,14 +174,8 @@ export default function AttGoraSection({
     counts.supplier_invoice_approval > 0 ||
     counts.verifikat_missing_document > 0 ||
     counts.pending_operations > 0
-  const bevakaRows =
-    counts.overdue_invoice > 0 ||
-    counts.deadline_action > 0 ||
-    expiringBankConnections.length > 0
+  const bevakaRows = counts.overdue_invoice > 0 || counts.deadline_action > 0
   const allClear = !bokforRows && !granskaRows && !bevakaRows
-
-  // expiring bank connections are a dashboard-only row, not a worklist category
-  const displayTotal = total + expiringBankConnections.length
 
   return (
     <section aria-label={t('att_gora_title')}>
@@ -202,7 +187,7 @@ export default function AttGoraSection({
             ? emptyLedger && !postedSinceLoad
               ? t('att_gora_new_status')
               : t('all_done')
-            : t('att_gora_left', { count: displayTotal })}
+            : t('att_gora_left', { count: total })}
         </p>
       </div>
 
@@ -372,25 +357,6 @@ export default function AttGoraSection({
                         icon={CalendarClock}
                         label={t('row_deadlines')}
                         count={counts.deadline_action}
-                      />
-                    )}
-                    {expiringBankConnections.length > 0 && (
-                      <WorklistRow
-                        href="/settings/banking"
-                        icon={Landmark}
-                        label={t('bank_consent_expiring')}
-                        detail={
-                          expiringBankConnections[0].days_left === 1
-                            ? t('bank_consent_detail_one', {
-                                bank: expiringBankConnections[0].bank_name,
-                                days: expiringBankConnections[0].days_left,
-                              })
-                            : t('bank_consent_detail_other', {
-                                bank: expiringBankConnections[0].bank_name,
-                                days: expiringBankConnections[0].days_left,
-                              })
-                        }
-                        count={expiringBankConnections.length}
                       />
                     )}
                   </div>

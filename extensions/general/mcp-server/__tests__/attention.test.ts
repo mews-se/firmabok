@@ -40,11 +40,9 @@ function enqueueEmpty(enqueue: (r: { data?: unknown; error?: unknown; count?: nu
   enqueue({ data: [] })
   // 7. deadlineRows
   enqueue({ data: [] })
-  // 8. bankConnRows
-  enqueue({ data: [] })
-  // 9. activePeriodRow
+  // 8. activePeriodRow
   enqueue({ data: null })
-  // 10. companySettingsRow
+  // 9. companySettingsRow
   enqueue({ data: null })
 }
 
@@ -76,7 +74,6 @@ describe('Accounted://attention', () => {
     enqueue({ data: [] })            // pendingOpsSamples
     enqueue({ data: [] })            // voucherSeriesRows
     enqueue({ data: [] })            // deadlineRows
-    enqueue({ data: [] })            // bankConnRows
     enqueue({ data: null })          // activePeriodRow
     enqueue({ data: null })          // companySettingsRow
 
@@ -100,7 +97,6 @@ describe('Accounted://attention', () => {
     enqueue({ data: ops })           // pendingOpsSamples
     enqueue({ data: [] })            // voucherSeriesRows
     enqueue({ data: [] })            // deadlineRows
-    enqueue({ data: [] })            // bankConnRows
     enqueue({ data: null })          // activePeriodRow
     enqueue({ data: null })          // companySettingsRow
 
@@ -122,7 +118,6 @@ describe('Accounted://attention', () => {
     enqueue({ data: [] })                     // pendingOpsSamples
     enqueue({ data: seriesRows })             // voucherSeriesRows
     enqueue({ data: [] })                     // deadlineRows
-    enqueue({ data: [] })                     // bankConnRows
     enqueue({ data: null })                   // activePeriodRow
     enqueue({ data: null })                   // companySettingsRow
     // Loop body for series 'A':
@@ -165,30 +160,6 @@ describe('Accounted://attention', () => {
     expect(result.categories.find((c) => c.key === 'voucher_gaps_unexplained')).toBeUndefined()
   })
 
-  it('flags expired bank consent as critical', async () => {
-    const { supabase, enqueue } = createQueuedMockSupabase()
-    const yesterday = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10)
-    const banks = [
-      { id: 'bc-1', bank_name: 'SEB', status: 'active', consent_expires: yesterday },
-    ]
-
-    enqueue({ data: [] })            // overdueRows
-    enqueue({ count: 0 })            // pendingSupplierHead
-    enqueue({ data: [] })            // pendingSupplierSamples
-    enqueue({ count: 0 })            // pendingOpsHead
-    enqueue({ data: [] })            // pendingOpsSamples
-    enqueue({ data: [] })            // voucherSeriesRows
-    enqueue({ data: [] })            // deadlineRows
-    enqueue({ data: banks })         // bankConnRows
-    enqueue({ data: null })          // activePeriodRow
-    enqueue({ data: null })          // companySettingsRow
-
-    const result = (await attentionResource.read(ctx(supabase))) as AttentionResponse
-    const cat = result.categories.find((c) => c.key === 'bank_consent_expiring')
-    expect(cat?.severity).toBe('critical')
-    expect(cat?.count).toBe(1)
-  })
-
   it('classifies upcoming lock as info severity', async () => {
     const { supabase, enqueue } = createQueuedMockSupabase()
     const inSevenDays = new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 10)
@@ -200,7 +171,6 @@ describe('Accounted://attention', () => {
     enqueue({ data: [] })            // pendingOpsSamples
     enqueue({ data: [] })            // voucherSeriesRows
     enqueue({ data: [] })            // deadlineRows
-    enqueue({ data: [] })            // bankConnRows
     enqueue({ data: { id: 'fp-1', name: 'FY2026', period_start: '2026-01-01', period_end: '2026-12-31', locked_at: null, is_closed: false } })
     enqueue({ data: { bookkeeping_locked_through: inSevenDays, auto_lock_period_days: null } })
 
@@ -221,7 +191,6 @@ describe('Accounted://attention', () => {
     enqueue({ data: [] })                                                  // pendingOpsSamples
     enqueue({ data: [] })                                                  // voucherSeriesRows
     enqueue({ data: [{ id: 'd-1', title: 'Moms Q1', due_date: today, deadline_type: 'tax', tax_deadline_type: 'vat', status: 'upcoming' }] })
-    enqueue({ data: [] })                                                  // bankConnRows
     enqueue({ data: null })                                                // activePeriodRow
     enqueue({ data: null })                                                // companySettingsRow
 

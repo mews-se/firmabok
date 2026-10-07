@@ -35,7 +35,6 @@ import {
 } from '@/lib/bookkeeping/invoice-entries'
 import { resolveSettlementAccount } from '@/lib/bookkeeping/settlement-account'
 import { cashPartialBlockReason, supplierCreditNoteNeedsJournalEntry } from '@/lib/bookkeeping/booking-mode'
-import { ensureManualCashAccount } from '@/lib/cash-accounts/service'
 import { createJournalEntry, findFiscalPeriod, getSwedishLocalDate, reverseEntry, validateBalance } from '@/lib/bookkeeping/engine'
 import {
   canApproveSupplierInvoice,

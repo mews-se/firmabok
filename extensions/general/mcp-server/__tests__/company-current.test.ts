@@ -101,8 +101,6 @@ const EXPECTED_QUERIES: { table: string; columns: string[] }[] = [
       'fiscal_periods!inner(name, period_start, period_end)',
     ],
   },
-  { table: 'journal_entries', columns: ['created_at'] },
-  { table: 'bank_connections', columns: ['last_synced_at'] },
   { table: 'deadlines', columns: ['id', 'title', 'due_date', 'deadline_type', 'priority', 'status'] },
 ]
 
@@ -133,14 +131,6 @@ function parseColumns(select: string | null): string[] {
   return columns.filter(Boolean)
 }
 
-function findCall(calls: RecordedCall[], table: string) {
-  return calls.filter((c) => c.table === table)
-}
-
-function argsOf(call: RecordedCall, method: string) {
-  return call.methods.filter((m) => m.name === method).map((m) => m.args)
-}
-
 describe('Accounted://company/current query shape', () => {
   it('requests only tables and columns that exist in the schema', async () => {
     const { supabase, calls } = createRecordingSupabase(emptyResults())
@@ -151,77 +141,5 @@ describe('Accounted://company/current query shape', () => {
     calls.forEach((call, i) => {
       expect(parseColumns(call.select)).toEqual(EXPECTED_QUERIES[i].columns)
     })
-  })
-
-  it('filters categorizations on a source_type the engine actually writes', async () => {
-    const { supabase, calls } = createRecordingSupabase(emptyResults())
-
-    await companyCurrentResource.read(ctx(supabase))
-
-    // journal_entries_source_type_check has no 'transaction' member; the
-    // engine writes 'bank_transaction' when a bank transaction is booked.
-    const [entries] = findCall(calls, 'journal_entries')
-    expect(argsOf(entries, 'eq')).toContainEqual(['source_type', 'bank_transaction'])
-    expect(argsOf(entries, 'eq')).not.toContainEqual(['source_type', 'transaction'])
-  })
-})
-
-describe('Accounted://company/current recency signals', () => {
-  it('surfaces the categorization and bank sync timestamps', async () => {
-    const results = emptyResults()
-    results[9] = { data: { created_at: '2026-07-20T08:00:00.000Z' } }
-    results[10] = { data: { last_synced_at: '2026-07-26T04:00:00.000Z' } }
-    const { supabase } = createRecordingSupabase(results)
-
-    const result = (await companyCurrentResource.read(ctx(supabase))) as {
-      recent: {
-        last_categorization_at: string | null
-        last_bank_sync_at: string | null
-      }
-    }
-
-    expect(result.recent).toEqual({
-      last_categorization_at: '2026-07-20T08:00:00.000Z',
-      last_bank_sync_at: '2026-07-26T04:00:00.000Z',
-    })
-  })
-
-  it('reports no activity as null when the tables are genuinely empty', async () => {
-    const { supabase } = createRecordingSupabase(emptyResults())
-
-    const result = (await companyCurrentResource.read(ctx(supabase))) as {
-      recent: Record<string, string | null>
-    }
-
-    expect(result.recent).toEqual({
-      last_categorization_at: null,
-      last_bank_sync_at: null,
-    })
-  })
-
-  it('throws when the categorization or bank-sync read fails', async () => {
-    const categorizationFailed = emptyResults()
-    categorizationFailed[9] = { error: { code: '57014', message: 'statement timeout' } }
-    await expect(
-      companyCurrentResource.read(ctx(createRecordingSupabase(categorizationFailed).supabase)),
-    ).rejects.toThrow(/Failed to read last categorization/)
-
-    const bankSyncFailed = emptyResults()
-    bankSyncFailed[10] = { error: { code: '57014', message: 'statement timeout' } }
-    await expect(
-      companyCurrentResource.read(ctx(createRecordingSupabase(bankSyncFailed).supabase)),
-    ).rejects.toThrow(/Failed to read last bank sync/)
-  })
-
-  it('treats PGRST116 as no rows, not as a failure', async () => {
-    const results = emptyResults()
-    results[10] = { error: { code: 'PGRST116', message: 'no rows returned' } }
-    const { supabase } = createRecordingSupabase(results)
-
-    const result = (await companyCurrentResource.read(ctx(supabase))) as {
-      recent: Record<string, string | null>
-    }
-
-    expect(result.recent.last_bank_sync_at).toBeNull()
   })
 })

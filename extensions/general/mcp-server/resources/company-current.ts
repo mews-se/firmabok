@@ -3,8 +3,8 @@ import type { McpResource } from './types'
 /**
  * Per-company working memory for agents. Read at session start so Claude
  * knows what exists in the tenant before composing tool calls: counts,
- * active fiscal period, lock dates, voucher-series state, recent activity,
- * approaching deadlines. Mirrors the `context.md` pattern from
+ * active fiscal period, lock dates, voucher-series state, approaching
+ * deadlines. Mirrors the `context.md` pattern from
  * Shipper+Claude's "Agent-native Architectures" guidance.
  *
  * Read-only and per-request; no caching. Target payload <8 KB.
@@ -12,7 +12,7 @@ import type { McpResource } from './types'
 export const companyCurrentResource: McpResource = {
   uri: 'Accounted://company/current',
   name: 'Active Company',
-  description: 'Working memory for the API key default company: identity, active fiscal period, lock dates, entity counts, voucher series state, recent activity, and filing deadlines. For another company, call gnubok_get_agent_briefing with company_id.',
+  description: 'Working memory for the API key default company: identity, active fiscal period, lock dates, entity counts, voucher series state, and filing deadlines. For another company, call gnubok_get_agent_briefing with company_id.',
   mimeType: 'application/json',
   read: async ({ supabase, companyId }) => {
     const today = new Date().toISOString().slice(0, 10)
@@ -27,8 +27,6 @@ export const companyCurrentResource: McpResource = {
       openInvoiceCountRes,
       openSupplierInvoiceCountRes,
       voucherSequencesRes,
-      lastCategorizationRes,
-      lastBankSyncRes,
       upcomingDeadlinesRes,
     ] = await Promise.all([
       supabase
@@ -95,28 +93,6 @@ export const companyCurrentResource: McpResource = {
         .eq('company_id', companyId)
         .order('voucher_series', { ascending: true }),
 
-      // Recency signals: when did each surface last move?
-      // 'bank_transaction' is the source_type the engine writes when a bank
-      // transaction is categorized (journal_entries_source_type_check); there
-      // is no 'transaction' value, so filtering on it matched nothing.
-      supabase
-        .from('journal_entries')
-        .select('created_at')
-        .eq('company_id', companyId)
-        .eq('source_type', 'bank_transaction')
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle(),
-
-      supabase
-        .from('bank_connections')
-        .select('last_synced_at')
-        .eq('company_id', companyId)
-        .not('last_synced_at', 'is', null)
-        .order('last_synced_at', { ascending: false })
-        .limit(1)
-        .maybeSingle(),
-
       // Scoped by company_id: the table also carries user_id (legacy single-tenant
       // design), but RLS + multi-tenant refactor added company_id and the column is
       // indexed. Multi-company users would otherwise see deadlines from all their
@@ -134,21 +110,6 @@ export const companyCurrentResource: McpResource = {
 
     if (companyRes.error || !companyRes.data) {
       throw new Error(`Company not found: ${companyRes.error?.message ?? 'unknown'}`)
-    }
-
-    // A null recency signal is a factual claim ("this never happened") that the
-    // agent acts on, so a failed read must surface as an error rather than
-    // degrade into that claim. resources/read turns the throw into a JSON-RPC
-    // error, same as period-active does for its period read. PGRST116 is the
-    // legitimate no-rows case and stays null.
-    const recencyReads = [
-      { label: 'last categorization', error: lastCategorizationRes.error },
-      { label: 'last bank sync', error: lastBankSyncRes.error },
-    ]
-    for (const read of recencyReads) {
-      if (read.error && read.error.code !== 'PGRST116') {
-        throw new Error(`Failed to read ${read.label}: ${read.error.message}`)
-      }
     }
 
     const settings = settingsRes.data
@@ -206,10 +167,6 @@ export const companyCurrentResource: McpResource = {
         open_supplier_invoices: openSupplierInvoiceCountRes.count ?? 0,
       },
       voucher_series: voucherSeries,
-      recent: {
-        last_categorization_at: lastCategorizationRes.data?.created_at ?? null,
-        last_bank_sync_at: lastBankSyncRes.data?.last_synced_at ?? null,
-      },
       upcoming_deadlines: upcomingDeadlinesRes.data ?? [],
     }
   },

@@ -8,9 +8,6 @@ import { cn } from '@/lib/utils'
 import {
   ReceiptText,
   Users,
-  ArrowLeftRight,
-  Camera,
-  Building2,
   FileText,
   Calendar,
   Plus,
@@ -115,32 +112,6 @@ export function EmptyCustomers({ onAction }: { onAction?: () => void } = {}) {
   )
 }
 
-export function EmptyTransactions() {
-  const t = useTranslations('empty')
-  return (
-    <EmptyState
-      icon={ArrowLeftRight}
-      title={t('preset_transactions_title')}
-      description={t('preset_transactions_description')}
-      actionLabel={t('preset_transactions_action')}
-      actionHref="/import"
-    />
-  )
-}
-
-export function EmptyReceipts() {
-  const t = useTranslations('empty')
-  return (
-    <EmptyState
-      icon={Camera}
-      title={t('preset_receipts_title')}
-      description={t('preset_receipts_description')}
-      actionLabel={t('preset_receipts_action')}
-      actionHref="/receipts/scan"
-    />
-  )
-}
-
 export function EmptyDeadlines() {
   const t = useTranslations('empty')
   return (
@@ -148,19 +119,6 @@ export function EmptyDeadlines() {
       icon={Calendar}
       title={t('preset_deadlines_title')}
       description={t('preset_deadlines_description')}
-    />
-  )
-}
-
-export function NoBankConnected() {
-  const t = useTranslations('empty')
-  return (
-    <EmptyState
-      icon={Building2}
-      title={t('preset_no_bank_title')}
-      description={t('preset_no_bank_description')}
-      actionLabel={t('preset_no_bank_action')}
-      actionHref="/import"
     />
   )
 }

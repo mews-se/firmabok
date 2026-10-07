@@ -18,7 +18,7 @@ import { REPORT_CATALOG, DIMENSION_FILTER_SLUGS } from '../catalog'
 const ROOT = process.cwd()
 
 /** The only reports allowed to accept the dimension value filter. */
-const FILTERABLE_SLUGS = ['resultatrapport', 'income-statement', 'huvudbok', 'kpi']
+const FILTERABLE_SLUGS = ['resultatrapport', 'income-statement', 'huvudbok']
 
 /** Routes allowed to import the route-side filter parser. */
 const ALLOWED_PARSER_IMPORTERS = new Set([
@@ -30,7 +30,6 @@ const ALLOWED_PARSER_IMPORTERS = new Set([
   'app/api/reports/income-statement/pdf/route.ts',
   'app/api/reports/general-ledger/route.ts',
   'app/api/reports/general-ledger/xlsx/route.ts',
-  'app/api/reports/kpi/route.ts',
   'app/api/reports/monthly-breakdown/route.ts',
   'app/api/reports/trial-balance/account/[accountNumber]/sources/route.ts',
 ])
@@ -55,7 +54,7 @@ function walk(dir: string, out: string[] = []): string[] {
 }
 
 describe('dimension filter: statutory exclusion', () => {
-  it('the catalog whitelist is exactly the four P&L-safe reports', () => {
+  it('the catalog whitelist is exactly the three P&L-safe reports', () => {
     const flagged = REPORT_CATALOG.filter((r) => r.dimensions).map((r) => r.slug).sort()
     expect(flagged).toEqual([...FILTERABLE_SLUGS].sort())
     expect([...DIMENSION_FILTER_SLUGS].sort()).toEqual([...FILTERABLE_SLUGS].sort())

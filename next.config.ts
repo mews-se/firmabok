@@ -50,15 +50,6 @@ const nextConfig: NextConfig = {
   experimental: {
     optimizePackageImports: ['recharts', 'date-fns', 'framer-motion'],
   },
-  async redirects() {
-    return [
-      {
-        source: '/nyckeltal',
-        destination: '/kpi',
-        permanent: true,
-      },
-    ]
-  },
   async headers() {
     // The catch-all excludes /api/documents/:id/inline so the strict
     // X-Frame-Options: DENY + frame-ancestors 'none' don't conflict with

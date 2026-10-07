@@ -64,8 +64,7 @@
  * 1. **A fixed-column sink** (an upsert that writes a whole row or a whole
  *    jsonb document). Narrowing the patch does not stop the unmentioned columns
  *    from being written; it only makes them `undefined`. Such a route must merge
- *    the sparse patch over the STORED row before writing (see
- *    `app/api/kpi/preferences/route.ts`).
+ *    the sparse patch over the STORED row before writing.
  * 2. **A CROSS-FIELD `.refine` / `.superRefine`.** The refinement runs on the
  *    default-filled parse, so it judges values the caller never sent: it can
  *    reject a legitimate patch and accept an illegitimate one. Strip the

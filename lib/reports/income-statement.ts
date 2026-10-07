@@ -40,9 +40,8 @@ export async function generateIncomeStatement(
 
 /**
  * Pure income-statement assembly from trial balance rows. Extracted so
- * callers that already hold pre-computed rows (e.g. the KPI route's
- * single-round-trip aggregate path) can reuse the section/rounding logic
- * without re-fetching journal lines. The rows must come from a trial
+ * callers that already hold pre-computed rows can reuse the
+ * section/rounding logic without re-fetching journal lines. The rows must come from a trial
  * balance generated with excludeYearEndClosing (see generateIncomeStatement
  * above for why).
  */

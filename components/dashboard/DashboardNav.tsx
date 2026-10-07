@@ -24,7 +24,6 @@ import {
   HelpCircle,
   Building2,
   Wallet,
-  TrendingUp,
   ClipboardCheck,
   Package,
   Tag,
@@ -68,7 +67,6 @@ interface DashboardNavProps {
 type NavLabelKey =
   | 'dashboard'
   | 'home'
-  | 'kpi'
   | 'invoices'
   | 'customers'
   | 'articles'
@@ -146,7 +144,6 @@ const navItems: NavItem[] = [
   { href: '/invoices', labelKey: 'invoices', icon: ReceiptText, group: 'arbeta' },
   { href: '/supplier-invoices', labelKey: 'supplier_invoices', icon: Wallet, group: 'arbeta' },
   // Analys: read the numbers.
-  { href: '/kpi', labelKey: 'kpi', icon: TrendingUp, group: 'analys' },
   { href: '/reports', labelKey: 'reports', icon: BarChart3, group: 'analys' },
   // Data: the Register fold (master data) + Importera/exportera as its own
   // row.

@@ -54,7 +54,7 @@ export interface ReportDescriptor {
   route?: string
   /**
    * Hidden from the legacy desktop rail; surfaced only on the library landing.
-   * Used for reports that were never in the nav (KPI, archive…).
+   * Used for reports that were never in the nav (e.g. the SIE export).
    */
   libraryOnly?: boolean
   /**
@@ -145,16 +145,6 @@ export const REPORT_CATALOG: ReportDescriptor[] = [
     category: 'interim',
     params: 'fiscal',
     exports: ['xlsx'],
-  },
-  {
-    slug: 'kpi',
-    labelKey: 'name_kpi',
-    descKey: 'desc_kpi',
-    category: 'interim',
-    params: 'fiscal',
-    route: '/kpi',
-    libraryOnly: true,
-    dimensions: true,
   },
 
   // --- Bokslut (year-end) ---

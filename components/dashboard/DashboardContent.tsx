@@ -29,7 +29,7 @@ interface DashboardContentProps {
  * Att göra (obligations, lib/worklist) and Fortsätt (in-progress work,
  * lib/worklist/resume). KPI tiles, revenue/expense cards and the deadline/tax
  * widgets left the page (founder direction, dev_docs/last_session_resume.md
- * §8): the numbers live at /kpi and /reports, deadlines render as Bevaka rows.
+ * §8): the numbers live at /reports, deadlines render as Bevaka rows.
  */
 export default function DashboardContent({
   userFirstName,

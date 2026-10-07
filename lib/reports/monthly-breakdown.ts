@@ -32,8 +32,8 @@ export interface MonthlyBucket {
  * Pure assembly of the monthly breakdown from pre-summed buckets: month
  * range initialization, bucket fill, natural "YYYY-MM" sort, and Swedish
  * month labels. Extracted from generateMonthlyBreakdown so callers that
- * already hold per-month sums (e.g. the KPI route's single-round-trip
- * aggregate path) can reuse the assembly without re-scanning lines.
+ * already hold per-month sums (e.g. the aggregate path in kpi-aggregates.ts)
+ * can reuse the assembly without re-scanning lines.
  *
  * Rounding happens once per bucket (income, expenses, then net over the
  * rounded pair) instead of the old incremental per-line rounding: equal

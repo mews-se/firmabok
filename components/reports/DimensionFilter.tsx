@@ -30,7 +30,7 @@ interface Props {
 
 /**
  * Per-dimension value filter for the P&L-safe reports (resultatrapport,
- * resultaträkning, huvudbok, KPI). Mounted by FocusedReport next to
+ * resultaträkning, huvudbok). Mounted by FocusedReport next to
  * ReportDateRange, only for catalog entries flagged `dimensions: true`.
  *
  * Renders nothing unless company_settings.dimensions_enabled: companies

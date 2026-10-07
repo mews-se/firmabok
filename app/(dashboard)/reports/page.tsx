@@ -31,7 +31,7 @@ export default function ReportsPage() {
   const t = useTranslations('reports')
   const { openedAt, pushRecent } = useRecentReports(company?.id)
 
-  // Open a report. Route-owning reports (cash flow, KPI, SIE) navigate to
+  // Open a report. Route-owning reports (cash flow, SIE) navigate to
   // their own page; the rest open the focused /reports/[slug] route.
   const openReport = (slug: string) => {
     const report = getReport(slug)

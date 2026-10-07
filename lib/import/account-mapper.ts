@@ -180,24 +180,6 @@ export function suggestMappings(
 }
 
 /**
- * Validate that all accounts are mapped
- */
-export function validateMappings(mappings: AccountMapping[]): {
-  valid: boolean
-  unmappedAccounts: string[]
-  lowConfidenceAccounts: string[]
-} {
-  const unmapped = mappings.filter((m) => !m.targetAccount)
-  const lowConfidence = mappings.filter((m) => m.targetAccount && m.confidence < 0.5)
-
-  return {
-    valid: unmapped.length === 0,
-    unmappedAccounts: unmapped.map((m) => m.sourceAccount),
-    lowConfidenceAccounts: lowConfidence.map((m) => m.sourceAccount),
-  }
-}
-
-/**
  * Get mapping statistics
  */
 export function getMappingStats(mappings: AccountMapping[]): {

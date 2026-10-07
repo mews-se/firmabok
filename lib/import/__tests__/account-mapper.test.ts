@@ -5,7 +5,6 @@ import type { SIEAccount, SIEAccountMappingRecord } from '../types'
 import { classifyAccount } from '@/lib/bookkeeping/account-classifier'
 import {
   suggestMappings,
-  validateMappings,
   getMappingStats,
   applyMappingOverride,
   mappingsToMap,
@@ -262,60 +261,6 @@ describe('suggestMappings', () => {
     expect(mapped).toHaveLength(2)
     expect(unmapped).toHaveLength(1)
     expect(mapped.find((m) => m.sourceAccount === '1510')?.confidence).toBe(1.0)
-  })
-})
-
-describe('validateMappings', () => {
-  it('returns valid when all accounts are mapped', () => {
-    const mappings = suggestMappings(
-      [makeSIEAccount('1510', 'Kundfordringar'), makeSIEAccount('1930', 'Företagskonto')],
-      basAccounts
-    )
-    const validation = validateMappings(mappings)
-
-    expect(validation.valid).toBe(true)
-    expect(validation.unmappedAccounts).toHaveLength(0)
-  })
-
-  it('returns invalid when out-of-range accounts are unmapped', () => {
-    const mappings = suggestMappings(
-      [makeSIEAccount('1510', 'Kundfordringar'), makeSIEAccount('9999', 'Okänt konto')],
-      basAccounts
-    )
-    const validation = validateMappings(mappings)
-
-    expect(validation.valid).toBe(false)
-    expect(validation.unmappedAccounts).toContain('9999')
-    expect(validation.unmappedAccounts).toHaveLength(1)
-  })
-
-  it('returns valid when all accounts mapped via exact + bas_range', () => {
-    const mappings = suggestMappings(
-      [makeSIEAccount('1510', 'Kundfordringar'), makeSIEAccount('1241', 'Personbilar')],
-      basAccounts
-    )
-    const validation = validateMappings(mappings)
-
-    expect(validation.valid).toBe(true)
-    expect(validation.unmappedAccounts).toHaveLength(0)
-  })
-
-  it('detects low confidence accounts', () => {
-    // With exact-match-only mapper, low confidence only comes from existing overrides
-    const mappings = [
-      {
-        sourceAccount: '3400',
-        sourceName: 'Försäljning tjänster',
-        targetAccount: '3001',
-        targetName: 'Försäljning varor 25%',
-        confidence: 0.3,
-        matchType: 'class' as const,
-        isOverride: false,
-      },
-    ]
-
-    const validation = validateMappings(mappings)
-    expect(validation.lowConfidenceAccounts).toContain('3400')
   })
 })
 

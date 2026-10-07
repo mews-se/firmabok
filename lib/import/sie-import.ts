@@ -1889,32 +1889,6 @@ export async function saveMappings(
 }
 
 /**
- * Load existing account mappings for a user
- */
-export async function loadMappings(supabase: SupabaseClient, companyId: string): Promise<Map<string, AccountMapping>> {
-  const { data } = await supabase
-    .from('sie_account_mappings')
-    .select('*')
-    .eq('company_id', companyId)
-
-  const map = new Map<string, AccountMapping>()
-
-  for (const record of data || []) {
-    map.set(record.source_account, {
-      sourceAccount: record.source_account,
-      sourceName: record.source_name || '',
-      targetAccount: record.target_account,
-      targetName: '', // Will be filled in by the mapper
-      confidence: record.confidence,
-      matchType: record.match_type,
-      isOverride: true,
-    })
-  }
-
-  return map
-}
-
-/**
  * Execute the full SIE import
  *
  * `onExistingPeriod` controls how a prior completed import that overlaps

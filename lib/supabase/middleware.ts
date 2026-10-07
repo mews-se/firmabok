@@ -152,14 +152,6 @@ export async function updateSession(request: NextRequest) {
     return supabaseResponse
   }
 
-  // Public payslip pages, the token in the URL is the authentication
-  // (resolved server-side against salary_payslip_links). Employees have no
-  // account; bouncing them to /login would make every emailed payslip link
-  // dead. See app/payslip/[token]/page.tsx.
-  if (pathname.startsWith('/payslip')) {
-    return supabaseResponse
-  }
-
   // Public auth routes: allow access
   if (
     pathname.startsWith('/login') ||

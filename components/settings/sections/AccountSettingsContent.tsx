@@ -2,10 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
 import { useLocale, useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
-import { Sun, Moon, Monitor, LogOut, ExternalLink } from 'lucide-react'
+import { Sun, Moon, Monitor, LogOut } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { createClient } from '@/lib/supabase/client'
 import { SecuritySettings } from '@/components/settings/SecuritySettings'
@@ -238,30 +237,6 @@ export function AccountSettingsContent() {
 
       {/* Security: BankID, password, 2FA (renders its own group) */}
       <SecuritySettings />
-
-      {/* Privacy & agreements: surface the otherwise-unlinked DPA + privacy policy */}
-      <SettingsGroup label={tSettings('legal_title')}>
-        <SettingsRow label={tSettings('legal_privacy')}>
-          <SettingsRowEnd>
-            <Button variant="outline" size="sm" asChild>
-              <Link href="/privacy" target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="mr-2 h-3.5 w-3.5" />
-                {tCommon('open')}
-              </Link>
-            </Button>
-          </SettingsRowEnd>
-        </SettingsRow>
-        <SettingsRow label={tSettings('legal_dpa')}>
-          <SettingsRowEnd>
-            <Button variant="outline" size="sm" asChild>
-              <Link href="/dpa" target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="mr-2 h-3.5 w-3.5" />
-                {tCommon('open')}
-              </Link>
-            </Button>
-          </SettingsRowEnd>
-        </SettingsRow>
-      </SettingsGroup>
 
       {/* Sign out */}
       <SettingsGroup>

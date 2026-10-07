@@ -188,5 +188,4 @@ After deploying:
 - [ ] Visit `/`: browser tab title shows your brand.
 - [ ] Visit `/login` and `/register`: your logo renders.
 - [ ] View source of `/manifest.webmanifest`: `name`, `short_name`, `theme_color` reflect your overrides.
-- [ ] Visit `/dpa` and `/privacy`: legal entity and contact email are yours.
 - [ ] Submit support form (Settings → Support): internal subject prefix is `[<your-brand> support]`.

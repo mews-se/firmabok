@@ -212,18 +212,6 @@ export function LoginClient() {
             {tAuth('no_account')}
           </Link>
         </p>
-
-        <p className="mt-3 text-center text-xs text-muted-foreground/80 leading-relaxed">
-          {tAuth('terms_prefix')}{' '}
-          <a href="#" className="underline underline-offset-2 hover:text-foreground transition-colors">
-            {tAuth('terms_link')}
-          </a>{' '}
-          {tAuth('terms_and')}{' '}
-          <a href="#" className="underline underline-offset-2 hover:text-foreground transition-colors">
-            {tAuth('privacy_link')}
-          </a>
-          .
-        </p>
       </div>
     </div>
   )

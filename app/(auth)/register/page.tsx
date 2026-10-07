@@ -282,18 +282,6 @@ function RegisterPageContent() {
             {t('sign_in')}
           </Link>
         </p>
-
-        <p className="mt-3 text-center text-xs text-muted-foreground/80 leading-relaxed">
-          {t('terms_prefix')}{' '}
-          <a href="#" className="underline underline-offset-2 hover:text-foreground transition-colors">
-            {t('terms_link')}
-          </a>{' '}
-          {t('terms_and')}{' '}
-          <a href="#" className="underline underline-offset-2 hover:text-foreground transition-colors">
-            {t('privacy_link')}
-          </a>
-          .
-        </p>
       </div>
     </div>
   )

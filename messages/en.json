@@ -153,11 +153,7 @@
     "login_error_rate_limited": "Too many sign-in attempts. Wait a moment and try again.",
     "login_error_user_banned": "This account has been suspended. Contact support if you think this is a mistake.",
     "session_idle": "You were inactive. Sign in again.",
-    "session_absolute": "Your session expired for security reasons.",
-    "terms_prefix": "By signing in you agree to our",
-    "terms_link": "terms",
-    "terms_and": "and",
-    "privacy_link": "privacy policy"
+    "session_absolute": "Your session expired for security reasons."
   },
   "session_timeout": {
     "warning_title": "You will be signed out soon",
@@ -229,10 +225,7 @@
     "install_app_button": "Install",
     "install_app_hint_ios": "Open the share menu in Safari and choose \"Add to Home Screen\" to install Accounted as an app.",
     "install_app_hint_safari": "In Safari, choose File and then \"Add to Dock\" to install Accounted as an app.",
-    "install_app_hint_generic": "Install Accounted as an app via the install icon in your browser's address bar (Chrome and Edge).",
-    "legal_title": "Privacy & agreements",
-    "legal_privacy": "Privacy policy",
-    "legal_dpa": "Data Processing Agreement (DPA)"
+    "install_app_hint_generic": "Install Accounted as an app via the install icon in your browser's address bar (Chrome and Edge)."
   },
   "help": {
     "title": "Help & Glossary",
@@ -619,10 +612,6 @@
     "creating": "Creating account...",
     "already_have_account": "Already have an account?",
     "sign_in": "Sign in",
-    "terms_prefix": "By creating an account you agree to our",
-    "terms_link": "terms",
-    "terms_and": "and",
-    "privacy_link": "privacy policy",
     "account_exists_description": "An account with this email already exists. Sign in instead.",
     "password_mismatch_description": "Check that you typed the same password in both fields."
   },

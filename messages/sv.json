@@ -153,11 +153,7 @@
     "login_error_rate_limited": "För många inloggningsförsök. Vänta en stund och försök igen.",
     "login_error_user_banned": "Kontot är avstängt. Kontakta supporten om du tror att det är fel.",
     "session_idle": "Du har varit inaktiv. Logga in igen.",
-    "session_absolute": "Sessionen har upphört av säkerhetsskäl.",
-    "terms_prefix": "Genom att logga in godkänner du våra",
-    "terms_link": "villkor",
-    "terms_and": "och",
-    "privacy_link": "integritetspolicy"
+    "session_absolute": "Sessionen har upphört av säkerhetsskäl."
   },
   "session_timeout": {
     "warning_title": "Du loggas snart ut",
@@ -229,10 +225,7 @@
     "install_app_button": "Installera",
     "install_app_hint_ios": "Öppna delningsmenyn i Safari och välj \"Lägg till på hemskärmen\" för att installera Accounted som app.",
     "install_app_hint_safari": "Välj Arkiv och sedan \"Lägg till i Dock\" i Safari för att installera Accounted som app.",
-    "install_app_hint_generic": "Installera Accounted som app via installationsikonen i webbläsarens adressfält (Chrome och Edge).",
-    "legal_title": "Sekretess och avtal",
-    "legal_privacy": "Integritetspolicy",
-    "legal_dpa": "Personuppgiftsbiträdesavtal (DPA)"
+    "install_app_hint_generic": "Installera Accounted som app via installationsikonen i webbläsarens adressfält (Chrome och Edge)."
   },
   "help": {
     "title": "Hjälp & Ordlista",
@@ -619,10 +612,6 @@
     "creating": "Skapar konto...",
     "already_have_account": "Har du redan ett konto?",
     "sign_in": "Logga in",
-    "terms_prefix": "Genom att skapa konto godkänner du våra",
-    "terms_link": "villkor",
-    "terms_and": "och",
-    "privacy_link": "integritetspolicy",
     "account_exists_description": "Ett konto med den här e-postadressen finns redan. Logga in i stället.",
     "password_mismatch_description": "Kontrollera att du skrev samma lösenord i båda fälten."
   },

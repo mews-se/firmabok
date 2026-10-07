@@ -49,6 +49,7 @@ import { ConfirmationDialog } from '@/components/ui/confirmation-dialog'
 import { InvoiceReviewContent } from '@/components/invoices/InvoiceReviewContent'
 import { getErrorMessage } from '@/lib/errors/get-error-message'
 import { openDeferredTab } from '@/lib/browser/deferred-tab'
+import { booksInvoicesOnIssue } from '@/lib/bookkeeping/booking-mode'
 import { contentDispositionFilename } from '@/lib/api/content-disposition'
 import { useUnsavedChanges } from '@/lib/hooks/use-unsaved-changes'
 import CustomerForm from '@/components/customers/CustomerForm'
@@ -279,6 +280,7 @@ export default function InvoiceEditor(props: InvoiceEditorProps = { mode: 'creat
   const [hasBankDetails, setHasBankDetails] = useState<boolean | null>(null)
   const [showBankSetup, setShowBankSetup] = useState(false)
   const [accountingMethod, setAccountingMethod] = useState<'accrual' | 'cash'>('accrual')
+  const [deferInvoiceBooking, setDeferInvoiceBooking] = useState(false)
   // Öresavrundning is display-only. In edit mode the draft's stored flag wins;
   // otherwise it defaults to the company-wide setting (loaded below).
   const [oreRounding, setOreRounding] = useState<boolean>(
@@ -607,7 +609,7 @@ export default function InvoiceEditor(props: InvoiceEditorProps = { mode: 'creat
     if (!company?.id) return
     const { data } = await supabase
       .from('company_settings')
-      .select('invoice_default_notes, default_our_reference, clearing_number, account_number, bankgiro, accounting_method, ore_rounding, logo_url, vat_registered, dimensions_enabled, invoice_payment_links_enabled')
+      .select('invoice_default_notes, default_our_reference, clearing_number, account_number, bankgiro, accounting_method, defer_invoice_booking, ore_rounding, logo_url, vat_registered, dimensions_enabled, invoice_payment_links_enabled')
       .eq('company_id', company.id)
       .single()
     if (data?.invoice_default_notes) {
@@ -627,6 +629,7 @@ export default function InvoiceEditor(props: InvoiceEditorProps = { mode: 'creat
     if (data?.accounting_method === 'cash' || data?.accounting_method === 'accrual') {
       setAccountingMethod(data.accounting_method)
     }
+    setDeferInvoiceBooking(data?.defer_invoice_booking === true)
     // An explicit per-invoice flag (edit mode) wins; only fall back to the
     // company-wide setting when creating or when the draft never set one.
     if (typeof data?.ore_rounding === 'boolean' && initialOreRounding == null) {
@@ -2619,7 +2622,15 @@ export default function InvoiceEditor(props: InvoiceEditorProps = { mode: 'creat
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{t('issue_dialog_title')}</DialogTitle>
-            <DialogDescription>{t('issue_dialog_description')}</DialogDescription>
+            <DialogDescription>
+              {t(
+                booksInvoicesOnIssue({ accounting_method: accountingMethod, defer_invoice_booking: deferInvoiceBooking })
+                  ? 'issue_dialog_description_accrual'
+                  : accountingMethod === 'cash'
+                    ? 'issue_dialog_description_cash'
+                    : 'issue_dialog_description_deferred'
+              )}
+            </DialogDescription>
           </DialogHeader>
           <DialogFooter className="flex gap-2 sm:gap-0">
             <Button

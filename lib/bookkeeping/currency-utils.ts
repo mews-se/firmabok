@@ -70,9 +70,9 @@ export function resolveSekAmountOrNull(
  * a report must still render them rather than blank out a whole ledger. Every
  * remaining caller in `lib/reports/` establishes that the row is convertible
  * BEFORE calling (see the `isFx && !hasRate` checks in ar-ledger.ts,
- * supplier-ledger.ts, ar-reconciliation.ts, supplier-reconciliation.ts and
- * kpi.ts), so for them the fallback is already unreachable and this function is
- * just the shared arithmetic.
+ * supplier-ledger.ts, ar-reconciliation.ts and supplier-reconciliation.ts), so
+ * for them the fallback is already unreachable and this function is just the
+ * shared arithmetic.
  *
  * Behaviour is deliberately unchanged from before the strict sibling existed, so
  * that no existing call site shifts.

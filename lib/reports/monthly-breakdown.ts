@@ -32,8 +32,8 @@ export interface MonthlyBucket {
  * Pure assembly of the monthly breakdown from pre-summed buckets: month
  * range initialization, bucket fill, natural "YYYY-MM" sort, and Swedish
  * month labels. Extracted from generateMonthlyBreakdown so callers that
- * already hold per-month sums (e.g. the aggregate path in kpi-aggregates.ts)
- * can reuse the assembly without re-scanning lines.
+ * already hold per-month sums can reuse the assembly without re-scanning
+ * lines.
  *
  * Rounding happens once per bucket (income, expenses, then net over the
  * rounded pair) instead of the old incremental per-line rounding: equal
@@ -108,8 +108,7 @@ export function assembleMonthlyBreakdown(
  * which posts the mirror image of every P&L account, showed the whole year's
  * revenue as negative income in the fiscal-year-end month: measured on
  * production as 28 companies affected, worst case a single month understated by
- * 10 347 472 kr. Mirrors tb_ex_ye_entries in get_kpi_report_aggregates, which
- * serves the same chart on the no-dimension hot path; the two must agree.
+ * 10 347 472 kr.
  */
 export async function generateMonthlyBreakdown(
   supabase: SupabaseClient,
@@ -117,7 +116,7 @@ export async function generateMonthlyBreakdown(
   fiscalPeriodId: string,
   options?: {
     /** SIE dim → code filter ({"6":"P001"}). Without it a dimension-scoped
-     *  KPI view would silently chart company-wide months. */
+     *  view would silently chart company-wide months. */
     dimensions?: Record<string, string>
   }
 ): Promise<MonthlyBreakdown> {
@@ -136,8 +135,7 @@ export async function generateMonthlyBreakdown(
 
   // Ids of REVERSED year-end entries, company-wide (no period filter): a storno
   // in this period can reverse a year-end entry from another period. Mirrors the
-  // wave-1 fetch in lib/reports/trial-balance.ts and ye_reversed in
-  // get_kpi_report_aggregates.
+  // wave-1 fetch in lib/reports/trial-balance.ts.
   const reversedYearEndIds = (
     await fetchAllRows<{ id: string }>(({ from, to }) =>
       supabase

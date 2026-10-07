@@ -2,12 +2,9 @@ import { describe, it, expect } from 'vitest'
 import {
   calculateGrossMargin,
   calculateCashPosition,
-  calculateRevenueGrowth,
   calculateExpenseRatio,
   calculateAvgPaymentDays,
   calculateVatLiability,
-  fetchTopSupplierInvoices,
-  type KpiSupplierInvoiceRow,
 } from '../kpi'
 import { VAT_INPUT_ACCOUNTS, VAT_OUTPUT_ACCOUNTS } from '../vat-declaration'
 import type { IncomeStatementReport, TrialBalanceRow } from '@/types'
@@ -225,26 +222,6 @@ describe('VAT widget account lists (derived from ACCOUNT_RUTA)', () => {
   })
 })
 
-describe('calculateRevenueGrowth', () => {
-  it('returns positive growth', () => {
-    // (120000 - 100000) / 100000 * 100 = 20%
-    expect(calculateRevenueGrowth(120000, 100000)).toBe(20)
-  })
-
-  it('returns negative growth (decline)', () => {
-    // (80000 - 100000) / 100000 * 100 = -20%
-    expect(calculateRevenueGrowth(80000, 100000)).toBe(-20)
-  })
-
-  it('returns null when previous revenue is null', () => {
-    expect(calculateRevenueGrowth(100000, null)).toBeNull()
-  })
-
-  it('returns null when previous revenue is 0', () => {
-    expect(calculateRevenueGrowth(100000, 0)).toBeNull()
-  })
-})
-
 describe('calculateExpenseRatio', () => {
   it('returns ratio for normal data', () => {
     const stmt = makeIncomeStatement({ total_revenue: 200000, total_expenses: 120000 })
@@ -255,95 +232,6 @@ describe('calculateExpenseRatio', () => {
   it('returns null when total_revenue is 0', () => {
     const stmt = makeIncomeStatement({ total_revenue: 0, total_expenses: 5000 })
     expect(calculateExpenseRatio(stmt)).toBeNull()
-  })
-})
-
-describe('fetchTopSupplierInvoices', () => {
-  const PAGE_SIZE = 1000 // fetchAllRows page size
-
-  function makeRow(): KpiSupplierInvoiceRow {
-    return {
-      supplier_id: 'sup-1',
-      total: 1,
-      total_sek: null,
-      currency: 'SEK',
-      exchange_rate: null,
-      supplier: { id: 'sup-1', name: 'Leverantören AB' },
-    }
-  }
-
-  /**
-   * Query-builder double: every filter method chains; `.range(from, to)`
-   * resolves to the page registered for `from`. Records order/range calls so
-   * the tests can pin the paging contract.
-   */
-  function pagedSupabase(
-    pagesByFrom: Record<number, unknown[] | { error: { message: string } }>,
-  ) {
-    const orderCalls: unknown[][] = []
-    const rangeCalls: Array<[number, number]> = []
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const chain: any = {}
-    for (const m of ['select', 'eq', 'gte', 'lte', 'neq']) chain[m] = () => chain
-    chain.order = (...args: unknown[]) => {
-      orderCalls.push(args)
-      return chain
-    }
-    chain.range = (from: number, to: number) => {
-      rangeCalls.push([from, to])
-      const page = pagesByFrom[from] ?? []
-      if (!Array.isArray(page)) {
-        return Promise.resolve({ data: null, error: page.error })
-      }
-      return Promise.resolve({ data: page, error: null })
-    }
-    return { supabase: { from: () => chain } as never, orderCalls, rangeCalls }
-  }
-
-  it('paginates past the 1000-row PostgREST cap instead of truncating', async () => {
-    // A company with 1003 supplier invoices in the period: awaiting the bare
-    // query returned only the first 1000 and silently understated the totals.
-    const page1 = Array.from({ length: PAGE_SIZE }, () => makeRow())
-    const page2 = Array.from({ length: 3 }, () => makeRow())
-    const { supabase, rangeCalls } = pagedSupabase({ 0: page1, [PAGE_SIZE]: page2 })
-
-    const { data, error } = await fetchTopSupplierInvoices(
-      supabase,
-      'company-1',
-      '2026-01-01',
-      '2026-12-31',
-    )
-
-    expect(error).toBeNull()
-    expect(data).toHaveLength(1003)
-    expect(rangeCalls).toEqual([
-      [0, PAGE_SIZE - 1],
-      [PAGE_SIZE, 2 * PAGE_SIZE - 1],
-    ])
-  })
-
-  it('orders on the id PK for stable paging', async () => {
-    const { supabase, orderCalls } = pagedSupabase({ 0: [makeRow()] })
-
-    await fetchTopSupplierInvoices(supabase, 'company-1', '2026-01-01', '2026-12-31')
-
-    // Without a stable total order, .range() paging can duplicate or skip
-    // rows on page boundaries, which would double or drop supplier spend.
-    expect(orderCalls).toContainEqual(['id', { ascending: true }])
-  })
-
-  it('returns a { data: null, error } value on query failure, never throws', async () => {
-    const { supabase } = pagedSupabase({ 0: { error: { message: 'connection reset' } } })
-
-    const result = await fetchTopSupplierInvoices(
-      supabase,
-      'company-1',
-      '2026-01-01',
-      '2026-12-31',
-    )
-
-    expect(result.data).toBeNull()
-    expect(result.error?.message).toBe('connection reset')
   })
 })
 

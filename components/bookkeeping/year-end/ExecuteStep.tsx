@@ -9,8 +9,6 @@ interface ExecuteStepProps {
   periodName: string
   isRunning: boolean
   error: string | null
-  /** Advisory: AB closing a profit year with no bolagsskatt booked. */
-  bolagsskattMissing?: boolean
   onBack: () => void
   onExecute: () => Promise<void>
 }
@@ -21,7 +19,7 @@ interface ExecuteStepProps {
  * no further entries can be posted to it and the closing transaction is
  * immutable.
  */
-export function ExecuteStep({ periodName, isRunning, error, bolagsskattMissing, onBack, onExecute }: ExecuteStepProps) {
+export function ExecuteStep({ periodName, isRunning, error, onBack, onExecute }: ExecuteStepProps) {
   const [confirmOpen, setConfirmOpen] = useState(false)
 
   return (
@@ -50,14 +48,6 @@ export function ExecuteStep({ periodName, isRunning, error, bolagsskattMissing, 
             Det här går inte att ångra. Om du behöver göra rättelser efter bokslutet använder du
             stornering eller bokar i den nya perioden.
           </p>
-          {bolagsskattMissing && (
-            <p className="text-[12.5px] leading-5 text-attn">
-              Ingen bolagsskatt är bokförd trots att året visar vinst. Om det inte är avsiktligt
-              (t.ex. underskottsavdrag, periodiseringsfond eller överavskrivningar som nollar det
-              skattemässiga resultatet), gå tillbaka och boka skatten i dispositionssteget innan
-              du verkställer.
-            </p>
-          )}
           {error && <p className="text-sm text-destructive">{error}</p>}
         </div>
       </section>

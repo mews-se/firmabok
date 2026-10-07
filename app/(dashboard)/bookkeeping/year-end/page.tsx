@@ -371,7 +371,6 @@ export default function YearEndPage() {
           periodName={report.period.name}
           isRunning={executing}
           error={executeError}
-          bolagsskattMissing={preview?.bolagsskattMissing ?? false}
           onBack={() => setStep('preview')}
           onExecute={executeYearEnd}
         /></div>

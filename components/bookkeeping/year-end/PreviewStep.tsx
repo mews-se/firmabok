@@ -61,18 +61,6 @@ export function PreviewStep({ preview, isLoading, error, onBack, onContinue }: P
         </p>
       </div>
 
-      {preview.bolagsskattMissing && (
-        <p className="px-1 text-[12.5px] leading-5 text-attn">
-          Året visar vinst men ingen skatt på årets resultat (konto 8910) finns bland de konton
-          som stängs. Gå tillbaka till dispositionssteget och boka bolagsskatten innan du
-          verkställer, om inte skattemässigt resultat är noll (t.ex. genom underskottsavdrag,
-          avsättning till periodiseringsfond eller överavskrivningar).{' '}
-          <button type="button" onClick={onBack} className="underline underline-offset-2 hover:opacity-80">
-            Till dispositionssteget
-          </button>
-        </p>
-      )}
-
       {preview.currencyRevaluation && preview.currencyRevaluation.items.length > 0 && (
         <section>
           <div className="mb-1 flex items-center gap-2 px-1">

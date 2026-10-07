@@ -509,22 +509,6 @@ export async function previewYearEndClosing(
     }
   }
 
-  // Advisory check: an AB closing a profit year should normally have booked
-  // bolagsskatt (Dr 8910 / Cr 2512) in the dispositions step. If no 89xx tax
-  // account is among the accounts being closed, the profit is untaxed. This
-  // is a warning, not a blocker: zero tax is legitimate when underskotts-
-  // avdrag zeroes the taxable result. 8999 is excluded: it is the manual
-  // result-closing account, not a tax account.
-  // Scanning resultAccountSummary is equivalent to a full 89xx trial-balance
-  // scan: it is built from every class 3-8 account with a non-zero closing
-  // balance, regardless of voucher series, so a booked tax entry cannot be
-  // missed by this check.
-  const hasTaxAccount = resultAccountSummary.some(
-    (a) => a.account_number.startsWith('89') && a.account_number !== '8999'
-  )
-  const bolagsskattMissing =
-    closingAccount === '2099' && netResult > ORE_TOLERANCE && !hasTaxAccount
-
   return {
     netResult,
     closingAccount,
@@ -532,7 +516,6 @@ export async function previewYearEndClosing(
     closingLines,
     resultAccountSummary,
     currencyRevaluation,
-    bolagsskattMissing,
   }
 }
 

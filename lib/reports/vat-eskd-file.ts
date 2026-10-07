@@ -67,9 +67,9 @@ export interface ESkdFileInput {
  * Formats a Swedish org/person number as `xxxxxx-xxxx` (10 digits with hyphen),
  * as required by the eSKD header. Accepts 12-digit century-prefixed values
  * (16xxxxxxxxxx org numbers, 19/20-prefixed personnummer) by stripping the
- * prefix, mirroring formatRedovisare/formatOrgNumber12; settings rows predating
- * org-number normalization legitimately hold 12 digits. Throws otherwise, since
- * an out-of-format OrgNr is an "avvisande fel" that Skatteverket rejects outright.
+ * prefix; settings rows predating org-number normalization legitimately hold
+ * 12 digits. Throws otherwise, since an out-of-format OrgNr is an "avvisande
+ * fel" that Skatteverket rejects outright.
  */
 function formatESkdOrgNumber(orgNumber: string): string {
   let digits = orgNumber.replace(/\D/g, '')

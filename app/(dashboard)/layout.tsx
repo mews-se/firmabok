@@ -68,8 +68,7 @@ export default async function DashboardLayout({
   )
 
   // No companies: redirect to onboarding, except for allowed escape-hatch
-  // routes (so the user can still reach /settings/account to delete their
-  // account after archiving their last company).
+  // routes (so the user can still reach /settings/account).
   if (!companyId) {
     if (!isNoCompanyAllowed) {
       redirect('/onboarding')

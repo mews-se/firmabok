@@ -133,9 +133,6 @@ export type CoreEvent =
       userId: string
       companyId: string
     } }
-  // Company & account lifecycle
-  | { type: 'company.deleted'; payload: { companyId: string; userId: string; archivedAt: string } }
-  | { type: 'account.deleted'; payload: { userId: string; deletedAt: string } }
   // MCP telemetry: fired from the MCP dispatcher.
   // Persisted to event_log (180-day TTL for mcp.*/agent.* rows, vs 30 days for
   // delivery events) for hot-tool / error-rate / latency analytics.

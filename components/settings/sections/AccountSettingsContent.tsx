@@ -9,7 +9,6 @@ import { useTheme } from 'next-themes'
 import { createClient } from '@/lib/supabase/client'
 import { SecuritySettings } from '@/components/settings/SecuritySettings'
 import { InstallAppSection } from '@/components/settings/InstallAppSection'
-import { AccountDangerZone } from '@/components/settings/AccountDangerZone'
 import {
   SettingsGroup,
   SettingsInput,
@@ -18,7 +17,6 @@ import {
   SettingsSectionHeader,
   SettingsSeg,
 } from '@/components/settings/SettingsRows'
-import { useSettings } from '@/components/settings/useSettings'
 import { useToast } from '@/components/ui/use-toast'
 import { SUPPORTED_LOCALES, type Locale } from '@/i18n/config'
 import { PalettePicker } from '@/components/settings/PalettePicker'
@@ -31,7 +29,6 @@ export function AccountSettingsContent() {
   const { theme, setTheme } = useTheme()
   const { palette, setPalette } = usePalette()
   const [mounted, setMounted] = useState(false)
-  const { settings } = useSettings()
   const { toast } = useToast()
   const activeLocale = useLocale() as Locale
   const tCommon = useTranslations('common')
@@ -249,9 +246,6 @@ export function AccountSettingsContent() {
           </SettingsRowEnd>
         </SettingsRow>
       </SettingsGroup>
-
-      {/* Delete account: only for non-sandbox */}
-      {!settings?.is_sandbox && <AccountDangerZone />}
     </div>
   )
 }

@@ -2,7 +2,6 @@
 
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
-import { CompanyDangerZone } from '@/components/settings/CompanyDangerZone'
 import { CompanyInfoForm } from '@/components/settings/CompanyInfoForm'
 import { CompanyProfileSection } from '@/components/settings/CompanyProfileSection'
 import { FiscalPeriodEditor } from '@/components/settings/FiscalPeriodEditor'
@@ -79,8 +78,6 @@ export function CompanySettingsContent() {
       <FiscalPeriodEditor />
 
       <CompanyProfileSection />
-
-      <CompanyDangerZone />
     </div>
   )
 }

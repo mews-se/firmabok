@@ -211,8 +211,8 @@ export async function updateSession(request: NextRequest) {
   }
 
   // Routes that stay accessible when the user has no active company.
-  // Needed so a user who archived their last company can still delete
-  // their account without being trapped on /onboarding forever.
+  // Needed so a user without a company can still reach their account
+  // settings (sign out) without being trapped on /onboarding forever.
   const isNoCompanyAllowed =
     pathname.startsWith('/onboarding') ||
     pathname.startsWith('/settings/account') ||

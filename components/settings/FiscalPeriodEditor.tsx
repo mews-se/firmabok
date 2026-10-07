@@ -300,12 +300,9 @@ function BlockedRow({
       // for the micro-label position.
       label={t('fp_blocked_first_year').replace(/:$/, '')}
       help={
-        <>
-          <p>
-            {t('fp_blocked_title')}. {reason}
-          </p>
-          <p className="mt-2">{t('fp_blocked_explainer')}</p>
-        </>
+        <p>
+          {t('fp_blocked_title')}. {reason}
+        </p>
       }
       borderless
     >

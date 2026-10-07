@@ -254,15 +254,3 @@ export function SettingsSeg<T extends string>({
     </div>
   )
 }
-
-/** Terracotta-tinted trailing block for destructive actions. */
-export function SettingsDangerZone({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <section className="mt-10 border-t border-destructive/30 pt-3">
-      <p className="px-1 text-[11px] font-medium uppercase tracking-wider text-destructive/80">
-        {label}
-      </p>
-      <div>{children}</div>
-    </section>
-  )
-}

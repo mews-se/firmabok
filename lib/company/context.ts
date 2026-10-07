@@ -2,7 +2,6 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { fetchAllRows } from '@/lib/supabase/fetch-all'
 import { cookies } from 'next/headers'
 import { cookieSecure } from '@/lib/auth/cookie-secure'
-import type { EntityType } from '@/types'
 
 const COMPANY_COOKIE = 'gnubok-company-id'
 
@@ -154,35 +153,6 @@ async function getActiveCompanyIdViaQueries(
 
   // Fallback: first non-archived membership by created_at (already fetched)
   return firstCompany?.company_id ?? null
-}
-
-/**
- * Resolve a company's effective entity type.
- *
- * `company_settings.entity_type` is the read-primary source (what the user
- * edits in settings and what the sidebar reads), with the canonical
- * `companies.entity_type` as the fallback: mirroring app/api/settings and the
- * report engines. Returns null only if the company can't be found.
- */
-export async function getCompanyEntityType(
-  supabase: SupabaseClient,
-  companyId: string
-): Promise<EntityType | null> {
-  const { data: settings } = await supabase
-    .from('company_settings')
-    .select('entity_type')
-    .eq('company_id', companyId)
-    .maybeSingle()
-
-  if (settings?.entity_type) return settings.entity_type as EntityType
-
-  const { data: company } = await supabase
-    .from('companies')
-    .select('entity_type')
-    .eq('id', companyId)
-    .maybeSingle()
-
-  return (company?.entity_type as EntityType | undefined) ?? null
 }
 
 /**

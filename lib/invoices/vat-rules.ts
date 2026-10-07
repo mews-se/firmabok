@@ -217,13 +217,6 @@ export function getVatRules(
 }
 
 /**
- * Calculate VAT amount
- */
-export function calculateVat(subtotal: number, vatRate: number): number {
-  return Math.round(subtotal * vatRate) / 100
-}
-
-/**
  * Get VAT treatment label in Swedish
  */
 export function getVatTreatmentLabel(treatment: VatTreatment): string {

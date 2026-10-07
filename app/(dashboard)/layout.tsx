@@ -165,9 +165,9 @@ export default async function DashboardLayout({
   // Use company_name from settings as the display name (companies.name may be stale)
   const displayName = settings?.company_name || companyRow.name
 
-  // Resolve entity type the same way the report engines and
-  // getCompanyEntityType do: company_settings is read-primary, companies is the
-  // canonical fallback, then default to enskild_firma. Mirroring it onto the
+  // Resolve entity type the same way the report engines do: company_settings
+  // is read-primary, companies is the canonical fallback, then default to
+  // enskild_firma. Mirroring it onto the
   // active company keeps the settings rail (useSettingsNavItems, which reads
   // context) and the sidebar in agreement. #782
   const entityType =

@@ -2,7 +2,6 @@ import { z } from 'zod'
 import { ACCOUNT_NUMBER_RE, ACCOUNT_NUMBER_MESSAGE } from './account-number'
 import { ISO_DATE_RE, ISO_DATE_MESSAGE, SANE_DATE_MESSAGE, isSaneDateString } from './iso-date'
 import { FISCAL_YEAR_RE, FISCAL_YEAR_MESSAGE } from './fiscal-year'
-import { isValidOrgNumber } from './org-number'
 
 /**
  * Zod primitives built from the shared rules.
@@ -29,15 +28,3 @@ export const saneIsoDateSchema = z.string().refine(isSaneDateString, SANE_DATE_M
 
 /** Four-digit räkenskapsår key. */
 export const fiscalYearSchema = z.string().regex(FISCAL_YEAR_RE, FISCAL_YEAR_MESSAGE)
-
-/**
- * Swedish org number in any accepted input form (10 or 12 digits, spaces or
- * hyphens), validated including its Luhn check digit.
- *
- * Does **not** transform: schemas that persist the value should call
- * `normalizeOrgNumber` explicitly at the write site so the canonical form is
- * visible in the calling code rather than hidden in a parser.
- */
-export const orgNumberSchema = z
-  .string()
-  .refine(isValidOrgNumber, 'Ogiltigt organisationsnummer (10 eller 12 siffror, giltig kontrollsiffra)')

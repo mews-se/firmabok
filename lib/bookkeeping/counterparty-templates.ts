@@ -215,10 +215,6 @@ export function resolveSource(
   return SOURCE_PRIORITY[incoming] >= SOURCE_PRIORITY[existing] ? incoming : existing
 }
 
-// ── Counterparty Template ID Convention ──────────────────────
-
-export const COUNTERPARTY_PREFIX = 'counterparty:'
-
 // ── VAT Account Mapping ──────────────────────────────────────
 
 const VAT_ACCOUNT_TREATMENT: Record<string, string> = {

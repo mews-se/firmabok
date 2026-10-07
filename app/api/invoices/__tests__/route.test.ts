@@ -27,11 +27,9 @@ vi.mock('@/lib/auth/require-write', () => ({
 }))
 
 const mockGetVatRules = vi.fn()
-const mockCalculateVat = vi.fn()
 const mockGetAvailableVatRates = vi.fn()
 vi.mock('@/lib/invoices/vat-rules', () => ({
   getVatRules: (...args: unknown[]) => mockGetVatRules(...args),
-  calculateVat: (...args: unknown[]) => mockCalculateVat(...args),
   getAvailableVatRates: (...args: unknown[]) => mockGetAvailableVatRates(...args),
   // The builder gates on the permitted set (taxed-where-performed exceptions);
   // these route tests only care that the gate reads the stubbed rates.
@@ -211,7 +209,6 @@ describe('POST /api/invoices (create invoice)', () => {
       momsRuta: '10',
       reverseChargeText: null,
     })
-    mockCalculateVat.mockReturnValue(2500)
     mockGetAvailableVatRates.mockReturnValue([
       { rate: 25, label: '25%', treatment: 'standard_25' },
       { rate: 12, label: '12%', treatment: 'reduced_12' },
@@ -264,7 +261,6 @@ describe('POST /api/invoices (create invoice)', () => {
       momsRuta: '10',
       reverseChargeText: null,
     })
-    mockCalculateVat.mockReturnValue(2500)
     mockGetAvailableVatRates.mockReturnValue([
       { rate: 25, label: '25%', treatment: 'standard_25' },
       { rate: 12, label: '12%', treatment: 'reduced_12' },
@@ -316,7 +312,6 @@ describe('POST /api/invoices (create invoice)', () => {
       momsRuta: '10',
       reverseChargeText: null,
     })
-    mockCalculateVat.mockReturnValue(2500)
     mockGetAvailableVatRates.mockReturnValue([
       { rate: 25, label: '25%', treatment: 'standard_25' },
       { rate: 12, label: '12%', treatment: 'reduced_12' },
@@ -360,7 +355,6 @@ describe('POST /api/invoices (create invoice)', () => {
       momsRuta: '10',
       reverseChargeText: null,
     })
-    mockCalculateVat.mockReturnValue(2500)
     mockGetAvailableVatRates.mockReturnValue([
       { rate: 25, label: '25%', treatment: 'standard_25' },
       { rate: 12, label: '12%', treatment: 'reduced_12' },

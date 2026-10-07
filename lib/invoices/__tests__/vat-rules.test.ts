@@ -5,7 +5,6 @@ import {
   getPermittedVatRates,
   getVatTreatmentForRate,
   getVatRules,
-  calculateVat,
   getVatTreatmentLabel,
 } from '../vat-rules'
 
@@ -235,29 +234,6 @@ describe('getVatRules', () => {
 // Pin: vatRate is a whole number (25, not 0.25).
 // Formula: Math.round(subtotal * vatRate) / 100
 // ============================================================
-
-describe('calculateVat', () => {
-  it('calculates 25% of 10000 → 2500', () => {
-    expect(calculateVat(10000, 25)).toBe(2500)
-  })
-
-  it('calculates 12% of 5000 → 600', () => {
-    expect(calculateVat(5000, 12)).toBe(600)
-  })
-
-  it('calculates 6% of 3000 → 180', () => {
-    expect(calculateVat(3000, 6)).toBe(180)
-  })
-
-  it('calculates 0% of 10000 → 0', () => {
-    expect(calculateVat(10000, 0)).toBe(0)
-  })
-
-  it('rounds correctly: 99.99 at 25% → 25', () => {
-    // Math.round(99.99 * 25) / 100 = Math.round(2499.75) / 100 = 2500 / 100 = 25
-    expect(calculateVat(99.99, 25)).toBe(25)
-  })
-})
 
 // ============================================================
 // calculateTotal

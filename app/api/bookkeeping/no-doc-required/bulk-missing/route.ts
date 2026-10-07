@@ -5,7 +5,7 @@ import { validateBody } from '@/lib/api/validate'
 import { fetchAllRows } from '@/lib/supabase/fetch-all'
 import { markEntriesNoDocRequired } from '@/lib/bookkeeping/no-doc-required'
 import { NEEDS_DOC_SOURCE_TYPES } from '@/lib/worklist/categories'
-import { escapeLikePattern } from '@/lib/invoices/duplicate-payment-guard'
+import { escapeLikePattern } from '@/lib/supabase/escape-like'
 import { getErrorMessage as getUserErrorMessage } from '@/lib/errors/get-error-message'
 
 // A real calendar date in YYYY-MM-DD form. Rejects shaped-but-invalid values

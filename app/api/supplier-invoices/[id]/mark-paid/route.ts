@@ -10,25 +10,11 @@ import { cashPartialBlockReason } from '@/lib/bookkeeping/booking-mode'
 import { cancelOrphanedPaymentEntry } from '@/lib/bookkeeping/cancel-orphaned-entry'
 import { isBookkeepingError } from '@/lib/bookkeeping/errors'
 import { anchorSupplierInvoiceDocument } from '@/lib/core/documents/supplier-invoice-underlag'
-import { clearSettledInvoiceSuggestions } from '@/lib/invoices/clear-settled-invoice-suggestions'
 import { paidAtFromDate } from '@/lib/invoices/paid-at'
 import { validateBody } from '@/lib/api/validate'
 import { MarkSupplierInvoicePaidSchema } from '@/lib/api/schemas'
 import { withRouteContext } from '@/lib/api/with-route-context'
 import { errorResponse, errorResponseFromCode } from '@/lib/errors/get-structured-error'
-import {
-  DUPLICATE_AMOUNT_TOLERANCE_PCT,
-  DUPLICATE_DATE_WINDOW_DAYS,
-  escapeLikePattern,
-} from '@/lib/invoices/duplicate-payment-guard'
-import {
-  invoiceAmountSek,
-  magnitudesWithinTolerance,
-  normalizeCurrencyCode,
-  planAmountSweeps,
-  type ComparableAmount,
-} from '@/lib/invoices/duplicate-guard-currency'
-import { resolveTransactionAmountSek } from '@/lib/transactions/booking-duplicate-detection'
 import type { SupplierInvoice, SupplierInvoiceItem } from '@/types'
 import { getErrorMessage as getUserErrorMessage } from '@/lib/errors/get-error-message'
 
@@ -68,151 +54,6 @@ export const POST = withRouteContext(
 
     const paymentDate = body.payment_date || new Date().toISOString().split('T')[0]
     const paymentAmount = body.amount || invoice.remaining_amount
-
-    if (body.force) {
-      opLog.warn('duplicate-payment guard bypassed', {
-        reason: 'force=true',
-        paymentAmount,
-        paymentDate,
-      })
-    }
-
-    // Duplicate-payment guard: if a likely-matching unlinked bank transaction
-    // exists for this supplier, surface it before booking a new payment entry.
-    // Caller can override with `force: true`. Skipped on partial payments:
-    // those are an explicit, deliberate action.
-    const paidRounded = Math.round(paymentAmount * 100) / 100
-    const remainingRounded = Math.round(invoice.remaining_amount * 100) / 100
-    if (!body.force && paidRounded >= remainingRounded) {
-      const supplierName = (invoice as SupplierInvoice & { supplier?: { name?: string } })
-        .supplier?.name
-      if (!supplierName) {
-        // An invoice without a resolved supplier name is arguably *higher* risk
-        // for duplicate booking, not lower (BFL 5 kap 7 §: motpart should be
-        // identifiable). Log the skip so the gap is visible in audit.
-        opLog.warn('duplicate-payment guard skipped', {
-          reason: 'missing_supplier_name',
-          supplierInvoiceId: id,
-        })
-      }
-      if (supplierName) {
-        // Units: `paymentAmount` is denominated in the supplier invoice's
-        // currency (that is what `remaining_amount` and `body.amount` are),
-        // while `transactions.amount` is denominated in the bank row's own
-        // currency. The plus-minus tolerance band is therefore planned per
-        // currency and re-checked per row, so band and column always share a
-        // unit. A SEK invoice yields exactly one sweep with the band it had
-        // before, so a SEK-only company sees the identical single query.
-        const paymentCurrency = normalizeCurrencyCode(invoice.currency)
-        const reference: ComparableAmount = {
-          amount: paymentAmount,
-          currency: paymentCurrency,
-          sek: invoiceAmountSek({
-            amount: paymentAmount,
-            currency: paymentCurrency,
-            total: invoice.total,
-            totalSek: invoice.total_sek,
-            exchangeRate: invoice.exchange_rate,
-          }),
-        }
-        const { sweeps, crossCurrencyUnverifiable } = planAmountSweeps(
-          reference,
-          DUPLICATE_AMOUNT_TOLERANCE_PCT,
-        )
-        if (crossCurrencyUnverifiable) {
-          // A foreign invoice with no stored rate cannot be stated in kronor,
-          // so kronor bank rows can only be excluded, never compared raw
-          // (a raw compare reads 1 000 EUR as 1 000 kr). Same-currency rows are
-          // still swept. Logged so the blind spot is visible in audit rather
-          // than passing as a clean "no duplicate".
-          opLog.warn('duplicate-payment guard: cross-currency candidates not evaluated', {
-            reason: 'invoice_missing_sek_value',
-            currency: paymentCurrency,
-            supplierInvoiceId: id,
-          })
-        }
-
-        const dateMs = new Date(paymentDate).getTime()
-        const dateLow = new Date(dateMs - DUPLICATE_DATE_WINDOW_DAYS * 24 * 3600 * 1000).toISOString().split('T')[0]
-        const dateHigh = new Date(dateMs + DUPLICATE_DATE_WINDOW_DAYS * 24 * 3600 * 1000).toISOString().split('T')[0]
-        const escapedSupplierName = escapeLikePattern(supplierName)
-
-        type CandidateRow = {
-          id: string
-          date: string
-          amount: number
-          description: string | null
-          merchant_name: string | null
-          currency: string | null
-          amount_sek: number | null
-          exchange_rate: number | null
-        }
-
-        const sweepResults = await Promise.all(
-          sweeps.map((sweep) =>
-            supabase
-              .from('transactions')
-              .select(
-                'id, date, amount, description, merchant_name, currency, amount_sek, exchange_rate',
-              )
-              .eq('company_id', companyId!)
-              .eq('is_business', true)
-              .is('supplier_invoice_id', null)
-              .is('invoice_id', null)
-              .lt('amount', 0)
-              .or(sweep.currencyFilter)
-              .gte('amount', -sweep.high)
-              .lte('amount', -sweep.low)
-              .gte('date', dateLow)
-              .lte('date', dateHigh)
-              .ilike('merchant_name', `%${escapedSupplierName}%`)
-              .order('date', { ascending: false })
-              .limit(5),
-          ),
-        )
-
-        const byId = new Map<string, CandidateRow>()
-        for (const res of sweepResults) {
-          for (const row of (res.data ?? []) as CandidateRow[]) {
-            if (!byId.has(row.id)) byId.set(row.id, row)
-          }
-        }
-        const candidates = Array.from(byId.values())
-          .filter((c) =>
-            magnitudesWithinTolerance(
-              reference,
-              {
-                amount: Number(c.amount),
-                currency: normalizeCurrencyCode(c.currency),
-                sek: resolveTransactionAmountSek({
-                  amount: c.amount,
-                  currency: c.currency,
-                  amount_sek: c.amount_sek,
-                  exchange_rate: c.exchange_rate,
-                }),
-              },
-              DUPLICATE_AMOUNT_TOLERANCE_PCT,
-            ),
-          )
-          .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
-          .slice(0, 5)
-
-        if (candidates.length > 0) {
-          return errorResponseFromCode('SI_PAID_LIKELY_DUPLICATE', opLog, {
-            requestId,
-            details: {
-              candidates: candidates.map((c) => ({
-                id: c.id,
-                date: c.date,
-                amount: c.amount,
-                description: c.description,
-                merchant_name: c.merchant_name,
-              })),
-            },
-          })
-        }
-      }
-    }
 
     const { data: settings } = await supabase
       .from('company_settings')
@@ -419,13 +260,6 @@ export const POST = withRouteContext(
         requestId,
         details: { reason: 'payment_record_insert_failed' },
       })
-    }
-
-    // Fully settled: retire every transaction's suggestion pointer at this
-    // invoice (issue #1259). No exceptTransactionId: this flow is not driven by
-    // a bank transaction, so any pointer at it is now dead.
-    if (isFullyPaid) {
-      await clearSettledInvoiceSuggestions(supabase, companyId!, 'supplier_invoice', id)
     }
 
     // Under kontantmetoden the cash payment entry is the ONLY booking of the

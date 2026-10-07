@@ -174,11 +174,8 @@ export default function LinkVoucherPicker({
         })
         return
       }
-      const body = await response.json().catch(() => null)
-      const reconciledTxId = body?.data?.reconciled_transaction_id ?? null
       toast({
         title: t('link_success_title'),
-        description: reconciledTxId ? t('link_success_tx_reconciled') : undefined,
         variant: 'success',
       })
       onLinked()

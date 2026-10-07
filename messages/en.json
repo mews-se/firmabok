@@ -2037,13 +2037,6 @@
     "title": "Post payment",
     "title_suffix": ": {number}",
     "description_sek_suffix": " ({amount} SEK)",
-    "match_reason_ocr_exact": "Exact OCR match",
-    "match_reason_name_amount_fuzzy": "Likely match",
-    "match_reason_amount_only": "Possible match",
-    "duplicate_title": "Possible duplicate payment",
-    "duplicate_one": "An incoming bank transaction looks like it could be this payment. Link it instead of creating a new verifikat, or post anyway if you're sure.",
-    "duplicate_many": "{count} incoming bank transactions look like they could be this payment. Link the right one instead of creating a new verifikat, or post anyway if you're sure.",
-    "link_transaction": "Link transaction",
     "payment_date_label": "Payment date",
     "debit_label": "Debit",
     "credit_label": "Credit",
@@ -2052,7 +2045,6 @@
     "balanced_badge": "Debit = Credit",
     "unbalanced_badge": "Unbalanced ({delta})",
     "cancel": "Cancel",
-    "book_anyway": "Post anyway",
     "confirm_and_book": "Confirm & post",
     "load_chart_failed": "Could not load the chart of accounts",
     "no_active_company": "No active company",
@@ -2082,7 +2074,6 @@
     "cancel": "Cancel",
     "confirm": "Link as payment",
     "link_success_title": "Journal entry linked to invoice",
-    "link_success_tx_reconciled": "The matching bank transaction was also linked to the journal entry and will leave the Transactions list.",
     "link_failed_title": "Could not link the journal entry"
   },
   "supplier_invoice_editor": {
@@ -2353,13 +2344,7 @@
     "remaining_to_pay": "Remaining to pay: {amount} {currency}",
     "cancel": "Cancel",
     "register_payment": "Register payment",
-    "processing": "Processing...",
-    "duplicate_payment_title": "Possible duplicate payment",
-    "duplicate_payment_description_one": "We found a bank transaction that appears to match this payment. Link the existing transaction instead of creating a new verifikat.",
-    "duplicate_payment_description_many": "We found bank transactions that appear to match this payment. Link the existing transaction instead of creating a new verifikat.",
-    "bank_transaction_fallback": "Bank transaction",
-    "go_to": "Go to",
-    "create_voucher_anyway": "Create new verifikat anyway"
+    "processing": "Processing..."
   },
   "supplier_detail": {
     "back": "Back",

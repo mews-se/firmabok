@@ -130,7 +130,6 @@ import { generateBalanceSheet } from '@/lib/reports/balance-sheet'
 import { generateGeneralLedger } from '@/lib/reports/general-ledger'
 import { generateSupplierLedger } from '@/lib/reports/supplier-ledger'
 import { createInvoicePaymentJournalEntry, createInvoiceCashEntry, createInvoiceJournalEntry } from '@/lib/bookkeeping/invoice-entries'
-import { findMatchingInvoices } from '@/lib/invoices/invoice-matching'
 import { listRotRutCandidates, createRotRutPayoutRequest } from '@/lib/invoices/rot-rut-service'
 import { importRotRutBeslutFile } from '@/lib/invoices/rot-rut-beslut-import'
 import { RotRutBeslutFileSchema } from '@/lib/api/schemas'
@@ -148,7 +147,6 @@ import { validateYearEndReadiness, previewYearEndClosing } from '@/lib/core/book
 import { generateSIEExport } from '@/lib/reports/sie-export'
 import { generateFullArchive, estimateArchiveSize } from '@/lib/reports/full-archive-export'
 import { bookkeepingErrorResponse } from '@/lib/bookkeeping/errors'
-import { findDuplicatePaymentCandidatesForInvoice } from '@/lib/invoices/duplicate-payment-candidates'
 import { renderToBuffer } from '@react-pdf/renderer'
 import { InvoicePDF } from '@/lib/invoices/pdf-template'
 import {
@@ -4531,7 +4529,6 @@ export const tools: McpTool[] = [
       properties: {
         invoice_id: { type: 'string', description: 'UUID of the invoice' },
         payment_date: { type: 'string', description: 'Payment date YYYY-MM-DD (default: today)' },
-        allow_duplicate: { type: 'boolean', description: 'Override the duplicate-payment guard (default false). Set true ONLY after the user confirms; the guard blocks marking paid when an unlinked bank transaction already looks like this invoice\'s payment: match that transaction instead.' },
       },
       required: ['invoice_id'],
     },
@@ -4560,40 +4557,9 @@ export const tools: McpTool[] = [
 
       const paymentDate = (args.payment_date as string) || new Date().toISOString().split('T')[0]
 
-      // Duplicate-payment guard: surface a likely existing bank payment to the
-      // agent before staging, so it matches the transaction to the invoice
-      // instead of booking a parallel payment voucher (the orphan that later
-      // double-counts the receipt). The commit executor re-checks as the hard
-      // gate. Mirrors the web mark-paid route's guard.
-      if (args.allow_duplicate !== true && invoice.customer?.name) {
-        const remainingAmount =
-          (invoice as { remaining_amount?: number }).remaining_amount ?? invoice.total
-        const candidates = await findDuplicatePaymentCandidatesForInvoice(supabase, {
-          companyId,
-          invoice: {
-            invoice_number: invoice.invoice_number,
-            customer_name: invoice.customer.name,
-            currency: invoice.currency ?? null,
-            total: invoice.total ?? null,
-            total_sek: invoice.total_sek ?? null,
-            exchange_rate: invoice.exchange_rate ?? null,
-          },
-          // remaining_amount is stored in the invoice currency; the lookup
-          // converts it before banding kronor bank rows.
-          paymentAmount: remainingAmount,
-          paymentDate,
-        })
-        if (candidates.length > 0) {
-          throw new Error(
-            `Möjlig dubbelbetalning: en obokförd banktransaktion ser ut att vara betalningen för faktura ` +
-            `${invoice.invoice_number}. Anropa igen med allow_duplicate=true om det verkligen är en separat betalning.`,
-          )
-        }
-      }
-
       return stagePendingOperation(supabase, companyId, userId, 'mark_invoice_paid',
         `Betald: ${invoice.invoice_number} ${invoice.customer?.name || ''} ${invoice.total} ${invoice.currency}`,
-        { invoice_id: invoiceId, payment_date: paymentDate, allow_duplicate: args.allow_duplicate === true },
+        { invoice_id: invoiceId, payment_date: paymentDate },
         {
           invoice_number: invoice.invoice_number,
           customer_name: invoice.customer?.name,
@@ -6303,8 +6269,7 @@ export const tools: McpTool[] = [
       // line_description (base table) and one against journal_entries.description
       // (embedded resource). PostgREST's flat .or() filter cannot span a base
       // column and an embedded-resource column ("failed to parse logic tree"),
-      // so we issue two queries and merge by line id. Same pattern as
-      // lib/invoices/duplicate-payment-candidates.ts.
+      // so we issue two queries and merge by line id.
       const text = (args.text as string | undefined)?.trim()
       let data: LineRow[] = []
       let dbMatched = 0

@@ -24,7 +24,6 @@ import {
   amountsMatchFuzzy,
   customerNameMatches,
 } from './invoice-matching'
-import { clearSettledInvoiceSuggestions } from './clear-settled-invoice-suggestions'
 import { documentCurrency, ledgerLineSideAmountIn } from '@/lib/bookkeeping/ledger-line-amount'
 import type { SupplierInvoice, Supplier } from '@/types'
 import { fetchEntryLines, type EntryLinesQuery } from '@/lib/bookkeeping/entry-lines'
@@ -561,9 +560,6 @@ export interface LinkSupplierInvoiceToVoucherResult {
   remainingAmount: number
   paymentAmount: number
   journalEntryId: string
-  /** Bank transaction auto-reconciled to the linked voucher, if exactly one
-   *  unbooked line matched it; null when nothing was safely linkable. */
-  reconciledTransactionId: string | null
 }
 
 /**
@@ -678,22 +674,6 @@ export async function linkSupplierInvoiceToVoucher(
     }
   }
 
-  // No bank feed in this build: nothing to reconcile after the link.
-  const reconciledTransactionId: string | null = null
-
-  // The invoice is settled, so every transaction still carrying a suggestion
-  // pointer at it is dead: retire them (issue #1259). No exceptTransactionId:
-  // the reconciled row (if any) has already had its own hint cleared by the
-  // auto-reconcile tag update, so nothing here needs preserving.
-  if (result.invoice_status === 'paid') {
-    await clearSettledInvoiceSuggestions(
-      supabase,
-      companyId,
-      'supplier_invoice',
-      params.supplierInvoiceId,
-    )
-  }
-
   return {
     ok: true,
     result: {
@@ -703,7 +683,6 @@ export async function linkSupplierInvoiceToVoucher(
       remainingAmount: result.remaining_amount,
       paymentAmount: result.payment_amount,
       journalEntryId: result.journal_entry_id,
-      reconciledTransactionId,
     },
   }
 }

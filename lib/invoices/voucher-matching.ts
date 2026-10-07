@@ -28,7 +28,6 @@ import {
   amountsMatchFuzzy,
   customerNameMatches,
 } from './invoice-matching'
-import { clearSettledInvoiceSuggestions } from './clear-settled-invoice-suggestions'
 import { documentCurrency, ledgerLineSideAmountIn } from '@/lib/bookkeeping/ledger-line-amount'
 import type { Invoice, Customer } from '@/types'
 
@@ -671,10 +670,6 @@ export interface LinkInvoiceToVoucherResult {
   remainingAmount: number
   paymentAmount: number
   journalEntryId: string
-  /** Bank transaction auto-reconciled to the linked voucher, if exactly one
-   *  unbooked line matched it; null when nothing was safely linkable. Lets the
-   *  inbox row leave the Transactions list: the gap this whole flow fixes. */
-  reconciledTransactionId: string | null
 }
 
 /** jsonb payload returned by the link_invoice_to_voucher RPC on success. */
@@ -780,17 +775,6 @@ export async function linkInvoiceToVoucher(
     }
   }
 
-  // No bank feed in this build: nothing to reconcile after the link.
-  const reconciledTransactionId: string | null = null
-
-  // The invoice is settled, so every transaction still carrying a suggestion
-  // pointer at it is dead: retire them (issue #1259). No exceptTransactionId:
-  // the reconciled row (if any) has already had its own hint cleared by the
-  // auto-reconcile tag update, so nothing here needs preserving.
-  if (rpc.invoice_status === 'paid') {
-    await clearSettledInvoiceSuggestions(supabase, companyId, 'invoice', params.invoiceId)
-  }
-
   return {
     ok: true,
     result: {
@@ -800,7 +784,6 @@ export async function linkInvoiceToVoucher(
       remainingAmount: rpc.remaining_amount,
       paymentAmount: rpc.payment_amount,
       journalEntryId: params.journalEntryId,
-      reconciledTransactionId,
     },
   }
 }

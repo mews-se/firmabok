@@ -364,20 +364,6 @@ const BOOKKEEPING: Record<string, StructuredErrorEntry> = {
 // ─────────────────────────────────────────────────────────────────
 
 const TRANSACTIONS: Record<string, StructuredErrorEntry> = {
-  TRANSACTION_BOOK_POSSIBLE_DUPLICATE: {
-    httpStatus: 409,
-    message_sv:
-      'Den här affärshändelsen ser redan ut att vara bokförd: antingen en annan transaktion på samma datum och belopp, eller en verifikation som redan bokar samma belopp på bankkontot (t.ex. en betald faktura eller en lönekörning). Bokför inte samma affärshändelse två gånger. Granska den befintliga verifikationen och länka transaktionen till den, eller bokför ändå om de inte hör ihop.',
-    message_en:
-      'This business event already appears to be booked: either another transaction with the same date and amount, or a voucher that already books the same amount on the bank account (e.g. a paid invoice or a salary run). Do not book the same business event twice. Review the existing voucher and link this transaction to it, or pass force=true to book it anyway if they are genuinely unrelated.',
-  },
-  TRANSACTION_BOOK_FORCE_CANDIDATE_MISMATCH: {
-    httpStatus: 409,
-    message_sv:
-      'Den möjliga dubbletten som visades matchar inte längre. Ladda om och försök igen så att rätt kandidat visas.',
-    message_en:
-      'The duplicate candidate echoed in expected_duplicate_transaction_id / expected_duplicate_journal_entry_id no longer matches the one detected at request time. Re-run the booking pre-flight to obtain the current candidate, then retry.',
-  },
   TX_CATEGORIZE_TX_NOT_FOUND: {
     httpStatus: 404,
     message_sv: 'Transaktionen kunde inte hittas.',
@@ -1011,17 +997,6 @@ const INVOICE: Record<string, StructuredErrorEntry> = {
     httpStatus: 500,
     message_sv: 'Kunde inte bokföra betalningen.',
     message_en: 'Failed to create payment journal entry.',
-  },
-  INVOICE_PAID_LIKELY_DUPLICATE: {
-    httpStatus: 409,
-    message_sv:
-      'Det finns redan en obokförd inkommande banktransaktion som kan vara denna betalning. Länka den istället, eller markera som betald ändå om du är säker.',
-    message_en:
-      'A likely-matching unlinked inbound bank transaction was found for this customer. Suggest linking it instead of creating a new payment entry.',
-    remediation: {
-      description:
-        'Match the candidate transaction via POST /api/transactions/{id}/match-invoice, or resend mark-paid with force: true to create the payment entry anyway. When using the v1 endpoint, the force retry requires a fresh Idempotency-Key (the original key is bound to the body hash).',
-    },
   },
   INVOICE_DELETE_NOT_DRAFT: {
     httpStatus: 400,
@@ -2143,17 +2118,6 @@ const SUPPLIER_INVOICE_WAVE4: Record<string, StructuredErrorEntry> = {
     httpStatus: 500,
     message_sv: 'Kunde inte registrera betalningen.',
     message_en: 'Failed to record supplier invoice payment.',
-  },
-  SI_PAID_LIKELY_DUPLICATE: {
-    httpStatus: 409,
-    message_sv:
-      'Det finns redan en obokförd banktransaktion som kan vara denna betalning. Länka den istället, eller markera som betald ändå om du är säker.',
-    message_en:
-      'A likely-matching unlinked bank transaction was found for this supplier. Suggest linking it instead of creating a new payment entry.',
-    remediation: {
-      description:
-        'Match the candidate transaction via POST /api/transactions/{id}/match-supplier-invoice, or resend mark-paid with force: true to create the payment entry anyway.',
-    },
   },
   SI_CREDIT_ALREADY_CREDITED: {
     httpStatus: 409,

@@ -93,15 +93,6 @@ export default function SupplierInvoiceDetailPage() {
   const [accounts, setAccounts] = useState<BASAccount[]>([])
   const [areAccountsLoading, setAreAccountsLoading] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
-  const [duplicateCandidates, setDuplicateCandidates] = useState<
-    Array<{
-      id: string
-      date: string
-      amount: number
-      description: string | null
-      merchant_name: string | null
-    }> | null
-  >(null)
   const [markPaidPreview, setMarkPaidPreview] = useState<MarkPaidPreview | null>(null)
   const [markPaidPreviewFailed, setMarkPaidPreviewFailed] = useState(false)
   const [isEditingLines, setIsEditingLines] = useState(false)
@@ -318,7 +309,7 @@ export default function SupplierInvoiceDetailPage() {
     setIsProcessing(false)
   }
 
-  async function handleMarkPaid(force: boolean = false) {
+  async function handleMarkPaid() {
     setIsProcessing(true)
     // When the user has edited the booking rows in this session, forward
     // them so the server validates balance and posts via createJournalEntry
@@ -344,18 +335,12 @@ export default function SupplierInvoiceDetailPage() {
         amount: parseFloat(payAmount),
         payment_date: paymentDate,
         payment_account: paymentAccount,
-        ...(force ? { force: true } : {}),
         ...(linesPayload ? { lines: linesPayload } : {}),
       }),
     })
     const result = await res.json()
     if (!res.ok) {
-      if (result?.error?.code === 'SI_PAID_LIKELY_DUPLICATE' && Array.isArray(result.error.details?.candidates)) {
-        setDuplicateCandidates(result.error.details.candidates)
-        setIsPayDialogOpen(false)
-      } else {
-        toast({ title: t('payment_failed_title'), description: getErrorMessage(result, { context: 'supplier_invoice' }), variant: 'destructive' })
-      }
+      toast({ title: t('payment_failed_title'), description: getErrorMessage(result, { context: 'supplier_invoice' }), variant: 'destructive' })
     } else {
       toast({
         title: result.status === 'paid' ? t('paid_title') : t('partial_payment_title'),
@@ -366,7 +351,6 @@ export default function SupplierInvoiceDetailPage() {
         }),
       })
       setIsPayDialogOpen(false)
-      setDuplicateCandidates(null)
       fetchInvoice()
     }
     setIsProcessing(false)
@@ -1133,7 +1117,7 @@ export default function SupplierInvoiceDetailPage() {
                     {t('cancel')}
                   </Button>
                   <Button
-                    onClick={() => handleMarkPaid(false)}
+                    onClick={() => handleMarkPaid()}
                     disabled={isProcessing || (isEditingLines && !editValidation.isValid)}
                   >
                     {isProcessing ? t('processing') : t('register_payment')}
@@ -1155,61 +1139,6 @@ export default function SupplierInvoiceDetailPage() {
               />
             </TabsContent>
           </Tabs>
-        </DialogContent>
-      </Dialog>
-
-      {/* Duplicate-payment warning dialog */}
-      <Dialog
-        open={duplicateCandidates !== null}
-        onOpenChange={(open) => {
-          if (!open) setDuplicateCandidates(null)
-        }}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t('duplicate_payment_title')}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              {duplicateCandidates?.length === 1
-                ? t('duplicate_payment_description_one')
-                : t('duplicate_payment_description_many')}
-            </p>
-            <div className="space-y-2 rounded-md border bg-muted/30 p-3">
-              {duplicateCandidates?.map((c) => (
-                <div key={c.id} className="flex items-center justify-between gap-3 text-sm">
-                  <div className="min-w-0">
-                    <div className="font-medium tabular-nums">{formatDate(c.date)}</div>
-                    <div className="truncate text-xs text-muted-foreground">
-                      {c.merchant_name || c.description || t('bank_transaction_fallback')}
-                    </div>
-                  </div>
-                  <div className="tabular-nums font-medium">
-                    {formatCurrency(Math.abs(c.amount), invoice.currency)}
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => router.push(`/transactions?highlight=${c.id}`)}
-                  >
-                    {t('go_to')}
-                  </Button>
-                </div>
-              ))}
-            </div>
-            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-              <Button variant="outline" onClick={() => setDuplicateCandidates(null)}>
-                {t('cancel')}
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => handleMarkPaid(true)}
-                disabled={isProcessing}
-              >
-                {isProcessing ? t('processing') : t('create_voucher_anyway')}
-              </Button>
-            </div>
-          </div>
         </DialogContent>
       </Dialog>
     </div>

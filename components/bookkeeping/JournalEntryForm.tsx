@@ -29,7 +29,6 @@ import CreatePeriodDialog from '@/components/bookkeeping/CreatePeriodDialog'
 import { ActivateAccountsDialog } from '@/components/bookkeeping/ActivateAccountsDialog'
 import { AddAccountDialog } from '@/components/bookkeeping/AddAccountDialog'
 import { splitCreateAccountPrefill } from '@/lib/bookkeeping/create-account-prefill'
-import DuplicateBookingDialog from '@/components/bookkeeping/DuplicateBookingDialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   useSubmitWithAccountActivation,
@@ -49,7 +48,6 @@ import { useUnsavedChanges } from '@/lib/hooks/use-unsaved-changes'
 import { useCompany } from '@/contexts/CompanyContext'
 import type { UploadedFile } from '@/components/bookkeeping/DocumentUploadZone'
 import type { CreateJournalEntryLineInput, FiscalPeriod, BASAccount, JournalEntrySourceType, Currency, BookingTemplateLibrary, BookingTemplateCategory } from '@/types'
-import type { BookedDuplicateCandidate } from '@/lib/transactions/booking-duplicate-detection'
 
 const CURRENCIES: { value: Currency; label: string }[] = [
   { value: 'SEK', label: 'SEK' },
@@ -176,13 +174,6 @@ export default function JournalEntryForm({
   const effectiveSourceTypeRef = useRef<JournalEntrySourceType>(sourceType ?? 'manual')
   const [nextVoucherNumber, setNextVoucherNumber] = useState<number | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  // Booking-time duplicate guard (TRANSACTION_BOOK_POSSIBLE_DUPLICATE): the
-  // /book endpoint flags an already-booked sibling sharing date+amount+account.
-  // Surface it and let the user book anyway. The override is bound to the
-  // reviewed candidate via a ref the next submit reads: force is sent ONLY on
-  // that retry, never on a normal submit or to the manual journal-entry endpoint.
-  const [duplicateCandidate, setDuplicateCandidate] = useState<BookedDuplicateCandidate | null>(null)
-  const forceDuplicateRef = useRef<{ force: true; expected_duplicate_journal_entry_id: string } | null>(null)
   const [showReview, setShowReview] = useState(false)
   const [isSavingDraft, setIsSavingDraft] = useState(false)
   const saveAsDraftRef = useRef(false)
@@ -961,10 +952,6 @@ export default function JournalEntryForm({
         voucher_series: voucherSeries || 'A',
         notes: notes || undefined,
         lines: entryLines,
-        // Set only when retrying past the booking-time duplicate guard (see
-        // handleBookAnyway). Stripped by schemas that don't declare it, so a
-        // stray value never reaches the manual journal-entry endpoint.
-        ...(forceDuplicateRef.current ?? {}),
       }),
     })
     return (await throwOnStructuredError(res)) as { data?: { id?: string; voucher_series?: string; voucher_number?: number }; journal_entry_id?: string }
@@ -1065,48 +1052,15 @@ export default function JournalEntryForm({
       if (err instanceof Error && err.message === 'cancelled') {
         // User dismissed the activation dialog: no toast needed
       } else {
-        const anyErr = err as {
-          body?: { error?: { code?: string; details?: { candidate?: BookedDuplicateCandidate } } }
-          status?: number
-        }
-        const candidate = anyErr.body?.error?.details?.candidate
-        if (anyErr.body?.error?.code === 'TRANSACTION_BOOK_POSSIBLE_DUPLICATE' && candidate) {
-          // Soft duplicate guard fired: don't dead-end on a toast that merely
-          // says "book anyway". Open the dialog so the user can review the
-          // existing verifikat or confirm. handleBookAnyway re-submits with
-          // force bound to this candidate.
-          setDuplicateCandidate(candidate)
-        } else {
-          toast({
-            title: t('toast_create_failed'),
-            description: getErrorMessage(anyErr.body ?? err, { context: 'journal_entry', statusCode: anyErr.status }),
-            variant: 'destructive',
-          })
-        }
+        const anyErr = err as { body?: unknown; status?: number }
+        toast({
+          title: t('toast_create_failed'),
+          description: getErrorMessage(anyErr.body ?? err, { context: 'journal_entry', statusCode: anyErr.status }),
+          variant: 'destructive',
+        })
       }
     } finally {
       setIsSubmitting(false)
-    }
-  }
-
-  // Retry the booking past the duplicate guard. force is bound to the reviewed
-  // candidate via the ref; cleared afterwards so a later normal submit can't
-  // inherit it. handleConfirm runs its full success path (toast, reset,
-  // onEntryCreated) exactly as a first-try booking would.
-  const handleBookAnyway = async () => {
-    const candidate = duplicateCandidate
-    if (!candidate) return
-    forceDuplicateRef.current = {
-      force: true,
-      // Bind on the voucher id: present on both a sibling-transaction candidate
-      // and a ledger-only voucher candidate (which has no transaction_id).
-      expected_duplicate_journal_entry_id: candidate.journal_entry_id,
-    }
-    setDuplicateCandidate(null)
-    try {
-      await handleConfirm()
-    } finally {
-      forceDuplicateRef.current = null
     }
   }
 
@@ -2083,13 +2037,6 @@ export default function JournalEntryForm({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      <DuplicateBookingDialog
-        candidate={duplicateCandidate}
-        processing={isSubmitting}
-        onCancel={() => setDuplicateCandidate(null)}
-        onBookAnyway={handleBookAnyway}
-      />
     </div>
   )
 

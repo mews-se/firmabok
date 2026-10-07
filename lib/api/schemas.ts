@@ -755,11 +755,6 @@ export const MarkInvoicePaidSchema = z.object({
     // no-override path re-propagates the invoice's default_dimensions).
     dimensions: DimensionsBagSchema.optional(),
   })).min(2).optional(),
-  // Bypass the duplicate-payment guard. Set after the user reviews the
-  // candidate list returned by INVOICE_PAID_LIKELY_DUPLICATE and confirms
-  // none of them are this payment. v1 callers must use a fresh
-  // Idempotency-Key on the retry: the original is body-hash bound.
-  force: z.boolean().optional(),
 })
 
 export const MarkInvoiceSentSchema = z.object({
@@ -997,7 +992,6 @@ export const MarkSupplierInvoicePaidSchema = z.object({
   payment_date: isoDate.optional(),
   exchange_rate_difference: z.number().optional(),
   notes: z.string().optional(),
-  force: z.boolean().optional(),
   // Which BAS account to credit for the payment. Defaults to 1930 to preserve
   // the historical behaviour for MCP / agent callers that don't supply it.
   payment_account: accountNumber.optional(),

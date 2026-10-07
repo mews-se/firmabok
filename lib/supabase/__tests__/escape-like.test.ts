@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { escapeLikePattern, normalizeOcrReference } from '../duplicate-payment-guard'
+import { escapeLikePattern } from '../escape-like'
 
 describe('escapeLikePattern', () => {
   // These cases lock in that a user-supplied needle reaches an ILIKE pattern with
@@ -36,18 +36,5 @@ describe('escapeLikePattern', () => {
   it('truncates BEFORE escaping, so the source length is the bound', () => {
     // 250 percent signs → truncated to 200 source chars, each escaped to "\%".
     expect(escapeLikePattern('%'.repeat(250))).toBe('\\%'.repeat(200))
-  })
-})
-
-describe('normalizeOcrReference', () => {
-  it('keeps only digits regardless of separators', () => {
-    expect(normalizeOcrReference('2026-0042')).toBe('20260042')
-    expect(normalizeOcrReference('2026 / 0042')).toBe('20260042')
-  })
-
-  it('returns an empty string for nullish or empty input', () => {
-    expect(normalizeOcrReference(null)).toBe('')
-    expect(normalizeOcrReference(undefined)).toBe('')
-    expect(normalizeOcrReference('')).toBe('')
   })
 })

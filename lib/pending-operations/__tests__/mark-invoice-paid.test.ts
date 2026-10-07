@@ -7,9 +7,6 @@
  * it at the original total) and never emitted invoice.paid (so webhooks never
  * fired). It now routes through the shared planInvoicePayment helper and emits
  * invoice.paid, matching the dashboard and v1 mark-paid routes.
- *
- * Duplicate-payment-guard behaviour is covered separately in
- * commit-duplicate-guard.test.ts; here the guard is stubbed to "no candidates".
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { eventBus } from '@/lib/events/bus'
@@ -28,19 +25,6 @@ vi.mock('@/lib/bookkeeping/invoice-entries', async () => {
     createInvoiceCashEntry: (...args: unknown[]) => mockCreateCashEntry(...args),
   }
 })
-
-const mockFindDupPayments = vi.fn()
-vi.mock('@/lib/invoices/duplicate-payment-candidates', () => ({
-  findDuplicatePaymentCandidatesForInvoice: (...args: unknown[]) => mockFindDupPayments(...args),
-}))
-
-// Issue #1259: settling the invoice retires the suggestion pointers at it.
-// Mocked so it consumes no slot in the queued Supabase mock; the helper's own
-// query shape is pinned by lib/invoices/__tests__/clear-settled-invoice-suggestions.test.ts.
-const { mockClearSuggestions } = vi.hoisted(() => ({ mockClearSuggestions: vi.fn() }))
-vi.mock('@/lib/invoices/clear-settled-invoice-suggestions', () => ({
-  clearSettledInvoiceSuggestions: mockClearSuggestions,
-}))
 
 import { commitPendingOperation } from '../commit'
 
@@ -69,7 +53,6 @@ function makePendingOp(overrides: Partial<PendingOperation>): PendingOperation {
 beforeEach(() => {
   vi.clearAllMocks()
   eventBus.clear()
-  mockFindDupPayments.mockResolvedValue([])
   mockCreatePaymentEntry.mockResolvedValue({ id: 'je-1' })
   mockCreateCashEntry.mockResolvedValue({ id: 'je-1' })
 })
@@ -151,12 +134,6 @@ describe('commitPendingOperation: mark_invoice_paid state + invoice.paid', () =>
     )
     const invoiceUpdate = findCalls('invoices', 'update').at(-1)?.[0]
     expect(invoiceUpdate).toMatchObject({ paid_at: '2026-03-30T12:00:00Z' })
-
-    // Issue #1259: the invoice is settled, so no transaction may keep pointing
-    // at it as a match suggestion. This flow is not driven by a bank
-    // transaction, so nothing is excluded.
-    expect(mockClearSuggestions).toHaveBeenCalledTimes(1)
-    expect(mockClearSuggestions).toHaveBeenCalledWith(supabase, 'company-1', 'invoice', 'inv-1')
   })
 
   // No partial-payment counterpart here: this executor always settles the full

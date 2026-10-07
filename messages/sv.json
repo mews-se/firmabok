@@ -2037,13 +2037,6 @@
     "title": "Bokför betalning",
     "title_suffix": ": {number}",
     "description_sek_suffix": " ({amount} SEK)",
-    "match_reason_ocr_exact": "Exakt OCR-träff",
-    "match_reason_name_amount_fuzzy": "Sannolik träff",
-    "match_reason_amount_only": "Möjlig träff",
-    "duplicate_title": "Möjlig dubblettbetalning",
-    "duplicate_one": "En inkommande banktransaktion ser ut att vara denna betalning. Länka den istället för att skapa en ny verifikation, eller bokför ändå om du är säker.",
-    "duplicate_many": "{count} inkommande banktransaktioner ser ut att kunna vara denna betalning. Länka rätt transaktion istället för att skapa en ny verifikation, eller bokför ändå om du är säker.",
-    "link_transaction": "Länka transaktion",
     "payment_date_label": "Betalningsdatum",
     "debit_label": "Debet",
     "credit_label": "Kredit",
@@ -2052,7 +2045,6 @@
     "balanced_badge": "Debet = Kredit",
     "unbalanced_badge": "Obalanserad ({delta})",
     "cancel": "Avbryt",
-    "book_anyway": "Bokför ändå",
     "confirm_and_book": "Bekräfta & bokför",
     "load_chart_failed": "Kunde inte ladda kontoplanen",
     "no_active_company": "Inget aktivt företag",
@@ -2082,7 +2074,6 @@
     "cancel": "Avbryt",
     "confirm": "Länka som betalning",
     "link_success_title": "Verifikationen länkades till fakturan",
-    "link_success_tx_reconciled": "Den matchande banktransaktionen har också kopplats till verifikationen och försvinner från Transaktioner.",
     "link_failed_title": "Kunde inte länka verifikationen"
   },
   "supplier_invoice_editor": {
@@ -2353,13 +2344,7 @@
     "remaining_to_pay": "Kvar att betala: {amount} {currency}",
     "cancel": "Avbryt",
     "register_payment": "Registrera betalning",
-    "processing": "Bearbetar...",
-    "duplicate_payment_title": "Möjlig dubbelbetalning",
-    "duplicate_payment_description_one": "Vi hittade en banktransaktion som verkar matcha denna betalning. Länka den befintliga transaktionen istället för att skapa en ny verifikation.",
-    "duplicate_payment_description_many": "Vi hittade banktransaktioner som verkar matcha denna betalning. Länka den befintliga transaktionen istället för att skapa en ny verifikation.",
-    "bank_transaction_fallback": "Banktransaktion",
-    "go_to": "Gå till",
-    "create_voucher_anyway": "Skapa ny verifikation ändå"
+    "processing": "Bearbetar..."
   },
   "supplier_detail": {
     "back": "Tillbaka",

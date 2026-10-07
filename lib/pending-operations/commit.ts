@@ -57,9 +57,7 @@ import {
 } from '@/lib/bookkeeping/supplier-invoice-entries'
 import { linkInvoiceToVoucher } from '@/lib/invoices/voucher-matching'
 import { planInvoicePayment } from '@/lib/invoices/apply-invoice-payment'
-import { findDuplicatePaymentCandidatesForInvoice } from '@/lib/invoices/duplicate-payment-candidates'
 import { linkSupplierInvoiceToVoucher } from '@/lib/invoices/supplier-voucher-matching'
-import { clearSettledInvoiceSuggestions } from '@/lib/invoices/clear-settled-invoice-suggestions'
 import { paidAtFromDate } from '@/lib/invoices/paid-at'
 import { getErrorEntry } from '@/lib/errors/structured-errors'
 import { parseSIEFile } from '@/lib/import/sie-parser'
@@ -1715,98 +1713,6 @@ async function commitMarkInvoicePaid(
     return { error: 'Invoice can only be marked as paid when status is "sent" or "overdue"', status: 409 }
   }
 
-  // Duplicate-payment guard: parity with the web mark-paid route, which the
-  // agent path otherwise bypassed. If an unlinked inbound bank transaction
-  // already looks like this invoice's payment, booking a parallel payment
-  // voucher here creates exactly the orphan that later double-counts the
-  // receipt. Fail closed; the agent re-stages with allow_duplicate=true (after
-  // the user confirms) or, better, matches the transaction to the invoice
-  // instead. Fail-open on a detection error so it never blocks a real payment.
-  if (params.allow_duplicate !== true) {
-    const customerName = (invoice as { customer?: { name?: string } }).customer?.name
-    if (customerName) {
-      const remainingAmount =
-        (invoice as { remaining_amount?: number }).remaining_amount ?? invoice.total
-      let candidates: Awaited<ReturnType<typeof findDuplicatePaymentCandidatesForInvoice>> = []
-      try {
-        candidates = await findDuplicatePaymentCandidatesForInvoice(supabase, {
-          companyId,
-          invoice: {
-            invoice_number: invoice.invoice_number,
-            customer_name: customerName,
-            currency: invoice.currency ?? null,
-            total: invoice.total ?? null,
-            total_sek: invoice.total_sek ?? null,
-            exchange_rate: invoice.exchange_rate ?? null,
-          },
-          // remaining_amount is stored in the invoice currency; the lookup
-          // converts it before banding kronor bank rows.
-          paymentAmount: remainingAmount,
-          paymentDate,
-        })
-      } catch (err) {
-        log.warn('duplicate-payment detection failed (continuing)', err)
-      }
-      if (candidates.length > 0) {
-        return {
-          error:
-            `Möjlig dubbelbetalning: en obokförd banktransaktion ser ut att vara betalningen för faktura ` +
-            `${invoice.invoice_number}. Matcha banktransaktionen mot fakturan (gnubok_match_transaction_to_invoice) ` +
-            `i stället för att bokföra en separat betalning. Om det verkligen rör sig om en annan betalning, ` +
-            `kör om med allow_duplicate=true.`,
-          status: 409,
-        }
-      }
-    }
-  } else {
-    // allow_duplicate=true bypassed the duplicate-payment guard. The decision
-    // to book a payment over a possible existing one must leave a durable
-    // behandlingshistorik record (BFNAR 2013:2 kap 8) so an auditor can see why
-    // the duplicate was allowed. Re-detect to capture the dismissed candidate;
-    // best-effort, never blocks the payment. Payload stays PII-safe
-    // (ids/amounts/dates only: no customer or merchant name).
-    const customerName = (invoice as { customer?: { name?: string } }).customer?.name
-    if (customerName) {
-      try {
-        const remainingAmount =
-          (invoice as { remaining_amount?: number }).remaining_amount ?? invoice.total
-        const dismissed = await findDuplicatePaymentCandidatesForInvoice(supabase, {
-          companyId,
-          invoice: {
-            invoice_number: invoice.invoice_number,
-            customer_name: customerName,
-            currency: invoice.currency ?? null,
-            total: invoice.total ?? null,
-            total_sek: invoice.total_sek ?? null,
-            exchange_rate: invoice.exchange_rate ?? null,
-          },
-          paymentAmount: remainingAmount,
-          paymentDate,
-        })
-        if (dismissed.length > 0) {
-          await appendProcessingHistory({
-            companyId,
-            correlationId: invoiceId,
-            aggregateType: 'System',
-            aggregateId: invoiceId,
-            eventType: 'InvoiceDuplicatePaymentDismissed',
-            payload: {
-              invoice_id: invoiceId,
-              payment_date: paymentDate,
-              dismissed_transaction_ids: dismissed.map((c) => c.id),
-              candidate_count: dismissed.length,
-              via: 'allow_duplicate',
-            },
-            actor: { type: 'user', id: userId },
-            occurredAt: new Date(),
-          })
-        }
-      } catch (logErr) {
-        log.warn('failed to record duplicate-payment-dismissal behandlingshistorik', logErr)
-      }
-    }
-  }
-
   const { data: settings } = await supabase
     .from('company_settings').select('accounting_method, entity_type').eq('company_id', companyId).single()
 
@@ -1933,13 +1839,6 @@ async function commitMarkInvoicePaid(
       error: 'Invoice can only be marked as paid from a payable status (sent, overdue or partially paid)',
       status: 409,
     }
-  }
-
-  // Fully settled: retire every transaction's suggestion pointer at this
-  // invoice. No exceptTransactionId: this flow is not driven by
-  // a bank transaction, so any pointer at it is now dead.
-  if (newStatus === 'paid') {
-    await clearSettledInvoiceSuggestions(supabase, companyId, 'invoice', invoiceId)
   }
 
   // Notify subscribers on the event bus. Best-effort: the payment is already
@@ -2088,7 +1987,6 @@ async function commitLinkInvoiceVoucher(
       payment_amount: outcome.result.paymentAmount,
       payment_id: outcome.result.paymentId,
       journal_entry_id: outcome.result.journalEntryId,
-      reconciled_transaction_id: outcome.result.reconciledTransactionId,
     },
   }
 }
@@ -2131,7 +2029,6 @@ async function commitLinkSupplierInvoiceVoucher(
       payment_amount: outcome.result.paymentAmount,
       payment_id: outcome.result.paymentId,
       journal_entry_id: outcome.result.journalEntryId,
-      reconciled_transaction_id: outcome.result.reconciledTransactionId,
     },
   }
 }

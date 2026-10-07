@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { Eye } from 'lucide-react'
-import { useLocale, useTranslations } from 'next-intl'
+import { useTranslations } from 'next-intl'
 import {
   Dialog,
   DialogContent,
@@ -13,7 +13,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton'
 import { createClient } from '@/lib/supabase/client'
 import { useCompany } from '@/contexts/CompanyContext'
-import { getErrorMessage, type ErrorLocale } from '@/lib/errors/get-error-message'
+import { getErrorMessage } from '@/lib/errors/get-error-message'
 import type { CompanySettings } from '@/types'
 
 interface InvoicePreviewCardProps {
@@ -22,7 +22,6 @@ interface InvoicePreviewCardProps {
 
 export function InvoicePreviewCard({ settings }: InvoicePreviewCardProps) {
   const t = useTranslations('settings_invoicing_preview')
-  const locale = useLocale() as ErrorLocale
   const { company } = useCompany()
   const [open, setOpen] = useState(false)
   const [blobUrl, setBlobUrl] = useState<string | null>(null)
@@ -104,7 +103,7 @@ export function InvoicePreviewCard({ settings }: InvoicePreviewCardProps) {
       } catch (err) {
         if (cancelled) return
         if (err instanceof Error && err.name === 'AbortError') return
-        setError(getErrorMessage(err, { locale, context: 'invoice' }))
+        setError(getErrorMessage(err, { context: 'invoice' }))
         setIsLoading(false)
       }
     }
@@ -114,7 +113,7 @@ export function InvoicePreviewCard({ settings }: InvoicePreviewCardProps) {
       clearTimeout(timer)
       controller.abort()
     }
-  }, [open, settings, company?.id, sampleItemDescription, locale])
+  }, [open, settings, company?.id, sampleItemDescription])
 
   useEffect(() => {
     return () => {

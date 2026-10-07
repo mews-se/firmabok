@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { useLocale, useTranslations } from 'next-intl'
+import { useTranslations } from 'next-intl'
 import { ExternalLink } from 'lucide-react'
 import { Switch } from '@/components/ui/switch'
 import { useToast } from '@/components/ui/use-toast'
@@ -13,7 +13,7 @@ import {
 import { useSettings } from '@/components/settings/useSettings'
 import { useCanWrite } from '@/lib/hooks/use-can-write'
 import { cn } from '@/lib/utils'
-import { getErrorMessage, type ErrorLocale } from '@/lib/errors/get-error-message'
+import { getErrorMessage } from '@/lib/errors/get-error-message'
 
 /**
  * Company-level toggle for the dimensions register (kostnadsställen &
@@ -28,7 +28,6 @@ import { getErrorMessage, type ErrorLocale } from '@/lib/errors/get-error-messag
  */
 export function DimensionsToggle() {
   const t = useTranslations('dimensions')
-  const errorLocale = useLocale() as ErrorLocale
   const { settings, updateSettings } = useSettings()
   const { canWrite } = useCanWrite()
   const { toast } = useToast()
@@ -48,7 +47,7 @@ export function DimensionsToggle() {
       if (!res.ok) {
         toast({
           title: t('settings_save_failed_title'),
-          description: getErrorMessage(json, { locale: errorLocale }),
+          description: getErrorMessage(json),
           variant: 'destructive',
         })
         return
@@ -76,7 +75,7 @@ export function DimensionsToggle() {
           } else {
             toast({
               title: t('settings_import_failed_title'),
-              description: getErrorMessage(importJson, { locale: errorLocale }),
+              description: getErrorMessage(importJson),
               variant: 'destructive',
             })
           }
@@ -96,7 +95,7 @@ export function DimensionsToggle() {
       // (components/ui/use-toast.tsx) and a second would evict the first.
       toast({
         title: t('settings_save_failed_title'),
-        description: getErrorMessage(err, { locale: errorLocale }),
+        description: getErrorMessage(err),
         variant: 'destructive',
       })
     } finally {

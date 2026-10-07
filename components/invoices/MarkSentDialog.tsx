@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { useLocale, useTranslations } from 'next-intl'
+import { useTranslations } from 'next-intl'
 import {
   Dialog,
   DialogContent,
@@ -53,7 +53,6 @@ export default function MarkSentDialog({
   const supabase = createClient()
   const { company } = useCompany()
   const t = useTranslations('invoice_mark_sent_dialog')
-  const locale = useLocale() as 'sv' | 'en'
   const isCreditNote = !!invoice.credited_invoice_id
   const isCreditRepair = isCreditNote && invoice.status === 'sent'
 
@@ -295,7 +294,7 @@ export default function MarkSentDialog({
       })
 
       if (!response.ok) {
-        throw new Error(await getResponseErrorMessage(response, 'invoice', locale))
+        throw new Error(await getResponseErrorMessage(response, 'invoice'))
       }
       const data = await response.json()
 

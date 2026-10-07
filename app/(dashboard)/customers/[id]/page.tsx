@@ -33,9 +33,8 @@ import {
   Eye,
   EyeOff,
 } from 'lucide-react'
-import { useLocale } from 'next-intl'
 import { useCanWrite } from '@/lib/hooks/use-can-write'
-import { getErrorMessage, type ErrorLocale } from '@/lib/errors/get-error-message'
+import { getErrorMessage } from '@/lib/errors/get-error-message'
 import { cn, formatDate } from '@/lib/utils'
 import { invoiceNumberDisplay } from '@/lib/invoices/display'
 import type { Customer, CustomerType, CreateCustomerInput } from '@/types'
@@ -79,7 +78,6 @@ export default function CustomerDetailPage({
   const { toast } = useToast()
   const { canWrite } = useCanWrite()
   const t = useTranslations('customer_detail')
-  const errorLocale = useLocale() as ErrorLocale
   const [customer, setCustomer] = useState<CustomerWithRelations | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isEditOpen, setIsEditOpen] = useState(false)
@@ -106,7 +104,7 @@ export default function CustomerDetailPage({
       if (!response.ok) {
         toast({
           title: t('personal_number_reveal_failed_title'),
-          description: getErrorMessage(result, { context: 'customer', locale: errorLocale }),
+          description: getErrorMessage(result, { context: 'customer' }),
           variant: 'destructive',
         })
         return

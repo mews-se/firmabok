@@ -164,7 +164,7 @@ export default function DimensionCombobox({
         })
         const json = await res.json().catch(() => null)
         if (!res.ok) {
-          setCreateError(getErrorMessage(json, { locale: 'sv' }))
+          setCreateError(getErrorMessage(json))
           return
         }
         const created: DimensionValueDto = json?.data ?? {

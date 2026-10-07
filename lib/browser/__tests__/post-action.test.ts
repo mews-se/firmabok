@@ -108,16 +108,6 @@ describe('postAction', () => {
     })
   })
 
-  it('reports a server error in English for an English UI', async () => {
-    globalThis.fetch = vi
-      .fn()
-      .mockResolvedValue(jsonResponse({ error: { code: 'INTERNAL_ERROR', message: 'Serverfel' } }, 500))
-
-    const result = await postAction({ url: MARK_PAID_URL, locale: 'en' })
-
-    expect(result).toMatchObject({ reason: 'server', message: 'Internal server error.' })
-  })
-
   it('reports a thrown request as a network failure, not as success', async () => {
     // The finding: with try/finally and no catch this rejection escaped as an
     // unhandled rejection and the user was told nothing at all.

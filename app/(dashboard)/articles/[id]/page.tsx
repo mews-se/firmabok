@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef, use } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { useLocale, useTranslations } from 'next-intl'
+import { useTranslations } from 'next-intl'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -15,7 +15,7 @@ import {
   useSubmitWithAccountActivation,
   throwOnStructuredError,
 } from '@/lib/hooks/use-submit-with-account-activation'
-import { getErrorMessage, type ErrorLocale } from '@/lib/errors/get-error-message'
+import { getErrorMessage } from '@/lib/errors/get-error-message'
 import { DestructiveConfirmDialog, useDestructiveConfirm } from '@/components/ui/destructive-confirm-dialog'
 import {
   Archive,
@@ -52,7 +52,6 @@ export default function ArticleDetailPage({
   const { toast } = useToast()
   const { canWrite } = useCanWrite()
   const t = useTranslations('article_detail')
-  const errorLocale = useLocale() as ErrorLocale
   const [article, setArticle] = useState<Article | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isEditOpen, setIsEditOpen] = useState(false)
@@ -122,7 +121,7 @@ export default function ArticleDetailPage({
         const body = (err as { body?: unknown }).body
         toast({
           title: t('update_failed_title'),
-          description: getErrorMessage(body ?? err, { context: 'article', locale: errorLocale }),
+          description: getErrorMessage(body ?? err, { context: 'article' }),
           variant: 'destructive',
         })
       }
@@ -168,7 +167,7 @@ export default function ArticleDetailPage({
       const body = (err as { body?: unknown }).body
       toast({
         title: nextActive ? t('activate_failed_title') : t('deactivate_failed_title'),
-        description: getErrorMessage(body ?? err, { context: 'article', locale: errorLocale }),
+        description: getErrorMessage(body ?? err, { context: 'article' }),
         variant: 'destructive',
       })
     } finally {
@@ -203,7 +202,7 @@ export default function ArticleDetailPage({
       const body = (err as { body?: unknown }).body
       toast({
         title: t('delete_failed_title'),
-        description: getErrorMessage(body ?? err, { context: 'article', locale: errorLocale }),
+        description: getErrorMessage(body ?? err, { context: 'article' }),
         variant: 'destructive',
       })
     } finally {

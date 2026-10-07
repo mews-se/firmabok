@@ -19,7 +19,7 @@
  */
 
 import { fetchWithTimeout, isTimeoutError } from '@/lib/http/fetch-with-timeout'
-import { getErrorMessage, type ErrorLocale } from '@/lib/errors/get-error-message'
+import { getErrorMessage } from '@/lib/errors/get-error-message'
 import type { ActionFailure } from './action-failure'
 
 /**
@@ -37,14 +37,11 @@ export type PostActionResult = { ok: true } | ActionFailure
 
 export interface PostActionOptions {
   url: string
-  /** UI locale, so a server error is reported in the language the user reads. */
-  locale?: ErrorLocale
   timeoutMs?: number
 }
 
 export async function postAction({
   url,
-  locale = 'sv',
   timeoutMs = POST_ACTION_TIMEOUT_MS,
 }: PostActionOptions): Promise<PostActionResult> {
   try {
@@ -62,13 +59,13 @@ export async function postAction({
         ok: false,
         reason: 'server',
         status: res.status,
-        message: getErrorMessage(body, { statusCode: res.status, locale }),
+        message: getErrorMessage(body, { statusCode: res.status }),
       }
     }
 
     return { ok: true }
   } catch (err) {
     if (isTimeoutError(err)) return { ok: false, reason: 'timeout' }
-    return { ok: false, reason: 'network', message: getErrorMessage(err, { locale }) }
+    return { ok: false, reason: 'network', message: getErrorMessage(err) }
   }
 }

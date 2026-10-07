@@ -144,13 +144,6 @@ describe('getErrorMessage: typed bookkeeping Error instances (issue #337)', () =
     expect(msg).not.toContain('Cannot reverse')
   })
 
-  it('locale "en" on a typed instance → registry English message', () => {
-    const msg = getErrorMessage(new CannotReverseStornoError('storno'), { locale: 'en' })
-    expect(msg).toBe(
-      'A storno entry cannot be reversed. If the entry was cancelled by mistake, re-book it (copy the original).',
-    )
-  })
-
   it('regression: plain-object bare envelope with a Swedish message passes through unchanged', () => {
     const msg = getErrorMessage({ code: 'SOME_CODE', message: 'Kunde inte hantera fakturan. Försök igen.' })
     expect(msg).toBe('Kunde inte hantera fakturan. Försök igen.')
@@ -180,16 +173,6 @@ describe('getErrorMessage: unknown-code Error instances never leak raw text (#33
     expect(msg).not.toContain('127.0.0.1')
   })
 
-  it('ECONNREFUSED Error with locale "en" → registry English message', () => {
-    const err = Object.assign(new Error('connect ECONNREFUSED 127.0.0.1:5432'), {
-      code: 'ECONNREFUSED',
-    })
-    const msg = getErrorMessage(err, { locale: 'en' })
-    expect(msg).toBe(
-      'An upstream network call failed. Retry the same request after a short backoff.'
-    )
-  })
-
   it('Error with an unregistered code and English message → context fallback, not raw', () => {
     const err = Object.assign(new Error('some upstream failure text'), {
       code: 'E_SOMETHING_WEIRD',
@@ -217,19 +200,8 @@ describe('getErrorMessage: unknown-code Error instances never leak raw text (#33
   })
 })
 
-describe('getErrorMessage: English locale uses registry English (C9)', () => {
-  it('returns the registry English message for a known structured code instead of Swedish', () => {
-    const code = 'FISCAL_PERIOD_NOT_FOUND'
-    const sv = getErrorMessage({ error: { code, message: '...' } })
-    const en = getErrorMessage({ error: { code, message: '...' } }, { locale: 'en' })
-
-    expect(sv).toMatch(/[åäö]/i) // default (Swedish) path is unchanged
-    expect(en).not.toBe(sv) // English locale now differs
-    expect(en).not.toMatch(/[åäö]/i) // …and is no longer Swedish prose
-    expect(en.toLowerCase()).toContain('fiscal period')
-  })
-
-  it('leaves the Swedish (default-locale) message identical to before', () => {
+describe('getErrorMessage: known structured codes', () => {
+  it('maps a known code to its Swedish message', () => {
     expect(getErrorMessage({ error: { code: 'CANNOT_REVERSE_NON_POSTED', message: '...' } })).toBe(
       'Endast bokförda verifikationer kan stornas.',
     )
@@ -405,12 +377,6 @@ describe('getErrorMessage: API response body vs new Error(body.error)', () => {
     expect(getErrorMessage(null, { statusCode: 403 })).toBe(
       'Du har inte behörighet att utföra denna åtgärd.',
     )
-  })
-
-  it('English locale gets message_en from the envelope, not the Swedish prose', () => {
-    const msg = getErrorMessage(envelope, { statusCode: 409, locale: 'en' })
-    expect(msg).not.toContain('Räkenskapsperioden')
-    expect(msg).not.toBe('Something went wrong. Please try again.')
   })
 })
 

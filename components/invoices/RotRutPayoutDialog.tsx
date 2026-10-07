@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useLocale, useTranslations } from 'next-intl'
+import { useTranslations } from 'next-intl'
 import {
   AlertTriangle,
   Ban,
@@ -26,11 +26,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useToast } from '@/components/ui/use-toast'
 import { downloadFile, saveBlobToDisk } from '@/lib/browser/download-file'
 import { failureDescription } from '@/lib/browser/action-failure'
-import {
-  getErrorMessage,
-  getResponseErrorMessage,
-  type ErrorLocale,
-} from '@/lib/errors/get-error-message'
+import { getErrorMessage, getResponseErrorMessage } from '@/lib/errors/get-error-message'
 import { formatCurrency, formatDate } from '@/lib/utils'
 
 type DeductionType = 'rot' | 'rut'
@@ -109,7 +105,6 @@ export default function RotRutPayoutDialog({
   canWrite,
 }: RotRutPayoutDialogProps) {
   const t = useTranslations('invoices')
-  const locale = useLocale() as ErrorLocale
   const { toast } = useToast()
   const loadSequence = useRef(0)
   const [type, setType] = useState<DeductionType>('rot')
@@ -139,7 +134,7 @@ export default function RotRutPayoutDialog({
             ? requestsResponse
             : null
         if (failedResponse) {
-          const description = await getResponseErrorMessage(failedResponse, 'invoice', locale)
+          const description = await getResponseErrorMessage(failedResponse, 'invoice')
           if (sequence !== loadSequence.current) return
           setEligible([])
           setBlocked([])
@@ -171,14 +166,14 @@ export default function RotRutPayoutDialog({
         setSelectedYear('')
         toast({
           title: t('rot_rut_load_failed_title'),
-          description: getErrorMessage(error, { context: 'invoice', locale }),
+          description: getErrorMessage(error, { context: 'invoice' }),
           variant: 'destructive',
         })
       } finally {
         if (sequence === loadSequence.current) setLoading(false)
       }
     },
-    [locale, t, toast],
+    [t, toast],
   )
 
   useEffect(() => {
@@ -246,7 +241,7 @@ export default function RotRutPayoutDialog({
       if (!response.ok) {
         toast({
           title: t('rot_rut_generate_failed_title'),
-          description: await getResponseErrorMessage(response, 'invoice', locale),
+          description: await getResponseErrorMessage(response, 'invoice'),
           variant: 'destructive',
         })
         return
@@ -269,7 +264,7 @@ export default function RotRutPayoutDialog({
     } catch (error) {
       toast({
         title: t('rot_rut_generate_failed_title'),
-        description: getErrorMessage(error, { context: 'invoice', locale }),
+        description: getErrorMessage(error, { context: 'invoice' }),
         variant: 'destructive',
       })
     } finally {
@@ -289,7 +284,7 @@ export default function RotRutPayoutDialog({
       if (!response.ok) {
         toast({
           title: t('rot_rut_update_failed_title'),
-          description: await getResponseErrorMessage(response, 'invoice', locale),
+          description: await getResponseErrorMessage(response, 'invoice'),
           variant: 'destructive',
         })
         return
@@ -299,7 +294,7 @@ export default function RotRutPayoutDialog({
     } catch (error) {
       toast({
         title: t('rot_rut_update_failed_title'),
-        description: getErrorMessage(error, { context: 'invoice', locale }),
+        description: getErrorMessage(error, { context: 'invoice' }),
         variant: 'destructive',
       })
     } finally {
@@ -314,7 +309,6 @@ export default function RotRutPayoutDialog({
       const result = await downloadFile({
         url: `/api/documents/${request.file_document_id}/inline`,
         filename: request.file_name,
-        locale,
       })
       if (!result.ok) {
         toast({

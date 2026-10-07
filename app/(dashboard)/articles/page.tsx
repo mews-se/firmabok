@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback, useRef, Suspense } from 'react'
 import dynamic from 'next/dynamic'
-import { useLocale, useTranslations } from 'next-intl'
+import { useTranslations } from 'next-intl'
 import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Skeleton } from '@/components/ui/skeleton'
 import { TH_CLASS, TD_CLASS } from '@/components/ui/dry-table'
 import { useToast } from '@/components/ui/use-toast'
-import { getErrorMessage, type ErrorLocale } from '@/lib/errors/get-error-message'
+import { getErrorMessage } from '@/lib/errors/get-error-message'
 import { Plus, Search, Package, Lock, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react'
 import { ActivateAccountsDialog } from '@/components/bookkeeping/ActivateAccountsDialog'
 import {
@@ -82,7 +82,6 @@ function ArticlesPageInner() {
   const supabase = createClient()
   const t = useTranslations('articles')
   const tCommon = useTranslations('common')
-  const errorLocale = useLocale() as ErrorLocale
 
   const router = useRouter()
   const pathname = usePathname()
@@ -176,7 +175,7 @@ function ArticlesPageInner() {
         const body = (err as { body?: unknown }).body
         toast({
           title: t('create_failed_title'),
-          description: getErrorMessage(body ?? err, { context: 'article', locale: errorLocale }),
+          description: getErrorMessage(body ?? err, { context: 'article' }),
           variant: 'destructive',
         })
       }

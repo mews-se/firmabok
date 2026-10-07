@@ -28,7 +28,7 @@
  */
 
 import { fetchWithTimeout, isTimeoutError } from '@/lib/http/fetch-with-timeout'
-import { getErrorMessage, type ErrorLocale } from '@/lib/errors/get-error-message'
+import { getErrorMessage } from '@/lib/errors/get-error-message'
 
 /**
  * Default deadline for an interactive artefact download.
@@ -57,8 +57,6 @@ export interface DownloadFileOptions {
   url: string
   /** Name the file is saved under. */
   filename: string
-  /** UI locale, so a server error is reported in the language the user reads. */
-  locale?: ErrorLocale
   timeoutMs?: number
   /** Seam for tests; defaults to the DOM anchor implementation below. */
   saveBlob?: (blob: Blob, filename: string) => void
@@ -111,7 +109,6 @@ export function saveBlobToDisk(blob: Blob, filename: string): void {
 export async function downloadFile({
   url,
   filename,
-  locale = 'sv',
   timeoutMs = DOWNLOAD_TIMEOUT_MS,
   saveBlob = saveBlobToDisk,
 }: DownloadFileOptions): Promise<DownloadFileResult> {
@@ -133,14 +130,14 @@ export async function downloadFile({
         ok: false,
         reason: 'server',
         status: res.status,
-        message: getErrorMessage(body, { statusCode: res.status, locale }),
+        message: getErrorMessage(body, { statusCode: res.status }),
       }
     }
 
     blob = await res.blob()
   } catch (err) {
     if (isTimeoutError(err)) return { ok: false, reason: 'timeout' }
-    return { ok: false, reason: 'network', message: getErrorMessage(err, { locale }) }
+    return { ok: false, reason: 'network', message: getErrorMessage(err) }
   }
 
   // Only reached with a 2xx and a body that was read in full.

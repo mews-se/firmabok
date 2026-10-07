@@ -196,7 +196,7 @@ export default function BulkTagWorkbench() {
     } catch (err) {
       toast({
         title: 'Kunde inte hämta verifikat',
-        description: getErrorMessage(err, { locale: 'sv' }),
+        description: getErrorMessage(err),
         variant: 'destructive',
       })
     } finally {
@@ -391,7 +391,7 @@ export default function BulkTagWorkbench() {
           })
           const json = await res.json().catch(() => null)
           if (!res.ok) {
-            const message = getErrorMessage(json, { locale: 'sv' })
+            const message = getErrorMessage(json)
             for (const id of chunk) failed.push({ line_id: id, error: message })
             continue
           }

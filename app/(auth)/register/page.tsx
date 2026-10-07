@@ -2,14 +2,14 @@
 
 import { useState, useEffect, useRef, Suspense } from 'react'
 import Link from 'next/link'
-import { useLocale, useTranslations } from 'next-intl'
+import { useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Loader2, Eye, EyeOff } from 'lucide-react'
 import { BrandWordmark } from '@/components/branding/BrandWordmark'
-import { getErrorMessage, type ErrorLocale } from '@/lib/errors/get-error-message'
+import { getErrorMessage } from '@/lib/errors/get-error-message'
 import { AuthPageSkeleton } from '@/components/auth/AuthPageSkeleton'
 import { AuthFormError } from '@/components/auth/AuthFormError'
 import { classifyAuthError, type AuthErrorKind } from '@/lib/auth/classify-auth-error'
@@ -48,7 +48,6 @@ function RegisterPageContent() {
   const supabase = createClient()
   const t = useTranslations('register')
   const tAuth = useTranslations('auth')
-  const errorLocale = useLocale() as ErrorLocale
 
   const handleRegister = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -102,7 +101,7 @@ function RegisterPageContent() {
             kind,
             message:
               messageByKind[kind] ??
-              getErrorMessage(error, { context: 'auth', locale: errorLocale }),
+              getErrorMessage(error, { context: 'auth' }),
           })
         }
         return
@@ -127,7 +126,7 @@ function RegisterPageContent() {
       console.error('[register] unexpected exception', error instanceof Error ? error.message : String(error))
       setFormError({
         kind: 'unknown',
-        message: getErrorMessage(error, { context: 'auth', locale: errorLocale }),
+        message: getErrorMessage(error, { context: 'auth' }),
       })
     } finally {
       setIsLoading(false)

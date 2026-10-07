@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useLocale, useTranslations } from 'next-intl'
+import { useTranslations } from 'next-intl'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
@@ -16,7 +16,7 @@ import {
   EyeOff,
 } from 'lucide-react'
 import { BrandWordmark } from '@/components/branding/BrandWordmark'
-import { getErrorMessage, type ErrorLocale } from '@/lib/errors/get-error-message'
+import { getErrorMessage } from '@/lib/errors/get-error-message'
 import { safeReturnTo } from '@/lib/auth/safe-return-to'
 import { classifyAuthError, type AuthErrorKind } from '@/lib/auth/classify-auth-error'
 import {
@@ -48,7 +48,6 @@ export function LoginClient() {
   const nextPath = safeReturnTo(searchParams.get('next'), '/')
   const supabase = createClient()
   const tAuth = useTranslations('auth')
-  const errorLocale = useLocale() as ErrorLocale
 
   // After a failed credentials attempt, put the caret back in the password
   // field with the old value selected so the user can retype immediately.
@@ -87,7 +86,7 @@ export function LoginClient() {
           kind,
           message:
             messageByKind[kind] ??
-            getErrorMessage(error, { context: 'auth', locale: errorLocale }),
+            getErrorMessage(error, { context: 'auth' }),
         })
         return
       }
@@ -106,7 +105,7 @@ export function LoginClient() {
     } catch (error) {
       setFormError({
         kind: 'unknown',
-        message: getErrorMessage(error, { context: 'auth', locale: errorLocale }),
+        message: getErrorMessage(error, { context: 'auth' }),
       })
     } finally {
       setIsLoading(false)

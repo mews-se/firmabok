@@ -1,6 +1,6 @@
 'use client'
 
-import { useLocale, useTranslations } from 'next-intl'
+import { useTranslations } from 'next-intl'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { HelpPopover } from '@/components/ui/help-popover'
@@ -18,13 +18,11 @@ import { TEMPLATE_CATEGORY_LABELS } from '@/lib/bookkeeping/template-library'
 import { useCanWrite } from '@/lib/hooks/use-can-write'
 import { TemplateForm } from '@/components/settings/TemplateForm'
 import { downloadFile } from '@/lib/browser/download-file'
-import type { ErrorLocale } from '@/lib/errors/get-error-message'
 import { cn } from '@/lib/utils'
 import type { BookingTemplateLibrary, BookingTemplateLibraryLine } from '@/types'
 
 export function BookingTemplatesPanel() {
   const t = useTranslations('settings_booking_templates')
-  const locale = useLocale() as ErrorLocale
   const { toast } = useToast()
   const { canWrite } = useCanWrite()
 
@@ -87,7 +85,6 @@ export function BookingTemplatesPanel() {
       const result = await downloadFile({
         url: '/api/settings/booking-templates/export',
         filename: 'bokforingsmallar.json',
-        locale,
       })
       // Success is silent on purpose: the saved file is the feedback. On
       // failure nothing was written to disk, so exactly one toast tells the

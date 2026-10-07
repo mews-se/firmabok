@@ -179,7 +179,7 @@ export function EditAccountDialog({ open, onOpenChange, account, onSaved }: Edit
       if (!res.ok) {
         toast({
           title: 'Kunde inte lägga till regeln',
-          description: getErrorMessage(json, { locale: 'sv' }),
+          description: getErrorMessage(json),
           variant: 'destructive',
         })
         return
@@ -215,7 +215,7 @@ export function EditAccountDialog({ open, onOpenChange, account, onSaved }: Edit
       )
       toast({
         title: 'Kunde inte uppdatera regeln',
-        description: getErrorMessage(json, { locale: 'sv' }),
+        description: getErrorMessage(json),
         variant: 'destructive',
       })
       return
@@ -237,7 +237,7 @@ export function EditAccountDialog({ open, onOpenChange, account, onSaved }: Edit
       const json = await res?.json().catch(() => null)
       toast({
         title: 'Kunde inte ta bort regeln',
-        description: getErrorMessage(json, { locale: 'sv' }),
+        description: getErrorMessage(json),
         variant: 'destructive',
       })
       return
@@ -267,7 +267,7 @@ export function EditAccountDialog({ open, onOpenChange, account, onSaved }: Edit
         // server error to Swedish like the dimension-rule handlers above.
         toast({
           title: 'Kunde inte uppdatera kontot',
-          description: getErrorMessage(data, { locale: 'sv' }),
+          description: getErrorMessage(data),
           variant: 'destructive',
         })
         return

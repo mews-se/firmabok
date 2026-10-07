@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback, useRef } from 'react'
-import { useLocale, useTranslations } from 'next-intl'
+import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Upload, FileText, ImageIcon, X, Loader2 } from 'lucide-react'
@@ -81,13 +81,10 @@ function isImageType(type: string): boolean {
  * returned by /api/documents. Falls back to message_en or null if the
  * shape is unexpected.
  */
-function extractErrorMessage(err: unknown, locale: string): string | null {
+function extractErrorMessage(err: unknown): string | null {
   if (typeof err === 'string') return err
   if (err && typeof err === 'object') {
     const e = err as { message?: unknown; message_en?: unknown; code?: unknown }
-    if (locale === 'en' && typeof e.message_en === 'string' && e.message_en.length > 0) {
-      return e.message_en
-    }
     if (typeof e.message === 'string' && e.message.length > 0) return e.message
     if (typeof e.message_en === 'string' && e.message_en.length > 0) return e.message_en
     if (typeof e.code === 'string') return e.code
@@ -104,7 +101,6 @@ export default function DocumentUploadZone({
   compact = false,
 }: DocumentUploadZoneProps) {
   const t = useTranslations('document_upload')
-  const locale = useLocale()
   const [isDragging, setIsDragging] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -138,7 +134,7 @@ export default function DocumentUploadZone({
       }
 
       if (!res.ok || result.error) {
-        const errMessage = extractErrorMessage(result.error, locale) || t('failed_status', { status: res.status })
+        const errMessage = extractErrorMessage(result.error) || t('failed_status', { status: res.status })
         console.warn('[DocumentUploadZone] Upload error', {
           status: res.status,
           error: result.error,
@@ -155,7 +151,7 @@ export default function DocumentUploadZone({
       })
       return { ...file, status: 'error', error: t('network_error') }
     }
-  }, [journalEntryId, locale, t])
+  }, [journalEntryId, t])
 
   const handleFiles = useCallback(async (newFiles: File[]) => {
     const remaining = maxFiles - files.length

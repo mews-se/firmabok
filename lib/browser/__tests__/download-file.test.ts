@@ -110,23 +110,6 @@ describe('downloadFile', () => {
     })
   })
 
-  it('reports a server error in English for an English UI', async () => {
-    globalThis.fetch = vi.fn().mockResolvedValue(
-      jsonResponse({ error: { code: 'INTERNAL_ERROR', message: 'Ett oväntat serverfel uppstod.' } }, 500),
-    )
-    const saveBlob = vi.fn()
-
-    const result = await downloadFile({
-      url: '/x',
-      filename: 'f.json',
-      locale: 'en',
-      saveBlob,
-    })
-
-    expect(saveBlob).not.toHaveBeenCalled()
-    expect(result).toMatchObject({ ok: false, reason: 'server', message: 'Internal server error.' })
-  })
-
   it('writes NO file when the request throws', async () => {
     globalThis.fetch = vi.fn().mockRejectedValue(new TypeError('fetch failed'))
     const saveBlob = vi.fn()

@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useLocale, useTranslations } from 'next-intl'
+import { useTranslations } from 'next-intl'
 import { AttnLine } from '@/components/ui/attn-line'
 import { Button } from '@/components/ui/button'
 import {
@@ -18,7 +18,7 @@ import { Switch } from '@/components/ui/switch'
 import { useToast } from '@/components/ui/use-toast'
 import { useCompany } from '@/contexts/CompanyContext'
 import { formatDateLong } from '@/lib/utils'
-import { getErrorMessage, type ErrorLocale } from '@/lib/errors/get-error-message'
+import { getErrorMessage } from '@/lib/errors/get-error-message'
 import { FiscalYearSelector } from '@/components/common/FiscalYearSelector'
 import { Download, Loader2 } from 'lucide-react'
 
@@ -47,7 +47,6 @@ export function FullArchiveDialog({
   onOpenChange: (open: boolean) => void
 }) {
   const t = useTranslations('import')
-  const errorLocale = useLocale() as ErrorLocale
   const { toast } = useToast()
   const { company } = useCompany()
 
@@ -150,14 +149,14 @@ export function FullArchiveDialog({
         title: t('archive_toast_failed'),
         description:
           err instanceof Error
-            ? getErrorMessage(err, { locale: errorLocale })
+            ? getErrorMessage(err)
             : t('archive_error_fallback'),
         variant: 'destructive',
       })
     } finally {
       setIsDownloading(false)
     }
-  }, [archiveUrl, scope, periodId, storageKey, toast, t, errorLocale])
+  }, [archiveUrl, scope, periodId, storageKey, toast, t])
 
   const isOverLimit = !!estimate && !estimate.within_limit && includeDocuments
   const canDownload = !isDownloading && !isOverLimit && (scope === 'all' || !!periodId)

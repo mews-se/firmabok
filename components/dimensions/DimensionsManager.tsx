@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useLocale, useTranslations } from 'next-intl'
+import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -25,7 +25,7 @@ import {
 } from '@/components/ui/select'
 import { EmptyState } from '@/components/ui/empty-state'
 import { useToast } from '@/components/ui/use-toast'
-import { getErrorMessage, type ErrorLocale } from '@/lib/errors/get-error-message'
+import { getErrorMessage } from '@/lib/errors/get-error-message'
 import { useCanWrite } from '@/lib/hooks/use-can-write'
 import { cn, formatDate } from '@/lib/utils'
 import {
@@ -71,7 +71,6 @@ function compareStrings(a: string, b: string): number {
  */
 export default function DimensionsManager() {
   const t = useTranslations('dimensions')
-  const errorLocale = useLocale() as ErrorLocale
   const { toast } = useToast()
   const { canWrite } = useCanWrite()
 
@@ -106,14 +105,14 @@ export default function DimensionsManager() {
         setLoadFailed(true)
         toast({
           title: t('load_failed_title'),
-          description: getErrorMessage(err, { locale: errorLocale }),
+          description: getErrorMessage(err),
           variant: 'destructive',
         })
       } finally {
         setIsLoading(false)
       }
     },
-    [toast, t, errorLocale],
+    [toast, t],
   )
 
   useEffect(() => {
@@ -232,7 +231,7 @@ export default function DimensionsManager() {
     } catch (err) {
       toast({
         title: t('save_failed_title'),
-        description: getErrorMessage(err, { locale: errorLocale }),
+        description: getErrorMessage(err),
         variant: 'destructive',
       })
     } finally {
@@ -271,7 +270,7 @@ export default function DimensionsManager() {
     } catch (err) {
       toast({
         title: t('save_failed_title'),
-        description: getErrorMessage(err, { locale: errorLocale }),
+        description: getErrorMessage(err),
         variant: 'destructive',
       })
     } finally {
@@ -292,7 +291,7 @@ export default function DimensionsManager() {
         const json = await res.json().catch(() => null)
         toast({
           title: t('delete_failed_title'),
-          description: getErrorMessage(json, { locale: errorLocale }),
+          description: getErrorMessage(json),
           variant: 'destructive',
         })
         return
@@ -322,7 +321,7 @@ export default function DimensionsManager() {
         // rides the error envelope; surface it verbatim.
         toast({
           title: t('delete_failed_title'),
-          description: getErrorMessage(json, { locale: errorLocale }),
+          description: getErrorMessage(json),
           variant: 'destructive',
         })
         return

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback, Suspense } from 'react'
 import dynamic from 'next/dynamic'
-import { useLocale, useTranslations } from 'next-intl'
+import { useTranslations } from 'next-intl'
 import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Skeleton } from '@/components/ui/skeleton'
 import { TH_CLASS, TD_CLASS } from '@/components/ui/dry-table'
 import { useToast } from '@/components/ui/use-toast'
-import { getErrorMessage, type ErrorLocale } from '@/lib/errors/get-error-message'
+import { getErrorMessage } from '@/lib/errors/get-error-message'
 import { Plus, Search, Users, Lock, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react'
 import { EmptyCustomers, EmptyState } from '@/components/ui/empty-state'
 import { ReportExportMenu } from '@/components/reports/ReportExportMenu'
@@ -72,7 +72,6 @@ function CustomersPageInner() {
   const { toast } = useToast()
   const t = useTranslations('customers')
   const tCommon = useTranslations('common')
-  const errorLocale = useLocale() as ErrorLocale
 
   const router = useRouter()
   const pathname = usePathname()
@@ -153,7 +152,7 @@ function CustomersPageInner() {
     if (!response.ok) {
       toast({
         title: t('create_failed_title'),
-        description: getErrorMessage(result, { context: 'customer', locale: errorLocale }),
+        description: getErrorMessage(result, { context: 'customer' }),
         variant: 'destructive',
       })
     } else {

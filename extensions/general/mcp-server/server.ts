@@ -946,48 +946,6 @@ const VAT_REPORT_OUTPUT_SCHEMA = {
   required: ['period', 'period_label', 'rutor', 'summary', 'warnings'],
 } as const
 
-// ── Skatteverket filing read-tool output schemas (PR5) ──
-// Kept shallow (opaque object/null sub-objects) to stay within the tools/list
-// payload budget; the SKV response shapes live in the extension types.
-const SKV_VAT_VALIDATE_OUTPUT_SCHEMA = {
-  type: 'object',
-  properties: {
-    redovisare: { type: 'string', description: '12-digit redovisare' },
-    redovisningsperiod: { type: 'string', description: 'YYYYMM' },
-    momsuppgift: { type: 'object', description: 'The momsuppgift payload sent to Skatteverket' },
-    kontrollresultat: { type: 'object', description: 'Skatteverket kontrollresultat (status + per-ruta fel/varningar)' },
-    arithmetic_ok: {
-      type: 'boolean',
-      description: 'Skatteverket found no ERROR: the payload adds up. Says NOTHING about whether the underlag is complete.',
-    },
-    completeness_ok: {
-      type: 'boolean',
-      description: 'Local pre-flight found no ERROR. False = materially incomplete (e.g. FK004) even when arithmetic_ok is true.',
-    },
-    completeness_checks: {
-      type: 'array',
-      items: { type: 'object' },
-      description: 'Local findings: { code, status (ERROR|WARNING), message (Swedish), rutor }.',
-    },
-    summary: { type: 'string', description: 'One-line Swedish verdict for both results.' },
-  },
-  required: [
-    'redovisare', 'redovisningsperiod', 'momsuppgift', 'kontrollresultat',
-    'arithmetic_ok', 'completeness_ok', 'completeness_checks', 'summary',
-  ],
-} as const
-
-const SKV_VAT_STATUS_OUTPUT_SCHEMA = {
-  type: 'object',
-  properties: {
-    redovisare: { type: 'string', description: '12-digit redovisare' },
-    redovisningsperiod: { type: 'string', description: 'YYYYMM' },
-    submitted: { type: ['object', 'null'], description: 'Inlämnad deklaration, or null if none on file' },
-    decided: { type: ['object', 'null'], description: 'Beslutad deklaration, or null if not yet decided' },
-  },
-  required: ['redovisare', 'redovisningsperiod', 'submitted', 'decided'],
-} as const
-
 // ── VAT report computation (shared by gnubok_get_vat_report + gnubok_vat_review_widget) ──
 //
 // Maps posted journal entry lines to SKV 4700 rutor. ruta49 covers domestic
@@ -10402,7 +10360,7 @@ export const tools: McpTool[] = [
     name: 'gnubok_propose_accruals',
     title: 'Propose Accruals (Periodiseringar)',
     description:
-      'Read-only proposal of periodiseringar (förutbetalda/upplupna kostnader); currently surfaces the vacation-liability change. No dedicated MCP poster: stage accrual entries via gnubok_create_voucher (or the web accruals form).',
+      'Read-only proposal of periodiseringar (förutbetalda/upplupna kostnader). No automatic detector is active, so the list is empty. No dedicated MCP poster: stage accrual entries via gnubok_create_voucher (or the web accruals form).',
     inputSchema: {
       type: 'object',
       additionalProperties: false,

@@ -150,11 +150,9 @@ function inferCode(message: string): string | null {
   if (/Period must be locked before closing/i.test(message)) return 'PERIOD_NOT_LOCKED'
   if (/Year-end closing must be executed/i.test(message)) return 'YEAR_END_NOT_RUN'
   if (/Insufficient scope/i.test(message)) return 'INSUFFICIENT_SCOPE'
-  if (/already has a journal entry/i.test(message)) return 'TRANSACTION_ALREADY_CATEGORIZED'
   if (/already been sent/i.test(message) || /already sent/i.test(message)) return 'INVOICE_ALREADY_SENT'
   if (/locked\/closed fiscal period/i.test(message)) return 'PERIOD_LOCKED'
   if (/Bokföringen är låst/i.test(message)) return 'PERIOD_LOCKED'
-  if (/Transaction not found/i.test(message)) return 'NOT_FOUND'
   if (/Invoice not found/i.test(message)) return 'NOT_FOUND'
   return null
 }

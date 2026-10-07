@@ -332,17 +332,6 @@ const BOOKKEEPING: Record<string, StructuredErrorEntry> = {
     message_sv: 'Bokslutsåtgärder måste utföras innan perioden kan stängas.',
     message_en: 'Year-end closing must be executed before the period can be closed.',
   },
-  TRANSACTION_ALREADY_CATEGORIZED: {
-    httpStatus: 409,
-    message_sv:
-      'Transaktionen är redan bokförd. Ångra kategoriseringen om du vill ändra den.',
-    message_en: 'The transaction already has a journal entry.',
-    remediation: {
-      description:
-        'Use gnubok_reverse_journal_entry on the existing verifikat first if you need to rebook it.',
-      tool: 'gnubok_reverse_journal_entry',
-    },
-  },
   INVOICE_ALREADY_SENT: {
     httpStatus: 409,
     message_sv: 'Fakturan har redan skickats eller betalats.',
@@ -351,73 +340,10 @@ const BOOKKEEPING: Record<string, StructuredErrorEntry> = {
 }
 
 // ─────────────────────────────────────────────────────────────────
-// Wave 1: invoicing & transactions
+// Wave 1: invoicing
 // ─────────────────────────────────────────────────────────────────
 
 const TRANSACTIONS: Record<string, StructuredErrorEntry> = {
-  TX_CATEGORIZE_TX_NOT_FOUND: {
-    httpStatus: 404,
-    message_sv: 'Transaktionen kunde inte hittas.',
-    message_en: 'Transaction not found.',
-  },
-  TRANSACTION_TITLE_LOCKED: {
-    httpStatus: 409,
-    message_sv:
-      'Det går inte att ändra titeln på en bokförd eller matchad transaktion. Bokförda verifikat rättas med storno.',
-    message_en:
-      'Cannot edit the title of a booked or matched transaction. Posted vouchers are corrected with storno.',
-  },
-  TX_CATEGORIZE_INVALID_ACCOUNT: {
-    httpStatus: 400,
-    message_sv: 'Det valda kontot finns inte i kontoplanen.',
-    message_en: 'The supplied account does not exist in the chart of accounts.',
-    remediation: {
-      description: 'Activate the account in the chart of accounts or pick a different one.',
-      resource: 'Accounted://chart-of-accounts',
-    },
-  },
-  TX_CATEGORIZE_INVALID_TEMPLATE: {
-    httpStatus: 400,
-    message_sv: 'Bokföringsmallen är ogiltig eller passar inte din bolagsform.',
-    message_en: 'The supplied booking template is invalid or does not match the entity type.',
-  },
-  TX_CATEGORIZE_INVALID_MAPPING: {
-    httpStatus: 400,
-    message_sv: 'Konteringen saknar debet- eller kreditkonto.',
-    message_en: 'Mapping result is missing a debit or credit account.',
-  },
-  TX_CATEGORIZE_RACE: {
-    httpStatus: 409,
-    message_sv: 'Transaktionen kategoriserades av en annan förfrågan. Ladda om och försök igen.',
-    message_en: 'Transaction was already categorized by another request.',
-  },
-  TX_CATEGORIZE_SUGGEST_SI_MATCH: {
-    httpStatus: 409,
-    message_sv:
-      'Det finns en öppen leverantörsfaktura från samma leverantör med samma belopp. Matcha mot fakturan istället för att bokföra direkt på leverantörsskuldskontot: annars skapas en dubblerad verifikation som måste stornas (BFL 5 kap 5 §).',
-    message_en:
-      'An open supplier invoice from the same supplier matches this amount. Suggest matching to the invoice instead of a plain 244x categorization to avoid producing a duplicate verifikation (BFL 5 kap 5 §).',
-    remediation: {
-      description:
-        'Match the transaction via POST /api/transactions/{id}/match-supplier-invoice, or resend with confirm_no_match: true to keep the plain 244x categorization.',
-    },
-  },
-  TX_CATEGORIZE_SUGGEST_CI_MATCH: {
-    httpStatus: 409,
-    message_sv:
-      'Det finns en obetald kundfaktura från samma kund med samma belopp. Matcha mot fakturan istället för att bokföra direkt mot kundfordringskontot: annars skapas en dubblerad verifikation som måste stornas (BFL 5 kap 5 §).',
-    message_en:
-      'An unpaid customer invoice from the same customer matches this amount. Suggest matching to the invoice instead of a plain 151x categorization to avoid producing a duplicate verifikation (BFL 5 kap 5 §).',
-    remediation: {
-      description:
-        'Match the transaction via POST /api/transactions/{id}/match-invoice, or resend with confirm_no_match: true to keep the plain 151x categorization.',
-    },
-  },
-  TX_UNCATEGORIZE_NO_LINKED_ENTRY: {
-    httpStatus: 400,
-    message_sv: 'Transaktionen har ingen kopplad verifikation att stornera.',
-    message_en: 'Transaction has no linked journal entry to reverse.',
-  },
   TX_EXCHANGE_RATE_UNAVAILABLE: {
     httpStatus: 502,
     message_sv:
@@ -434,225 +360,31 @@ const MATCH_INVOICE: Record<string, StructuredErrorEntry> = {
     message_sv: 'Fakturan kunde inte hittas.',
     message_en: 'Invoice not found.',
   },
-  MATCH_INVOICE_NOT_INCOME: {
-    httpStatus: 400,
-    message_sv: 'Endast intäktstransaktioner kan matchas mot kundfakturor.',
-    message_en: 'Only income transactions can be matched to customer invoices.',
-  },
-  MATCH_INVOICE_TX_ALREADY_LINKED: {
-    httpStatus: 400,
-    message_sv: 'Transaktionen är redan kopplad till en faktura.',
-    message_en: 'Transaction is already linked to an invoice.',
-  },
-  MATCH_INVOICE_NOT_OPEN: {
-    httpStatus: 400,
-    message_sv: 'Fakturan är inte i ett obetalt läge och kan inte matchas.',
-    message_en: 'Invoice is not in an unpaid state.',
-  },
-  MATCH_INVOICE_CREDIT_NOTE: {
-    httpStatus: 400,
-    message_sv: 'Kreditfakturor kan inte registreras som betalda.',
-    message_en: 'Credit notes cannot be recorded as paid.',
-  },
-  MATCH_INVOICE_NOT_INVOICE_TYPE: {
-    httpStatus: 400,
-    message_sv: 'Endast fakturor kan matchas mot en transaktion. Proforma och följesedel saknar momsskyldighet.',
-    message_en: 'Only invoices may be matched to a transaction; proforma and delivery notes have no VAT obligation.',
-  },
-  MATCH_INVOICE_FX_RATE_UNAVAILABLE: {
-    httpStatus: 400,
-    message_sv:
-      'Kunde inte hämta valutakurs från Riksbanken för betalningsdatumet. Ange kursen manuellt från ditt bankutdrag (fältet manual_exchange_rate).',
-    message_en:
-      'Could not retrieve an exchange rate from Riksbanken for the payment date. Provide the rate manually from your bank statement (manual_exchange_rate field).',
-  },
   MATCH_INVOICE_BOOKING_RATE_MISSING: {
     httpStatus: 400,
     message_sv:
       'Fakturan är utställd i utländsk valuta men saknar växelkurs. Utan kursen går det inte att räkna fram kursvinst eller kursförlust. Komplettera fakturans växelkurs (exchange_rate) och försök igen.',
     message_en:
-      'The foreign-currency invoice has no usable booking exchange rate on file (invoice.exchange_rate is missing, zero, or out of range), so the FX gain/loss (BAS 3960/7960) on settlement cannot be computed. Same guard as BATCH_FX_RATE_MISSING in match_batch_allocate.',
+      'The foreign-currency invoice has no usable booking exchange rate on file (invoice.exchange_rate is missing, zero, or out of range), so the FX gain/loss (BAS 3960/7960) on settlement cannot be computed.',
     remediation: {
       description:
-        'Set invoice.exchange_rate to the rate the receivable (1510) was booked at, then retry the match. On an invoice that is not yet booked, POST /api/invoices/{id}/refresh-exchange-rate fetches the taxable-event rate from Riksbanken and fills it in. On an already-booked invoice that endpoint refuses (INVOICE_FX_REFRESH_BOOKED): the SEK amounts are in a verifikat and only storno or inline rättelse may change them.',
+        'Set invoice.exchange_rate to the rate the receivable (1510) was booked at, then retry the payment. On an invoice that is not yet booked, POST /api/invoices/{id}/refresh-exchange-rate fetches the taxable-event rate from Riksbanken and fills it in. On an already-booked invoice that endpoint refuses (INVOICE_FX_REFRESH_BOOKED): the SEK amounts are in a verifikat and only storno or inline rättelse may change them.',
     },
-  },
-  // The BANK ROW itself has no SEK value: transactions.currency is foreign and
-  // both amount_sek and exchange_rate are empty (the shape a row gets when
-  // Riksbanken was unreachable at ingest, see lib/transactions/ingest.ts).
-  // Journal entry lines are always SEK, so the raw foreign number must never
-  // stand in for one: a 500 USD receipt would be allocated as 500 SEK. Same
-  // refusal as the match_batch_allocate RPC's BATCH_FX_RATE_MISSING.
-  MATCH_INVOICE_TX_FX_RATE_MISSING: {
-    httpStatus: 400,
-    message_sv:
-      'Banktransaktionen är i utländsk valuta men saknar både SEK-belopp och växelkurs. Komplettera transaktionens växelkurs innan du matchar: utan den kan beloppet inte räknas om till kronor.',
-    message_en:
-      'The bank transaction is in a foreign currency but has neither a SEK amount nor an exchange rate on file. Set the transaction exchange rate before matching; without it the amount cannot be translated to SEK.',
-    remediation: {
-      description:
-        'Set amount_sek (or exchange_rate) on the transaction for its value date, then retry the match.',
-    },
-  },
-  MATCH_INVOICE_ALREADY_PAID: {
-    httpStatus: 409,
-    message_sv: 'Fakturan har redan slutbetalats av en annan förfrågan.',
-    message_en: 'Invoice has already been fully paid or is no longer matchable.',
-  },
-  MATCH_INVOICE_DUPLICATE_PAYMENT: {
-    httpStatus: 409,
-    message_sv: 'Den här transaktionen är redan matchad mot fakturan.',
-    message_en: 'This transaction is already matched to this invoice.',
-  },
-  MATCH_INVOICE_RECORD_PAYMENT_FAILED: {
-    httpStatus: 500,
-    message_sv: 'Kunde inte registrera fakturabetalningen.',
-    message_en: 'Failed to record invoice payment.',
-    retryable: true,
-  },
-  MATCH_INVOICE_LINK_TX_FAILED: {
-    httpStatus: 500,
-    message_sv: 'Kunde inte koppla transaktionen till fakturan.',
-    message_en: 'Failed to link transaction to invoice.',
-    retryable: true,
-  },
-  MATCH_INVOICE_PARTIAL: {
-    httpStatus: 200,
-    message_sv: 'Matchningen registrerades men verifikationen kunde inte skapas.',
-    message_en: 'Match recorded but the journal entry could not be created.',
-  },
-  MATCH_INVOICE_ALREADY_HAS_PAYMENT_VOUCHER: {
-    httpStatus: 409,
-    message_sv:
-      'Fakturan har redan en betalningsverifikation. Koppla istället bankhändelsen till befintlig verifikation, eller rätta tidigare bokföring först.',
-    message_en:
-      'Invoice already has a payment journal entry. Link the bank transaction to the existing voucher instead, or correct the prior bookkeeping first.',
-  },
-  MATCH_INVOICE_POSSIBLE_DUPLICATE: {
-    httpStatus: 409,
-    message_sv:
-      'Det finns redan en bokförd verifikation på samma belopp och datum. Har du redan bokfört denna betalning? Koppla bankhändelsen till befintlig verifikation, eller skapa ny verifikation ändå om de inte hör ihop.',
-    message_en:
-      'A posted journal entry already books the same amount on a nearby date. The user may have already booked this payment manually: link to the existing voucher or pass force=true to create a new one anyway.',
-  },
-  MATCH_INVOICE_FORCE_CANDIDATE_MISMATCH: {
-    httpStatus: 409,
-    message_sv:
-      'Verifikationen som dubblettkontrollen visade matchar inte längre. Stäng dialogen och försök igen så att rätt verifikation visas.',
-    message_en:
-      'The candidate journal entry echoed in expected_journal_entry_id does not match the one detected at request time. Re-run the duplicate-payment pre-flight to obtain the current candidate, then retry.',
   },
   MATCH_AMOUNT_EXCEEDS_REMAINING: {
     httpStatus: 400,
     message_sv:
-      'Transaktionsbeloppet är större än fakturans återstående belopp. Dela betalningen och fördela överskottet på en eller flera andra fakturor.',
+      'Betalningsbeloppet är större än fakturans återstående belopp. Registrera högst det återstående beloppet.',
     message_en:
-      'Transaction amount exceeds the invoice remaining amount. Use the split-payment flow to allocate the excess across one or more other invoices.',
-  },
-}
-
-const LINK_TX_JE: Record<string, StructuredErrorEntry> = {
-  LINK_TX_JE_NOT_FOUND: {
-    httpStatus: 404,
-    message_sv: 'Verifikationen kunde inte hittas.',
-    message_en: 'Journal entry not found.',
-  },
-  LINK_TX_JE_NOT_POSTED: {
-    httpStatus: 400,
-    message_sv: 'Endast bokförda verifikationer kan kopplas till en banktransaktion.',
-    message_en: 'Only posted journal entries can be linked to a transaction.',
-  },
-  LINK_TX_TX_ALREADY_LINKED: {
-    httpStatus: 400,
-    message_sv: 'Transaktionen är redan kopplad till en verifikation.',
-    message_en: 'Transaction is already linked to a journal entry.',
-  },
-  LINK_TX_INVOICE_NOT_FOUND: {
-    httpStatus: 404,
-    message_sv: 'Fakturan kunde inte hittas.',
-    message_en: 'Invoice not found.',
-  },
-  LINK_TX_INVOICE_NOT_OPEN: {
-    httpStatus: 400,
-    message_sv: 'Fakturan är inte i ett obetalt läge och kan inte kopplas.',
-    message_en: 'Invoice is not in an unpaid state.',
-  },
-  LINK_TX_INVOICE_CREDIT_NOTE: {
-    httpStatus: 400,
-    message_sv: 'Kreditfakturor kan inte registreras som betalda.',
-    message_en: 'Credit notes cannot be recorded as paid.',
-  },
-  LINK_TX_INVOICE_RACE: {
-    httpStatus: 409,
-    message_sv: 'Fakturan ändrades samtidigt. Försök igen.',
-    message_en: 'Invoice status changed concurrently. Retry the request.',
-  },
-  LINK_TX_INVOICE_CURRENCY_MISMATCH: {
-    httpStatus: 400,
-    message_sv:
-      'Transaktionens och fakturans valuta måste vara samma för att länka till en befintlig verifikation. Använd matchningsdialogen för valutaomräkning.',
-    message_en:
-      'Transaction and invoice currency must match to link to an existing voucher. Use the match-invoice flow for cross-currency settlement.',
+      'Payment amount exceeds the invoice remaining amount. Register at most the remaining amount.',
   },
 }
 
 const MATCH_SI: Record<string, StructuredErrorEntry> = {
-  MATCH_SI_NOT_FOUND: {
-    httpStatus: 404,
-    message_sv: 'Leverantörsfakturan kunde inte hittas.',
-    message_en: 'Supplier invoice not found.',
-  },
-  MATCH_SI_NOT_EXPENSE: {
-    httpStatus: 400,
-    message_sv: 'Endast utgiftstransaktioner kan matchas mot leverantörsfakturor.',
-    message_en: 'Only expense transactions can be matched to supplier invoices.',
-  },
-  MATCH_SI_TX_ALREADY_LINKED: {
-    httpStatus: 400,
-    message_sv: 'Transaktionen är redan kopplad till en leverantörsfaktura.',
-    message_en: 'Transaction is already linked to a supplier invoice.',
-  },
-  MATCH_SI_ALREADY_PAID: {
-    httpStatus: 400,
-    message_sv: 'Leverantörsfakturan är redan betald eller krediterad.',
-    message_en: 'Supplier invoice is already paid or credited.',
-  },
   MATCH_SI_NOT_OPEN: {
     httpStatus: 409,
     message_sv: 'Leverantörsfakturan har redan slutbetalats av en annan förfrågan.',
     message_en: 'Supplier invoice has already been fully paid or is no longer matchable.',
-  },
-  MATCH_SI_DUPLICATE_PAYMENT: {
-    httpStatus: 409,
-    message_sv: 'Den här transaktionen är redan matchad mot leverantörsfakturan.',
-    message_en: 'This transaction is already matched to this supplier invoice.',
-  },
-  MATCH_SI_JE_FAILED: {
-    httpStatus: 500,
-    message_sv:
-      'Betalningsverifikationen kunde inte skapas. Matchningen avbröts: inga ändringar har sparats.',
-    message_en:
-      'Failed to create the payment voucher. The match was aborted: no changes were saved.',
-    retryable: true,
-  },
-  MATCH_SI_RECORD_PAYMENT_FAILED: {
-    httpStatus: 500,
-    message_sv: 'Kunde inte registrera leverantörsfakturabetalningen.',
-    message_en: 'Failed to record supplier invoice payment.',
-    retryable: true,
-  },
-  MATCH_SI_LINK_TX_FAILED: {
-    httpStatus: 500,
-    message_sv: 'Kunde inte koppla transaktionen till leverantörsfakturan.',
-    message_en: 'Failed to link transaction to supplier invoice.',
-    retryable: true,
-  },
-  MATCH_SI_CASH_FX_UNSUPPORTED: {
-    httpStatus: 400,
-    message_sv:
-      'Kontantmetoden kan inte dela upp en delbetalning i utländsk valuta. Betala hela fakturan på en gång, byt till löpande bokföring eller bokför betalningen manuellt.',
-    message_en:
-      'The cash method cannot handle a partial foreign-currency payment. Pay the invoice in full, switch to accrual, or book the payment manually.',
   },
   INVOICE_PAID_CASH_PARTIAL_UNSUPPORTED: {
     httpStatus: 400,
@@ -671,30 +403,9 @@ const MATCH_SI: Record<string, StructuredErrorEntry> = {
   MATCH_SI_AMOUNT_EXCEEDS_REMAINING: {
     httpStatus: 400,
     message_sv:
-      'Transaktionsbeloppet är större än leverantörsfakturans återstående belopp. Dela betalningen och fördela överskottet på en eller flera andra leverantörsfakturor.',
+      'Betalningsbeloppet är större än leverantörsfakturans återstående belopp. Registrera högst det återstående beloppet.',
     message_en:
-      'Transaction amount exceeds the supplier invoice remaining amount. Use the split-payment flow to allocate the excess across one or more other supplier invoices.',
-  },
-  TX_UNCATEGORIZE_NOT_BOOKED: {
-    httpStatus: 400,
-    message_sv: 'Transaktionen är inte bokförd. Det finns inget att av-kategorisera.',
-    message_en: 'Transaction has no journal entry: nothing to uncategorize.',
-  },
-  TX_UNCATEGORIZE_JE_NOT_POSTED: {
-    httpStatus: 400,
-    message_sv: 'Verifikationen är inte bokförd. Reversal kan inte utföras.',
-    message_en: 'Journal entry is not in posted status; reversal is not possible.',
-  },
-  TX_INGEST_INSERT_FAILED: {
-    httpStatus: 500,
-    message_sv: 'Transaktionerna kunde inte importeras.',
-    message_en: 'Transaction ingest failed.',
-    retryable: true,
-  },
-  TX_BATCH_CATEGORIZE_EMPTY: {
-    httpStatus: 400,
-    message_sv: 'Batchen är tom.',
-    message_en: 'Batch is empty: pass at least one item.',
+      'Payment amount exceeds the supplier invoice remaining amount. Register at most the remaining amount.',
   },
 }
 
@@ -1525,44 +1236,6 @@ const SIE_IMPORT: Record<string, StructuredErrorEntry> = {
   },
 }
 
-const BANK_FILE: Record<string, StructuredErrorEntry> = {
-  BANK_FILE_NO_FILE: {
-    httpStatus: 400,
-    message_sv: 'Ingen fil bifogad i förfrågan.',
-    message_en: 'No file attached to the request.',
-  },
-  BANK_FILE_TOO_LARGE: {
-    httpStatus: 400,
-    message_sv: 'Filen är för stor. Maxstorlek är 10 MB.',
-    message_en: 'File exceeds the 10 MB size limit.',
-  },
-  BANK_FILE_DUPLICATE: {
-    httpStatus: 409,
-    message_sv: 'Den här filen har redan importerats.',
-    message_en: 'Bank file has already been imported.',
-  },
-  BANK_FILE_PARSE_FAILED: {
-    httpStatus: 500,
-    message_sv: 'Kunde inte tolka bankfilen.',
-    message_en: 'Failed to parse the bank file.',
-  },
-  BANK_FILE_NO_TRANSACTIONS: {
-    httpStatus: 400,
-    message_sv: 'Bankfilen innehåller inga transaktioner att importera.',
-    message_en: 'No transactions to import.',
-  },
-  BANK_FILE_IMPORT_RECORD_FAILED: {
-    httpStatus: 500,
-    message_sv: 'Kunde inte skapa importpost.',
-    message_en: 'Failed to create the bank file import record.',
-  },
-  BANK_FILE_EXECUTE_FAILED: {
-    httpStatus: 500,
-    message_sv: 'Bankfilsimporten misslyckades.',
-    message_en: 'Bank file import failed.',
-  },
-}
-
 const OPENING_BALANCE_IMPORT: Record<string, StructuredErrorEntry> = {
   OB_NO_FILE: {
     httpStatus: 400,
@@ -2338,21 +2011,6 @@ const SALARY: Record<string, StructuredErrorEntry> = {
     message_sv: 'Den här SIE-filen har redan importerats.',
     message_en: 'This SIE file has already been imported.',
   },
-  BANK_IMPORT_FAILED: {
-    httpStatus: 500,
-    message_sv: 'Bankfilsimporten misslyckades.',
-    message_en: 'Bank file import failed.',
-  },
-  BANK_FILE_FORMAT_UNKNOWN: {
-    httpStatus: 400,
-    message_sv: 'Bankfilens format kunde inte identifieras.',
-    message_en: 'Bank file format could not be identified.',
-  },
-  BANK_IMPORT_DUPLICATE_OTHER_COMPANY: {
-    httpStatus: 409,
-    message_sv: 'Den här filen har redan importerats för ett annat företag av samma användare.',
-    message_en: 'This file has already been imported into another company by this user.',
-  },
 }
 
 const COMPANY: Record<string, StructuredErrorEntry> = {
@@ -2576,308 +2234,6 @@ const LINK_SI_VOUCHER: Record<string, StructuredErrorEntry> = {
     httpStatus: 500,
     message_sv: 'Databasfel under länkning. Försök igen.',
     message_en: 'Database error while linking the voucher. Please retry.',
-  },
-}
-
-// ─────────────────────────────────────────────────────────────────
-// Batch allocation (match_batch_allocate RPC)
-// ─────────────────────────────────────────────────────────────────
-
-const MATCH_BATCH: Record<string, StructuredErrorEntry> = {
-  BATCH_TX_NOT_FOUND: {
-    httpStatus: 404,
-    message_sv: 'Transaktionen kunde inte hittas.',
-    message_en: 'Transaction not found.',
-  },
-  BATCH_UNAUTHORIZED: {
-    httpStatus: 403,
-    message_sv: 'Du har inte behörighet att fördela transaktioner för det här företaget.',
-    message_en: 'You are not authorized to allocate transactions for this company.',
-  },
-  BATCH_TX_ALREADY_BOOKED: {
-    httpStatus: 409,
-    message_sv:
-      'Transaktionen är redan bokförd. Avbokföra först (storno) innan du fördelar den på flera fakturor.',
-    message_en:
-      'Transaction is already booked. Reverse the existing journal entry before re-allocating.',
-  },
-  BATCH_TX_ZERO_AMOUNT: {
-    httpStatus: 400,
-    message_sv: 'Transaktioner med beloppet 0 kan inte bokföras.',
-    message_en: 'Zero-amount transactions cannot be allocated.',
-  },
-  BATCH_NO_ALLOCATIONS: {
-    httpStatus: 400,
-    message_sv: 'Minst en fördelning krävs.',
-    message_en: 'At least one allocation is required.',
-  },
-  BATCH_INVALID_AMOUNT: {
-    httpStatus: 400,
-    message_sv: 'Fördelningens belopp måste vara positivt.',
-    message_en: 'Allocation amount must be positive.',
-  },
-  BATCH_DUPLICATE_ALLOCATION: {
-    httpStatus: 400,
-    message_sv:
-      'Samma faktura förekommer två gånger i fördelningen. Slå ihop beloppen eller ta bort dubbletten.',
-    message_en:
-      'The same invoice appears twice in the allocations. Merge the amounts or remove the duplicate.',
-  },
-  BATCH_INVALID_KIND: {
-    httpStatus: 400,
-    message_sv:
-      'Okänd typ av fördelning. Endast customer_invoice och supplier_invoice stöds.',
-    message_en:
-      'Unknown allocation kind. Only customer_invoice and supplier_invoice are supported.',
-  },
-  BATCH_INVOICE_NOT_FOUND: {
-    httpStatus: 404,
-    message_sv: 'En av fakturorna i fördelningen kunde inte hittas.',
-    message_en: 'One of the invoices in the allocation could not be found.',
-  },
-  BATCH_INVOICE_NOT_OPEN: {
-    httpStatus: 409,
-    message_sv: 'En av fakturorna är inte i ett obetalt läge och kan inte ta emot betalning.',
-    message_en: 'One of the invoices is not in an open state.',
-  },
-  BATCH_SUPPLIER_INVOICE_NOT_FOUND: {
-    httpStatus: 404,
-    message_sv: 'En av leverantörsfakturorna i fördelningen kunde inte hittas.',
-    message_en: 'One of the supplier invoices in the allocation could not be found.',
-  },
-  BATCH_SUPPLIER_INVOICE_NOT_OPEN: {
-    httpStatus: 409,
-    message_sv:
-      'En av leverantörsfakturorna är inte i ett obetalt läge och kan inte ta emot betalning.',
-    message_en: 'One of the supplier invoices is not in an open state.',
-  },
-  BATCH_OVERSHOOT: {
-    httpStatus: 400,
-    message_sv:
-      'En av fördelningarna överskrider fakturans återstående belopp. Sänk beloppet eller fördela överskottet på fler fakturor.',
-    message_en:
-      'One allocation exceeds the invoice remaining amount. Lower it or split the excess across additional invoices.',
-  },
-  BATCH_AMOUNT_EXCEEDS_TX: {
-    httpStatus: 400,
-    message_sv:
-      'Summan av fördelningarna är större än transaktionens belopp.',
-    message_en: 'Sum of allocations exceeds the transaction amount.',
-  },
-  BATCH_AMOUNT_BELOW_TX: {
-    httpStatus: 400,
-    message_sv:
-      'Hela transaktionen måste fördelas. Lägg till fler fakturor eller höj något belopp så att summan motsvarar bankhändelsen.',
-    message_en:
-      'The full transaction amount must be allocated. Add more invoices or raise an amount so the sum matches the bank movement.',
-  },
-  BATCH_MIXED_KINDS_UNSUPPORTED: {
-    httpStatus: 400,
-    message_sv:
-      'En transaktion kan inte fördelas på både kund- och leverantörsfakturor i samma verifikat. Skapa två separata fördelningar.',
-    message_en:
-      'A single transaction cannot allocate to both customer and supplier invoices in one batch.',
-  },
-  BATCH_DIRECTION_MISMATCH: {
-    httpStatus: 400,
-    message_sv:
-      'Transaktionens riktning matchar inte fördelningens typ. Kundfakturor kräver inkommande, leverantörsfakturor utgående.',
-    message_en:
-      'Transaction direction does not match allocation kind: customer invoices require income, supplier invoices require expense.',
-  },
-  BATCH_CURRENCY_MISMATCH: {
-    httpStatus: 400,
-    message_sv:
-      'Fakturans valuta matchar inte transaktionens. Endast samma valuta stöds i V1.',
-    message_en:
-      'Invoice currency does not match the transaction currency. Same-currency only in v1.',
-  },
-  BATCH_FX_RATE_MISSING: {
-    httpStatus: 400,
-    message_sv:
-      'Fakturan i annan valuta saknar växelkurs. Komplettera fakturans exchange_rate innan du fördelar.',
-    message_en:
-      'The foreign-currency invoice has no exchange rate on file. Complete invoice.exchange_rate before allocating.',
-    remediation: {
-      description:
-        'POST /api/invoices/{id}/refresh-exchange-rate fetches the taxable-event rate from Riksbanken and fills in exchange_rate plus the *_sek columns, then retry the allocation. It refuses with INVOICE_FX_REFRESH_BOOKED once the invoice has a verifikat: from there the correction is a storno or an inline rättelse, never an update behind the posted entry.',
-    },
-  },
-  BATCH_FX_DEVIATION_TOO_LARGE: {
-    httpStatus: 400,
-    message_sv:
-      'Beloppet du angav avviker mer än 10 % från fakturans bokförda värde. Kontrollera att du fyllt i bankbeloppet i transaktionens valuta.',
-    message_en:
-      'The amount you entered deviates more than 10% from the invoice\'s booked SEK value. Check that you entered the bank-side amount in the transaction\'s currency.',
-  },
-  BATCH_NO_FISCAL_PERIOD: {
-    httpStatus: 400,
-    message_sv:
-      'Det finns ingen öppen räkenskapsperiod för transaktionens datum. Skapa perioden först.',
-    message_en:
-      'No fiscal period exists for the transaction date. Create the period first.',
-  },
-  BATCH_PERIOD_LOCKED: {
-    httpStatus: 409,
-    message_sv:
-      'Räkenskapsperioden för transaktionens datum är stängd. Öppna perioden eller välj ett annat datum.',
-    message_en:
-      'Fiscal period for the transaction date is closed/locked. Open the period or pick a different date.',
-  },
-  BATCH_RPC_FAILED: {
-    httpStatus: 500,
-    message_sv: 'Databasfel under fördelning. Försök igen.',
-    message_en: 'Database error during batch allocation. Please retry.',
-    retryable: true,
-  },
-}
-
-// ─────────────────────────────────────────────────────────────────
-// Bulk-book (bulk_book_transactions RPC): N txs → 1 verifikat
-// ─────────────────────────────────────────────────────────────────
-
-const BULK_BOOK: Record<string, StructuredErrorEntry> = {
-  BULK_BOOK_UNAUTHORIZED: {
-    httpStatus: 403,
-    message_sv: 'Du har inte behörighet att bokföra transaktioner för det här företaget.',
-    message_en: 'You are not authorized to bulk-book transactions for this company.',
-  },
-  BULK_BOOK_NO_TXS: {
-    httpStatus: 400,
-    message_sv: 'Inga transaktioner att bokföra.',
-    message_en: 'No transactions to book.',
-  },
-  BULK_BOOK_TXS_NOT_FOUND: {
-    httpStatus: 404,
-    message_sv: 'En eller flera transaktioner kunde inte hittas i det aktuella företaget.',
-    message_en: 'One or more transactions could not be found in this company.',
-  },
-  BULK_BOOK_TX_ALREADY_BOOKED: {
-    httpStatus: 409,
-    message_sv:
-      'En av de valda transaktionerna är redan bokförd. Avbokföra (storno) den först eller välj bort den.',
-    message_en:
-      'One of the selected transactions is already booked. Reverse the existing journal entry first or deselect it.',
-  },
-  BULK_BOOK_TX_ZERO_AMOUNT: {
-    httpStatus: 400,
-    message_sv: 'Transaktioner med beloppet 0 kan inte ingå i en samlingsbokföring.',
-    message_en: 'Zero-amount transactions cannot be part of a bulk booking.',
-  },
-  BULK_BOOK_DATE_MISMATCH: {
-    httpStatus: 400,
-    message_sv:
-      'Alla transaktioner i en samlingsbokföring måste ha samma datum (BFL 5 kap 6§).',
-    message_en:
-      'All transactions in a bulk booking must share the same date (BFL 5 kap 6§).',
-  },
-  BULK_BOOK_DIRECTION_MISMATCH: {
-    httpStatus: 400,
-    message_sv:
-      'Alla transaktioner måste vara samma riktning (alla intäkter eller alla utgifter).',
-    message_en: 'All transactions must be the same direction (all income or all expense).',
-  },
-  BULK_BOOK_MIXED_CURRENCY: {
-    httpStatus: 400,
-    message_sv:
-      'Samlingsbokföring stödjer endast transaktioner i samma valuta. Välj transaktioner i en valuta åt gången.',
-    message_en:
-      'Bulk booking supports only single-currency batches. Select transactions in one currency at a time.',
-  },
-  BULK_BOOK_FOREIGN_CURRENCY: {
-    httpStatus: 400,
-    message_sv:
-      'Samlingsbokföring stödjer endast transaktioner i SEK. Bokför transaktioner i utländsk valuta enskilt, så att beloppet räknas om till kronor med rätt växelkurs.',
-    message_en:
-      'Bulk booking supports only SEK transactions. Book foreign-currency transactions individually so the amount is converted to kronor at the correct exchange rate.',
-  },
-  BULK_BOOK_INVALID_PAYLOAD: {
-    httpStatus: 400,
-    message_sv:
-      'Ange antingen existing_journal_entry_id (länkning) eller template_id (skapa ny), inte båda, och inte ingen.',
-    message_en:
-      'Provide either existing_journal_entry_id (link) or template_id (create new), not both, and not neither.',
-  },
-  BULK_BOOK_TEMPLATE_NOT_FOUND: {
-    httpStatus: 404,
-    message_sv: 'Den valda bokföringsmallen kunde inte hittas.',
-    message_en: 'The selected booking template could not be found.',
-  },
-  BULK_BOOK_VOUCHER_NOT_FOUND: {
-    httpStatus: 404,
-    message_sv: 'Verifikationen kunde inte hittas.',
-    message_en: 'The target journal entry could not be found.',
-  },
-  BULK_BOOK_VOUCHER_NOT_POSTED: {
-    httpStatus: 409,
-    message_sv: 'Endast bokförda verifikationer kan länkas mot banktransaktioner.',
-    message_en: 'Only posted journal entries can be linked.',
-  },
-  BULK_BOOK_NO_BANK_LINE: {
-    httpStatus: 400,
-    message_sv:
-      'Verifikationen har ingen rad på bankkonto (19xx). Den kan inte länkas mot banktransaktioner.',
-    message_en:
-      'The journal entry has no bank-account (19xx) line and cannot be linked to bank transactions.',
-  },
-  BULK_BOOK_AMOUNT_MISMATCH: {
-    httpStatus: 400,
-    message_sv:
-      'Summan av transaktionerna stämmer inte med bankradens nettobelopp på verifikationen.',
-    message_en:
-      'The sum of the selected transactions does not match the bank-line net amount on the journal entry.',
-  },
-  BULK_BOOK_NO_LINES: {
-    httpStatus: 400,
-    message_sv: 'Verifikationen måste innehålla minst två rader (debit och kredit).',
-    message_en: 'The journal entry must contain at least two lines (debit and credit).',
-  },
-  BULK_BOOK_UNBALANCED: {
-    httpStatus: 400,
-    message_sv: 'Verifikationen balanserar inte: summa debet måste lika summa kredit.',
-    message_en: 'The journal entry does not balance: debits must equal credits.',
-  },
-  BULK_BOOK_NEGATIVE_LINE: {
-    httpStatus: 400,
-    message_sv: 'Verifikationsrader kan inte ha negativa belopp.',
-    message_en: 'Journal entry lines cannot have negative amounts.',
-  },
-  BULK_BOOK_BOTH_SIDES_NONZERO: {
-    httpStatus: 400,
-    message_sv: 'En verifikationsrad kan inte ha både debet och kredit nollskilda.',
-    message_en: 'A journal entry line cannot have both debit and credit non-zero.',
-  },
-  BULK_BOOK_MISSING_DESCRIPTION: {
-    httpStatus: 400,
-    message_sv: 'Beskrivning krävs för en ny samlingsverifikation.',
-    message_en: 'Description is required when creating a new combined journal entry.',
-  },
-  BULK_BOOK_NO_FISCAL_PERIOD: {
-    httpStatus: 400,
-    message_sv:
-      'Det finns ingen öppen räkenskapsperiod för transaktionsdatumet. Skapa perioden först.',
-    message_en:
-      'No fiscal period exists for the transaction date. Create the period first.',
-  },
-  BULK_BOOK_PERIOD_LOCKED: {
-    httpStatus: 409,
-    message_sv:
-      'Räkenskapsperioden för transaktionsdatumet är stängd. Öppna perioden eller välj ett annat datum.',
-    message_en:
-      'The fiscal period for the transaction date is closed/locked.',
-  },
-  BULK_BOOK_RPC_FAILED: {
-    httpStatus: 500,
-    message_sv: 'Databasfel under samlingsbokföring. Försök igen.',
-    message_en: 'Database error during bulk booking. Please retry.',
-    retryable: true,
-  },
-  BULK_BOOK_INVALID_ACCOUNT: {
-    httpStatus: 400,
-    message_sv:
-      'Ett eller flera konton finns inte i kontoplanen eller är inaktiva. Välj giltiga BAS-konton.',
-    message_en:
-      'One or more accounts are not in the chart of accounts or are inactive. Pick valid BAS accounts.',
   },
 }
 
@@ -3258,11 +2614,8 @@ const REGISTRY: Record<string, StructuredErrorEntry> = {
   ...BOOKKEEPING,
   ...TRANSACTIONS,
   ...MATCH_INVOICE,
-  ...LINK_TX_JE,
   ...LINK_INVOICE_VOUCHER,
   ...LINK_SI_VOUCHER,
-  ...MATCH_BATCH,
-  ...BULK_BOOK,
   ...MATCH_SI,
   ...INVOICE,
   ...SUPPLIER_INVOICE,
@@ -3276,7 +2629,6 @@ const REGISTRY: Record<string, StructuredErrorEntry> = {
   ...SIE_EXPORT,
   ...TAX_DECL,
   ...SIE_IMPORT,
-  ...BANK_FILE,
   ...OPENING_BALANCE_IMPORT,
   ...REGISTER_IMPORT,
   ...PROVIDER_MIGRATION,

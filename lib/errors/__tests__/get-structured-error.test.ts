@@ -45,12 +45,6 @@ describe('getStructuredError', () => {
     expect(result.remediation?.resource).toBe('Accounted://capabilities')
   })
 
-  it('infers TRANSACTION_ALREADY_CATEGORIZED', () => {
-    const result = getStructuredError(new Error('Transaction already has a journal entry'))
-    expect(result.code).toBe('TRANSACTION_ALREADY_CATEGORIZED')
-    expect(result.remediation?.tool).toBe('gnubok_reverse_journal_entry')
-  })
-
   it('falls back to UNKNOWN_ERROR when no code or pattern matches', () => {
     const result = getStructuredError(new Error('Something weird happened'))
     expect(result.code).toBe('UNKNOWN_ERROR')
@@ -112,7 +106,7 @@ describe('retryable contract (always present, transient inference)', () => {
 
   it('keeps a specific inferred code but still computes retryable from the failure', () => {
     // NOT_FOUND is permanent even though nothing in the registry says so explicitly.
-    const result = getStructuredError(new Error('Transaction not found'))
+    const result = getStructuredError(new Error('Invoice not found'))
     expect(result.code).toBe('NOT_FOUND')
     expect(result.retryable).toBe(false)
   })

@@ -145,10 +145,9 @@ describe('recordateEntry', () => {
       { data: null, error: null },                                                                  // 7 corrected lines
       { data: null, error: null },                                                                  // 8 post corrected
       { data: [{ id: 'orig-1' }], error: null },                                                    // 9 CAS
-      { data: null, error: null },                                                                  // 10 relink transactions
-      { data: null, error: null },                                                                  // 11 relink documents
-      { data: { ...reversalEntry, lines: [] }, error: null },                                       // 12 final reversal
-      { data: { ...correctedEntry, lines: [] }, error: null },                                      // 13 final corrected
+      { data: null, error: null },                                                                  // 10 relink documents
+      { data: { ...reversalEntry, lines: [] }, error: null },                                       // 11 final reversal
+      { data: { ...correctedEntry, lines: [] }, error: null },                                      // 12 final corrected
     ]
     const supabase = makeClient()
     const result = await recordateEntry(supabase as never, 'company-1', 'user-1', 'orig-1', '2025-07-03')

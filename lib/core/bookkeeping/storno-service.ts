@@ -428,15 +428,13 @@ export async function correctEntry(
     throw new EntryAlreadyReversedError()
   }
 
-  // Re-point bank transactions and underlag from the original to the corrected
-  // entry. The original is now status 'reversed'; the corrected entry is the
-  // live representation of the affärshändelse, so the transaction row should
-  // keep reading as booked against it (and stay correctable/uncategorizable),
-  // and the underlag should travel with it. Best-effort: the correction_of_id
-  // chain preserves traceability even if either relink fails, but a document
-  // relink failure is surfaced on the result so the caller can warn instead
-  // of silently stranding underlag on the reversed entry.
-  await relinkTransactionsToEntry(supabase, companyId, originalEntryId, correctedEntry!.id)
+  // Re-point underlag from the original to the corrected entry. The original
+  // is now status 'reversed'; the corrected entry is the live representation
+  // of the affärshändelse, so the underlag should travel with it. Best-effort:
+  // the correction_of_id chain preserves traceability even if the relink
+  // fails, but a document relink failure is surfaced on the result so the
+  // caller can warn instead of silently stranding underlag on the reversed
+  // entry.
   const documentRelinkError = await relinkDocumentsToEntry(
     supabase,
     userId,
@@ -568,34 +566,9 @@ export async function recordateEntry(
     }
   )
 
-  // Underlag and bank-transaction links follow the corrected entry:
-  // correctEntry handles both relinks for every correction flavour.
+  // Underlag follows the corrected entry: correctEntry handles the relink
+  // for every correction flavour.
   return result
-}
-
-/**
- * Re-point every bank transaction from one entry to another. Used when a
- * verifikation is corrected so the transaction row keeps reading as booked
- * against the live (corrected) entry instead of the reversed original.
- * Failures are logged, not thrown: the correction chain stays traceable.
- */
-async function relinkTransactionsToEntry(
-  supabase: SupabaseClient,
-  companyId: string,
-  fromEntryId: string,
-  toEntryId: string
-): Promise<void> {
-  const { error } = await supabase
-    .from('transactions')
-    .update({ journal_entry_id: toEntryId })
-    .eq('company_id', companyId)
-    .eq('journal_entry_id', fromEntryId)
-  if (error) {
-    console.error(
-      `[storno] relinkTransactionsToEntry: failed to move transactions ${fromEntryId} → ${toEntryId}:`,
-      error.message
-    )
-  }
 }
 
 /**

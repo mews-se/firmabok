@@ -7,7 +7,7 @@ import type { JournalEntry } from '@/types'
  * A Supabase mock that records the table + method + args of every chained call
  * (the shared createQueuedMockSupabase only records `from()` table names). Lets
  * us assert on the actual UPDATE/DELETE payloads, which is what the reversal
- * restore (remaining_amount reset, payment-row delete, tx release) hinges on.
+ * restore (remaining_amount reset, payment-row delete) hinges on.
  */
 type RecordedCall = {
   table: string
@@ -107,15 +107,12 @@ describe('syncInvoiceStatusFromPaymentEntry', () => {
     await syncInvoiceStatusFromPaymentEntry(supabase as never, 'co-1', entry())
 
     const fromCalls = (supabase.from as ReturnType<typeof vi.fn>).mock.calls.map((c) => c[0])
-    // After the status update the helper now also deletes the stale payment row
-    // and releases any linked bank transaction back to the inbox.
+    // After the status update the helper also deletes the stale payment row.
     expect(fromCalls).toEqual([
       'supplier_invoice_payments', // select amount
       'supplier_invoices', // select
       'supplier_invoices', // update status/paid/remaining
-      'supplier_invoice_payments', // select transaction_id
       'supplier_invoice_payments', // delete payment row
-      'transactions', // release linked bank line
     ])
   })
 
@@ -130,9 +127,8 @@ describe('syncInvoiceStatusFromPaymentEntry', () => {
 
     await syncInvoiceStatusFromPaymentEntry(supabase as never, 'co-1', entry())
 
-    // select payment, select invoice, update invoice, select payment tx,
-    // delete payment row, release linked transaction.
-    expect((supabase.from as ReturnType<typeof vi.fn>).mock.calls.length).toBe(6)
+    // select payment, select invoice, update invoice, delete payment row.
+    expect((supabase.from as ReturnType<typeof vi.fn>).mock.calls.length).toBe(4)
   })
 
   it('routes customer invoice entries through the invoices table', async () => {
@@ -154,9 +150,7 @@ describe('syncInvoiceStatusFromPaymentEntry', () => {
       'invoice_payments', // select amount
       'invoices', // select
       'invoices', // update status/paid/remaining
-      'invoice_payments', // select transaction_id
       'invoice_payments', // delete payment row
-      'transactions', // release linked bank line
     ])
   })
 
@@ -219,9 +213,7 @@ describe('syncInvoiceStatusFromPaymentEntry', () => {
       { data: null }, // invoice_payments select amount → none (cash entry)
       { data: { paid_amount: 5212.5, total: 5212.5, due_date: '2099-12-31' } }, // invoices select
       { data: null }, // invoices update
-      { data: [] }, // invoice_payments select transaction_id
       { data: null }, // invoice_payments delete
-      { data: null }, // transactions update
     ])
 
     await syncInvoiceStatusFromPaymentEntry(
@@ -246,9 +238,7 @@ describe('syncInvoiceStatusFromPaymentEntry', () => {
       { data: { amount: 500 } }, // invoice_payments select amount
       { data: { paid_amount: 1500, total: 2000, due_date: '2099-12-31' } }, // invoices select
       { data: null }, // invoices update
-      { data: [] }, // invoice_payments select transaction_id
       { data: null }, // invoice_payments delete
-      { data: null }, // transactions update
     ])
 
     await syncInvoiceStatusFromPaymentEntry(
@@ -265,52 +255,14 @@ describe('syncInvoiceStatusFromPaymentEntry', () => {
     })
   })
 
-  // The bank line that paid the (now reversed) voucher must be detached so it
-  // returns to the inbox and is re-matchable: cleared both by journal_entry_id
-  // and by the transaction id captured from the payment row.
-  it('releases the linked bank transaction (clears journal_entry_id, invoice_id, category)', async () => {
-    const { supabase, tablesUpdated } = createRecordingSupabase([
-      { data: null }, // invoice_payments select amount
-      { data: { paid_amount: 5212.5, total: 5212.5, due_date: '2099-12-31' } }, // invoices select
-      { data: null }, // invoices update
-      { data: [{ transaction_id: 'tx-9' }] }, // invoice_payments select transaction_id
-      { data: null }, // invoice_payments delete
-      { data: null }, // transactions update by journal_entry_id
-      { data: null }, // transactions update by id
-    ])
-
-    await syncInvoiceStatusFromPaymentEntry(
-      supabase,
-      'co-1',
-      entry({ source_type: 'invoice_cash_payment', source_id: 'invoice-1' }),
-    )
-
-    const txUpdates = tablesUpdated('transactions')
-    // Once by journal_entry_id, once by the captured payment transaction_id.
-    expect(txUpdates.length).toBe(2)
-    const resetPayload = txUpdates[0].ops.find((o) => o.method === 'update')?.args[0]
-    expect(resetPayload).toEqual({
-      journal_entry_id: null,
-      invoice_id: null,
-      is_business: null,
-      category: null,
-    })
-    // Second update targets the captured tx id.
-    const byId = txUpdates[1].ops.find((o) => o.method === 'in')
-    expect(byId?.args).toEqual(['id', ['tx-9']])
-  })
-
   // Supplier-side parity: remaining_amount was already reset; now the payment
-  // row is deleted and the bank line released too.
-  it('supplier reversal deletes the payment row and releases the bank line', async () => {
-    const { supabase, updatePayload, wasDeleted, tablesUpdated } = createRecordingSupabase([
+  // row is deleted too.
+  it('supplier reversal deletes the payment row', async () => {
+    const { supabase, updatePayload, wasDeleted } = createRecordingSupabase([
       { data: { amount: 1000 } }, // supplier_invoice_payments select amount
       { data: { paid_amount: 1000, total: 1000, due_date: '2099-12-31' } }, // supplier_invoices select
       { data: null }, // supplier_invoices update
-      { data: [{ transaction_id: 'tx-7' }] }, // supplier_invoice_payments select transaction_id
       { data: null }, // supplier_invoice_payments delete
-      { data: null }, // transactions update by journal_entry_id
-      { data: null }, // transactions update by id
     ])
 
     await syncInvoiceStatusFromPaymentEntry(
@@ -325,13 +277,6 @@ describe('syncInvoiceStatusFromPaymentEntry', () => {
       remaining_amount: 1000, // total - 0 paid = full amount owed again
     })
     expect(wasDeleted('supplier_invoice_payments')).toBe(true)
-    const resetPayload = tablesUpdated('transactions')[0].ops.find((o) => o.method === 'update')?.args[0]
-    expect(resetPayload).toEqual({
-      journal_entry_id: null,
-      supplier_invoice_id: null,
-      is_business: null,
-      category: null,
-    })
   })
 
   // Regression for the Greptile finding on PR #666: the supplier branch
@@ -345,9 +290,7 @@ describe('syncInvoiceStatusFromPaymentEntry', () => {
       { data: null }, // supplier_invoice_payments select amount → none (cash entry)
       { data: { paid_amount: 1000, total: 1000, due_date: '2099-12-31' } }, // supplier_invoices select
       { data: null }, // supplier_invoices update
-      { data: [] }, // supplier_invoice_payments select transaction_id
       { data: null }, // supplier_invoice_payments delete
-      { data: null }, // transactions update by journal_entry_id
     ])
 
     await syncInvoiceStatusFromPaymentEntry(
@@ -368,7 +311,7 @@ describe('syncInvoiceStatusFromPaymentEntry', () => {
   // Regression: the supplier branch selected `total_amount`, a column
   // supplier_invoices has never had (the real one is `total`). PostgREST
   // rejected the whole select, so the restore was skipped while the payment-row
-  // delete and the bank-line release still ran: the invoice stayed 'paid' with
+  // delete still ran: the invoice stayed 'paid' with
   // a stale paid_amount and nothing behind it. Asserted on the projection
   // string because a queued mock happily returns rows for columns that do not
   // exist, which is how the bug survived the earlier tests.
@@ -377,9 +320,7 @@ describe('syncInvoiceStatusFromPaymentEntry', () => {
       { data: { amount: 1000 } }, // supplier_invoice_payments select amount
       { data: { paid_amount: 1000, total: 1000, due_date: '2099-12-31' } }, // supplier_invoices select
       { data: null }, // supplier_invoices update
-      { data: [] }, // supplier_invoice_payments select transaction_id
       { data: null }, // supplier_invoice_payments delete
-      { data: null }, // transactions update
     ])
 
     await syncInvoiceStatusFromPaymentEntry(supabase, 'co-1', entry())
@@ -399,9 +340,7 @@ describe('syncInvoiceStatusFromPaymentEntry', () => {
       { data: { amount: 500 } }, // supplier_invoice_payments select amount
       { data: { paid_amount: 1500, total: 2000, due_date: '2099-12-31' } }, // supplier_invoices select
       { data: null }, // supplier_invoices update
-      { data: [] }, // supplier_invoice_payments select transaction_id
       { data: null }, // supplier_invoice_payments delete
-      { data: null }, // transactions update
     ])
 
     await syncInvoiceStatusFromPaymentEntry(supabase, 'co-1', entry())
@@ -415,8 +354,8 @@ describe('syncInvoiceStatusFromPaymentEntry', () => {
 
   // If the supplier invoice cannot be read we do not know the state we are
   // about to overwrite, so nothing destructive may run: deleting the payment
-  // row and releasing the bank line would strand the invoice on 'paid' with no
-  // payment behind it. Bail out and leave the reversal safely re-runnable.
+  // row would strand the invoice on 'paid' with no payment behind it. Bail out
+  // and leave the reversal safely re-runnable.
   it('aborts the whole sync when the supplier invoice read errors', async () => {
     const { supabase, calls, wasDeleted, tablesUpdated } = createRecordingSupabase([
       { data: { amount: 1000 } }, // supplier_invoice_payments select amount
@@ -431,26 +370,20 @@ describe('syncInvoiceStatusFromPaymentEntry', () => {
     expect(calls.map((c) => c.table)).toEqual(['supplier_invoice_payments', 'supplier_invoices'])
     expect(tablesUpdated('supplier_invoices').length).toBe(0)
     expect(wasDeleted('supplier_invoice_payments')).toBe(false)
-    expect(tablesUpdated('transactions').length).toBe(0)
   })
 
   // "No row" is not a read failure: the invoice is genuinely gone, so there is
-  // nothing to restore and the orphan payment row plus the bank line still have
-  // to be cleaned up.
+  // nothing to restore and the orphan payment row still has to be cleaned up.
   it('still cleans up when the supplier invoice row no longer exists (PGRST116)', async () => {
     const { supabase, wasDeleted, tablesUpdated } = createRecordingSupabase([
       { data: { amount: 1000 } }, // supplier_invoice_payments select amount
       { data: null, error: { code: 'PGRST116', message: 'no rows returned' } },
-      { data: [{ transaction_id: 'tx-3' }] }, // supplier_invoice_payments select transaction_id
       { data: null }, // supplier_invoice_payments delete
-      { data: null }, // transactions update by journal_entry_id
-      { data: null }, // transactions update by id
     ])
 
     await syncInvoiceStatusFromPaymentEntry(supabase, 'co-1', entry())
 
     expect(tablesUpdated('supplier_invoices').length).toBe(0)
     expect(wasDeleted('supplier_invoice_payments')).toBe(true)
-    expect(tablesUpdated('transactions').length).toBe(2)
   })
 })

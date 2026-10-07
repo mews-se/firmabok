@@ -1203,23 +1203,8 @@ export async function reverseEntry(
     throw new EntryAlreadyReversedError()
   }
 
-  // Unlink any bank transactions booked by the reversed entry so they return
-  // to "Att bokföra" and can be booked again from the transactions view.
-  // Without this the row keeps pointing at a status='reversed' entry, reads
-  // as bokförd forever, and has no re-booking affordance: the agent paths
-  // (lib/pending-operations/commit.ts) already did this manually after every
-  // reverseEntry call; the dashboard reverse route did not.
-  const { error: unlinkError } = await supabase
-    .from('transactions')
-    .update({ journal_entry_id: null })
-    .eq('company_id', companyId)
-    .eq('journal_entry_id', entryId)
-  if (unlinkError) {
-    log.error('failed to unlink transactions from reversed entry', unlinkError, { entryId })
-  }
-
-  // Same hazard one table over: a period whose opening_balance_entry_id still
-  // points at the entry we just reversed. getOpeningBalances() reads the linked
+  // A period whose opening_balance_entry_id still points at the entry we just
+  // reversed. getOpeningBalances() reads the linked
   // entry's lines directly with no status filter, so the Balansrapport would go
   // on showing a cancelled IB, and year-end refuses to run while the link is
   // non-null ("Next fiscal period already has opening balance entry posted;

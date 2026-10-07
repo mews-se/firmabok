@@ -876,96 +876,6 @@ describe('reverseEntry: storno guard', () => {
   })
 })
 
-describe('reverseEntry: bank transaction unlink', () => {
-  // After a reversal the booked bank transaction must return to "Att bokföra"
-  // (journal_entry_id cleared) so the user can book it again. The agent paths
-  // in lib/pending-operations/commit.ts did this manually; the engine now owns
-  // it so the dashboard reverse route behaves the same.
-  it('clears transactions.journal_entry_id for rows booked by the reversed entry', async () => {
-    const original = {
-      id: 'entry-1',
-      company_id: 'company-1',
-      status: 'posted',
-      fiscal_period_id: 'period-1',
-      voucher_series: 'A',
-      voucher_number: 7,
-      entry_date: '2026-02-02',
-      description: 'ALMI AB - Innovationslån',
-      source_type: 'manual',
-      source_id: null,
-      lines: [
-        { account_number: '1930', debit_amount: 1000, credit_amount: 0 },
-        { account_number: '2350', debit_amount: 0, credit_amount: 1000 },
-      ],
-    }
-    const reversal = { id: 'reversal-1', reverses_id: 'entry-1', source_type: 'storno' }
-
-    let jeCall = 0
-    const jeResults = [
-      { data: original, error: null },                   // fetch original (.single)
-      { data: reversal, error: null },                   // insert reversal (.single)
-      { data: null, error: null },                       // post reversal (await)
-      { data: [{ id: 'entry-1' }], error: null },        // CAS original → reversed (await)
-      { data: { ...reversal, lines: [] }, error: null }, // fetch complete (.single)
-    ]
-    function jeBuilder() {
-      const b: Record<string, unknown> = {}
-      for (const m of ['select', 'eq', 'in', 'update', 'insert']) {
-        b[m] = vi.fn().mockReturnValue(b)
-      }
-      b.single = vi.fn().mockImplementation(async () => jeResults[jeCall++])
-      b.then = (resolve: (v: unknown) => void) => resolve(jeResults[jeCall++])
-      return b
-    }
-
-    const txUpdatePayloads: unknown[] = []
-    const txFilters: Record<string, unknown> = {}
-
-    const supabase = {
-      rpc: vi.fn().mockResolvedValue({ data: 8, error: null }),
-      from: vi.fn().mockImplementation((table: string) => {
-        if (table === 'journal_entries') return jeBuilder()
-        if (table === 'chart_of_accounts') {
-          const b: Record<string, unknown> = {}
-          for (const m of ['select', 'eq', 'in']) b[m] = vi.fn().mockReturnValue(b)
-          b.then = (resolve: (v: unknown) => void) =>
-            resolve({
-              data: [
-                { id: 'acc-1930', account_number: '1930' },
-                { id: 'acc-2350', account_number: '2350' },
-              ],
-              error: null,
-            })
-          return b
-        }
-        if (table === 'journal_entry_lines') {
-          return { insert: vi.fn().mockResolvedValue({ error: null }) }
-        }
-        if (table === 'transactions') {
-          const b: Record<string, unknown> = {}
-          b.update = vi.fn().mockImplementation((payload: unknown) => {
-            txUpdatePayloads.push(payload)
-            return b
-          })
-          b.eq = vi.fn().mockImplementation((col: string, val: unknown) => {
-            txFilters[col] = val
-            return b
-          })
-          b.then = (resolve: (v: unknown) => void) => resolve({ error: null })
-          return b
-        }
-        return createMockChain()
-      }),
-    }
-
-    const result = await reverseEntry(supabase as never, 'company-1', 'user-1', 'entry-1')
-
-    expect(result.id).toBe('reversal-1')
-    expect(txUpdatePayloads).toEqual([{ journal_entry_id: null }])
-    expect(txFilters).toMatchObject({ company_id: 'company-1', journal_entry_id: 'entry-1' })
-  })
-})
-
 describe('reverseEntry: opening balance unlink', () => {
   // Reversing a period's IB verifikat must also drop the period's pointer to
   // it. getOpeningBalances() reads the linked entry's lines with no status
@@ -1045,12 +955,6 @@ describe('reverseEntry: opening balance unlink', () => {
             filters[col] = val
             return b
           })
-          b.then = (resolve: (v: unknown) => void) => resolve({ error: null })
-          return b
-        }
-        if (table === 'transactions') {
-          const b: Record<string, unknown> = {}
-          for (const m of ['update', 'eq']) b[m] = vi.fn().mockReturnValue(b)
           b.then = (resolve: (v: unknown) => void) => resolve({ error: null })
           return b
         }

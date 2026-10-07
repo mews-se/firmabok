@@ -101,13 +101,11 @@ describe('correctEntry', () => {
       { data: null, error: null },
       // 8: CAS update original to reversed (thenable, needs array for .length check)
       { data: [{ id: 'orig-1' }], error: null },
-      // 9: relink transactions original → corrected (thenable)
+      // 9: relink documents original → corrected (thenable)
       { data: null, error: null },
-      // 10: relink documents original → corrected (thenable)
-      { data: null, error: null },
-      // 11: fetch final reversal (.single())
+      // 10: fetch final reversal (.single())
       { data: { ...reversalEntry, lines: [] }, error: null },
-      // 12: fetch final corrected (.single())
+      // 11: fetch final corrected (.single())
       { data: { ...correctedEntry, lines: correctedLines }, error: null },
     ]
   }
@@ -358,10 +356,9 @@ describe('correctEntry', () => {
       { data: null, error: null },                                            // 6: insert corrected lines
       { data: null, error: null },                                            // 7: post corrected
       { data: [{ id: 'correction-1' }], error: null },                        // 8: CAS update
-      { data: null, error: null },                                            // 9: relink transactions
-      { data: null, error: null },                                            // 10: relink documents
-      { data: { ...secondReversal, lines: [] }, error: null },                // 11: fetch final reversal
-      { data: { ...secondCorrection, lines: [] }, error: null },              // 12: fetch final corrected
+      { data: null, error: null },                                            // 9: relink documents
+      { data: { ...secondReversal, lines: [] }, error: null },                // 10: fetch final reversal
+      { data: { ...secondCorrection, lines: [] }, error: null },              // 11: fetch final corrected
     ]
 
     const supabase = makeClient()
@@ -412,10 +409,9 @@ describe('correctEntry', () => {
       { data: null, error: null },                                           // 7: corrected lines
       { data: null, error: null },                                           // 8: post corrected
       { data: [{ id: 'orig-1' }], error: null },                             // 9: CAS
-      { data: null, error: null },                                           // 10: relink transactions
-      { data: null, error: null },                                           // 11: relink documents
-      { data: { ...reversalEntry, lines: [] }, error: null },                // 12: final reversal
-      { data: { ...correctedEntry, lines: [] }, error: null },               // 13: final corrected
+      { data: null, error: null },                                           // 10: relink documents
+      { data: { ...reversalEntry, lines: [] }, error: null },                // 11: final reversal
+      { data: { ...correctedEntry, lines: [] }, error: null },               // 12: final corrected
     ]
     mockBackfill.mockResolvedValue(['5420'])
 
@@ -478,10 +474,9 @@ describe('correctEntry: date/period override (recordate engine)', () => {
       { data: null, error: null },                                                                   // 7 corrected lines
       { data: null, error: null },                                                                   // 8 post corrected
       { data: [{ id: 'orig-1' }], error: null },                                                     // 9 CAS
-      { data: null, error: null },                                                                   // 10 relink transactions
-      { data: null, error: null },                                                                   // 11 relink documents
-      { data: { ...reversalEntry, lines: [] }, error: null },                                        // 12 final reversal
-      { data: { ...correctedEntry, lines: [] }, error: null },                                       // 13 final corrected
+      { data: null, error: null },                                                                   // 10 relink documents
+      { data: { ...reversalEntry, lines: [] }, error: null },                                        // 11 final reversal
+      { data: { ...correctedEntry, lines: [] }, error: null },                                       // 12 final corrected
     ]
     const supabase = makeClient()
     const result = await correctEntry(

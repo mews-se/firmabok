@@ -50,10 +50,9 @@ export async function syncInvoiceStatusFromPaymentEntry(
     // Column is `total`, not `total_amount` (supplier_invoices has never had a
     // total_amount column). Selecting the wrong name made PostgREST reject the
     // whole query, so `supplierInvoice` was always null: the restore below was
-    // silently skipped while the payment-row delete and the bank-line release
-    // still ran. The invoice then stayed 'paid' with a stale paid_amount and
-    // nothing behind it, so the AP ledger (leverantörsreskontra) showed money
-    // as paid that was never paid.
+    // silently skipped while the payment-row delete still ran. The invoice then
+    // stayed 'paid' with a stale paid_amount and nothing behind it, so the AP
+    // ledger (leverantörsreskontra) showed money as paid that was never paid.
     const { data: supplierInvoice, error: supplierInvoiceError } = await supabase
       .from('supplier_invoices')
       .select('paid_amount, total, due_date')
@@ -64,13 +63,13 @@ export async function syncInvoiceStatusFromPaymentEntry(
     // PGRST116 = no row: the invoice itself is gone, so there is nothing to
     // restore and the cleanup below is still the right thing to do. Any OTHER
     // error means we could not read the state we are about to overwrite.
-    // Deleting the payment row and releasing the bank line at that point would
-    // destroy the only evidence of the payment while the invoice stays 'paid':
-    // exactly the wrong-AP-ledger outcome above. Abort instead, at ERROR level
-    // so the failure is observable: the storno is already committed and both
-    // callers (reverseEntry, the DELETE voucher route) treat this sync as
-    // best-effort, so bailing out leaves invoice + payment row + bank line
-    // mutually consistent and the operation safely re-runnable.
+    // Deleting the payment row at that point would destroy the only evidence
+    // of the payment while the invoice stays 'paid': exactly the wrong-AP-ledger
+    // outcome above. Abort instead, at ERROR level so the failure is
+    // observable: the storno is already committed and both callers
+    // (reverseEntry, the DELETE voucher route) treat this sync as best-effort,
+    // so bailing out leaves invoice + payment row mutually consistent and the
+    // operation safely re-runnable.
     if (supplierInvoiceError && supplierInvoiceError.code !== 'PGRST116') {
       log.error(
         'Failed to read supplier invoice for payment reversal: aborting status sync',
@@ -112,33 +111,17 @@ export async function syncInvoiceStatusFromPaymentEntry(
     }
 
     // Remove THIS invoice's payment row tied to the reversed voucher so a
-    // re-match of the same bank line doesn't double-count or trip the unique
-    // index on supplier_invoice_payments. Scoped to the source invoice: a
-    // batch voucher carries sibling rows for other invoices whose status this
-    // call does not restore, so deleting them here would desync paid_amount
-    // from the payment rows (PR #666 review, SOC 2 CC6.3). Capture the linked
-    // transaction id first so the bank line can be released back to the inbox.
-    const { data: spRows } = await supabase
-      .from('supplier_invoice_payments')
-      .select('transaction_id')
-      .eq('journal_entry_id', entryId)
-      .eq('supplier_invoice_id', entry.source_id)
-      .eq('company_id', companyId)
-
+    // later payment doesn't double-count or trip the unique index on
+    // supplier_invoice_payments. Scoped to the source invoice: a batch voucher
+    // carries sibling rows for other invoices whose status this call does not
+    // restore, so deleting them here would desync paid_amount from the payment
+    // rows (PR #666 review, SOC 2 CC6.3).
     await supabase
       .from('supplier_invoice_payments')
       .delete()
       .eq('journal_entry_id', entryId)
       .eq('supplier_invoice_id', entry.source_id)
       .eq('company_id', companyId)
-
-    await releaseLinkedTransactions(
-      supabase,
-      companyId,
-      entryId,
-      (spRows ?? []).map((r) => (r as { transaction_id: string | null }).transaction_id),
-      'supplier_invoice_id',
-    )
   } else {
     // Scoped like the supplier branch: filter by invoice_id + company_id so a
     // batch voucher's sibling payment rows don't break the .single().
@@ -171,7 +154,7 @@ export async function syncInvoiceStatusFromPaymentEntry(
       // showed fully unpaid yet stuck on 'paid'. Recompute from total. (The
       // .in('status', …) guard below can leave status/remaining un-updated if
       // the invoice isn't paid/partially_paid: only reachable on a non-storno
-      // path; the payment-row delete + tx release still run, freeing the line.)
+      // path; the payment-row delete still runs.)
       const newRemaining = roundOre(customerInvoice.total - safePaidAmount)
       const revertStatus = newPaidAmount > 0
         ? 'partially_paid'
@@ -193,109 +176,14 @@ export async function syncInvoiceStatusFromPaymentEntry(
     }
 
     // Remove THIS invoice's payment row tied to the reversed voucher so a
-    // re-match of the same bank line doesn't trip the (transaction_id,
-    // invoice_id) / (journal_entry_id, invoice_id) unique indexes on
-    // invoice_payments. Scoped to the source invoice: see the supplier
-    // branch comment for the batch-voucher rationale.
-    const { data: ipRows } = await supabase
-      .from('invoice_payments')
-      .select('transaction_id')
-      .eq('journal_entry_id', entryId)
-      .eq('invoice_id', entry.source_id)
-      .eq('company_id', companyId)
-
+    // later payment doesn't trip the (journal_entry_id, invoice_id) unique
+    // index on invoice_payments. Scoped to the source invoice: see the
+    // supplier branch comment for the batch-voucher rationale.
     await supabase
       .from('invoice_payments')
       .delete()
       .eq('journal_entry_id', entryId)
       .eq('invoice_id', entry.source_id)
       .eq('company_id', companyId)
-
-    await releaseLinkedTransactions(
-      supabase,
-      companyId,
-      entryId,
-      (ipRows ?? []).map((r) => (r as { transaction_id: string | null }).transaction_id),
-      'invoice_id',
-    )
-  }
-}
-
-/**
- * Detach any bank transactions still pointing at a reversed payment voucher so
- * the bank line returns to the inbox and becomes re-matchable. Without this, a
- * standalone storno (the reverse route / MCP reverse tool / delete-last-voucher)
- * leaves transactions.journal_entry_id pointing at a reversed JE: the match
- * POST refuses (invoice no longer matchable once we also fix its status) and the
- * line can't be re-booked or deleted. The match-invoice route already clears the
- * tx when IT stornos a conflicting auto-categorization JE; this covers every
- * other reversal path.
- *
- * Clears by journal_entry_id (covers the link even when the payment row was
- * missing) and by the captured payment-row transaction ids (covers a partial
- * match that cleared journal_entry_id but left invoice_id/category set). Only
- * the link/categorization columns are reset; the transaction row is preserved.
- */
-async function releaseLinkedTransactions(
-  supabase: SupabaseClient,
-  companyId: string,
-  entryId: string,
-  paymentTransactionIds: Array<string | null>,
-  invoiceColumn: 'invoice_id' | 'supplier_invoice_id',
-): Promise<void> {
-  const resetFields = {
-    journal_entry_id: null,
-    [invoiceColumn]: null,
-    is_business: null,
-    category: null,
-  }
-
-  const { data: releasedByEntry, error: byEntryError } = await supabase
-    .from('transactions')
-    .update(resetFields)
-    .eq('company_id', companyId)
-    .eq('journal_entry_id', entryId)
-    .select('id')
-  if (byEntryError) {
-    // Best-effort like the rest of the sync: the storno itself already
-    // committed, but a failed release leaves the bank line stuck on a
-    // reversed JE, so it must be observable.
-    log.error('Failed to release transactions by journal_entry_id', byEntryError, {
-      companyId,
-      journalEntryId: entryId,
-    })
-  } else if (releasedByEntry && releasedByEntry.length > 0) {
-    // transactions has no write_audit_log trigger, so the clearing of the
-    // link/categorization columns is logged here for incident reconstruction.
-    log.info('Released bank transactions from reversed payment voucher', {
-      companyId,
-      journalEntryId: entryId,
-      invoiceColumn,
-      transactionIds: releasedByEntry.map((r) => (r as { id: string }).id),
-    })
-  }
-
-  const txIds = paymentTransactionIds.filter((id): id is string => !!id)
-  if (txIds.length > 0) {
-    const { data: releasedById, error: byIdError } = await supabase
-      .from('transactions')
-      .update(resetFields)
-      .eq('company_id', companyId)
-      .in('id', txIds)
-      .select('id')
-    if (byIdError) {
-      log.error('Failed to release transactions by payment transaction ids', byIdError, {
-        companyId,
-        journalEntryId: entryId,
-        transactionIds: txIds,
-      })
-    } else if (releasedById && releasedById.length > 0) {
-      log.info('Released payment-linked bank transactions from reversed voucher', {
-        companyId,
-        journalEntryId: entryId,
-        invoiceColumn,
-        transactionIds: releasedById.map((r) => (r as { id: string }).id),
-      })
-    }
   }
 }

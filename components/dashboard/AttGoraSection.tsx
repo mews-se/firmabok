@@ -9,9 +9,6 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { useToast } from '@/components/ui/use-toast'
 import { cn, formatCurrency, formatDate } from '@/lib/utils'
 import { getErrorMessage } from '@/lib/errors/get-error-message'
-import { useCapability } from '@/contexts/CompanyContext'
-import { CAPABILITY } from '@/lib/entitlements/keys'
-import { visibleWorklistTotal } from '@/lib/worklist/visible-total'
 import {
   ArrowLeftRight,
   ArrowRight,
@@ -110,11 +107,6 @@ export default function AttGoraSection({
 }: AttGoraSectionProps) {
   const t = useTranslations('dashboard')
   const { toast } = useToast()
-  // The Dokumentinkorg is a paid (AI) surface: a non-payer's home to-do list
-  // must not offer a row that jumps to the gated workspace. Mirrors the sidebar
-  // + command palette gate; the page itself enforces it server-side.
-  const hasAi = useCapability(CAPABILITY.ai)
-
   const [counts, setCounts] = useState(worklist.counts)
   const [total, setTotal] = useState(worklist.total)
   const [matches, setMatches] = useState(suggestedMatches)
@@ -185,7 +177,7 @@ export default function AttGoraSection({
     }
   }
 
-  const showInboxDocuments = hasAi && counts.inbox_document > 0
+  const showInboxDocuments = counts.inbox_document > 0
   const bokforRows = counts.book_transaction > 0 || showInboxDocuments || matches.length > 0
   const granskaRows =
     counts.supplier_invoice_approval > 0 ||
@@ -197,16 +189,8 @@ export default function AttGoraSection({
     expiringBankConnections.length > 0
   const allClear = !bokforRows && !granskaRows && !bevakaRows
 
-  // The header total must equal what the section actually shows, computed off
-  // the same visibleWorklistTotal helper as the dashboard KPI tile so the two
-  // can never drift: the hidden paid inbox row is subtracted for non-payers,
-  // else the header would count work the section no longer renders.
-  const displayTotal = visibleWorklistTotal({
-    total,
-    inboxDocumentCount: counts.inbox_document,
-    hasAi,
-    extra: expiringBankConnections.length,
-  })
+  // expiring bank connections are a dashboard-only row, not a worklist category
+  const displayTotal = total + expiringBankConnections.length
 
   return (
     <section aria-label={t('att_gora_title')}>

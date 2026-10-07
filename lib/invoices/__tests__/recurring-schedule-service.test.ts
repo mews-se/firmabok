@@ -97,11 +97,6 @@ vi.mock('@/lib/sandbox/guard', () => ({
   isSandboxCompany: (...args: unknown[]) => mockIsSandbox(...args),
 }))
 
-const mockHasCapability = vi.fn()
-vi.mock('@/lib/entitlements/has-capability', () => ({
-  hasCapability: (...args: unknown[]) => mockHasCapability(...args),
-}))
-
 const mockEnsureNumber = vi.fn()
 vi.mock('@/lib/invoices/ensure-invoice-number', () => ({
   ensureInvoiceNumber: (...args: unknown[]) => mockEnsureNumber(...args),
@@ -403,7 +398,6 @@ describe('executeRecurringSchedule auto-send', () => {
     eventBus.clear()
     mockIsConfigured.mockReturnValue(true)
     mockIsSandbox.mockResolvedValue(false)
-    mockHasCapability.mockResolvedValue(true)
     mockEnsureNumber.mockImplementation(
       async (_supabase: unknown, _companyId: unknown, inv: { invoice_number: string | null }) => {
         inv.invoice_number = 'F-1'

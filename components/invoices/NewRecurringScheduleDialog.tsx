@@ -25,8 +25,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { useToast } from '@/components/ui/use-toast'
-import { useCompany, useCapability } from '@/contexts/CompanyContext'
-import { CAPABILITY } from '@/lib/entitlements/keys'
+import { useCompany } from '@/contexts/CompanyContext'
 import { Plus, Trash2 } from 'lucide-react'
 import type { Customer, Currency, RecurringInvoiceSchedule } from '@/types'
 import { formatCurrency, formatDate } from '@/lib/utils'
@@ -333,15 +332,13 @@ function NewRecurringScheduleForm({
   const watchCustomerId = watch('customer_id')
   const selectedCustomer = customers.find((c) => c.id === watchCustomerId)
   const customerMissingEmail = !!selectedCustomer && !selectedCustomer.email
-  const hasEmailSend = useCapability(CAPABILITY.email_send)
-  const autoSendBlocked = customerMissingEmail || !hasEmailSend
+  const autoSendBlocked = customerMissingEmail
 
   // The onValueChange guard on the customer select only fires on a manual
   // change. In edit mode a schedule can load with auto_send=true against a
   // customer who has since lost their email (customers load async, after the
   // form's defaultValues). Force auto_send off whenever the effective customer
-  // has no email (or email sending isn't entitled) so a disabled-but-checked
-  // box can't PATCH auto_send=true.
+  // has no email so a disabled-but-checked box can't PATCH auto_send=true.
   useEffect(() => {
     if (autoSendBlocked) setValue('auto_send', false)
   }, [autoSendBlocked, setValue])

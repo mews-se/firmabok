@@ -41,8 +41,6 @@ import {
 } from '@/lib/invoices/payment-accounts'
 import { errorResponseFromCode } from '@/lib/errors/get-structured-error'
 import { guardSandbox } from '@/lib/sandbox/guard'
-import { requireCapability } from '@/lib/entitlements/has-capability'
-import { CAPABILITY } from '@/lib/entitlements/keys'
 import type {
   AccountingMethod,
   CompanySettings,
@@ -81,9 +79,6 @@ export const POST = withRouteContext(
     // the entire send pipeline (PDF render + Resend send + status flip).
     const blocked = await guardSandbox(supabase, companyId)
     if (blocked) return blocked
-
-    const capBlocked = await requireCapability(supabase, companyId, CAPABILITY.email_send)
-    if (capBlocked) return capBlocked
 
     const emailService = getEmailService()
     if (!emailService.isConfigured()) {

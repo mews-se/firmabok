@@ -69,8 +69,6 @@ import type { AccountMapping } from '@/lib/import/types'
 import { AccountsNotInChartError, isBookkeepingError, ACCOUNTS_NOT_IN_CHART } from '@/lib/bookkeeping/errors'
 import { PartialCommitError } from '@/lib/pending-operations/errors'
 import { getEmailService } from '@/lib/email/service'
-import { hasCapability, CAPABILITY_BLOCKED_MESSAGE_SV } from '@/lib/entitlements/has-capability'
-import { PAID_OPERATION_CAPABILITY_MAP } from '@/lib/entitlements/keys'
 import {
   generateInvoiceEmailHtml,
   generateInvoiceEmailText,
@@ -4101,23 +4099,6 @@ async function commitPendingOperationInner(
   pendingOp: PendingOperation,
   opts: CommitOptions = {}
 ): Promise<CommitResult> {
-  // ── Capability gate (commit-time twin of the MCP dispatch gate). The actual
-  //    external-service call (email / Skatteverket submit) happens below, so
-  //    this is the true paid chokepoint: it also catches an op STAGED during
-  //    the trial then approved AFTER the grant expired, regardless of caller
-  //    (MCP approve tool or the UI approval path). Checked BEFORE the atomic
-  //    claim so a blocked op stays 'pending' and is re-approvable once the
-  //    company subscribes. Self-hosted short-circuits to all-on in hasCapability.
-  const requiredCapability = PAID_OPERATION_CAPABILITY_MAP[pendingOp.operation_type]
-  if (requiredCapability && !(await hasCapability(supabase, companyId, requiredCapability))) {
-    return {
-      status: 'failed',
-      error: CAPABILITY_BLOCKED_MESSAGE_SV,
-      http_status: 403,
-      code: 'capability_blocked',
-    }
-  }
-
   // ── Atomic claim: flip status pending → committing in a single conditional
   //    update. If 0 rows are affected, another caller (auto-commit ↔ human
   //    approval, or two parallel approvals) already claimed this op and we

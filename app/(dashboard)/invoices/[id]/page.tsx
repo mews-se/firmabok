@@ -48,8 +48,7 @@ import {
   Copy,
 } from 'lucide-react'
 import { useCanWrite } from '@/lib/hooks/use-can-write'
-import { useCompany, useCapability } from '@/contexts/CompanyContext'
-import { CAPABILITY } from '@/lib/entitlements/keys'
+import { useCompany } from '@/contexts/CompanyContext'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import PaymentBookingDialog from '@/components/invoices/PaymentBookingDialog'
 import SendInvoiceDialog from '@/components/invoices/SendInvoiceDialog'
@@ -110,7 +109,6 @@ interface InvoiceWithRelations extends Invoice {
 export default function InvoiceDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { canWrite } = useCanWrite()
   const { company, isSandbox } = useCompany()
-  const canEmail = useCapability(CAPABILITY.email_send)
   const { id } = use(params)
   const router = useRouter()
   const { toast } = useToast()
@@ -819,7 +817,6 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
   const preferredSendMode = getCreditNoteSendMode({
     customerHasEmail,
     isSandbox,
-    canEmail,
   })
   const creditNoteNeedsRepair =
     isCreditNote &&

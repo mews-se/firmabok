@@ -67,11 +67,6 @@ vi.mock('@/lib/auth/api-keys', async (importOriginal) => {
   }
 })
 
-vi.mock('@/lib/entitlements/has-capability', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/lib/entitlements/has-capability')>()
-  return { ...actual, hasCapability: vi.fn().mockResolvedValue(true) }
-})
-
 import { handleMcpRequest } from '../server'
 
 function mcpToolCall(name: string, args: Record<string, unknown> = {}): Request {

@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { makeDocumentAttachment } from '@/tests/helpers'
 import { TOOL_SCOPE_MAP } from '@/lib/auth/api-keys'
-import { MCP_TOOL_CAPABILITY_MAP } from '@/lib/entitlements/keys'
 
 const mocks = vi.hoisted(() => ({
   createPendingDocumentUpload: vi.fn(),
@@ -142,14 +141,13 @@ describe('MCP model-free document upload tools', () => {
     expect(mocks.completePendingDocumentUpload).not.toHaveBeenCalled()
   })
 
-  it('keeps the upload paths on the transactions:write scope and free of capability gates', () => {
+  it('keeps the upload paths on the transactions:write scope', () => {
     for (const name of [
       'gnubok_create_document_upload',
       'gnubok_complete_document_upload',
       'gnubok_upload_document',
     ]) {
       expect(TOOL_SCOPE_MAP[name]).toBe('transactions:write')
-      expect(MCP_TOOL_CAPABILITY_MAP[name]).toBeUndefined()
     }
   })
 })

@@ -30,8 +30,6 @@ import {
   buildPaymentLinkQrDataUrl,
 } from '@/lib/invoices/pdf-render-helpers'
 import { getEmailService } from '@/lib/email/service'
-import { hasCapability } from '@/lib/entitlements/has-capability'
-import { CAPABILITY } from '@/lib/entitlements/keys'
 import { isSandboxCompany } from '@/lib/sandbox/guard'
 import {
   generateInvoiceEmailHtml,
@@ -503,20 +501,10 @@ async function sendInvoiceFromSchedule(
   // The sandbox must never deliver a real email to a real address. The
   // interactive send routes enforce this with guardSandbox, but cron and
   // run-now reach this function without any route-level guard, so the
-  // invariant is enforced here at the email chokepoint. Freeze-and-retain
-  // like the paywall path below: the invoice is still generated as a draft.
+  // invariant is enforced here at the email chokepoint. The invoice is still
+  // generated as a draft.
   if (await isSandboxCompany(supabase, companyId)) {
     log.warn('sandbox company; recurring schedule cannot auto-send', {
-      invoiceId: invoice.id,
-      companyId,
-    })
-    return false
-  }
-  // Paywall: email sending is a paid capability. The invoice itself is still
-  // created (bookkeeping stays free); it just isn't emailed, and the schedule
-  // surfaces the standard manual-send warning (freeze-and-retain).
-  if (!(await hasCapability(supabase, companyId, CAPABILITY.email_send))) {
-    log.warn('company lacks email_send capability; recurring schedule cannot auto-send', {
       invoiceId: invoice.id,
       companyId,
     })

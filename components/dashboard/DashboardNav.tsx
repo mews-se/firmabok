@@ -46,7 +46,6 @@ import { useCompany } from '@/contexts/CompanyContext'
 import { createClient } from '@/lib/supabase/client'
 import { useWorklistBadges } from '@/lib/hooks/use-worklist-badges'
 import { persistUiState } from '@/lib/ui-state/client'
-import { type CapabilityKey } from '@/lib/entitlements/keys'
 import type { EntityType, UserUiState } from '@/types'
 
 interface DashboardNavProps {
@@ -124,10 +123,6 @@ interface NavItem {
   // company_settings.dimensions_enabled (UI-visibility gate only; the pages
   // and APIs work regardless, dimensions plan §2).
   requiresDimensions?: boolean
-  // Paywall surfaces: hidden unless the active company holds this paid
-  // capability. Cosmetic only, the page and API gates are the real
-  // enforcement; this just keeps the sidebar honest for non-payers.
-  requiredCapability?: CapabilityKey
   // Statutory surfaces that only exist for one company form (INK2 vs
   // NE-bilaga, årsredovisning): hidden for the other entity type.
   entityOnly?: EntityType
@@ -214,7 +209,7 @@ const groupLabelKey: Record<Exclude<GroupKey, 'top'>, string> = {
 export default function DashboardNav({ companyName: _companyName, entityType, dimensionsEnabled = false, isSandbox = false, userName = null, userEmail = null, initialUiState }: DashboardNavProps) {
   const pathname = usePathname()
   const router = useRouter()
-  const { company, capabilities } = useCompany()
+  const { company } = useCompany()
   const tNav = useTranslations('nav')
   const tCommon = useTranslations('common')
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
@@ -332,10 +327,6 @@ export default function DashboardNav({ companyName: _companyName, entityType, di
     // Dimension surfaces are hidden until the company opts in via the
     // bookkeeping settings toggle (company_settings.dimensions_enabled).
     if (item.requiresDimensions && !dimensionsEnabled) return false
-    // Paywalled surfaces (e.g. the AI-only Dokumentinkorg) are hidden unless
-    // the active company holds the capability. The page + API gates enforce
-    // the paywall; this keeps the sidebar from advertising a dead workspace.
-    if (item.requiredCapability && !capabilities.includes(item.requiredCapability)) return false
     // Entity-gated statutory surfaces: INK2/ÅR for aktiebolag, NE for
     // enskild firma; the page for the other form doesn't exist.
     if (item.entityOnly && item.entityOnly !== entityType) return false

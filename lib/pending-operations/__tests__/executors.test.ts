@@ -78,11 +78,6 @@ vi.mock('@/lib/bookkeeping/supplier-invoice-entries', async () => {
   }
 })
 
-vi.mock('@/lib/entitlements/has-capability', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/lib/entitlements/has-capability')>()
-  return { ...actual, hasCapability: vi.fn().mockResolvedValue(true) }
-})
-
 vi.mock('@/lib/email/service', () => ({
   getEmailService: () => ({
     isConfigured: () => true,

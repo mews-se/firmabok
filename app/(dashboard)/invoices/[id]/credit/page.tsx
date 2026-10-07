@@ -16,8 +16,7 @@ import { getVatTreatmentLabel } from '@/lib/invoices/vat-rules'
 import { Loader2, ArrowLeft, AlertTriangle, Lock } from 'lucide-react'
 import { useCanWrite } from '@/lib/hooks/use-can-write'
 import SendInvoiceDialog from '@/components/invoices/SendInvoiceDialog'
-import { useCompany, useCapability } from '@/contexts/CompanyContext'
-import { CAPABILITY } from '@/lib/entitlements/keys'
+import { useCompany } from '@/contexts/CompanyContext'
 import { getCreditNoteSendMode } from '@/lib/invoices/credit-note-send-mode'
 import type { Invoice, InvoiceItem, Customer } from '@/types'
 import { getErrorMessage as getUserErrorMessage } from '@/lib/errors/get-error-message'
@@ -30,7 +29,6 @@ interface InvoiceWithRelations extends Invoice {
 export default function CreateCreditNotePage({ params }: { params: Promise<{ id: string }> }) {
   const { canWrite } = useCanWrite()
   const { isSandbox } = useCompany()
-  const canEmail = useCapability(CAPABILITY.email_send)
   const { id } = use(params)
   const router = useRouter()
   const { toast } = useToast()
@@ -172,7 +170,6 @@ export default function CreateCreditNotePage({ params }: { params: Promise<{ id:
   const sendMode = getCreditNoteSendMode({
     customerHasEmail: !!createdCreditNote?.customer.email,
     isSandbox,
-    canEmail,
   })
 
   function handleSendPromptOpenChange(open: boolean) {

@@ -22,8 +22,7 @@ import { formatCurrency } from '@/lib/utils'
 import { roundOre } from '@/lib/money'
 import { createClient } from '@/lib/supabase/client'
 import { getResponseErrorMessage } from '@/lib/errors/get-error-message'
-import { useCompany, useCapability } from '@/contexts/CompanyContext'
-import { CAPABILITY } from '@/lib/entitlements/keys'
+import { useCompany } from '@/contexts/CompanyContext'
 import { creditNoteNeedsJournalEntry } from '@/lib/invoices/issue-credit-note'
 import { itemHasAccrual } from '@/lib/bookkeeping/accruals/account-suggestions'
 import { Loader2, Mail, Plus, Send, Trash2 } from 'lucide-react'
@@ -64,7 +63,6 @@ export default function SendInvoiceDialog({
   const supabase = createClient()
   const { company, role, isSandbox } = useCompany()
   const canCustomizeRecipients = role === 'owner' || role === 'admin'
-  const canEmail = useCapability(CAPABILITY.email_send)
   const t = useTranslations('invoice_send_dialog')
   const locale = useLocale() as 'sv' | 'en'
   const isCreditNote = !!invoice.credited_invoice_id
@@ -736,14 +734,12 @@ export default function SendInvoiceDialog({
           </Button>
           <Button
             onClick={handleConfirm}
-            disabled={isSubmitting || !isInitialized || (editable && (!isBalanced || hasOrphanAmounts)) || (mode === 'email' && (isSandbox || !canEmail || !!recipientError))}
+            disabled={isSubmitting || !isInitialized || (editable && (!isBalanced || hasOrphanAmounts)) || (mode === 'email' && (isSandbox || !!recipientError))}
             className="w-full sm:w-auto min-h-11"
             title={
               mode === 'email' && isSandbox
                 ? 'E-postutskick är avstängt i sandlådan'
-                : mode === 'email' && !canEmail
-                  ? 'E-postutskick kräver ett abonnemang'
-                  : undefined
+                : undefined
             }
           >
             {isSubmitting ? (

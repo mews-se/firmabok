@@ -53,8 +53,7 @@ import { useUnsavedChanges } from '@/lib/hooks/use-unsaved-changes'
 import CustomerForm from '@/components/customers/CustomerForm'
 import { BankDetailsSetupDialog } from '@/components/invoices/BankDetailsSetupDialog'
 import { FirstInvoiceLogoPrompt } from '@/components/invoices/FirstInvoiceLogoPrompt'
-import { useCompany, useCapability } from '@/contexts/CompanyContext'
-import { CAPABILITY } from '@/lib/entitlements/keys'
+import { useCompany } from '@/contexts/CompanyContext'
 import {
   ROT_WORK_TYPES,
   RUT_WORK_TYPES,
@@ -130,7 +129,6 @@ export default function InvoiceEditor(props: InvoiceEditorProps = { mode: 'creat
   const { toast } = useToast()
   const { canWrite } = useCanWrite()
   const { company } = useCompany()
-  const hasEmailSend = useCapability(CAPABILITY.email_send)
   const supabase = createClient()
   const t = useTranslations('invoice_editor')
   const ts = useTranslations('self_billing')
@@ -1089,9 +1087,7 @@ export default function InvoiceEditor(props: InvoiceEditorProps = { mode: 'creat
   function handleLogoPromptClose() {
     setShowLogoPrompt(false)
     // Resume the post-create flow that was deferred by the logo prompt.
-    // The send-now dialog only emails: skipped without the email_send
-    // capability (the invoice page's SendInvoiceDialog carries the upsell).
-    if (selectedCustomer?.email && createdInvoiceId && hasEmailSend) {
+    if (selectedCustomer?.email && createdInvoiceId) {
       setShowSendPrompt(true)
     } else if (createdInvoiceId) {
       router.replace(`/invoices/${createdInvoiceId}`)
@@ -1161,7 +1157,7 @@ export default function InvoiceEditor(props: InvoiceEditorProps = { mode: 'creat
       // prompt closes, handleLogoPromptClose resumes the regular flow.
       if (hadZeroInvoices === true && !logoUrl) {
         setShowLogoPrompt(true)
-      } else if (selectedCustomer?.email && hasEmailSend) {
+      } else if (selectedCustomer?.email) {
         setShowSendPrompt(true)
       } else {
         router.replace(`/invoices/${result.data.id}`)

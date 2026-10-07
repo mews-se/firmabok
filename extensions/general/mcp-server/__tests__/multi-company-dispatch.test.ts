@@ -13,7 +13,6 @@ const mocks = vi.hoisted(() => ({
     error: null as { message: string } | null,
   },
   companyIds: [] as string[],
-  hasCapability: vi.fn(),
 }))
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -51,11 +50,6 @@ vi.mock('@/lib/auth/api-keys', async (importOriginal) => {
   }
 })
 
-vi.mock('@/lib/entitlements/has-capability', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/lib/entitlements/has-capability')>()
-  return { ...actual, hasCapability: mocks.hasCapability }
-})
-
 import { handleMcpRequest } from '../server'
 
 function toolCall(args: Record<string, unknown>): Request {
@@ -89,7 +83,6 @@ describe('MCP multi-company dispatch', () => {
       data: { company_id: OTHER_COMPANY_ID, role: 'owner' },
       error: null,
     }
-    mocks.hasCapability.mockResolvedValue(false)
   })
 
   it('routes a tool call to an accessible requested company', async () => {
@@ -99,14 +92,10 @@ describe('MCP multi-company dispatch', () => {
       )
     )
 
+    // past company resolution: the failure comes from executing the tool
     expect(result.isError).toBe(true)
-    expect((result.payload.error as Record<string, unknown>).capability_blocked).toBe(true)
+    expect((result.payload.error as Record<string, unknown>).code).toBe('UNKNOWN_ERROR')
     expect(mocks.companyIds).toEqual([OTHER_COMPANY_ID])
-    expect(mocks.hasCapability).toHaveBeenCalledWith(
-      expect.anything(),
-      OTHER_COMPANY_ID,
-      'email_send'
-    )
   })
 
   it('revalidates and uses the API key default company when company_id is omitted', async () => {
@@ -115,14 +104,9 @@ describe('MCP multi-company dispatch', () => {
     await handleMcpRequest(toolCall({ invoice_id: 'invoice-1' }))
 
     expect(mocks.companyIds).toEqual([DEFAULT_COMPANY_ID])
-    expect(mocks.hasCapability).toHaveBeenCalledWith(
-      expect.anything(),
-      DEFAULT_COMPANY_ID,
-      'email_send'
-    )
   })
 
-  it('rejects a company the user does not belong to before capability or execution', async () => {
+  it('rejects a company the user does not belong to before execution', async () => {
     mocks.membership.data = null
 
     const result = await parseToolResult(
@@ -133,7 +117,6 @@ describe('MCP multi-company dispatch', () => {
 
     expect(result.isError).toBe(true)
     expect((result.payload.error as Record<string, unknown>).code).toBe('NOT_FOUND')
-    expect(mocks.hasCapability).not.toHaveBeenCalled()
   })
 
   it('rejects writes for a viewer in the selected company', async () => {
@@ -147,7 +130,6 @@ describe('MCP multi-company dispatch', () => {
 
     expect(result.isError).toBe(true)
     expect((result.payload.error as Record<string, unknown>).code).toBe('FORBIDDEN')
-    expect(mocks.hasCapability).not.toHaveBeenCalled()
   })
 
   it('rejects malformed company_id before querying membership', async () => {
@@ -160,6 +142,5 @@ describe('MCP multi-company dispatch', () => {
     expect(result.isError).toBe(true)
     expect((result.payload.error as Record<string, unknown>).code).toBe('VALIDATION_ERROR')
     expect(mocks.companyIds).toEqual([])
-    expect(mocks.hasCapability).not.toHaveBeenCalled()
   })
 })

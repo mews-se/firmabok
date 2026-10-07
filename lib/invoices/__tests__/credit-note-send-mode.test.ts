@@ -6,15 +6,13 @@ describe('getCreditNoteSendMode', () => {
     expect(getCreditNoteSendMode({
       customerHasEmail: true,
       isSandbox: false,
-      canEmail: true,
     })).toBe('email')
   })
 
   it.each([
-    { customerHasEmail: false, isSandbox: false, canEmail: true },
-    { customerHasEmail: true, isSandbox: true, canEmail: true },
-    { customerHasEmail: true, isSandbox: false, canEmail: false },
-  ])('falls back to manual issuance for $customerHasEmail/$isSandbox/$canEmail', (input) => {
+    { customerHasEmail: false, isSandbox: false },
+    { customerHasEmail: true, isSandbox: true },
+  ])('falls back to manual issuance for $customerHasEmail/$isSandbox', (input) => {
     expect(getCreditNoteSendMode(input)).toBe('manual')
   })
 })

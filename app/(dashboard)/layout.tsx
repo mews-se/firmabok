@@ -7,7 +7,6 @@ import { SettingsHotkey } from '@/components/settings/SettingsHotkey'
 import { SessionTimeoutController } from '@/components/auth/SessionTimeoutController'
 import { SandboxBanner } from '@/components/dashboard/SandboxBanner'
 import { CompanyProvider } from '@/contexts/CompanyContext'
-import { getCompanyEntitlements } from '@/lib/entitlements/has-capability'
 import { getBranding } from '@/lib/branding/service'
 import type { EntityType, CompanyRole } from '@/types'
 import {
@@ -82,7 +81,6 @@ export default async function DashboardLayout({
           company: null,
           role: null,
           isSandbox: false,
-          capabilities: [],
         }}
       >
         <SessionTimeoutController />
@@ -118,7 +116,6 @@ export default async function DashboardLayout({
     { data: memberRow },
     { data: settings },
     { data: userProfile },
-    entitlements,
     { data: userPrefs },
   ] = await Promise.all([
     supabase.from('companies').select('*').eq('id', companyId).single(),
@@ -132,7 +129,6 @@ export default async function DashboardLayout({
     // popover (full_name + initial) so it's clear which user is logged
     // in, distinct from the active company shown at the top.
     supabase.from('profiles').select('full_name').eq('id', user.id).maybeSingle(),
-    getCompanyEntitlements(supabase, companyId),
     // Per-user UI state (nav collapse/fold state), server-rendered so the
     // sidebar width is right on first paint. Batched here so it costs no
     // extra round-trip on the dashboard critical path.
@@ -146,7 +142,6 @@ export default async function DashboardLayout({
       company: null,
       role: null,
       isSandbox: false,
-      capabilities: [],
     }
 
     return (
@@ -209,7 +204,6 @@ export default async function DashboardLayout({
     company: companyWithName,
     role: memberRow.role as CompanyRole,
     isSandbox,
-    capabilities: entitlements.capabilities,
   }
 
   return (

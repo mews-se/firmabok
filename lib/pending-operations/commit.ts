@@ -33,7 +33,6 @@ import {
   createInvoiceJournalEntry,
   createCreditNoteJournalEntry,
 } from '@/lib/bookkeeping/invoice-entries'
-import { resolveSettlementAccount } from '@/lib/bookkeeping/settlement-account'
 import { cashPartialBlockReason, supplierCreditNoteNeedsJournalEntry } from '@/lib/bookkeeping/booking-mode'
 import { createJournalEntry, findFiscalPeriod, getSwedishLocalDate, reverseEntry, validateBalance } from '@/lib/bookkeeping/engine'
 import {
@@ -102,8 +101,6 @@ import { ensureArticleNumber } from '@/lib/articles/ensure-article-number'
 import { isValidRevenueAccount } from '@/lib/articles/validate-revenue-account'
 import { z } from 'zod'
 import type {
-  Transaction,
-  TransactionCategory,
   EntityType,
   VatTreatment,
   Currency,
@@ -168,10 +165,6 @@ export interface CommitOptions {
    */
   actor?: CommitActor
 }
-
-// ensureFiscalPeriod moved to lib/transactions/categorize-core.ts (imported
-// above) so the bulk-book-inbox path and the single-categorize path share one
-// implementation.
 
 async function recordSkippedInvoiceJournalEntry(
   invoiceId: string,

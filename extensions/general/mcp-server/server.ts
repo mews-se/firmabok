@@ -18,7 +18,6 @@ import { createLogger } from '@/lib/logger'
 import { fileStorage } from '@/lib/storage/local'
 import { roundOre, sumOre } from '@/lib/money'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { resolveSettlementAccount } from '@/lib/bookkeeping/settlement-account'
 import { upsertCounterpartyTemplate, findCounterpartyTemplatesBatch, formatCounterpartyName } from '@/lib/bookkeeping/counterparty-templates'
 import { canApproveSupplierInvoice } from '@/lib/supplier-invoices/lifecycle'
 import { eventBus } from '@/lib/events/bus'
@@ -161,7 +160,7 @@ import { appendProcessingHistory } from '@/lib/processing-history/append'
 import { getUserCompanies } from '@/lib/company/context'
 // ensureInitialized() is called by the extension router (ext/[...path]/route.ts)
 // which dispatches to this handler: no duplicate call needed here.
-import type { Transaction, TransactionCategory, EntityType, VatTreatment, Invoice, Currency, CompanySettings, InvoiceItem, PendingOperation, VatPeriodType, VatDeclarationRutor, YearEndBlockerCode } from '@/types'
+import type { EntityType, VatTreatment, Invoice, Currency, CompanySettings, InvoiceItem, PendingOperation, VatPeriodType, VatDeclarationRutor, YearEndBlockerCode } from '@/types'
 
 // ── Actor context ────────────────────────────────────────────
 

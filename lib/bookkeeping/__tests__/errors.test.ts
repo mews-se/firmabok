@@ -15,7 +15,6 @@ import {
   JournalLineNegativeAmountError,
   accountsNotInChartResponse,
   bookkeepingErrorResponse,
-  isAccountsNotInChartError,
   isBookkeepingError,
 } from '../errors'
 
@@ -172,19 +171,6 @@ describe('Typed bookkeeping errors', () => {
       '"KS-GAMMAL" är arkiverat: återaktivera värdet för att använda det.'
     )
     expect(err.message).toContain('Okänd dimension 9. Skapa dimensionen i registret först.')
-  })
-})
-
-describe('isAccountsNotInChartError', () => {
-  it('returns true for AccountsNotInChartError', () => {
-    expect(isAccountsNotInChartError(new AccountsNotInChartError(['1930']))).toBe(true)
-  })
-
-  it('returns false for other errors', () => {
-    expect(isAccountsNotInChartError(new Error('plain'))).toBe(false)
-    expect(isAccountsNotInChartError(new FiscalPeriodNotFoundError())).toBe(false)
-    expect(isAccountsNotInChartError(null)).toBe(false)
-    expect(isAccountsNotInChartError(undefined)).toBe(false)
   })
 })
 

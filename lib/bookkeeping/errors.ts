@@ -86,10 +86,6 @@ function compareAccountNumbers(a: string, b: string): number {
   return a < b ? -1 : a > b ? 1 : 0
 }
 
-export function isAccountsNotInChartError(err: unknown): err is AccountsNotInChartError {
-  return err instanceof AccountsNotInChartError
-}
-
 // ============================================================================
 // Semantic errors: carry structured data so getErrorMessage can format rich
 // Swedish translations with amounts / period names / status.

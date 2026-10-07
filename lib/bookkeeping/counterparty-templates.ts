@@ -218,9 +218,6 @@ export function resolveSource(
 // ── Counterparty Template ID Convention ──────────────────────
 
 export const COUNTERPARTY_PREFIX = 'counterparty:'
-export function isCounterpartyTemplateId(id: string): boolean { return id.startsWith(COUNTERPARTY_PREFIX) }
-export function extractCounterpartyId(id: string): string { return id.slice(COUNTERPARTY_PREFIX.length) }
-export function toCounterpartyTemplateId(id: string): string { return COUNTERPARTY_PREFIX + id }
 
 // ── VAT Account Mapping ──────────────────────────────────────
 

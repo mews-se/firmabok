@@ -2,7 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { eventBus } from '@/lib/events'
 import { createLogger } from '@/lib/logger'
 import { validatePeriodDuration } from '@/lib/bookkeeping/validate-period-duration'
-import type { FiscalPeriod, PeriodStatus } from '@/types'
+import type { FiscalPeriod } from '@/types'
 
 const log = createLogger('period-service')
 
@@ -371,95 +371,6 @@ function addDaysUTC(isoDate: string, days: number): string {
   return d.toISOString().slice(0, 10)
 }
 
-/**
- * Create a previous fiscal period before the given one.
- * Computes a 12-month period ending the day before the given period starts.
- * Updates previous_period_id chain so the given period points to the new one.
- */
-export async function createPreviousPeriod(
-  supabase: SupabaseClient,
-  companyId: string,
-  userId: string,
-  currentPeriodId: string
-): Promise<FiscalPeriod> {
-
-  const { data: current, error: fetchError } = await supabase
-    .from('fiscal_periods')
-    .select('*')
-    .eq('id', currentPeriodId)
-    .eq('company_id', companyId)
-    .single()
-
-  if (fetchError || !current) {
-    throw new Error('Current fiscal period not found')
-  }
-
-  // Compute previous period end (day before current start)
-  const prevEnd = new Date(current.period_start + 'T12:00:00Z')
-  prevEnd.setUTCDate(prevEnd.getUTCDate() - 1)
-
-  // Compute previous period start (1st of month, 12 months before prevEnd)
-  const prevStart = new Date(prevEnd)
-  prevStart.setUTCMonth(prevStart.getUTCMonth() - 11)
-  prevStart.setUTCDate(1)
-
-  const prevStartStr = prevStart.toISOString().split('T')[0]
-  const prevEndStr = prevEnd.toISOString().split('T')[0]
-
-  // Validate period duration
-  const durationError = validatePeriodDuration(prevStartStr, prevEndStr, { isFirstPeriod: false })
-  if (durationError) {
-    throw new Error(durationError)
-  }
-
-  // Check for overlapping periods
-  const { data: overlapping } = await supabase
-    .from('fiscal_periods')
-    .select('id')
-    .eq('company_id', companyId)
-    .lte('period_start', prevEndStr)
-    .gte('period_end', prevStartStr)
-    .limit(1)
-
-  if (overlapping && overlapping.length > 0) {
-    throw new Error('Previous fiscal period already exists or overlaps with an existing period')
-  }
-
-  // Generate name
-  const startYear = prevStart.getFullYear()
-  const endYear = prevEnd.getFullYear()
-  const name = startYear === endYear ? `FY ${startYear}` : `FY ${startYear}/${endYear}`
-
-  const { data: newPeriod, error: insertError } = await supabase
-    .from('fiscal_periods')
-    .insert({
-      company_id: companyId,
-      user_id: userId,
-      name,
-      period_start: prevStartStr,
-      period_end: prevEndStr,
-    })
-    .select()
-    .single()
-
-  if (insertError || !newPeriod) {
-    throw new Error(`Failed to create previous period: ${insertError?.message}`)
-  }
-
-  // Update the current period to point to the new one
-  const { error: updateError } = await supabase
-    .from('fiscal_periods')
-    .update({ previous_period_id: newPeriod.id })
-    .eq('id', currentPeriodId)
-    .eq('company_id', companyId)
-
-  if (updateError) {
-    throw new Error(`Failed to update period chain: ${updateError.message}`)
-  }
-
-  return newPeriod as FiscalPeriod
-}
-
 export type PeriodStatusValue = 'open' | 'locked' | 'closed'
 
 export interface PeriodStatusForDate {
@@ -595,51 +506,4 @@ export async function resolvePeriodStatusForDate(
     return { period_id: period.id, status: 'locked', lock_date: period.locked_at }
   }
   return { period_id: period.id, status: 'open', lock_date: null }
-}
-
-/**
- * Get status summary for a fiscal period.
- */
-export async function getPeriodStatus(
-  supabase: SupabaseClient,
-  companyId: string,
-  userId: string,
-  fiscalPeriodId: string
-): Promise<PeriodStatus> {
-
-  const { data: period, error: fetchError } = await supabase
-    .from('fiscal_periods')
-    .select('*')
-    .eq('id', fiscalPeriodId)
-    .eq('company_id', companyId)
-    .single()
-
-  if (fetchError || !period) {
-    throw new Error('Fiscal period not found')
-  }
-
-  // Count draft entries in this period
-  const { count: draftCount } = await supabase
-    .from('journal_entries')
-    .select('id', { count: 'exact', head: true })
-    .eq('company_id', companyId)
-    .eq('fiscal_period_id', fiscalPeriodId)
-    .eq('status', 'draft')
-
-  // Check if next period exists via the chain pointer
-  const { data: nextPeriod } = await supabase
-    .from('fiscal_periods')
-    .select('id')
-    .eq('company_id', companyId)
-    .eq('previous_period_id', fiscalPeriodId)
-    .maybeSingle()
-
-  return {
-    is_locked: !!period.locked_at,
-    is_closed: period.is_closed,
-    has_closing_entry: !!period.closing_entry_id,
-    has_opening_balances: period.opening_balances_set,
-    draft_count: draftCount ?? 0,
-    next_period_exists: !!nextPeriod,
-  }
 }

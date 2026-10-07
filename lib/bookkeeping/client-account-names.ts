@@ -93,14 +93,6 @@ const ACCOUNT_NAMES: Record<string, string> = {
 }
 
 /**
- * Get the Swedish display name for an account number.
- * Returns the number itself if no name is mapped.
- */
-export function getAccountName(accountNumber: string): string {
-  return ACCOUNT_NAMES[accountNumber] || accountNumber
-}
-
-/**
  * Format an account number with its name, e.g. "5010 Lokalhyra".
  */
 export function formatAccountWithName(accountNumber: string): string {

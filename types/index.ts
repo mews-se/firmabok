@@ -2524,15 +2524,6 @@ export interface CurrencyRevaluationResult {
   preview: CurrencyRevaluationPreview
 }
 
-export interface PeriodStatus {
-  is_locked: boolean
-  is_closed: boolean
-  has_closing_entry: boolean
-  has_opening_balances: boolean
-  draft_count: number
-  next_period_exists: boolean
-}
-
 // ── Invoice extraction (used by invoice-inbox extension and core utils) ──
 
 export type ExtractedDocumentKind =

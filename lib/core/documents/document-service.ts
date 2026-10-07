@@ -96,27 +96,6 @@ export async function downloadDocumentObject(
   }
 }
 
-/**
- * Create a signed URL for a document object by its stored key.
- * Same contract as downloadDocumentObject().
- */
-export async function createDocumentSignedUrl(
-  storagePath: string,
-  expiresInSeconds: number
-): Promise<{ signedUrl: string | null; error: StorageErrorLike; resolvedPath: string | null }> {
-  const { data, error } = await fileStorage()
-    .from(DOCUMENTS_BUCKET)
-    .createSignedUrl(storagePath, expiresInSeconds)
-  if (!error && data?.signedUrl) {
-    return { signedUrl: data.signedUrl, error: null, resolvedPath: storagePath }
-  }
-  return {
-    signedUrl: null,
-    error: (error as StorageErrorLike) ?? { message: 'createSignedUrl returned no data' },
-    resolvedPath: null,
-  }
-}
-
 export const MAX_DOCUMENT_SIZE = 10 * 1024 * 1024 // 10 MB
 export const ALLOWED_DOCUMENT_TYPES = [
   'application/pdf',

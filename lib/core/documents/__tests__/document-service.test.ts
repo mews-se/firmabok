@@ -84,7 +84,6 @@ import {
   PENDING_DOCUMENT_UPLOAD_RETENTION_MS,
   SIGNED_DOCUMENT_UPLOAD_TTL_MS,
   downloadDocumentObject,
-  createDocumentSignedUrl,
 } from '../document-service'
 
 // A minimal valid PDF byte sequence (header + EOF): passes magic-byte check.
@@ -631,32 +630,6 @@ describe('stored-key read helpers', () => {
     expect(result.blob).toBeNull()
     expect(result.resolvedPath).toBeNull()
     expect(result.error?.message).toBe(`missing:${storagePath}`)
-  })
-
-  it('createDocumentSignedUrl signs the stored key', async () => {
-    const createSignedUrl = vi.fn().mockResolvedValue({
-      data: { signedUrl: 'https://example.com/signed' },
-      error: null,
-    })
-    mockStorage({ createSignedUrl })
-
-    const result = await createDocumentSignedUrl(storagePath, 3600)
-    expect(result.signedUrl).toBe('https://example.com/signed')
-    expect(result.resolvedPath).toBe(storagePath)
-    expect(createSignedUrl).toHaveBeenCalledWith(storagePath, 3600)
-  })
-
-  it('createDocumentSignedUrl reports the signing error', async () => {
-    const createSignedUrl = vi.fn().mockResolvedValue({
-      data: null,
-      error: { message: 'Object not found' },
-    })
-    mockStorage({ createSignedUrl })
-
-    const result = await createDocumentSignedUrl(storagePath, 3600)
-    expect(result.signedUrl).toBeNull()
-    expect(result.resolvedPath).toBeNull()
-    expect(result.error?.message).toBe('Object not found')
   })
 })
 

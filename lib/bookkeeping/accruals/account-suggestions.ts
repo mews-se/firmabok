@@ -32,14 +32,6 @@ export function suggestBalanceAccount(
   return DEFAULT_PREPAID_EXPENSE_ACCOUNT
 }
 
-/** DB CHECK mirror: 17xx for expense schedules, 29xx for revenue schedules. */
-export function isValidBalanceAccount(
-  direction: AccrualDirection,
-  account: string,
-): boolean {
-  return direction === 'expense' ? /^17\d{2}$/.test(account) : /^29\d{2}$/.test(account)
-}
-
 interface AccrualItemFields {
   accrual_period_start?: string | null
   accrual_period_end?: string | null

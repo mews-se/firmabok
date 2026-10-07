@@ -113,7 +113,6 @@ Följande delsystem matar journalen:
 | Kundbetalningar | Inbetalningar mot fakturor | Debet 1930, kredit 1510 |
 | Leverantörsfakturor | Inkommande fakturor, registrering och betalning | Debet kostnadskonto + 2641, kredit 2440 |
 | Leverantörsbetalningar | Utbetalningar mot leverantörsfakturor | Debet 2440, kredit 1930 |
-| Banktransaktioner | Synkroniserade via PSD2 (Enable Banking) eller importerade bankfiler | Kontering via kategoriseringsregler och konteringsmallar |
 | Kvitto- och underlagshantering | Uppladdade eller inmejlade underlag, maskinellt avlästa | Kontering efter granskning |
 | Kreditnotor | Kreditering av utgående och inkommande fakturor | Omvänd kontering av originalfaktura |
 | Löner | Lönekörningar, arbetsgivardeklaration (AGI) | Debet 7xxx + 7510, kredit 2710/2730/1930 |
@@ -128,7 +127,7 @@ Följande delsystem matar journalen:
 
 ### 4.6 Avstämningsordning
 
-Bankkonto 1930 avstäms via bankavstämningsmodulen (flerstegs matchning: exakt belopp och datum, referensmatchning, datumintervall, sannolikhetsmatchning). Avstämningsstatus visas under **Rapporter > Bankavstämning**.
+Bankkonto 1930 avstäms mot kontoutdraget från banken. [ANGE RUTIN OCH FREKVENS FÖR AVSTÄMNING AV BANKKONTON]
 
 ## 5. Verifikationer
 
@@ -234,7 +233,6 @@ Momsperiod: [ ] Månad  [ ] Kvartal  [ ] Helår
 | Funktion | Format | Beskrivning |
 |---|---|---|
 | SIE-import | SIE4 | Import av bokföringsdata från annat system |
-| Bankfil-import | CSV och flera svenska bankformat | Import av banktransaktioner |
 | SIE-export | SIE4 | Export av komplett bokföring per räkenskapsår |
 | Säkerhetsbackup | ZIP | Komplett arkiv: SIE, rapporter, underlag, register och behandlingshistorik |
 | Huvudbok och grundbok | PDF/skärm/CSV | Export av grund- och huvudbokföring |
@@ -250,7 +248,6 @@ Momsperiod: [ ] Månad  [ ] Kvartal  [ ] Helår
 
 | Integration | Beskrivning | Dataflöde |
 |---|---|---|
-| Enable Banking (PSD2) | Bankkontosynkronisering | Bank -> Accounted (läsning av transaktioner och saldon) |
 | Skatteverket | Momsdeklaration, arbetsgivardeklaration (AGI), skattekonto | Accounted -> Skatteverket (inlämning signeras med BankID) |
 | Anthropic (Claude) | Maskinell kategorisering av transaktioner och avläsning av underlag | Accounted -> Anthropic -> Accounted (transaktions- och dokumentdata skickas, förslag returneras) |
 | BankID (via identitetsleverantör) | Inloggning och signering | Accounted -> leverantör -> Accounted |

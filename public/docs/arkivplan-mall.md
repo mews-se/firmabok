@@ -54,7 +54,7 @@ Tabellen nedan anger vilken räkenskapsinformation som finns, i vilken form den 
 | Kundfakturor (utgående) | Elektronisk (PDF) | erp-base dokumentarkiv | 7 år | Genereras i erp-base |
 | Leverantörsfakturor (inkommande) | Elektronisk (PDF/bild) | erp-base dokumentarkiv | 7 år | Uppladdade/skannade |
 | Kvitton | Elektronisk (foto/PDF) | erp-base dokumentarkiv | 7 år | Fotograferade via appen |
-| Bankutdrag/kontoutdrag | Elektronisk | erp-base via PSD2-koppling | 7 år | Synkroniserade via Enable Banking |
+| Bankutdrag/kontoutdrag | [Elektronisk/Papper] | [erp-base dokumentarkiv / Fysisk pärm] | 7 år | [Ange hur kontoutdragen sparas] |
 | Avtal och övriga underlag | [Elektronisk/Papper] | [erp-base / Fysisk pärm] | 7 år | [Ange var dessa förvaras] |
 
 ### 3.3 Årsbokslut och årsredovisning

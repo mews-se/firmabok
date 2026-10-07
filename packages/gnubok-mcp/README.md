@@ -37,7 +37,7 @@ Add the bridge to your `claude_desktop_config.json`:
 }
 ```
 
-Restart Claude Desktop. The Accounted tools appear in the client and you can start asking questions like *"Show my uncategorized bank transactions and suggest categories."*
+Restart Claude Desktop. The Accounted tools appear in the client and you can start asking questions like *"Show my unpaid invoices and what falls due this month."*
 
 ### Environment variables
 

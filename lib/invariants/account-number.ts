@@ -22,7 +22,7 @@
  * two impossible to confuse at a call site.
  *
  * Format only. Whether an account *exists and is active* in a company's chart
- * is a database question: see `lib/bookkeeping/account-validation.ts`.
+ * is a database question.
  */
 
 /** Exactly four digits. */

@@ -1,7 +1,6 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
 import { failureDescription, type ActionFailure } from '@/lib/browser/action-failure'
 import { downloadFile } from '@/lib/browser/download-file'
-import { postAction } from '@/lib/browser/post-action'
 
 const originalFetch = globalThis.fetch
 
@@ -53,19 +52,12 @@ describe('failureDescription', () => {
   })
 })
 
-describe('failure arms of downloadFile and postAction are interchangeable', () => {
-  // The panels feed both into one failureDescription call. If either union
-  // drifts, this stops compiling, which is the point.
+describe('downloadFile failures feed failureDescription', () => {
+  // The panels feed the failure arm straight into failureDescription. If the
+  // union drifts, this stops compiling, which is the point.
   it('accepts a downloadFile failure', async () => {
     globalThis.fetch = (() => Promise.reject(new TypeError('fetch failed'))) as typeof fetch
     const result = await downloadFile({ url: '/x', filename: 'f.txt', saveBlob: () => {} })
-    expect(result.ok).toBe(false)
-    if (!result.ok) expect(failureDescription(result, COPY)).toBe(COPY.network)
-  })
-
-  it('accepts a postAction failure', async () => {
-    globalThis.fetch = (() => Promise.reject(new TypeError('fetch failed'))) as typeof fetch
-    const result = await postAction({ url: '/x' })
     expect(result.ok).toBe(false)
     if (!result.ok) expect(failureDescription(result, COPY)).toBe(COPY.network)
   })

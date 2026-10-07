@@ -17,8 +17,8 @@ disagreement is invisible until a customer's filing fails.
 
 - **Rules specific to one module.** They stay in that module.
 - **General helpers.** `lib/utils.ts`, `lib/money.ts`.
-- **Database questions.** "Is this account in the company's chart?" is
-  `lib/bookkeeping/account-validation.ts`, not a format rule.
+- **Database questions.** "Is this account in the company's chart?" is a
+  query, not a format rule.
 - **Business rules.** "Is this fiscal year open?" is a period question.
 
 ## Naming

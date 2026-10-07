@@ -2,9 +2,8 @@
  * The three ways a click that talks to the server can fail, and the one
  * sentence the user gets for each.
  *
- * Shared by `downloadFile` (whose failure arms are structurally identical) and
- * `postAction`, so a panel that has both a "generate the file" button and a
- * "mark it paid" button describes both kinds of failure the same way.
+ * `downloadFile` returns these arms, so every panel describes a failed
+ * download the same way.
  *
  * Exactly one sentence, never two: TOAST_LIMIT is 1
  * (components/ui/use-toast.tsx), so a second toast emitted in the same tick

@@ -8,7 +8,7 @@ paths:
 
 Accounted exposes its bookkeeping engine as an MCP server for Claude Desktop/Code.
 
-**MCP extension** (`extensions/general/mcp-server/`): 90+ tools covering transactions, categorization, customers/suppliers, invoices, accounts, fiscal periods, reports (trial balance, GL, BS, IS, AR/supplier ledger, VAT, KPI), reconciliation, salary runs, AGI, year-end, document upload, and loadable skills. JSON-RPC 2.0. Endpoint: `/api/extensions/ext/mcp-server/mcp`.
+**MCP extension** (`extensions/general/mcp-server/`): 90+ tools covering transactions, categorization, customers/suppliers, invoices, accounts, fiscal periods, reports (trial balance, GL, BS, IS, AR/supplier ledger, VAT, KPI), reconciliation, year-end, document upload, and loadable skills. JSON-RPC 2.0. Endpoint: `/api/extensions/ext/mcp-server/mcp`.
 
 **Auth**: scoped `gnubok_sk_` API keys only (`lib/auth/api-keys.ts`), sent as `Authorization: Bearer`. A 401 carries no `WWW-Authenticate` challenge: there is no OAuth flow.
 

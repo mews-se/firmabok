@@ -1351,8 +1351,6 @@ export const UpdateSettingsSchema = z.object({
   tax_contact_email: z.string().email().nullable().optional().or(z.literal('')),
   fiscal_year_start_month: z.number().int().min(1).max(12).optional(),
   preliminary_tax_monthly: z.number().nullable().optional(),
-  employer_registered: z.boolean().nullable().optional(),
-  employer_seasonal: z.boolean().optional(),
   bank_name: z.string().max(100, 'Banknamn får vara max 100 tecken').nullable().optional(),
   clearing_number: z.string().regex(/^\d{4,5}$/, 'Clearingnummer måste vara 4-5 siffror').nullable().optional().or(z.literal('')),
   account_number: z.string().regex(/^\d{6,12}$/, 'Kontonummer måste vara 6-12 siffror').nullable().optional().or(z.literal('')),
@@ -1385,7 +1383,6 @@ export const UpdateSettingsSchema = z.object({
   phone: z.string().optional(),
   email: z.string().email().optional().or(z.literal('')),
   website: z.string().optional().or(z.literal('')),
-  pays_salaries: z.boolean().optional(),
   // Bookkeeping lock
   bookkeeping_locked_through: z.string().regex(ISO_DATE_RE, ISO_DATE_MESSAGE_SV).nullable().optional(),
   auto_lock_period_days: z.number().int().positive().nullable().optional(),

@@ -173,7 +173,6 @@ describe('PUT /api/settings', () => {
       moms_period: 'monthly',
       f_skatt: true,
       vat_registered: false,
-      pays_salaries: false,
       fiscal_year_start_month: 1,
       onboarding_complete: true,
     }
@@ -206,7 +205,6 @@ describe('PUT /api/settings', () => {
           moms_period: 'quarterly',
           f_skatt: true,
           vat_registered: true,
-          pays_salaries: true,
           fiscal_year_start_month: 1,
         },
       }, // update

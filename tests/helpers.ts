@@ -532,7 +532,6 @@ export function makeCompanySettings(
     phone: null,
     email: null,
     website: null,
-    pays_salaries: false,
     f_skatt: true,
     vat_registered: true,
     vat_number: null,

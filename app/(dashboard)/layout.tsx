@@ -174,21 +174,18 @@ export default async function DashboardLayout({
   // getCompanyEntityType do: company_settings is read-primary, companies is the
   // canonical fallback, then default to enskild_firma. Mirroring it onto the
   // active company keeps the settings rail (useSettingsNavItems, which reads
-  // context) and the sidebar in agreement on who is an employer. #782
+  // context) and the sidebar in agreement. #782
   const entityType =
     (settings?.entity_type as EntityType) ||
     (companyRow.entity_type as EntityType) ||
     'enskild_firma'
-  const paysSalaries = settings?.pays_salaries ?? false
-  // Dimensions register visibility (Kostnadsställen & projekt nav row). Same
-  // mechanism as paysSalaries: UI gate only, never load-bearing for
-  // correctness (dimensions plan §2).
+  // Dimensions register visibility (Kostnadsställen & projekt nav row). UI
+  // gate only, never load-bearing for correctness (dimensions plan §2).
   const dimensionsEnabled = settings?.dimensions_enabled ?? false
   const companyWithName = {
     ...companyRow,
     name: displayName,
     entity_type: entityType,
-    pays_salaries: paysSalaries,
   }
 
   const isSandbox = settings?.is_sandbox === true

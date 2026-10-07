@@ -27,7 +27,7 @@ export const capabilitiesResource: McpResource = {
 
     const { data: settings } = await supabase
       .from('company_settings')
-      .select('bookkeeping_locked_through, vat_registered, pays_salaries')
+      .select('bookkeeping_locked_through, vat_registered')
       .eq('company_id', companyId)
       .maybeSingle()
 
@@ -69,7 +69,6 @@ export const capabilitiesResource: McpResource = {
       active_period: activePeriod ?? null,
       company_lock_date: settings?.bookkeeping_locked_through ?? null,
       vat_registered: settings?.vat_registered ?? false,
-      pays_salaries: settings?.pays_salaries ?? false,
       capabilities,
       summary: {
         total: capabilities.length,

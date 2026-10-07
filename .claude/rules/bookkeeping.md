@@ -5,7 +5,6 @@ paths:
   - "lib/reports/**"
   - "lib/vat/**"
   - "lib/invoices/**"
-  - "lib/salary/**"
 ---
 
 # Bookkeeping Domain Reference

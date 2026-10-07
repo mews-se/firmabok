@@ -24,11 +24,6 @@ export interface Company {
   archived_at: string | null
   created_at: string
   updated_at: string
-  // Denormalised from company_settings onto the active company in the
-  // dashboard layout so context consumers (e.g. the settings rail) can tell
-  // whether the company is a registered employer without an extra fetch.
-  // Optional because it isn't a column on `companies`. #782
-  pays_salaries?: boolean
 }
 
 // Company membership
@@ -229,10 +224,6 @@ export interface CompanySettings {
   website: string | null
 
   // Tax registration
-  pays_salaries: boolean
-  // null = never attested; deadline generation falls back to pays_salaries.
-  employer_registered?: boolean | null
-  employer_seasonal?: boolean
   f_skatt: boolean
   vat_registered: boolean
   vat_number: string | null

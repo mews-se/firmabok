@@ -46,13 +46,6 @@ export function TaxSettingsForm({
   const t = useTranslations('settings_tax_form')
   const [vatRegistered, setVatRegistered] = useState(settings.vat_registered ?? false)
   const [fSkatt, setFSkatt] = useState(settings.f_skatt ?? true)
-  const [paysSalaries, setPaysSalaries] = useState(settings.pays_salaries ?? false)
-  // Fall back to pays_salaries for rows saved before the registration flag
-  // existed; saving attests the shown value.
-  const [employerRegistered, setEmployerRegistered] = useState(
-    settings.employer_registered ?? settings.pays_salaries ?? false,
-  )
-  const [employerSeasonal, setEmployerSeasonal] = useState(settings.employer_seasonal ?? false)
   const [momsPeriod, setMomsPeriod] = useState(settings.moms_period || '')
   const [vatTaxableBaseOver40m, setVatTaxableBaseOver40m] = useState(
     settings.vat_taxable_base_over_40m ?? false,
@@ -307,8 +300,8 @@ export function TaxSettingsForm({
         </SettingsRow>
       </SettingsGroup>
 
-      {/* Fiscal year & salaries */}
-      <SettingsGroup label={t('fiscal_year_salaries_heading')}>
+      {/* Fiscal year */}
+      <SettingsGroup label={t('fiscal_year_heading')}>
         <SettingsRow
           label={t('fiscal_year_start_label')}
           htmlFor="fiscal_year_start_month"
@@ -336,62 +329,6 @@ export function TaxSettingsForm({
             </SettingsSelect>
           )}
         </SettingsRow>
-
-        <SettingsRow label={t('pays_salaries_label')} htmlFor="pays_salaries" help={t('pays_salaries_help')}>
-          <Switch
-            id="pays_salaries"
-            checked={paysSalaries}
-            onCheckedChange={(v) => {
-              const checked = v === true
-              setPaysSalaries(checked)
-              // Paying out salary obliges employer registration (SFL 7 kap. 1 §).
-              if (checked) setEmployerRegistered(true)
-            }}
-          />
-          <input type="hidden" name="pays_salaries" value={paysSalaries ? 'true' : 'false'} />
-        </SettingsRow>
-
-        <SettingsRow
-          label={t('employer_registered_label')}
-          htmlFor="employer_registered"
-          help={t('employer_registered_help')}
-          borderless={employerRegistered}
-        >
-          <Switch
-            id="employer_registered"
-            checked={employerRegistered}
-            onCheckedChange={(v) => {
-              const checked = v === true
-              setEmployerRegistered(checked)
-              if (!checked) setEmployerSeasonal(false)
-            }}
-          />
-          <input
-            type="hidden"
-            name="employer_registered"
-            value={employerRegistered ? 'true' : 'false'}
-          />
-        </SettingsRow>
-
-        <SettingsReveal open={employerRegistered}>
-          <SettingsRow
-            label={t('employer_seasonal_label')}
-            htmlFor="employer_seasonal"
-            help={t('employer_seasonal_help')}
-            borderless
-          >
-            <Switch
-              id="employer_seasonal"
-              checked={employerSeasonal}
-              onCheckedChange={(v) => setEmployerSeasonal(v === true)}
-            />
-            <input
-              type="hidden"
-              name="employer_seasonal"
-              value={employerSeasonal ? 'true' : 'false'}
-            />
-          </SettingsRow>
-        </SettingsReveal>
       </SettingsGroup>
 
       {/* Kontrolluppgifter (KU) */}

@@ -10196,32 +10196,6 @@ export const tools: McpTool[] = [
   // ─── Phase 4-7: bokslut wizard surfaces exposed to agents ───────────
 
   {
-    name: 'gnubok_propose_dispositioner',
-    title: 'Propose Year-End Dispositioner',
-    description:
-      'Read-only: the booked result of a fiscal period before year-end, with the company entity type. An enskild firma books no bokslutsdispositioner: egenavgifter, räntefördelning, periodiseringsfond and expansionsfond are declared in the NE-bilaga (see gnubok_preview_ef_declaration).',
-    inputSchema: {
-      type: 'object',
-      additionalProperties: false,
-      properties: {
-        fiscal_period_id: { type: 'string', description: 'UUID of the fiscal period' },
-      },
-      required: ['fiscal_period_id'],
-    },
-    // Output is the same DispositionsProposal shape returned by GET
-    // /bokslutsdispositioner: surface as a permissive object so the
-    // strict-schema test passes without duplicating the type tree here.
-    outputSchema: { type: 'object', additionalProperties: true },
-    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
-    async execute(args, companyId, _userId, supabase, _actor) {
-      const fiscalPeriodId = args.fiscal_period_id as string
-      if (!fiscalPeriodId) throw new Error('fiscal_period_id is required')
-      const { buildDispositionsProposal } = await import('@/lib/bokslut/dispositions-proposal-builder')
-      return buildDispositionsProposal(supabase, companyId, fiscalPeriodId)
-    },
-  },
-
-  {
     name: 'gnubok_propose_accruals',
     title: 'Propose Accruals (Periodiseringar)',
     description:

@@ -224,7 +224,6 @@ export const TOOL_SCOPE_MAP: Record<string, ApiKeyScope> = {
   gnubok_import_rot_rut_beslut:                'invoices:write',
   gnubok_list_verifikat_without_documents:     'transactions:read',
   gnubok_find_voucher_candidates_for_invoice:  'invoices:read',
-  gnubok_propose_dispositioner:                'reports:read',
   gnubok_propose_accruals:                     'reports:read',
   gnubok_propose_annual_depreciation:          'reports:read',
   gnubok_preview_ef_declaration:               'reports:read',

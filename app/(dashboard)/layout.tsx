@@ -117,10 +117,10 @@ export default async function DashboardLayout({
     supabase.from('companies').select('*').eq('id', companyId).single(),
     supabase.from('company_members').select('role').eq('company_id', companyId).eq('user_id', user.id).single(),
     getDashboardSettings(),
-    // Nav badge counts (unbooked transactions, pending operations) are NOT
-    // fetched here anymore: DashboardNav loads them client-side after mount
-    // (lib/hooks/use-worklist-badges) so two head-count queries stop blocking
-    // first paint on every dashboard navigation.
+    // The nav badge count (pending operations) is NOT fetched here anymore:
+    // DashboardNav loads it client-side after mount (lib/hooks/use-worklist-badges)
+    // so the head-count query stops blocking first paint on every dashboard
+    // navigation.
     // The signed-in user's profile, shown in the bottom-left account
     // popover (full_name + initial) so it's clear which user is logged
     // in, distinct from the active company shown at the top.

@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest'
-import { createTestLogger } from '../logger'
+import { describe, it, expect, afterEach, vi } from 'vitest'
+import { createLogger, createTestLogger } from '../logger'
 
 // The sink element type is the (unexported) LogRecord from lib/logger.ts,
 // recovered via Parameters<> so the test stays in sync with the real signature.
@@ -89,5 +89,24 @@ describe('logger', () => {
     const log = createTestLogger('m', sink)
     log.warn('legacy', 'string arg', 42)
     expect(sink[0].details).toEqual(['string arg', 42])
+  })
+
+  describe('stdout', () => {
+    afterEach(() => {
+      vi.restoreAllMocks()
+      vi.unstubAllEnvs()
+    })
+
+    it('production JSON lines drop the error stack', () => {
+      vi.stubEnv('NODE_ENV', 'production')
+      const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      createLogger('m').error('insert failed', new Error('clean failure'))
+
+      const parsed = JSON.parse(spy.mock.calls[0][0] as string) as {
+        err: { message: string; stack?: unknown }
+      }
+      expect(parsed.err.message).toBe('clean failure')
+      expect(parsed.err.stack).toBeUndefined()
+    })
   })
 })

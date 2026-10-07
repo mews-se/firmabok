@@ -1,11 +1,6 @@
 /**
- * The redaction primitives themselves.
- *
- * sink.test.ts and lib/__tests__/logger-sink.test.ts cover redaction on the
- * way INTO the sink; this file locks in the primitive's own contract: which
- * shapes are scrubbed, that scrubbing is idempotent, and that serialized
- * errors keep a (redacted) stack in every environment: the sink only runs in
- * production, and a stackless event is useless to group on.
+ * The redaction primitives: which shapes are scrubbed, that scrubbing is
+ * idempotent, and that serialized errors keep a (redacted) stack.
  */
 import { describe, it, expect, afterEach, vi } from 'vitest'
 import { redact, redactString, REDACTED } from '../redact'

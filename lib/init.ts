@@ -3,9 +3,6 @@ import { setContextFactory } from '@/lib/extensions/registry'
 import { createExtensionContext } from '@/lib/extensions/context-factory'
 import { registerSupplierInvoiceHandler } from '@/lib/bookkeeping/handlers/supplier-invoice-handler'
 import { registerEventLogHandler } from '@/lib/events/handlers/event-log-handler'
-import { registerObservabilitySink } from '@/lib/observability'
-import { postHogSink } from '@/lib/analytics/posthog-observability'
-import { isAnalyticsEnabled } from '@/lib/analytics/enabled'
 import { createLogger } from '@/lib/logger'
 
 const log = createLogger('init')
@@ -66,13 +63,6 @@ export function ensureInitialized(): void {
 
   validateEnvironment()
   setContextFactory(createExtensionContext)
-  // Turns lib/observability from a no-op into PostHog Error Tracking. Gated,
-  // so with no token (core, CI, self-hosted) the sink stays the no-op and
-  // PostHog is never constructed and never contacted. Note the SDK is still
-  // BUNDLED in those builds: the imports are static, so the bytes ship even
-  // though nothing initialises. Making that a true zero would mean dynamic
-  // imports at every posthog call site, which is a deliberate non-goal here.
-  if (isAnalyticsEnabled()) registerObservabilitySink(postHogSink)
   registerSupplierInvoiceHandler()
   registerEventLogHandler()
   loadExtensions()

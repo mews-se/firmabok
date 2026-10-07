@@ -50,8 +50,6 @@
     "next": "16.3.8",
     "next-intl": "^4.14.7",
     "next-themes": "^0.4.6",
-    "posthog-js": "^1.434.12",
-    "posthog-node": "^5.53.0",
     "qrcode": "^1.5.4",
     "react": "19.3.0",
     "react-dom": "19.3.0",

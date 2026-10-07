@@ -86,7 +86,7 @@ business table carries a `company_id`:
   hand-roll their own auth.
 
 `NEXT_PUBLIC_SELF_HOSTED=true` (the default here) disables session
-timeouts, analytics and the upstream paywall.
+timeouts and the upstream paywall.
 
 ## The one extension: MCP
 

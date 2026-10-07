@@ -754,15 +754,11 @@ export async function executeYearEndClosing(
     )
   } catch (err) {
     resultAppropriationFailed = true
-    // alert:true routes this to the observability sink (lib/observability) in
-    // addition to the log line: a silent accounting failure must not wait for
-    // a manual audit. The sink is a no-op until a provider is configured, so
-    // today this reaches the JSON log only. The new period now opens with 2099 still carrying the
-    // prior result; resultAppropriationFailed below drives a UI warning and the
-    // catch-up script (scripts/repair-result-appropriation.ts) posts the fix.
+    // The new period now opens with 2099 still carrying the prior result;
+    // resultAppropriationFailed below drives a UI warning and the catch-up
+    // script (scripts/repair-result-appropriation.ts) posts the fix.
     log.error('year-end: result appropriation omföring failed (non-fatal)', err as Error, {
       operation: 'year_end.result_appropriation',
-      alert: true,
       companyId,
       entityType: 'fiscal_period',
       entityId: nextPeriod.id,

@@ -279,7 +279,6 @@ export default function DimensionCombobox({
       {showSelectedName && selected ? (
         <p
           id={selectedNameId}
-          data-ph-mask=""
           className="mt-1 break-words px-1 text-xs leading-snug text-muted-foreground"
         >
           {selected.name}

@@ -16,14 +16,9 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
 
 const cspDirectives = [
   "default-src 'self'",
-  // No analytics hosts here on purpose. PostHog replaced Recapt and is
-  // routed through the same-origin `/rl` rewrite below, so ingestion is
-  // covered by `connect-src 'self'` and its lazy-loaded replay/survey
-  // bundles by `script-src 'self'`. Adding `*.posthog.com` back would
-  // re-widen the policy for no benefit and undo the ad-blocker resistance.
-  `connect-src 'self' ${supabaseUrl} https://*.supabase.co https://*.enablebanking.com`,
-  `style-src 'self' 'unsafe-inline' https://*.enablebanking.com`,
-  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""} https://*.enablebanking.com`,
+  `connect-src 'self' ${supabaseUrl} https://*.supabase.co`,
+  "style-src 'self' 'unsafe-inline'",
+  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
   "img-src 'self' data: blob: https:",
   "font-src 'self'",
   "worker-src 'self' blob:",

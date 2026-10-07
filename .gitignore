@@ -96,9 +96,4 @@ scripts/reopen-bokslut.sql
 /ingaende-balanser-test.csv
 .agents
 .codex
-# PostHog wizard scratch: vendor reference docs downloaded by
-# `npx @posthog/wizard`, useful locally (and for `wizard audit`) but not
-# part of the app. The integration itself lives in lib/analytics/ and
-# instrumentation-client.ts.
-.posthog/
 .storage/

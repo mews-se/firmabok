@@ -5,7 +5,7 @@ import type { LatestVoucherPerSeries } from '@/types'
  *
  * Kept dependency-free and separate from `latest-vouchers.ts` so the client
  * report views can import it without dragging the Supabase query path (and
- * through it the logger and observability sink) into the browser bundle.
+ * through it the logger) into the browser bundle.
  */
 
 /**

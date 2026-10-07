@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { resetAnalyticsIdentity } from '@/lib/analytics/reset'
 import {
   SESSION_TIMEOUT_CHANNEL,
   type SessionTimeoutClientState,
@@ -46,7 +45,6 @@ export function SessionTimeoutController() {
   const expire = useCallback(async (reason: SessionTimeoutReason) => {
     if (expiringRef.current) return
     expiringRef.current = true
-    resetAnalyticsIdentity()
 
     try {
       await createClient().auth.signOut({ scope: 'local' })

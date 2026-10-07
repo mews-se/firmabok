@@ -19,7 +19,6 @@ import { BrandWordmark } from '@/components/branding/BrandWordmark'
 import { getErrorMessage, type ErrorLocale } from '@/lib/errors/get-error-message'
 import { safeReturnTo } from '@/lib/auth/safe-return-to'
 import { classifyAuthError, type AuthErrorKind } from '@/lib/auth/classify-auth-error'
-import { resetAnalyticsIdentity } from '@/lib/analytics/reset'
 import {
   setSessionAuthMethodHint,
   type SessionTimeoutReason,
@@ -50,10 +49,6 @@ export function LoginClient() {
   const supabase = createClient()
   const tAuth = useTranslations('auth')
   const errorLocale = useLocale() as ErrorLocale
-
-  useEffect(() => {
-    if (timeoutReason) resetAnalyticsIdentity()
-  }, [timeoutReason])
 
   // After a failed credentials attempt, put the caret back in the password
   // field with the old value selected so the user can retype immediately.

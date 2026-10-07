@@ -6,8 +6,6 @@ import { useLocale, useTranslations } from 'next-intl'
 import { createCompanyFromOnboarding } from '@/lib/company/actions'
 import { computeFiscalPeriod } from '@/lib/company/compute-fiscal-period'
 import { normalizeOrgNumber } from '@/lib/invariants/org-number'
-import posthog from 'posthog-js'
-import { isAnalyticsEnabled } from '@/lib/analytics/enabled'
 import {
   BRANCH_PROVIDERS,
   branchDestination,
@@ -50,20 +48,6 @@ function logError(message: string, extra?: Record<string, unknown>) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ message: `onboarding-journey: ${message}`, extra }),
   }).catch(() => {})
-}
-
-/**
- * Branch-question funnel event. Anonymous by design: AnalyticsIdentify only
- * mounts in the dashboard layout, so this measures choice distribution, not
- * people. Guarded + swallowed like every product capture.
- */
-function captureBranch(choice: BranchChoice) {
-  if (!isAnalyticsEnabled()) return
-  try {
-    posthog.capture('onboarding_branch_chosen', { choice })
-  } catch {
-    // Telemetry must never affect the journey.
-  }
 }
 
 interface OnboardingJourneyProps {
@@ -541,7 +525,6 @@ export default function OnboardingJourney({
                   keepalive: true,
                 }).catch(() => logError('branch path persist failed', { choice }))
               }
-              captureBranch(choice)
               router.push(dest.href)
             }}
           />

@@ -255,7 +255,6 @@ Momsperiod: [ ] Månad  [ ] Kvartal  [ ] Helår
 | Anthropic (Claude) | Maskinell kategorisering av transaktioner och avläsning av underlag | Accounted -> Anthropic -> Accounted (transaktions- och dokumentdata skickas, förslag returneras) |
 | Resend | E-postutskick | Accounted -> Resend -> mottagare (fakturor, påminnelser) |
 | BankID (via identitetsleverantör) | Inloggning och signering | Accounted -> leverantör -> Accounted |
-| PostHog | Användningsstatistik för tjänsten | Accounted -> PostHog |
 
 [ANGE YTTERLIGARE INTEGRATIONER OM TILLÄMPLIGT, t.ex. import från Fortnox, Visma, Bokio, Björn Lundén eller Briox]
 

@@ -2,8 +2,6 @@ import { redirect } from 'next/navigation'
 import { headers } from 'next/headers'
 import DashboardNav from '@/components/dashboard/DashboardNav'
 import { MainContainer } from '@/components/dashboard/MainContainer'
-import AnalyticsIdentify from '@/components/AnalyticsIdentify'
-import { computeIdentityHash } from '@/lib/analytics/identity-hash'
 import LazyCommandPalette from '@/components/common/LazyCommandPalette'
 import { SettingsHotkey } from '@/components/settings/SettingsHotkey'
 import { SessionTimeoutController } from '@/components/auth/SessionTimeoutController'
@@ -11,7 +9,7 @@ import { SandboxBanner } from '@/components/dashboard/SandboxBanner'
 import { CompanyProvider } from '@/contexts/CompanyContext'
 import { getCompanyEntitlements } from '@/lib/entitlements/has-capability'
 import { getBranding } from '@/lib/branding/service'
-import type { AccountingFramework, EntityType, CompanyRole } from '@/types'
+import type { EntityType, CompanyRole } from '@/types'
 import {
   getDashboardAuthContext,
   getDashboardCompanyId,
@@ -224,7 +222,6 @@ export default async function DashboardLayout({
       >
         {/* Skip to content link for keyboard/screen reader users */}
         <a
-          data-ph-unmask
           href="#main-content"
           className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[100] focus:px-4 focus:py-2 focus:bg-primary focus:text-primary-foreground focus:rounded-lg focus:text-sm focus:font-medium"
         >
@@ -247,25 +244,6 @@ export default async function DashboardLayout({
         <SettingsHotkey />
         {settingsModal}
       </div>
-      {!isSandbox && (
-        <AnalyticsIdentify
-          user={{
-            userId: user.id,
-            email: user.email,
-            fullName: userProfile?.full_name ?? null,
-            role: memberRow.role as CompanyRole,
-          }}
-          identityHash={computeIdentityHash(user.id)}
-          company={{
-            id: companyId,
-            name: displayName,
-            entityType,
-            accountingFramework: companyRow.accounting_framework as AccountingFramework,
-            paysSalaries,
-            capabilities: entitlements.capabilities,
-          }}
-        />
-      )}
     </CompanyProvider>
   )
 }

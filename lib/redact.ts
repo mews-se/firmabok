@@ -1,16 +1,9 @@
 /**
  * PII redaction primitives.
  *
- * This module is the single source of truth for what must never leave the
- * process in clear text. It lives under `lib/observability/` rather than
- * inside `lib/logger.ts` so that the logger AND the observability sink share
- * one implementation: if the denylist lived in the logger only, a direct
- * `captureException()` call would reach a third-party provider unredacted.
- * Keeping one copy makes drift between the two paths impossible.
- *
- * The logs this guards carry personnummer, bank account numbers and financial
- * data. Under GDPR that data must not be shipped to an error-tracking vendor,
- * so redaction runs on every path into the sink, not just on the log path.
+ * This module is the single source of truth for what must never reach the
+ * logs in clear text. The records it guards can carry personnummer, bank
+ * account numbers and financial data.
  *
  * Three mechanisms:
  *   1. A key denylist (`REDACT_KEYS`): any object key matching case-insensitively
@@ -25,8 +18,7 @@
  *      trace) stays useful.
  *
  * `redact()` is idempotent: running it twice is safe and produces the same
- * result, which is what lets the sink re-redact records the logger already
- * cleaned without changing them.
+ * result.
  *
  * This module must not import anything (least of all the logger): it sits at
  * the bottom of the import graph so nothing can create a cycle through it.
@@ -90,11 +82,8 @@ export function redact(value: unknown, keyPath = ''): unknown {
     return {
       name: value.name,
       message: redactString(value.message),
-      // The stack is kept (redacted like any other string) in EVERY
-      // environment: the observability sink only runs in production, and a
-      // stackless event is useless to group on. Production STDOUT still drops
-      // it: that stripping happens in the logger's emit path (lib/logger.ts),
-      // which is the only consumer that wants stackless records.
+      // the stack is kept (redacted); production stdout drops it in the
+      // logger's emit path (lib/logger.ts)
       stack: typeof value.stack === 'string' ? redactString(value.stack) : undefined,
       code: (value as Error & { code?: unknown }).code,
     }

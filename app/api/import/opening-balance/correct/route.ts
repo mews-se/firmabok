@@ -180,10 +180,8 @@ export const POST = withRouteContext(
       // ASVS V16: durable audit sink for a failed correction. The core event bus
       // has no opening_balance.* correction event type and lib/events/types.ts is
       // outside the scope of this change, so the failure is recorded via the
-      // structured logger: it lands in the JSON log (Vercel logs, plus the
-      // observability sink, which no-ops until a provider is configured), tagged
-      // `audit: true` + both entry ids so an operator can reconcile the period by
-      // hand. (Follow-up: promote to a typed event persisted to event_log.)
+      // structured logger: it lands in the JSON log, tagged `audit: true` +
+      // both entry ids so an operator can reconcile the period by hand. (Follow-up: promote to a typed event persisted to event_log.)
       const auditCorrectionFailure = (fields: Record<string, unknown>) => {
         opLog.error('audit: opening balance correction failed', {
           audit: true,

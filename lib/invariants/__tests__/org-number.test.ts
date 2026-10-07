@@ -6,7 +6,6 @@ import {
   hasInvalidOrgNumberCheckDigit,
   stripOrgNumberFormatting,
   formatOrgNumberDisplay,
-  toRedovisare12,
 } from '@/lib/invariants/org-number'
 
 // Real-shaped numbers with correct Luhn check digits.
@@ -70,36 +69,5 @@ describe('formatOrgNumberDisplay', () => {
   it('passes through anything that is not org-number shaped', () => {
     expect(formatOrgNumberDisplay('nonsense')).toBe('nonsense')
     expect(formatOrgNumberDisplay('')).toBe('')
-  })
-})
-
-describe('toRedovisare12', () => {
-  it('prefixes 16 for aktiebolag', () => {
-    expect(toRedovisare12(AB_10, 'aktiebolag')).toBe('165560125790')
-    expect(toRedovisare12('556012-5790', 'aktiebolag')).toBe('165560125790')
-  })
-
-  it('prefixes the century for enskild firma', () => {
-    // 80 is above the current two-digit year, so it belongs to the 1900s.
-    expect(toRedovisare12(EF_10, 'enskild_firma')).toBe('198001011231')
-  })
-
-  it('passes an already 12-digit value through untouched', () => {
-    expect(toRedovisare12('165560125790', 'aktiebolag')).toBe('165560125790')
-  })
-
-  it('accepts spaces, which the previous hyphen-only strip did not', () => {
-    expect(toRedovisare12('556012 5790', 'aktiebolag')).toBe('165560125790')
-  })
-
-  it('throws on a length it cannot interpret', () => {
-    expect(() => toRedovisare12('55601', 'aktiebolag')).toThrow(/Ogiltigt organisationsnummer/)
-  })
-
-  it('stays permissive about the check digit', () => {
-    // Export-time conversion must not start rejecting numbers that are already
-    // stored and filing: a failed export at a deadline is worse than letting
-    // Skatteverket reject it with its own message. See the module docblock.
-    expect(toRedovisare12('5560125791', 'aktiebolag')).toBe('165560125791')
   })
 })

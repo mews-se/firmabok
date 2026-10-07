@@ -15,31 +15,11 @@ import { luhnValidate } from '@/lib/bankgiro/luhn'
  *
  * ## Why this module exists
  *
- * Before it, seven call sites each had their own idea of the rule, and four of
- * them fed Skatteverket-bound output that must agree:
- *
- * | Site | Old rule | Failure |
- * |---|---|---|
- * | `lib/skatteverket/format.ts` | strip `-` only | threw on any input containing a space |
- * | `lib/salary/ku/ku10-generator.ts` | `replace('-', '')` | first hyphen only, no space handling |
- * | `lib/salary/agi/xml-generator.ts` | strip non-digits | no check-digit validation |
- * | `lib/bokslut/ixbrl/validate/rules.ts` | `/^\d{6}-?\d{4}$/` | rejected the 12-digit form outright |
- *
- * A company stored with a space or in 12-digit form could file AGI all year and
- * then fail on the årsredovisning, with no way for the user to tell why. The
- * rules only stay in agreement if there is exactly one of them.
- *
- * ## Deliberate asymmetry: normalize everywhere, Luhn only at the boundary
- *
- * `normalizeOrgNumber` (Luhn-checked) guards data coming *in*. The export-time
- * converter `toRedovisare12` is structural only: it must not start rejecting
- * numbers that are already stored and have been filing successfully, because a
- * failed export at a deadline is worse than a number Skatteverket will reject
- * with its own message. Tighten the intake, not the outflow.
+ * Call sites that each had their own idea of the rule drifted apart: one
+ * stripped only hyphens, another only the first hyphen, a third skipped the
+ * check digit, a fourth rejected the 12-digit form. The rules only stay in
+ * agreement if there is exactly one of them.
  */
-
-/** Digits-only canonical storage length. */
-export const ORG_NUMBER_LENGTH = 10
 
 /**
  * Strip the separators Swedish users and provider APIs put in org numbers.
@@ -110,38 +90,4 @@ export function formatOrgNumberDisplay(raw: string | null | undefined): string {
   const ten = /^\d{12}$/.test(cleaned) ? cleaned.substring(2) : cleaned
   if (!/^\d{10}$/.test(ten)) return raw
   return `${ten.substring(0, 6)}-${ten.substring(6)}`
-}
-
-/**
- * Convert an org number to Skatteverket's 12-digit "redovisare" format.
- *
- * - Organisationsnummer (aktiebolag): prefix `16` (5020000013 -> 165020000013)
- * - Personnummer (enskild firma): prefix `19` or `20` by century
- * - Input already in 12-digit form passes through untouched
- *
- * Structural only, no check-digit validation: see the module docblock for why
- * the export path stays permissive.
- *
- * @throws when the input is not 10 or 12 digits after separators are stripped.
- */
-export function toRedovisare12(
-  orgNumber: string,
-  entityType: 'enskild_firma' | 'aktiebolag',
-): string {
-  const clean = stripOrgNumberFormatting(orgNumber)
-
-  if (/^\d{12}$/.test(clean)) return clean
-
-  if (!/^\d{10}$/.test(clean)) {
-    throw new Error(`Ogiltigt organisationsnummer: ${orgNumber} (förväntar 10 eller 12 siffror)`)
-  }
-
-  if (entityType === 'aktiebolag') return `16${clean}`
-
-  // Enskild firma: personnummer. A two-digit year above the current one must
-  // belong to the previous century (someone born in 98 is 1998, not 2098).
-  const yearDigits = parseInt(clean.substring(0, 2), 10)
-  const currentTwoDigitYear = new Date().getFullYear() % 100
-  const prefix = yearDigits > currentTwoDigitYear ? '19' : '20'
-  return `${prefix}${clean}`
 }

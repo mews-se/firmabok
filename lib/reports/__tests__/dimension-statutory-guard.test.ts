@@ -38,7 +38,6 @@ const ALLOWED_PARSER_IMPORTERS = new Set([
 const STATUTORY_GENERATORS = [
   'lib/reports/balance-sheet.ts',
   'lib/reports/balansrapport.ts',
-  'lib/reports/kassaflodesanalys.ts',
   'lib/reports/vat-declaration.ts',
   'lib/reports/sie-export.ts',
   'lib/reports/full-archive-export.ts',

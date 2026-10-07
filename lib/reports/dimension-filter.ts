@@ -13,7 +13,7 @@ import { slugifyCompanyName } from './xlsx-export'
  * IMPORTANT: only the P&L-safe report routes may import this helper
  * (resultatrapport, income-statement, general-ledger, dimension-pnl,
  * monthly-breakdown). Statutory outputs (balance sheet, balansrapport,
- * kassaflöde, årsredovisning, INK2, NE-bilaga, VAT declaration, SIE export)
+ * årsredovisning, INK2, NE-bilaga, VAT declaration, SIE export)
  * must never accept a dimension filter: a filtered filing is a wrong
  * filing. The whitelist is pinned by lib/reports/__tests__/
  * dimension-statutory-guard.test.ts, which fails if this import shows up in

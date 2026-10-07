@@ -39,9 +39,6 @@ interface AccountingFrameworkFormProps {
  *     choice itself carries: komponentavskrivning is mandatory under K3 where
  *     component useful lives differ materially (punkt 17.4,
  *     .claude/skills/swedish-year-end-closing/references/k2-vs-k3.md:5).
- *     Kassaflödesanalys is NOT a consequence of K3: it follows from being a
- *     större företag (references/reporting-and-filing.md:10), so the copy
- *     says the product includes one, it does not blame the regelverk.
  *     The recommendation per BFN is that the choice is permanent once made,
  *     surfaced as a warning, not a block.
  *     K3 → K2 warns about what the system does NOT do: uppskjuten skatt
@@ -119,8 +116,8 @@ export function AccountingFrameworkForm({ current, onSaved }: AccountingFramewor
             som börjar efter 2025-12-31 är K2 dessutom stängt för bolag med utländsk
             filial, kryptotillgångar eller aktierelaterade ersättningar, och för bolag där
             byggnader ger minst 75 % av nettoomsättningen. Med K3
-            valt bygger Accounted årsredovisningen enligt K3-mallen: kassaflödesanalys,
-            förändring av eget kapital som egen räkning och utökade noter.
+            valt bygger Accounted årsredovisningen enligt K3-mallen: förändring av eget
+            kapital som egen räkning och utökade noter.
             Anläggningsregistret tar emot komponentuppdelning först med K3, som kräver
             komponentavskrivning när komponenterna har väsentligt olika nyttjandeperioder.
             Obeskattade reserver redovisas brutto i juridisk person enligt K3 punkt 29.37.
@@ -162,17 +159,15 @@ export function AccountingFrameworkForm({ current, onSaved }: AccountingFramewor
                     manuellt.
                   </span>
                   <span className="block">
-                    Årsredovisningens K3-innehåll (kassaflödesanalys, K3-noter och
-                    uppskjuten skatt) gäller inte längre. Fortsätt?
+                    Årsredovisningens K3-innehåll (K3-noter och uppskjuten skatt) gäller
+                    inte längre. Fortsätt?
                   </span>
                 </>
               ) : (
                 <>
                   <span className="block">
-                    Årsredovisningen byggs då enligt K3-mallen: kassaflödesanalys,
-                    förändring av eget kapital som egen räkning och utökade noter.
-                    Kassaflödesanalys är i sig ett krav för större företag, inte en följd
-                    av regelverksvalet.
+                    Årsredovisningen byggs då enligt K3-mallen: förändring av eget kapital
+                    som egen räkning och utökade noter.
                   </span>
                   <span className="block">
                     Komponentavskrivning blir obligatorisk för tillgångar vars komponenter

@@ -60,7 +60,7 @@ export interface ReportDescriptor {
   /**
    * Accepts the per-dimension value filter (?dim_no/&dim_code → jsonb @>).
    * P&L-safe reports ONLY: statutory outputs (balance sheet, balansrapport,
-   * kassaflöde, årsredovisning, INK2, NE, VAT, SIE) must never carry this
+   * årsredovisning, INK2, NE, VAT, SIE) must never carry this
    * flag; a filtered filing is a wrong filing. The whitelist is pinned by
    * lib/reports/__tests__/dimension-statutory-guard.test.ts.
    */
@@ -175,14 +175,6 @@ export const REPORT_CATALOG: ReportDescriptor[] = [
     category: 'year_end',
     params: 'fiscal-range',
     exports: ['pdf', 'xlsx'],
-  },
-  {
-    slug: 'kassaflodesanalys',
-    labelKey: 'name_kassaflodesanalys',
-    descKey: 'desc_kassaflodesanalys',
-    category: 'year_end',
-    params: 'fiscal',
-    route: '/reports/kassaflodesanalys',
   },
   // --- Skatt & moms (tax & VAT) ---
   {

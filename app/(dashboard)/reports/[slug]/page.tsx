@@ -6,7 +6,7 @@ import type { FiscalPeriod } from '@/types'
 
 /**
  * Focused single-report route. Unknown slugs 404; reports that own a dedicated
- * route (cash flow, annual report, SIE) redirect there. Everything else
+ * route (year-end closing, SIE export) redirect there. Everything else
  * renders inside the shared focused-report shell.
  */
 export default async function ReportSlugPage({

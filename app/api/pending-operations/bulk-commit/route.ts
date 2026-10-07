@@ -72,7 +72,6 @@ export const POST = withRouteContext(
       }
 
       const result = await commitPendingOperation(supabase, user.id, companyId, op, {
-        userEmail: user.email,
         commitMethod: 'bulk_accept',
         actor: { type: 'user', ...(user.email ? { label: user.email } : {}) },
       })

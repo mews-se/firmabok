@@ -89,7 +89,6 @@ export const OPERATION_RISK_TIERS: Record<string, RiskLevel> = {
   retag_line_dimensions: 'medium',
 
   // ── High: irreversible, compliance-critical, or external side-effects
-  send_invoice: 'high',          // emails the customer
   mark_invoice_paid: 'high',     // posts payment journal entry
   mark_invoice_sent: 'high',     // assigns invoice number, accrual JE
 

@@ -15,9 +15,7 @@ import { cn, formatCurrency, formatDate } from '@/lib/utils'
 import { getVatTreatmentLabel } from '@/lib/invoices/vat-rules'
 import { Loader2, ArrowLeft, AlertTriangle, Lock } from 'lucide-react'
 import { useCanWrite } from '@/lib/hooks/use-can-write'
-import SendInvoiceDialog from '@/components/invoices/SendInvoiceDialog'
-import { useCompany } from '@/contexts/CompanyContext'
-import { getCreditNoteSendMode } from '@/lib/invoices/credit-note-send-mode'
+import MarkSentDialog from '@/components/invoices/MarkSentDialog'
 import type { Invoice, InvoiceItem, Customer } from '@/types'
 import { getErrorMessage as getUserErrorMessage } from '@/lib/errors/get-error-message'
 
@@ -28,7 +26,6 @@ interface InvoiceWithRelations extends Invoice {
 
 export default function CreateCreditNotePage({ params }: { params: Promise<{ id: string }> }) {
   const { canWrite } = useCanWrite()
-  const { isSandbox } = useCompany()
   const { id } = use(params)
   const router = useRouter()
   const { toast } = useToast()
@@ -167,10 +164,6 @@ export default function CreateCreditNotePage({ params }: { params: Promise<{ id:
   }
 
   const customer = invoice.customer
-  const sendMode = getCreditNoteSendMode({
-    customerHasEmail: !!createdCreditNote?.customer.email,
-    isSandbox,
-  })
 
   function handleSendPromptOpenChange(open: boolean) {
     setShowSendPrompt(open)
@@ -182,11 +175,10 @@ export default function CreateCreditNotePage({ params }: { params: Promise<{ id:
   return (
     <div className="space-y-6 max-w-3xl mx-auto">
       {createdCreditNote && (
-        <SendInvoiceDialog
+        <MarkSentDialog
           open={showSendPrompt}
           onOpenChange={handleSendPromptOpenChange}
           invoice={createdCreditNote}
-          mode={sendMode}
           onSuccess={() => undefined}
         />
       )}

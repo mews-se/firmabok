@@ -37,8 +37,8 @@ const LABELS = {
     cancelledWithNumber: (n: string) => `Faktura ${n} har makulerats. Numret behålls i serien för att hålla nummerföljden obruten enligt ML 17 kap 24§, men dokumentet är inte ett giltigt fakturaunderlag.`,
     cancelledNoNumber: 'Detta utkast har makulerats och är inte ett giltigt fakturaunderlag.',
     draftTitle: 'UTKAST: inte en giltig faktura',
-    draftWithNumber: 'Detta är ett utkast. Markera fakturan som skickad eller skicka via systemet för att göra den giltig som fakturaunderlag.',
-    draftNoNumber: 'Denna faktura saknar löpnummer och kan inte användas som fakturaunderlag enligt ML 17 kap 24§. Skicka fakturan via systemet för att tilldela ett nummer.',
+    draftWithNumber: 'Detta är ett utkast. Markera fakturan som skickad för att göra den giltig som fakturaunderlag.',
+    draftNoNumber: 'Denna faktura saknar löpnummer och kan inte användas som fakturaunderlag enligt ML 17 kap 24§. Fakturan får sitt nummer när den markeras som skickad.',
     // Credit note reference
     creditNoteRef: (n: string) => `Denna kreditfaktura avser och krediterar faktura nr ${n}`,
     // Sections
@@ -114,8 +114,8 @@ const LABELS = {
     cancelledWithNumber: (n: string) => `Invoice ${n} has been voided. The number is retained in the sequence to keep the numbering unbroken (ML 17 kap 24§, Swedish VAT Act), but this document is not a valid invoice.`,
     cancelledNoNumber: 'This draft has been voided and is not a valid invoice.',
     draftTitle: 'DRAFT: not a valid invoice',
-    draftWithNumber: 'This is a draft. Mark the invoice as sent, or send it via the system, to make it a valid invoice.',
-    draftNoNumber: 'This invoice has no serial number and cannot be used as a valid invoice under ML 17 kap 24§ (Swedish VAT Act). Send the invoice via the system to assign a number.',
+    draftWithNumber: 'This is a draft. Mark the invoice as sent to make it a valid invoice.',
+    draftNoNumber: 'This invoice has no serial number and cannot be used as a valid invoice under ML 17 kap 24§ (Swedish VAT Act). The invoice gets its number when it is marked as sent.',
     creditNoteRef: (n: string) => `This credit note credits invoice no. ${n}`,
     invoiceInfoHeading: 'Invoice information',
     billedToHeading: 'Billed to',

@@ -8,7 +8,6 @@ describe('risk-tiers', () => {
       'create_customer',
       'create_invoice',
       'mark_invoice_paid',
-      'send_invoice',
       'mark_invoice_sent',
     ]
     for (const op of knownOps) {
@@ -16,8 +15,7 @@ describe('risk-tiers', () => {
     }
   })
 
-  it('treats sending invoices and marking paid as high risk', () => {
-    expect(getRiskLevel('send_invoice')).toBe('high')
+  it('treats marking invoices sent and paid as high risk', () => {
     expect(getRiskLevel('mark_invoice_paid')).toBe('high')
     expect(getRiskLevel('mark_invoice_sent')).toBe('high')
   })
@@ -45,7 +43,7 @@ describe('risk-tiers', () => {
   })
 
   it('isHighRisk returns true only for high-risk ops', () => {
-    expect(isHighRisk('send_invoice')).toBe(true)
+    expect(isHighRisk('mark_invoice_sent')).toBe(true)
     expect(isHighRisk('create_customer')).toBe(false)
     expect(isHighRisk('link_invoice_voucher')).toBe(false)
   })

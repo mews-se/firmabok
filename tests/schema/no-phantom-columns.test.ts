@@ -111,8 +111,9 @@ const UNRESOLVED_CEILING = 375
  * orphaned repair scripts, one-off backfills): 7 221.
  * Re-baselined 2026-08-20 after invitations, the team layer and the
  * multi-company surfaces were removed: 6 940.
+ * Re-baselined 2026-10-07 after the invoice e-mail path was removed: 6 669.
  */
-const RESOLVED_COLUMN_FLOOR = 6_700
+const RESOLVED_COLUMN_FLOOR = 6_600
 
 let schema: SchemaModel
 let scan: ScanResult

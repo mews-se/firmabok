@@ -102,7 +102,7 @@ describe('gnubok_search_tools', () => {
     const result = await call({ query: '', limit: 50 }, ['reports:read'])
     const names = result.tools.map((t) => t.name)
     expect(names).not.toContain('gnubok_create_invoice')
-    expect(names).not.toContain('gnubok_send_invoice')
+    expect(names).not.toContain('gnubok_mark_invoice_as_sent')
     // But should see reports:read tools.
     expect(names).toContain('gnubok_get_trial_balance')
     // And unscoped tools (like search itself) are always available.

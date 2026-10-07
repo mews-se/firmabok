@@ -104,9 +104,6 @@ describe('gnubok_approve_pending_operation', () => {
 
     expect(commitSpy).toHaveBeenCalledTimes(1)
     expect(commitSpy.mock.calls[0][3]).toMatchObject({ id: 'op-1' })
-    // commit options always include commitMethod; userEmail is added when
-    // the supabase mock supports auth.admin.getUserById (it doesn't here, so
-    // the resolution silently fails and we fall back to just commitMethod).
     // An api_key actor records 'api_key' in the immutable layer: MCP-relayed
     // acknowledgment, not a first-party human session (vision §8 P0-1).
     // The actor option drives the runWithActor() scope inside

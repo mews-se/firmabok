@@ -158,14 +158,127 @@ describe('POST /api/invoices/[id]/mark-sent: PDF archival', () => {
     expect(status).toBe(404)
   })
 
-  it('returns 400 when the invoice is not a draft', async () => {
-    enqueue({ data: makeInvoice({ id: 'inv-1', status: 'sent' }), error: null })
+  it.each(['sent', 'paid', 'cancelled'] as const)(
+    'returns 400 when the invoice is %s rather than a draft',
+    async (invoiceStatus) => {
+      enqueue({ data: makeInvoice({ id: 'inv-1', status: invoiceStatus }), error: null })
+
+      const request = createMockRequest('/api/invoices/inv-1/mark-sent', { method: 'POST' })
+      const response = await POST(request, createMockRouteParams({ id: 'inv-1' }))
+      const { status } = await parseJsonResponse(response)
+
+      expect(status).toBe(400)
+      expect(mockEnsureInvoiceNumber).not.toHaveBeenCalled()
+      expect(mockCreateInvoiceJournalEntry).not.toHaveBeenCalled()
+    },
+  )
+
+  it('returns 404 when company settings are missing, before any number is allocated', async () => {
+    enqueue({ data: invoice, error: null })
+    enqueue({ data: null, error: { message: 'no rows' } })
 
     const request = createMockRequest('/api/invoices/inv-1/mark-sent', { method: 'POST' })
     const response = await POST(request, createMockRouteParams({ id: 'inv-1' }))
-    const { status } = await parseJsonResponse(response)
+    const { status, body } = await parseJsonResponse<{ error: { code: string } }>(response)
 
-    expect(status).toBe(400)
+    expect(status).toBe(404)
+    expect(body.error.code).toBe('INVOICE_SEND_COMPANY_SETTINGS_MISSING')
+    expect(mockEnsureInvoiceNumber).not.toHaveBeenCalled()
+  })
+
+  it('assigns the invoice number, flips the status and books the verifikat with that number', async () => {
+    const unnumbered = makeInvoice({
+      ...invoice,
+      invoice_number: null,
+    })
+    mockEnsureInvoiceNumber.mockImplementationOnce(
+      async (_supabase: unknown, _companyId: unknown, inv: { invoice_number: string | null }) => {
+        inv.invoice_number = 'F-2026011'
+        return 'F-2026011'
+      },
+    )
+    enqueue({ data: unnumbered, error: null }) // fetch invoice
+    enqueue({ data: company, error: null }) // settings
+    enqueue({ data: [{ id: 'inv-1' }], error: null }) // status update
+    mockCreateInvoiceJournalEntry.mockResolvedValue({ id: 'je-11' })
+    enqueue({ data: null, error: null }) // update invoice with journal_entry_id
+
+    const request = createMockRequest('/api/invoices/inv-1/mark-sent', { method: 'POST' })
+    const response = await POST(request, createMockRouteParams({ id: 'inv-1' }))
+    const { status, body } = await parseJsonResponse<{
+      success: boolean
+      status: string
+      journal_entry_id: string | null
+    }>(response)
+
+    expect(status).toBe(200)
+    expect(body).toMatchObject({ success: true, status: 'sent', journal_entry_id: 'je-11' })
+    expect(mockEnsureInvoiceNumber).toHaveBeenCalledTimes(1)
+    expect(mockEnsureInvoiceNumber).toHaveBeenCalledWith(
+      expect.anything(),
+      'company-1',
+      expect.objectContaining({ id: 'inv-1' }),
+    )
+    // Numbering happens before the verifikat, which therefore sees the number.
+    expect(mockEnsureInvoiceNumber.mock.invocationCallOrder[0]).toBeLessThan(
+      mockCreateInvoiceJournalEntry.mock.invocationCallOrder[0],
+    )
+    expect(mockCreateInvoiceJournalEntry).toHaveBeenCalledWith(
+      expect.anything(),
+      'company-1',
+      'user-1',
+      expect.objectContaining({ id: 'inv-1', invoice_number: 'F-2026011' }),
+      'enskild_firma',
+      customer.name,
+    )
+    const renderArgs = vi.mocked(InvoicePDF).mock.calls[0][0]
+    expect(renderArgs.invoice.invoice_number).toBe('F-2026011')
+    expect(renderArgs.invoice.status).toBe('sent')
+  })
+
+  it('does not book a verifikat under kontantmetoden but still numbers and archives the invoice', async () => {
+    const cashCompany = makeCompanySettings({
+      accounting_method: 'cash',
+      entity_type: 'enskild_firma',
+      bankgiro: '123-4567',
+    })
+    enqueue({ data: invoice, error: null })
+    enqueue({ data: cashCompany, error: null })
+    enqueue({ data: [{ id: 'inv-1' }], error: null })
+
+    const request = createMockRequest('/api/invoices/inv-1/mark-sent', { method: 'POST' })
+    const response = await POST(request, createMockRouteParams({ id: 'inv-1' }))
+    const { status, body } = await parseJsonResponse<{
+      success: boolean
+      status: string
+      journal_entry_id: string | null
+    }>(response)
+
+    expect(status).toBe(200)
+    expect(body).toMatchObject({ success: true, status: 'sent', journal_entry_id: null })
+    expect(mockEnsureInvoiceNumber).toHaveBeenCalledTimes(1)
+    expect(mockCreateInvoiceJournalEntry).not.toHaveBeenCalled()
+    expect(mockUploadDocument).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not book a verifikat when invoice booking is deferred', async () => {
+    const deferredCompany = makeCompanySettings({
+      accounting_method: 'accrual',
+      defer_invoice_booking: true,
+      entity_type: 'enskild_firma',
+      bankgiro: '123-4567',
+    })
+    enqueue({ data: invoice, error: null })
+    enqueue({ data: deferredCompany, error: null })
+    enqueue({ data: [{ id: 'inv-1' }], error: null })
+
+    const request = createMockRequest('/api/invoices/inv-1/mark-sent', { method: 'POST' })
+    const response = await POST(request, createMockRouteParams({ id: 'inv-1' }))
+    const { status, body } = await parseJsonResponse<{ journal_entry_id: string | null }>(response)
+
+    expect(status).toBe(200)
+    expect(body.journal_entry_id).toBeNull()
+    expect(mockCreateInvoiceJournalEntry).not.toHaveBeenCalled()
   })
 
   it.each(['SEK', 'EUR'] as const)(

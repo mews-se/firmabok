@@ -63,7 +63,6 @@ const OPERATION_LABEL_KEYS: Record<string, string> = {
   correct_entry: 'type_correct_entry',
   reverse_entry: 'type_reverse_entry',
   mark_invoice_paid: 'type_mark_invoice_paid',
-  send_invoice: 'type_send_invoice',
   mark_invoice_sent: 'type_mark_invoice_sent',
   match_transaction_invoice: 'type_match_transaction_invoice',
   // Master data
@@ -169,7 +168,6 @@ const singleActionWarnings: Record<string, string> = {
   match_transaction_invoice: 'Genom att klicka godkänn så matchas transaktionen mot fakturan.',
   attach_document_to_transaction: 'Genom att klicka godkänn så bifogas dokumentet till transaktionen.',
   uncategorize_transaction: 'Genom att klicka godkänn så tas kategoriseringen bort.',
-  send_invoice: 'Genom att klicka godkänn så skickas fakturan till kunden.',
   mark_invoice_paid: 'Genom att klicka godkänn så bokförs en betalning på fakturan.',
   mark_invoice_sent: 'Genom att klicka godkänn så märks fakturan som skickad och en verifikation skapas.',
   // High risk: period/year-end/voucher edits. These are the ones the reviewer

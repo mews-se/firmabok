@@ -267,7 +267,6 @@ describe('POST /api/pending-operations/bulk-commit', () => {
       // (BFNAR 2013:2 behandlingshistorik). The actor option attributes the
       // commits to the approving user (migration 20260619120000).
       {
-        userEmail: 'test@test.se',
         commitMethod: 'bulk_accept',
         actor: { type: 'user', label: 'test@test.se' },
       }

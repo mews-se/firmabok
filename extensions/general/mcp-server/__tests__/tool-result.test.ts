@@ -9,11 +9,11 @@ describe('withNext', () => {
   it('attaches next hint when provided', () => {
     const result = withNext(
       { id: 'x' },
-      { description: 'Send the invoice', tool: 'gnubok_send_invoice' }
+      { description: 'Issue the invoice', tool: 'gnubok_mark_invoice_as_sent' }
     )
     expect(result).toEqual({
       data: { id: 'x' },
-      next: { description: 'Send the invoice', tool: 'gnubok_send_invoice' },
+      next: { description: 'Issue the invoice', tool: 'gnubok_mark_invoice_as_sent' },
     })
   })
 })

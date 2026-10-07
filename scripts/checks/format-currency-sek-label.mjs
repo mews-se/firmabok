@@ -28,7 +28,7 @@
  *     A file that correctly reads both must not be accused.
  *   - Any `*_sek` / `*Sek` field: that IS the kronor twin, and rendering it with
  *     the SEK symbol is exactly right (see the five call sites this rule was
- *     calibrated against, e.g. components/invoices/SendInvoiceDialog.tsx).
+ *     calibrated against, e.g. components/invoices/MarkSentDialog.tsx).
  *   - A multiplicative expression (`total * exchangeRate`): that is a
  *     conversion INTO kronor, so the result is SEK.
  *   - Owners the file never reads a currency from. Judging a bare local like

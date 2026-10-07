@@ -49,6 +49,7 @@ import { ConfirmationDialog } from '@/components/ui/confirmation-dialog'
 import { InvoiceReviewContent } from '@/components/invoices/InvoiceReviewContent'
 import { getErrorMessage } from '@/lib/errors/get-error-message'
 import { openDeferredTab } from '@/lib/browser/deferred-tab'
+import { contentDispositionFilename } from '@/lib/api/content-disposition'
 import { useUnsavedChanges } from '@/lib/hooks/use-unsaved-changes'
 import CustomerForm from '@/components/customers/CustomerForm'
 import { BankDetailsSetupDialog } from '@/components/invoices/BankDetailsSetupDialog'
@@ -78,7 +79,7 @@ export type InvoiceForEdit = Invoice & { items: InvoiceItem[] }
 
 // `create` is the original "new invoice" flow (unchanged). `edit` pre-fills the
 // form from an existing DRAFT and saves via PATCH instead of POST: no review
-// dialog, no number allocation, no self-billed tab, no send/logo prompts.
+// dialog, no number allocation, no self-billed tab, no issue/logo prompts.
 // `bare` renders the editor without page chrome (back button, full-size
 // heading, fixed mobile action bar) so it drops into NewInvoiceDialog: the
 // same convention as JournalEntryForm's `bare`.
@@ -269,8 +270,8 @@ export default function InvoiceEditor(props: InvoiceEditorProps = { mode: 'creat
   const [showReview, setShowReview] = useState(false)
   const [pendingData, setPendingData] = useState<FormData | null>(null)
   const [createdInvoiceId, setCreatedInvoiceId] = useState<string | null>(null)
-  const [showSendPrompt, setShowSendPrompt] = useState(false)
-  const [isSending, setIsSending] = useState(false)
+  const [showIssuePrompt, setShowIssuePrompt] = useState(false)
+  const [isIssuing, setIsIssuing] = useState(false)
   const [isPreviewing, setIsPreviewing] = useState(false)
   const [, setDefaultNotes] = useState<string | null>(null)
   const [isCreateCustomerOpen, setIsCreateCustomerOpen] = useState(false)
@@ -1087,11 +1088,7 @@ export default function InvoiceEditor(props: InvoiceEditorProps = { mode: 'creat
   function handleLogoPromptClose() {
     setShowLogoPrompt(false)
     // Resume the post-create flow that was deferred by the logo prompt.
-    if (selectedCustomer?.email && createdInvoiceId) {
-      setShowSendPrompt(true)
-    } else if (createdInvoiceId) {
-      router.replace(`/invoices/${createdInvoiceId}`)
-    }
+    if (createdInvoiceId) setShowIssuePrompt(true)
   }
 
   async function handleConfirm() {
@@ -1152,15 +1149,13 @@ export default function InvoiceEditor(props: InvoiceEditorProps = { mode: 'creat
       setCreatedInvoiceId(result.data.id)
 
       // First-invoice-only logo prompt (issue #520) takes priority over the
-      // send-now dialog so a fresh upload makes it onto the just-sent PDF
+      // issue dialog so a fresh upload makes it onto the downloaded PDF
       // (pdf-template reads logo_url live from company_settings). Once the
       // prompt closes, handleLogoPromptClose resumes the regular flow.
       if (hadZeroInvoices === true && !logoUrl) {
         setShowLogoPrompt(true)
-      } else if (selectedCustomer?.email) {
-        setShowSendPrompt(true)
       } else {
-        router.replace(`/invoices/${result.data.id}`)
+        setShowIssuePrompt(true)
       }
     } catch (error) {
       toast({
@@ -1237,7 +1232,7 @@ export default function InvoiceEditor(props: InvoiceEditorProps = { mode: 'creat
   // Edit mode: PATCH the existing draft (header + items). Same ROT/RUT privacy
   // sanitization as create: personal-data fields only ride along when a
   // deduction is actually claimed. No review dialog, no number allocation, no
-  // send/logo prompt; on success go back to the invoice detail page.
+  // issue/logo prompt; on success go back to the invoice detail page.
   async function saveEdit(data: FormData) {
     if (!initial) return
     setIsSubmitting(true)
@@ -1292,33 +1287,57 @@ export default function InvoiceEditor(props: InvoiceEditorProps = { mode: 'creat
     }
   }
 
-  async function handleSendNow() {
+  // Marking the invoice as sent books it and drops the draft stamp, so the PDF
+  // is fetched afterwards: the file saved here is the one to hand to the
+  // customer.
+  async function handleIssueNow() {
     if (!createdInvoiceId) return
-    setIsSending(true)
+    setIsIssuing(true)
 
     try {
-      const response = await fetch(`/api/invoices/${createdInvoiceId}/send`, {
+      const response = await fetch(`/api/invoices/${createdInvoiceId}/mark-sent`, {
         method: 'POST',
       })
 
       if (!response.ok) {
-        const result = await response.json()
+        const result = await response.json().catch(() => null)
         throw new Error(getErrorMessage(result, { context: 'invoice', statusCode: response.status }))
       }
 
       toast({
-        title: t('invoice_sent_title'),
-        description: t('invoice_sent_description', { email: selectedCustomer?.email ?? '' }),
+        title: t('invoice_marked_sent_title'),
+        description: t('invoice_marked_sent_description'),
       })
+
+      try {
+        const pdfResponse = await fetch(`/api/invoices/${createdInvoiceId}/pdf`)
+        if (!pdfResponse.ok) throw new Error(t('pdf_download_failed_description'))
+        const blob = await pdfResponse.blob()
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = contentDispositionFilename(pdfResponse.headers.get('Content-Disposition'))
+          ?? `faktura-${createdInvoiceId.slice(0, 8)}.pdf`
+        document.body.appendChild(a)
+        a.click()
+        window.URL.revokeObjectURL(url)
+        document.body.removeChild(a)
+      } catch (error) {
+        toast({
+          title: t('pdf_download_failed_title'),
+          description: getErrorMessage(error, { context: 'invoice' }),
+          variant: 'destructive',
+        })
+      }
     } catch (error) {
       toast({
-        title: t('send_invoice_failed_title'),
+        title: t('mark_sent_failed_title'),
         description: getErrorMessage(error, { context: 'invoice' }),
         variant: 'destructive',
       })
     } finally {
-      setIsSending(false)
-      setShowSendPrompt(false)
+      setIsIssuing(false)
+      setShowIssuePrompt(false)
       router.replace(`/invoices/${createdInvoiceId}`)
     }
   }
@@ -2590,38 +2609,36 @@ export default function InvoiceEditor(props: InvoiceEditorProps = { mode: 'creat
         onLogoUpdate={(url) => setLogoUrl(url)}
       />
 
-      {/* Send now prompt dialog */}
-      <Dialog open={showSendPrompt} onOpenChange={(open) => {
+      {/* Issue prompt dialog */}
+      <Dialog open={showIssuePrompt} onOpenChange={(open) => {
         if (!open && createdInvoiceId) {
-          setShowSendPrompt(false)
+          setShowIssuePrompt(false)
           router.replace(`/invoices/${createdInvoiceId}`)
         }
       }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{t('send_now_dialog_title')}</DialogTitle>
-            <DialogDescription>
-              {t('send_now_dialog_description', { email: selectedCustomer?.email ?? '' })}
-            </DialogDescription>
+            <DialogTitle>{t('issue_dialog_title')}</DialogTitle>
+            <DialogDescription>{t('issue_dialog_description')}</DialogDescription>
           </DialogHeader>
           <DialogFooter className="flex gap-2 sm:gap-0">
             <Button
               variant="outline"
               onClick={() => {
-                setShowSendPrompt(false)
+                setShowIssuePrompt(false)
                 if (createdInvoiceId) router.replace(`/invoices/${createdInvoiceId}`)
               }}
-              disabled={isSending}
+              disabled={isIssuing}
             >
-              {t('send_later')}
+              {t('issue_later')}
             </Button>
-            <Button onClick={handleSendNow} disabled={isSending}>
-              {isSending ? (
+            <Button onClick={handleIssueNow} disabled={isIssuing}>
+              {isIssuing ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
                 <Send className="mr-2 h-4 w-4" />
               )}
-              {isSending ? t('send_now_sending') : t('send_now')}
+              {isIssuing ? t('issue_now_working') : t('issue_now')}
             </Button>
           </DialogFooter>
         </DialogContent>

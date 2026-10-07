@@ -306,7 +306,7 @@ describe('pending_operations: CAS + post-commit immutability', () => {
 
     await expect(
       getPool().query(
-        `UPDATE public.pending_operations SET operation_type = 'send_invoice' WHERE id = $1`,
+        `UPDATE public.pending_operations SET operation_type = 'mark_invoice_sent' WHERE id = $1`,
         [id],
       ),
     ).rejects.toThrow(/frozen/i)

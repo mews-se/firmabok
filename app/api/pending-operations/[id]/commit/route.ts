@@ -31,7 +31,6 @@ export const POST = withRouteContext<{ params: Promise<{ id: string }> }>(
         companyId,
         op as PendingOperation,
         {
-          userEmail: user.email,
           commitMethod: 'user_accept',
           actor: { type: 'user', ...(user.email ? { label: user.email } : {}) },
         }

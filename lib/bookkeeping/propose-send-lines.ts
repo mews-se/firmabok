@@ -1,6 +1,6 @@
 /**
  * Pure function to compute proposed journal entry lines for sending an invoice.
- * Used by the SendInvoiceDialog to preview the journal entry before committing.
+ * Used by the MarkSentDialog to preview the journal entry before committing.
  *
  * No DB or Supabase dependency: all inputs are plain data.
  */
@@ -145,7 +145,7 @@ function buildSendLines(
   // which refuses this case outright with INVOICE_FX_RATE_MISSING.
   //
   // Why bail instead of throwing the way propose-payment-lines does:
-  // proposeSendLines runs inside a useMemo during SendInvoiceDialog's render,
+  // proposeSendLines runs inside a useMemo during MarkSentDialog's render,
   // where a throw takes out the page instead of producing a toast. `editable` is
   // SEK-only, so an empty proposal cannot disable the submit button either.
   // Scoped to the item path on purpose: the invoice-level fallback below has a

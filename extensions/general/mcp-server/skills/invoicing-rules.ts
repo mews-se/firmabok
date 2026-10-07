@@ -2,7 +2,7 @@ import type { Skill } from './types'
 
 const body = `# Invoicing Rules: Accounted
 
-How to send a Swedish-compliant invoice from start to finish.
+How to issue a Swedish-compliant invoice from start to finish.
 
 ## When to use
 
@@ -77,11 +77,11 @@ Set \`article_id\` (from \`gnubok_list_articles\`) to invoice a catalog article:
 
 Returns staged operation. User approves in web app → invoice number is allocated atomically (gap-free) and journal entry posted (under accrual / faktureringsmetoden).
 
-### Step 4: Send
+### Step 4: Issue
 
-\`gnubok_send_invoice(invoice_id)\`: emails the PDF to the customer. Requires email service configured (Resend) and customer email on file.
+Accounted sends nothing: the user downloads the invoice PDF and delivers it to the customer (e-mail, post, e-faktura via Peppol, etc.).
 
-If the user delivered the invoice manually (printed, e-faktura via Peppol, etc.), use \`gnubok_mark_invoice_as_sent\` instead: same booking effect, no email.
+\`gnubok_mark_invoice_as_sent(invoice_id)\` then issues the draft: it allocates the invoice number if missing, marks the invoice as sent and books the revenue verifikat under faktureringsmetoden.
 
 ### Step 5: Record payment
 
@@ -125,15 +125,14 @@ Swedish authorities require e-invoices via Peppol BIS Billing 3.0 (Lag 2018:1277
 ## Common errors
 
 - **EU customer charged 25 %**: missing \`vat_number\` or VIES validation failed. Fix: re-validate, then re-issue as \`reverse_charge\`.
-- **Sent before approval**: not possible: \`gnubok_send_invoice\` stages too. The user must approve.
+- **Issued before approval**: not possible: \`gnubok_mark_invoice_as_sent\` stages too. The user must approve.
 - **Edit instead of credit**: blocked by DB triggers. Use \`gnubok_credit_invoice\`.
 
 ## Tools
 
 - \`gnubok_list_customers\` / \`gnubok_create_customer\`: customer setup
 - \`gnubok_create_invoice\`: stage new invoice
-- \`gnubok_send_invoice\`: email PDF
-- \`gnubok_mark_invoice_as_sent\`: manual delivery
+- \`gnubok_mark_invoice_as_sent\`: issue the draft (number, booking, status sent)
 - \`gnubok_mark_invoice_as_paid\`: manual payment
 - \`gnubok_link_invoice_to_voucher\`: link a payment already booked on a verifikat
 - \`gnubok_credit_invoice\`: kreditfaktura (legal undo)

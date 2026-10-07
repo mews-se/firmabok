@@ -864,9 +864,9 @@ const INVOICE: Record<string, StructuredErrorEntry> = {
   INVOICE_CREDIT_ISSUE_INCOMPLETE: {
     httpStatus: 500,
     message_sv:
-      'Kreditfakturan kunde inte utfärdas färdigt. Ingen e-post skickades. Försök igen.',
+      'Kreditfakturan kunde inte utfärdas färdigt. Försök igen.',
     message_en:
-      'The credit note could not be issued completely. No email was sent. Please try again.',
+      'The credit note could not be issued completely. Please try again.',
   },
   INVOICE_CREDIT_REPAIR_REQUIRED: {
     httpStatus: 500,
@@ -965,27 +965,6 @@ const INVOICE: Record<string, StructuredErrorEntry> = {
         'Set exchange_rate on the invoice (the rate at the taxable-event date) and retry. On an unbooked invoice, POST /api/invoices/{id}/refresh-exchange-rate fetches it from Riksbanken.',
     },
   },
-  INVOICE_SEND_EMAIL_NOT_CONFIGURED: {
-    httpStatus: 503,
-    message_sv:
-      'E-posttjänsten är inte konfigurerad. Kontrollera att RESEND_API_KEY och RESEND_FROM_EMAIL är satta.',
-    message_en: 'Email service is not configured.',
-    remediation: {
-      description: 'Set RESEND_API_KEY and RESEND_FROM_EMAIL in the deployment environment.',
-    },
-  },
-  INVOICE_SEND_NO_CUSTOMER_EMAIL: {
-    httpStatus: 400,
-    message_sv: 'Kunden saknar e-postadress. Uppdatera kunduppgifterna först.',
-    message_en: 'Customer has no email address.',
-    remediation: { description: 'Add an email address on the customer record before sending.' },
-  },
-  INVOICE_SEND_TOO_MANY_RECIPIENTS: {
-    httpStatus: 400,
-    message_sv: 'Ett fakturautskick får ha högst 20 mottagare totalt.',
-    message_en: 'An invoice email may have at most 20 recipients in total.',
-    remediation: { description: 'Remove CC or BCC recipients before sending the invoice.' },
-  },
   INVOICE_SEND_COMPANY_SETTINGS_MISSING: {
     httpStatus: 404,
     message_sv: 'Företagsinställningar saknas.',
@@ -993,48 +972,16 @@ const INVOICE: Record<string, StructuredErrorEntry> = {
   },
   INVOICE_SEND_PAYMENT_ACCOUNT_MISSING: {
     httpStatus: 400,
-    message_sv: 'Fakturan saknar ett betalningskonto för vald valuta. Lägg till kontot under Fakturering innan du skapar PDF-filen eller skickar fakturan.',
-    message_en: 'The invoice has no payment account for its currency. Add the account under Invoicing before generating the PDF or sending the invoice.',
+    message_sv: 'Fakturan saknar ett betalningskonto för vald valuta. Lägg till kontot under Fakturering innan du skapar PDF-filen eller markerar fakturan som skickad.',
+    message_en: 'The invoice has no payment account for its currency. Add the account under Invoicing before generating the PDF or marking the invoice as sent.',
     remediation: {
       description: 'Lägg till ett betalningskonto med IBAN för fakturans valuta under Fakturering.',
     },
-  },
-  INVOICE_SEND_NUMBER_ASSIGN_FAILED: {
-    httpStatus: 500,
-    message_sv: 'Kunde inte tilldela fakturanummer.',
-    message_en: 'Failed to assign invoice number on send.',
-  },
-  INVOICE_SEND_PROVIDER_FAILED: {
-    httpStatus: 502,
-    message_sv: 'E-postleverantören kunde inte skicka meddelandet.',
-    message_en: 'The email provider could not deliver the message.',
-  },
-  INVOICE_SEND_SNAPSHOT_FAILED: {
-    httpStatus: 500,
-    message_sv: 'Utskicksinformationen kunde inte sparas. Ingen e-post skickades.',
-    message_en: 'The delivery snapshot could not be saved. No email was sent.',
-  },
-  INVOICE_SEND_PDF_RENDER_FAILED: {
-    httpStatus: 500,
-    message_sv:
-      'Fakturans PDF kunde inte skapas. Kontrollera fakturarader och kunduppgifter och försök igen.',
-    message_en: 'Failed to render invoice PDF before send; no invoice number was consumed.',
   },
   INVOICE_PDF_RENDER_FAILED: {
     httpStatus: 500,
     message_sv: 'Fakturans PDF kunde inte skapas.',
     message_en: 'Invoice PDF rendering failed.',
-  },
-  INVOICE_SEND_PARTIAL: {
-    httpStatus: 200,
-    message_sv:
-      'Fakturan skickades men en efterföljande åtgärd misslyckades (verifikation eller PDF-bilaga).',
-    message_en: 'Invoice was sent but a follow-up step (journal entry or PDF) failed.',
-  },
-  INVOICE_SEND_CANCELLED: {
-    httpStatus: 400,
-    message_sv: 'Makulerade fakturor kan inte skickas. Skapa en ny faktura istället.',
-    message_en: 'Cancelled invoices cannot be sent; create a new invoice instead.',
   },
   INVOICE_PAID_NOT_FOUND: {
     httpStatus: 404,

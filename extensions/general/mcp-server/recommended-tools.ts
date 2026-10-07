@@ -50,7 +50,7 @@ export const RECOMMENDED_WORKFLOW_LOADOUTS: readonly WorkflowLoadout[] = [
   },
   {
     workflow: 'invoice_run',
-    description: 'Create and send customer invoices.',
+    description: 'Create and issue customer invoices.',
     skill: 'invoicing-rules',
     tools: [
       'gnubok_list_customers',
@@ -60,7 +60,6 @@ export const RECOMMENDED_WORKFLOW_LOADOUTS: readonly WorkflowLoadout[] = [
       // registry before setting them on gnubok_create_invoice.
       'gnubok_list_dimensions',
       'gnubok_create_invoice',
-      'gnubok_send_invoice',
       'gnubok_mark_invoice_as_sent',
       'gnubok_approve_pending_operation',
     ],

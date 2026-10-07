@@ -60,7 +60,7 @@ function toolCall(args: Record<string, unknown>): Request {
       jsonrpc: '2.0',
       id: 1,
       method: 'tools/call',
-      params: { name: 'gnubok_send_invoice', arguments: args },
+      params: { name: 'gnubok_mark_invoice_as_sent', arguments: args },
     }),
   })
 }

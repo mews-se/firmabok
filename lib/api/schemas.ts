@@ -792,20 +792,6 @@ export const MarkInvoiceSentSchema = z.object({
   })).min(2).optional(),
 })
 
-export const SendInvoiceSchema = MarkInvoiceSentSchema.extend({
-  additional_cc: invoiceEmailAddressList.optional(),
-  additional_bcc: invoiceEmailAddressList.optional(),
-}).refine(
-  (data) => (
-    (data.additional_cc?.length ?? 0) + (data.additional_bcc?.length ?? 0)
-    <= MAX_INVOICE_EMAIL_COPY_RECIPIENTS
-  ),
-  {
-    message: `Högst ${MAX_INVOICE_EMAIL_COPY_RECIPIENTS} extra kopiemottagare är tillåtna totalt`,
-    path: ['additional_cc'],
-  },
-)
-
 // ============================================================
 // Customer schemas
 // ============================================================

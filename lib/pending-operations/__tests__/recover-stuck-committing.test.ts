@@ -232,7 +232,7 @@ describe('findPostedEvidence', () => {
   it('types without a reliable probe return null without touching the database', async () => {
     const { supabase, captures } = createCapturingSupabase()
 
-    for (const operationType of ['create_customer', 'send_invoice', 'lock_period', 'create_voucher']) {
+    for (const operationType of ['create_customer', 'mark_invoice_sent', 'lock_period', 'create_voucher']) {
       const evidence = await findPostedEvidence(
         supabase,
         makeRow({ operation_type: operationType, params: { transaction_id: 'tx-1' } }),

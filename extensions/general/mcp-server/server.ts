@@ -155,12 +155,6 @@ import { bookkeepingErrorResponse } from '@/lib/bookkeeping/errors'
 import { findDuplicatePaymentCandidatesForInvoice } from '@/lib/invoices/duplicate-payment-candidates'
 import { renderToBuffer } from '@react-pdf/renderer'
 import { InvoicePDF } from '@/lib/invoices/pdf-template'
-import { getEmailService } from '@/lib/email/service'
-import {
-  generateInvoiceEmailHtml,
-  generateInvoiceEmailText,
-  generateInvoiceEmailSubject,
-} from '@/lib/email/invoice-templates'
 import {
   completePendingDocumentUpload,
   createPendingDocumentUpload,
@@ -173,7 +167,7 @@ import { appendProcessingHistory } from '@/lib/processing-history/append'
 import { getUserCompanies } from '@/lib/company/context'
 // ensureInitialized() is called by the extension router (ext/[...path]/route.ts)
 // which dispatches to this handler: no duplicate call needed here.
-import type { Transaction, TransactionCategory, EntityType, VatTreatment, Invoice, Currency, CompanySettings, Customer, InvoiceItem, PendingOperation, VatPeriodType, VatDeclarationRutor, YearEndBlockerCode } from '@/types'
+import type { Transaction, TransactionCategory, EntityType, VatTreatment, Invoice, Currency, CompanySettings, InvoiceItem, PendingOperation, VatPeriodType, VatDeclarationRutor, YearEndBlockerCode } from '@/types'
 
 // ── Actor context ────────────────────────────────────────────
 
@@ -4234,8 +4228,8 @@ export const tools: McpTool[] = [
         },
         actor,
         {
-          description: 'Once approved, the invoice is created as a draft. Send it with gnubok_send_invoice or use gnubok_mark_invoice_as_sent if delivered outside the system.',
-          tool: 'gnubok_send_invoice',
+          description: 'Once approved, the invoice is created as a draft. Issue it with gnubok_mark_invoice_as_sent once it has been delivered to the customer.',
+          tool: 'gnubok_mark_invoice_as_sent',
         }
       )
     },
@@ -4735,66 +4729,6 @@ export const tools: McpTool[] = [
   },
 
   {
-    name: 'gnubok_send_invoice',
-    title: 'Send Invoice by Email',
-    description: 'Send invoice via email with PDF attachment. Stages for approval. Requires customer email + email service configured.',
-    inputSchema: {
-      type: 'object',
-      additionalProperties: false,
-      properties: {
-        invoice_id: { type: 'string', description: 'UUID of the invoice to send' },
-      },
-      required: ['invoice_id'],
-    },
-    outputSchema: STAGED_OPERATION_SCHEMA,
-    annotations: {
-      readOnlyHint: false,
-      destructiveHint: false,
-      idempotentHint: false,
-      openWorldHint: true,
-    },
-    async execute(args, companyId, userId, supabase, actor) {
-      const invoiceId = args.invoice_id as string
-      if (!invoiceId) throw new Error('invoice_id is required')
-
-      const emailService = getEmailService()
-      if (!emailService.isConfigured()) {
-        throw new Error('Email service not configured. Ensure RESEND_API_KEY and RESEND_FROM_EMAIL are set.')
-      }
-
-      const { data: invoice, error: invoiceError } = await supabase
-        .from('invoices')
-        .select('*, customer:customers(*)')
-        .eq('id', invoiceId)
-        .eq('company_id', companyId)
-        .single()
-
-      if (invoiceError || !invoice) throw new Error('Invoice not found')
-
-      const customer = invoice.customer as Customer
-      if (!customer.email) throw new Error('Customer has no email address. Update customer details first.')
-
-      return stagePendingOperation(supabase, companyId, userId, 'send_invoice',
-        `Skicka: ${invoice.invoice_number} till ${customer.email}`,
-        { invoice_id: invoiceId },
-        {
-          invoice_number: invoice.invoice_number,
-          customer_name: customer.name,
-          customer_email: customer.email,
-          total: invoice.total,
-          currency: invoice.currency,
-        },
-        actor,
-        {
-          description: 'After the customer pays, mark the invoice paid via gnubok_mark_invoice_as_paid.',
-          tool: 'gnubok_mark_invoice_as_paid',
-          args: { invoice_id: invoiceId },
-        }
-      )
-    },
-  },
-
-  {
     name: 'gnubok_get_invoice_deliveries',
     title: 'Get Invoice Delivery History',
     description: 'Email delivery attempts for one invoice with the provider outcome (delivered, bounced, complained, delayed, suppressed). Call before chasing an unpaid invoice: a bounce means the customer never received it. Recipients are masked, message content is never returned.',
@@ -4938,7 +4872,7 @@ export const tools: McpTool[] = [
   {
     name: 'gnubok_mark_invoice_as_sent',
     title: 'Mark Invoice as Sent',
-    description: 'Mark a draft invoice as sent without sending email (when delivered manually). Stages for approval. Status must be draft.',
+    description: 'Issue a draft invoice: assigns the invoice number if missing, books the revenue verifikat under faktureringsmetoden and marks the invoice as sent. The system sends nothing; deliver the PDF to the customer yourself. Stages for approval. Status must be draft.',
     inputSchema: {
       type: 'object',
       additionalProperties: false,
@@ -9514,8 +9448,8 @@ export const tools: McpTool[] = [
         },
         actor,
         {
-          description: 'After conversion, send the new invoice with gnubok_send_invoice.',
-          tool: 'gnubok_send_invoice',
+          description: 'After conversion, issue the new invoice with gnubok_mark_invoice_as_sent.',
+          tool: 'gnubok_mark_invoice_as_sent',
         }
       )
     },
@@ -9776,8 +9710,8 @@ export const tools: McpTool[] = [
         },
         actor,
         {
-          description: 'Once approved, the draft is rewritten in place (totals and VAT recomputed; items fully replaced when provided). Send it with gnubok_send_invoice when ready.',
-          tool: 'gnubok_send_invoice',
+          description: 'Once approved, the draft is rewritten in place (totals and VAT recomputed; items fully replaced when provided). Issue it with gnubok_mark_invoice_as_sent when ready.',
+          tool: 'gnubok_mark_invoice_as_sent',
         },
         {
           dryRun: Boolean(args.dry_run),
@@ -11006,18 +10940,6 @@ export const tools: McpTool[] = [
         )
       }
 
-      // Resolve the user's email so commitPendingOperation can attribute the
-      // journal_entries.committed_by_email and any user-facing email side
-      // effects (send_invoice cc) to the actor: matches the web-UI commit
-      // path attribution (V8.2.1, GDPR Art. 25(1)).
-      let userEmail: string | undefined
-      try {
-        const { data: userData } = await supabase.auth.admin.getUserById(userId)
-        userEmail = userData.user?.email ?? undefined
-      } catch (err) {
-        log.warn('Failed to resolve user email for MCP approval', { userId, err })
-      }
-
       // commit_method provenance (agent_first_vision.md §8 P0-1): MCP
       // approvals are relayed through an agent credential: record that in
       // the immutable layer instead of claiming 'user_accept'. The positive
@@ -11050,7 +10972,6 @@ export const tools: McpTool[] = [
             type: actor?.type === 'api_key' ? 'api_key' : 'user',
             ...(actor?.label ? { label: actor.label } : {}),
           },
-          ...(userEmail ? { userEmail } : {}),
         }
       )
 
@@ -12451,7 +12372,7 @@ export async function handleMcpRequest(request: Request): Promise<Response> {
             'Common workflows:',
             '• Before categorizing or creating vouchers, consult ledger_context in gnubok_get_agent_briefing (full picture: the Accounted://ledger/context resource): it shows how THIS company has booked each counterparty and supplier (dominant account, VAT treatment, evidence = historical frequency). Prefer these observed patterns over guesses; explicit mapping rules outrank them. Frequency is not permission to auto-post: still stage for approval.',
             '• Applying income to invoices: an invoice you know is paid → gnubok_mark_invoice_as_paid; a payment already booked on an existing verifikat → gnubok_link_invoice_to_voucher. Both stage for approval. gnubok_get_agent_briefing returns the company\'s accounting_method.',
-            '• Invoicing: gnubok_list_customers (or gnubok_create_customer) → gnubok_create_invoice → gnubok_send_invoice or gnubok_mark_invoice_as_sent → gnubok_mark_invoice_as_paid. Refund via gnubok_credit_invoice.',
+            '• Invoicing: gnubok_list_customers (or gnubok_create_customer) → gnubok_create_invoice → gnubok_mark_invoice_as_sent → gnubok_mark_invoice_as_paid. Refund via gnubok_credit_invoice.',
             '• Suppliers: gnubok_list_suppliers (or gnubok_create_supplier) → gnubok_create_supplier_invoice_from_inbox → gnubok_approve_supplier_invoice. Refund via gnubok_credit_supplier_invoice.',
             '• VAT: gnubok_get_vat_report(period_type, year, period). Ruta49 = VAT to pay (positive) or refund (negative). Pass render_ui=true to open the momsdeklaration review widget (claude.ai / Desktop). gnubok_vat_close_check reports filing-readiness blockers.',
             '• Reporting: gnubok_get_trial_balance / _income_statement / _balance_sheet / _kpi_report / _ar_ledger / _supplier_ledger: all default to the most recent fiscal period. For account roll-ups use gnubok_get_general_ledger; for ad-hoc line queries (free-text, amount/date/source filters) use gnubok_query_journal.',

@@ -72,13 +72,15 @@ If the original invoice was already paid:
 
 If the original was unpaid, no refund: the credit just zeroes the AR balance.
 
-### Step 4: Send the credit note to the customer
+### Step 4: Issue the credit note and hand it to the customer
 
-\`gnubok_send_invoice({ invoice_id: <kreditfaktura_id> })\`.
+The kreditfaktura is created as a draft. Issuing it is done in the web app:
+open the kreditfaktura and choose "Markera som skickad", then download the PDF
+and deliver it to the customer yourself (Accounted sends no e-mail).
 
-The customer receives a PDF marked "KREDITFAKTURA" with reference to the
-original invoice number. ML 17 kap. 30 § requires the kreditfaktura to
-reference the document being credited: Accounted does this automatically.
+The PDF is marked "KREDITFAKTURA" with reference to the original invoice
+number. ML 17 kap. 30 § requires the kreditfaktura to reference the document
+being credited: Accounted does this automatically.
 
 ### Step 5: Verify
 
@@ -103,14 +105,13 @@ misread.
 ## Common errors
 
 - *"Fakturan har redan krediterats"*: the invoice is already in status \`credited\`. There's nothing to do; if you need to reverse the kreditfaktura itself, that's a separate (rare) operation.
-- *"Endast skickade, betalda eller förfallna fakturor kan krediteras"*: the invoice is a draft. Either send it first (then credit) or just edit the draft.
+- *"Endast skickade, betalda eller förfallna fakturor kan krediteras"*: the invoice is a draft. Either issue it first (then credit) or just edit the draft.
 - *"Credit notes can only be created from standard invoices"*: caller tried to credit a proforma. Proformas have no VAT/AR effect; cancel them instead.
 
 ## Tools
 
 - \`gnubok_list_invoices\`: find the original
 - \`gnubok_credit_invoice\`: the main tool, stages the kreditfaktura
-- \`gnubok_send_invoice\`: deliver the credit note to the customer
 - \`gnubok_create_voucher\`: book the refund payment (if any)
 - \`gnubok_get_ar_ledger\` / \`gnubok_get_vat_report\`: verification
 `

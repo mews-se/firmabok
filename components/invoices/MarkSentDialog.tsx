@@ -25,45 +25,34 @@ import { getResponseErrorMessage } from '@/lib/errors/get-error-message'
 import { useCompany } from '@/contexts/CompanyContext'
 import { creditNoteNeedsJournalEntry } from '@/lib/invoices/issue-credit-note'
 import { itemHasAccrual } from '@/lib/bookkeeping/accruals/account-suggestions'
-import { Loader2, Mail, Plus, Send, Trash2 } from 'lucide-react'
+import { Loader2, Plus, Send, Trash2 } from 'lucide-react'
 import type { FormLine } from '@/components/bookkeeping/JournalEntryForm'
 import type { Invoice, InvoiceItem, Customer, EntityType, BASAccount } from '@/types'
 import { getErrorMessage as getUserErrorMessage } from '@/lib/errors/get-error-message'
 import { loadBasCatalog, type CatalogAccount } from '@/lib/bookkeeping/bas-catalog-client'
-import {
-  EMAIL_PATTERN,
-  exceedsInvoiceEmailRecipientLimit,
-  MAX_INVOICE_EMAIL_RECIPIENTS,
-  parseInvoiceRecipientText,
-  resolveInvoiceEmailRecipients,
-} from '@/lib/invoices/email-recipients'
 
 interface InvoiceWithRelations extends Invoice {
   customer: Customer
   items: InvoiceItem[]
 }
 
-interface SendInvoiceDialogProps {
+interface MarkSentDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   invoice: InvoiceWithRelations
-  /** 'email' sends via email, 'manual' marks as sent without email */
-  mode: 'email' | 'manual'
   onSuccess: () => void
 }
 
-export default function SendInvoiceDialog({
+export default function MarkSentDialog({
   open,
   onOpenChange,
   invoice,
-  mode,
   onSuccess,
-}: SendInvoiceDialogProps) {
+}: MarkSentDialogProps) {
   const { toast } = useToast()
   const supabase = createClient()
-  const { company, role, isSandbox } = useCompany()
-  const canCustomizeRecipients = role === 'owner' || role === 'admin'
-  const t = useTranslations('invoice_send_dialog')
+  const { company } = useCompany()
+  const t = useTranslations('invoice_mark_sent_dialog')
   const locale = useLocale() as 'sv' | 'en'
   const isCreditNote = !!invoice.credited_invoice_id
   const isCreditRepair = isCreditNote && invoice.status === 'sent'
@@ -78,19 +67,14 @@ export default function SendInvoiceDialog({
   const [catalog, setCatalog] = useState<CatalogAccount[]>([])
   const [editLines, setEditLines] = useState<FormLine[]>([])
   const [hasEdited, setHasEdited] = useState(false)
-  const [fixedCc, setFixedCc] = useState<string[]>([])
-  const [fixedBcc, setFixedBcc] = useState<string[]>([])
-  const [additionalCcText, setAdditionalCcText] = useState('')
-  const [additionalBccText, setAdditionalBccText] = useState('')
   const accountNameByNumber = useMemo(() => {
     const names = new Map(catalog.map((account) => [account.account_number, account.account_name]))
     for (const account of accounts) names.set(account.account_number, account.account_name)
     return names
   }, [accounts, catalog])
 
-  // The accrual book-at-issue path (both email send and manual mark-sent)
-  // lets the user adjust the proposed lines before booking (same editor as
-  // PaymentBookingDialog). Credit notes keep the read-only preview, as do
+  // The accrual book-at-issue path lets the user adjust the proposed lines
+  // before booking (same editor as PaymentBookingDialog). Credit notes keep the read-only preview, as do
   // invoices with periodiserade rows: the server generator defers those to
   // 29xx and creates dissolution schedules, which user-edited lines bypass.
   // SEK only: the generated path stamps FX metadata (currency, exchange rate)
@@ -102,8 +86,6 @@ export default function SendInvoiceDialog({
   useEffect(() => {
     if (!open) {
       setIsInitialized(false)
-      setAdditionalCcText('')
-      setAdditionalBccText('')
       return
     }
 
@@ -113,10 +95,10 @@ export default function SendInvoiceDialog({
       try {
         if (!company?.id) throw new Error(t('no_active_company'))
 
-        const [settingsResult, periodResult, originalResult, authResult] = await Promise.all([
+        const [settingsResult, periodResult, originalResult] = await Promise.all([
           supabase
             .from('company_settings')
-            .select('accounting_method, entity_type, defer_invoice_booking, email, invoice_email_cc_addresses, invoice_email_bcc_addresses')
+            .select('accounting_method, entity_type, defer_invoice_booking')
             .eq('company_id', company.id)
             .maybeSingle(),
           supabase
@@ -134,13 +116,11 @@ export default function SendInvoiceDialog({
                 .eq('company_id', company.id)
                 .maybeSingle()
             : Promise.resolve({ data: null, error: null }),
-          supabase.auth.getUser(),
         ])
 
         if (settingsResult.error) throw new Error(t('company_settings_failed'))
         if (periodResult.error) throw new Error(t('fiscal_period_failed'))
         if (originalResult.error) throw new Error(t('original_invoice_failed'))
-        if (authResult.error || !authResult.data.user) throw new Error(t('load_failed_title'))
 
         if (cancelled) return
 
@@ -171,12 +151,6 @@ export default function SendInvoiceDialog({
         setAccounts(fetchedAccounts)
         setCatalog(fetchedCatalog)
         setEntityType((settingsResult.data?.entity_type as EntityType) || 'enskild_firma')
-        const legacyCc = settingsResult.data?.email || authResult.data.user.email
-        setFixedCc(
-          settingsResult.data?.invoice_email_cc_addresses
-          ?? (legacyCc ? [legacyCc] : []),
-        )
-        setFixedBcc(settingsResult.data?.invoice_email_bcc_addresses ?? [])
         setPeriodName(periodResult.data?.name || '')
         setDeferBooking(!!settingsResult.data?.defer_invoice_booking)
         setShouldBookOnIssue(bookOnIssue)
@@ -194,7 +168,7 @@ export default function SendInvoiceDialog({
 
     init()
     return () => { cancelled = true }
-  }, [open, invoice.id, invoice.invoice_date, company?.id, canCustomizeRecipients])
+  }, [open, invoice.id, invoice.invoice_date, company?.id])
 
   const proposedLines = useMemo(() => {
     if (!isInitialized || !shouldBookOnIssue) return []
@@ -218,38 +192,6 @@ export default function SendInvoiceDialog({
       entityType,
     })
   }, [isInitialized, shouldBookOnIssue, entityType, invoice])
-
-  const additionalCc = useMemo(
-    () => parseInvoiceRecipientText(additionalCcText),
-    [additionalCcText],
-  )
-  const additionalBcc = useMemo(
-    () => parseInvoiceRecipientText(additionalBccText),
-    [additionalBccText],
-  )
-  const invalidAdditionalRecipient = [...additionalCc, ...additionalBcc]
-    .find((address) => !EMAIL_PATTERN.test(address))
-  const fixedRecipients = resolveInvoiceEmailRecipients({
-    to: invoice.customer.email ?? '',
-    configuredCc: fixedCc,
-    configuredBcc: fixedBcc,
-    customerCc: invoice.customer.invoice_email_cc_addresses,
-    customerBcc: invoice.customer.invoice_email_bcc_addresses,
-  })
-  const resolvedRecipients = resolveInvoiceEmailRecipients({
-    to: invoice.customer.email ?? '',
-    configuredCc: fixedCc,
-    configuredBcc: fixedBcc,
-    customerCc: invoice.customer.invoice_email_cc_addresses,
-    customerBcc: invoice.customer.invoice_email_bcc_addresses,
-    additionalCc,
-    additionalBcc,
-  })
-  const recipientError = invalidAdditionalRecipient
-    ? t('recipient_invalid', { address: invalidAdditionalRecipient })
-    : exceedsInvoiceEmailRecipientLimit(resolvedRecipients)
-      ? t('recipient_too_many', { count: MAX_INVOICE_EMAIL_RECIPIENTS })
-      : null
 
   // Seed the editable grid from the proposal once per open; edits must not be
   // clobbered by re-renders, so proposedLines is deliberately not a dependency.
@@ -321,14 +263,9 @@ export default function SendInvoiceDialog({
 
   const handleConfirm = async () => {
     if (editable && (!isBalanced || hasOrphanAmounts)) return
-    if (mode === 'email' && recipientError) return
     setIsSubmitting(true)
 
     try {
-      const url = mode === 'email'
-        ? `/api/invoices/${invoice.id}/send`
-        : `/api/invoices/${invoice.id}/mark-sent`
-
       // Untouched proposal: send no body so the server generates the entry
       // itself (per-item revenue accounts, dimensions, FX metadata). Only
       // actual edits override the generator.
@@ -347,23 +284,12 @@ export default function SendInvoiceDialog({
             }))
         : undefined
 
-      const payload = {
-        ...(apiLines ? { lines: apiLines } : {}),
-        ...(mode === 'email' && canCustomizeRecipients && additionalCc.length > 0
-          ? { additional_cc: additionalCc }
-          : {}),
-        ...(mode === 'email' && canCustomizeRecipients && additionalBcc.length > 0
-          ? { additional_bcc: additionalBcc }
-          : {}),
-      }
-      const hasPayload = Object.keys(payload).length > 0
-
-      const response = await fetch(url, {
+      const response = await fetch(`/api/invoices/${invoice.id}/mark-sent`, {
         method: 'POST',
-        ...(hasPayload
+        ...(apiLines
           ? {
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(payload),
+              body: JSON.stringify({ lines: apiLines }),
             }
           : {}),
       })
@@ -375,51 +301,29 @@ export default function SendInvoiceDialog({
 
       onSuccess()
 
-      if (mode === 'email') {
-        onOpenChange(false)
-        const successMessage = data.message || t('send_success_default', { email: invoice.customer.email ?? '' })
-        toast({
-          title: t(
-            shouldBookOnIssue && !data.partial
+      onOpenChange(false)
+      toast({
+        title: t(
+          isCreditRepair
+            ? 'credit_repair_success_title'
+            : shouldBookOnIssue && !data.partial
               ? isCreditNote
-                ? 'credit_send_book_success_title'
-                : 'send_book_success_title'
-              : isCreditNote
-                ? 'credit_send_success_title'
-                : 'send_success_title',
-          ),
-          description: data.partial
-            ? t('partial_success', { message: successMessage })
-            : isCreditNote
-              ? t('credit_send_success', { email: invoice.customer.email ?? '' })
-              : successMessage,
-        })
-      } else {
-        // For manual send, just close: no email to confirm
-        onOpenChange(false)
-        toast({
-          title: t(
-            isCreditRepair
-              ? 'credit_repair_success_title'
-              : shouldBookOnIssue && !data.partial
-                ? isCreditNote
-                  ? 'credit_mark_book_success_title'
-                  : 'mark_book_success_title'
+                ? 'credit_mark_book_success_title'
+                : 'mark_book_success_title'
               : isCreditNote
                 ? 'credit_mark_success_title'
                 : 'mark_success_title',
-          ),
-          description: data.partial
-            ? t('mark_partial_success')
-            : isCreditNote
-              ? shouldBookOnIssue
-                ? t('credit_mark_success_voucher_created')
-                : t('credit_mark_success_no_voucher')
-              : shouldBookOnIssue
-                ? t('mark_success_voucher_created')
-                : undefined,
-        })
-      }
+        ),
+        description: data.partial
+          ? t('mark_partial_success')
+          : isCreditNote
+            ? shouldBookOnIssue
+              ? t('credit_mark_success_voucher_created')
+              : t('credit_mark_success_no_voucher')
+            : shouldBookOnIssue
+              ? t('mark_success_voucher_created')
+              : undefined,
+      })
     } catch (error) {
       toast({
         title: t(isCreditNote ? 'credit_send_failed_title' : 'send_failed_title'),
@@ -446,12 +350,8 @@ export default function SendInvoiceDialog({
               isCreditRepair
                 ? 'title_credit_repair'
                 : isCreditNote
-                  ? mode === 'email'
-                    ? 'title_credit_email'
-                    : 'title_credit_manual'
-                  : mode === 'email'
-                    ? 'title_email'
-                    : 'title_manual',
+                  ? 'title_credit_manual'
+                  : 'title_manual',
             )}
             {invoice.invoice_number ? t('title_suffix', { number: invoice.invoice_number }) : ''}
           </DialogTitle>
@@ -459,9 +359,6 @@ export default function SendInvoiceDialog({
             {formatCurrency(invoice.total, invoice.currency)}
             {invoice.currency !== 'SEK' && invoice.total_sek && (
               <>{t('description_sek_suffix', { amount: formatCurrency(invoice.total_sek) })}</>
-            )}
-            {mode === 'email' && invoice.customer.email && (
-              <>{t('description_to_email', { email: invoice.customer.email })}</>
             )}
           </DialogDescription>
         </DialogHeader>
@@ -472,63 +369,6 @@ export default function SendInvoiceDialog({
           </div>
         ) : (
           <div className="space-y-4">
-            {isSandbox && mode === 'email' && (
-              <div className="rounded-lg border border-border bg-secondary/40 px-3 py-2.5 text-sm text-muted-foreground">
-                E-postutskick är avstängt i sandlådan. Använd istället
-                &laquo;Markera som skickad&raquo; för att testa det resterande
-                flödet.
-              </div>
-            )}
-            {mode === 'email' && (
-              <div className="space-y-3 rounded-lg border border-border p-3">
-                <div className="space-y-1 text-sm">
-                  <p>
-                    <span className="font-medium">{t('recipient_to_label')}:</span>{' '}
-                    {invoice.customer.email}
-                  </p>
-                  <p className="text-muted-foreground">
-                    <span className="font-medium text-foreground">{t('recipient_fixed_cc_label')}:</span>{' '}
-                    {fixedRecipients.cc.length > 0 ? fixedRecipients.cc.join(', ') : t('recipient_none')}
-                  </p>
-                  {canCustomizeRecipients && (
-                    <p className="text-muted-foreground">
-                      <span className="font-medium text-foreground">{t('recipient_fixed_bcc_label')}:</span>{' '}
-                      {fixedRecipients.bcc.length > 0 ? fixedRecipients.bcc.join(', ') : t('recipient_none')}
-                    </p>
-                  )}
-                </div>
-                {canCustomizeRecipients && (
-                  <>
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <div className="space-y-1.5">
-                        <Label htmlFor="invoice-additional-cc">{t('recipient_additional_cc_label')}</Label>
-                        <Input
-                          id="invoice-additional-cc"
-                          value={additionalCcText}
-                          onChange={(event) => setAdditionalCcText(event.target.value)}
-                          placeholder={t('recipient_additional_placeholder')}
-                          aria-invalid={!!recipientError}
-                        />
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label htmlFor="invoice-additional-bcc">{t('recipient_additional_bcc_label')}</Label>
-                        <Input
-                          id="invoice-additional-bcc"
-                          value={additionalBccText}
-                          onChange={(event) => setAdditionalBccText(event.target.value)}
-                          placeholder={t('recipient_additional_placeholder')}
-                          aria-invalid={!!recipientError}
-                        />
-                      </div>
-                    </div>
-                    <p className="text-xs text-muted-foreground">{t('recipient_additional_hint')}</p>
-                    {recipientError && (
-                      <p className="text-sm text-destructive" role="alert">{recipientError}</p>
-                    )}
-                  </>
-                )}
-              </div>
-            )}
             {showJournalPreview && editable ? (
               <>
                 <p className="text-sm text-muted-foreground">
@@ -715,9 +555,7 @@ export default function SendInvoiceDialog({
                           ? 'explain_deferred'
                           : 'explain_cash',
                     )
-                  : mode === 'email'
-                    ? t('explain_email', { email: invoice.customer.email ?? '' })
-                    : t('explain_manual')}
+                  : t('explain_manual')}
               </p>
             )}
           </div>
@@ -734,18 +572,11 @@ export default function SendInvoiceDialog({
           </Button>
           <Button
             onClick={handleConfirm}
-            disabled={isSubmitting || !isInitialized || (editable && (!isBalanced || hasOrphanAmounts)) || (mode === 'email' && (isSandbox || !!recipientError))}
+            disabled={isSubmitting || !isInitialized || (editable && (!isBalanced || hasOrphanAmounts))}
             className="w-full sm:w-auto min-h-11"
-            title={
-              mode === 'email' && isSandbox
-                ? 'E-postutskick är avstängt i sandlådan'
-                : undefined
-            }
           >
             {isSubmitting ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : mode === 'email' ? (
-              <Mail className="mr-2 h-4 w-4" />
             ) : (
               <Send className="mr-2 h-4 w-4" />
             )}
@@ -753,20 +584,12 @@ export default function SendInvoiceDialog({
               isCreditRepair
                 ? 'complete_credit_bookkeeping'
                 : isCreditNote
-                  ? mode === 'email'
-                    ? shouldBookOnIssue
-                      ? 'send_credit_note_and_book'
-                      : 'send_credit_note'
-                    : shouldBookOnIssue
-                      ? 'mark_credit_note_sent_and_book'
-                      : 'mark_credit_note_sent'
-                  : mode === 'email'
-                    ? shouldBookOnIssue
-                      ? 'send_invoice_and_book'
-                      : 'send_invoice'
-                    : shouldBookOnIssue
-                      ? 'mark_as_sent_and_book'
-                      : 'mark_as_sent',
+                  ? shouldBookOnIssue
+                    ? 'mark_credit_note_sent_and_book'
+                    : 'mark_credit_note_sent'
+                  : shouldBookOnIssue
+                    ? 'mark_as_sent_and_book'
+                    : 'mark_as_sent',
             )}
           </Button>
         </DialogFooter>

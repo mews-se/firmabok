@@ -119,7 +119,6 @@ export const TOOL_SCOPE_MAP: Record<string, ApiKeyScope> = {
   gnubok_get_invoice_deliveries:          'invoices:read',
   gnubok_create_invoice:                  'invoices:write',
   gnubok_update_invoice:                  'invoices:write',
-  gnubok_send_invoice:                    'invoices:write',
   gnubok_mark_invoice_as_paid:            'invoices:write',
   gnubok_mark_invoice_as_sent:            'invoices:write',
   // Recurring invoice schedules (staged template writes; no send/book at commit)

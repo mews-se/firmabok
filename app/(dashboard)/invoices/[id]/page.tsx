@@ -16,7 +16,6 @@ import { invoiceDisplayNumber, isTextLikeLine } from '@/lib/invoices/display'
 import { getDisplayTotal } from '@/lib/invoices/rounding'
 import { isEditableInvoiceDraft } from '@/lib/invoices/is-editable-draft'
 import { creditNoteNeedsJournalEntry } from '@/lib/invoices/issue-credit-note'
-import { getCreditNoteSendMode } from '@/lib/invoices/credit-note-send-mode'
 import { canCopyInvoice } from '@/lib/invoices/copy-invoice'
 import {
   invoiceDocumentCaveat,
@@ -51,7 +50,7 @@ import { useCanWrite } from '@/lib/hooks/use-can-write'
 import { useCompany } from '@/contexts/CompanyContext'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import PaymentBookingDialog from '@/components/invoices/PaymentBookingDialog'
-import SendInvoiceDialog from '@/components/invoices/SendInvoiceDialog'
+import MarkSentDialog from '@/components/invoices/MarkSentDialog'
 import {
   InvoiceDeliveryHistory,
   type InvoiceDeliveryView,
@@ -108,7 +107,7 @@ interface InvoiceWithRelations extends Invoice {
 
 export default function InvoiceDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { canWrite } = useCanWrite()
-  const { company, isSandbox } = useCompany()
+  const { company } = useCompany()
   const { id } = use(params)
   const router = useRouter()
   const { toast } = useToast()
@@ -148,8 +147,7 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
   const [originalInvoice, setOriginalInvoice] = useState<Invoice | null>(null)
   const [convertedFromInvoice, setConvertedFromInvoice] = useState<Invoice | null>(null)
   const [showPaymentDialog, setShowPaymentDialog] = useState(false)
-  const [showSendDialog, setShowSendDialog] = useState(false)
-  const [sendDialogMode, setSendDialogMode] = useState<'email' | 'manual'>('email')
+  const [showMarkSentDialog, setShowMarkSentDialog] = useState(false)
   const [isConverting, setIsConverting] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [isUpdating, setIsUpdating] = useState(false)
@@ -455,11 +453,6 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
     }
 
     setIsUpdating(false)
-  }
-
-  function openSendDialog(mode: 'email' | 'manual') {
-    setSendDialogMode(mode)
-    setShowSendDialog(true)
   }
 
   async function convertToInvoice() {
@@ -797,7 +790,6 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
 
   const statusVariant = statusVariantMap[invoice.status]
   const customer = invoice.customer
-  const customerHasEmail = !!customer.email
   const docType = ((invoice as Invoice & { document_type?: InvoiceDocumentType }).document_type || 'invoice') as InvoiceDocumentType
   const isProforma = docType === 'proforma'
   const isDeliveryNote = docType === 'delivery_note'
@@ -814,10 +806,6 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
     !invoice.journal_entry_id &&
     accountingMethod === 'accrual' &&
     ['sent', 'overdue'].includes(invoice.status)
-  const preferredSendMode = getCreditNoteSendMode({
-    customerHasEmail,
-    isSandbox,
-  })
   const creditNoteNeedsRepair =
     isCreditNote &&
     invoice.status === 'sent' &&
@@ -925,26 +913,14 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
             </Button>
           )}
           {invoice.status === 'draft' && !isDeliveryNote && invoice.invoice_number && (
-            preferredSendMode === 'email' ? (
-              <Button
-                onClick={() => openSendDialog('email')}
-                disabled={!canWrite}
-                title={!canWrite ? t('viewer_disabled_tooltip') : undefined}
-              >
-                {canWrite ? <Mail className="mr-2 h-4 w-4" /> : <Lock className="mr-2 h-4 w-4" />}
-                {t(booksOnIssue ? 'send_via_email_and_book' : 'send_via_email')}
-              </Button>
-            ) : (
-              <Button
-                variant="secondary"
-                onClick={() => openSendDialog('manual')}
-                disabled={!canWrite}
-                title={!canWrite ? t('viewer_disabled_tooltip') : undefined}
-              >
-                {canWrite ? <Send className="mr-2 h-4 w-4" /> : <Lock className="mr-2 h-4 w-4" />}
-                {t(booksOnIssue ? 'mark_sent_and_book' : 'mark_as_sent')}
-              </Button>
-            )
+            <Button
+              onClick={() => setShowMarkSentDialog(true)}
+              disabled={!canWrite}
+              title={!canWrite ? t('viewer_disabled_tooltip') : undefined}
+            >
+              {canWrite ? <Send className="mr-2 h-4 w-4" /> : <Lock className="mr-2 h-4 w-4" />}
+              {t(booksOnIssue ? 'mark_sent_and_book' : 'mark_as_sent')}
+            </Button>
           )}
           {isCopyable && canWrite && (
             <Link href={`/invoices?copy=${invoice.id}`}>
@@ -957,7 +933,7 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
           {creditNoteNeedsRepair && (
             <Button
               variant="secondary"
-              onClick={() => openSendDialog('manual')}
+              onClick={() => setShowMarkSentDialog(true)}
               disabled={!canWrite}
               title={!canWrite ? t('viewer_disabled_tooltip') : undefined}
             >
@@ -1653,35 +1629,15 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
                       {t('remove_action')}
                     </Button>
                   ) : (
-                    <>
-                      {/* When the customer has an email the header offers "Send via
-                          email" as the primary; keep the manual-mark-sent path here
-                          as the secondary alternative (it is not in the header). */}
-                      {!isDeliveryNote && preferredSendMode === 'email' && (
-                        <>
-                          <Button
-                            variant="ghost"
-                            className="w-full text-muted-foreground"
-                            onClick={() => openSendDialog('manual')}
-                          >
-                            <Send className="mr-2 h-4 w-4" />
-                            {t(booksOnIssue ? 'mark_sent_and_book' : 'mark_as_sent')}
-                          </Button>
-                          <p className="text-[11px] text-muted-foreground/60 px-1 -mt-1">
-                            {t('send_manual_hint_with_email')}
-                          </p>
-                        </>
-                      )}
-                      <Button
-                        variant="outline"
-                        className="w-full text-destructive hover:text-destructive"
-                        onClick={() => setShowDeleteDialog(true)}
-                        disabled={isDeleting}
-                      >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        {t(isCreditNote ? 'remove_credit_draft' : 'delete_draft')}
-                      </Button>
-                    </>
+                    <Button
+                      variant="outline"
+                      className="w-full text-destructive hover:text-destructive"
+                      onClick={() => setShowDeleteDialog(true)}
+                      disabled={isDeleting}
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      {t(isCreditNote ? 'remove_credit_draft' : 'delete_draft')}
+                    </Button>
                   )
                 )}
                 {((invoice.status === 'sent' || invoice.status === 'overdue' || invoice.status === 'paid') && isRealInvoice && !creditNote) && (
@@ -1828,11 +1784,10 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
         }}
       />
       {invoice && (
-        <SendInvoiceDialog
-          open={showSendDialog}
-          onOpenChange={setShowSendDialog}
+        <MarkSentDialog
+          open={showMarkSentDialog}
+          onOpenChange={setShowMarkSentDialog}
           invoice={invoice}
-          mode={sendDialogMode}
           onSuccess={() => fetchInvoice()}
         />
       )}

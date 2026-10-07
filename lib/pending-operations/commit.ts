@@ -68,32 +68,10 @@ import { executeSIEImport, undoSIEImport } from '@/lib/import/sie-import'
 import type { AccountMapping } from '@/lib/import/types'
 import { AccountsNotInChartError, isBookkeepingError, ACCOUNTS_NOT_IN_CHART } from '@/lib/bookkeeping/errors'
 import { PartialCommitError } from '@/lib/pending-operations/errors'
-import { getEmailService } from '@/lib/email/service'
-import {
-  generateInvoiceEmailHtml,
-  generateInvoiceEmailText,
-  generateInvoiceEmailSubject,
-} from '@/lib/email/invoice-templates'
 import { linkToJournalEntry } from '@/lib/core/documents/document-service'
-import { renderToBuffer } from '@react-pdf/renderer'
-import { InvoicePDF } from '@/lib/invoices/pdf-template'
-import { prepareInvoicePdfRender, buildSwishQrDataUrl } from '@/lib/invoices/pdf-render-helpers'
-import {
-  hasRequiredInvoicePaymentAccount,
-  invoiceRequiresPaymentAccount,
-} from '@/lib/invoices/payment-accounts'
-import {
-  exceedsInvoiceEmailRecipientLimit,
-  invoiceEmailRecipientCount,
-  resolveInvoiceEmailRecipients,
-} from '@/lib/invoices/email-recipients'
+import { hasRequiredInvoicePaymentAccount } from '@/lib/invoices/payment-accounts'
 import { ensureInvoiceNumber } from '@/lib/invoices/ensure-invoice-number'
-import { invoicePdfFilename } from '@/lib/invoices/pdf-filename'
-import {
-  recordManualInvoiceDelivery,
-  reserveInvoiceDelivery,
-  sendTrackedInvoiceEmail,
-} from '@/lib/invoices/invoice-deliveries'
+import { recordManualInvoiceDelivery } from '@/lib/invoices/invoice-deliveries'
 import { createLogger } from '@/lib/logger'
 import { appendProcessingHistory } from '@/lib/processing-history/append'
 import { CreateSupplierParamsSchema } from '@/lib/pending-operations/schemas/create-supplier'
@@ -141,7 +119,6 @@ import type {
   SupplierInvoiceItem,
   PendingOperation,
   CompanySettings,
-  InvoiceItem,
   InvoiceDocumentType,
   AccountingMethod,
   CreditNote,
@@ -169,8 +146,6 @@ export interface CommitResult {
 }
 
 export interface CommitOptions {
-  /** Email address used as cc on send_invoice (typically the human user's email). */
-  userEmail?: string
   /**
    * commit_method recorded on any journal_entries created by this operation.
    * Must match the CHECK constraint on journal_entries.commit_method
@@ -206,7 +181,7 @@ async function recordSkippedInvoiceJournalEntry(
   invoiceId: string,
   companyId: string,
   userId: string,
-  operation: 'send_invoice' | 'mark_invoice_sent',
+  operation: 'mark_invoice_sent',
   err: unknown
 ): Promise<void> {
   try {
@@ -1995,274 +1970,6 @@ async function commitMarkInvoicePaid(
   }
 
   return { data: { status: newStatus, remaining_amount: newRemaining, journal_entry_id: journalEntryId } }
-}
-
-async function commitSendInvoice(
-  supabase: SupabaseClient,
-  userId: string,
-  companyId: string,
-  params: Record<string, unknown>,
-  userEmail?: string
-): Promise<ExecutorResult> {
-  const invoiceId = params.invoice_id as string
-
-  const emailService = getEmailService()
-  if (!emailService.isConfigured()) {
-    return { error: 'Email service not configured', status: 500 }
-  }
-
-  const { data: invoice, error: invoiceError } = await supabase
-    .from('invoices')
-    .select('*, customer:customers(*), items:invoice_items(*)')
-    .eq('id', invoiceId)
-    .eq('company_id', companyId)
-    .single()
-
-  if (invoiceError || !invoice) return { error: 'Invoice not found', status: 404 }
-  if (invoice.credited_invoice_id) {
-    return {
-      error: 'Credit notes must be issued through the invoice send flow',
-      status: 409,
-    }
-  }
-  // partially_paid/credited imply the invoice was already issued too: the
-  // status flip below would regress them to 'sent' (PR #666 review, ASVS V2.3).
-  if (['sent', 'paid', 'overdue', 'partially_paid', 'credited'].includes(invoice.status)) {
-    return { error: 'Invoice has already been sent', status: 409 }
-  }
-  // A cancelled invoice keeps its F-series number for ML 17 kap 24§ compliance
-  // but is not a valid faktura: sending it would silently re-activate it (the
-  // status flip below has no guard) and deliver a "MAKULERAD" PDF as if live.
-  // Mirrors the send route's guard (audit C17, this agent path lacked it).
-  if (invoice.status === 'cancelled') {
-    return {
-      error:
-        getErrorEntry('INVOICE_SEND_CANCELLED')?.message_sv ??
-        'Makulerade fakturor kan inte skickas. Skapa en ny faktura istället.',
-      status: 400,
-    }
-  }
-
-  const customer = invoice.customer as Customer
-  if (!customer.email?.trim()) return { error: 'Customer has no email address', status: 400 }
-
-  const { data: company, error: companyError } = await supabase
-    .from('company_settings').select('*').eq('company_id', companyId).single()
-
-  if (companyError || !company) return { error: 'Company settings missing', status: 500 }
-
-  const paymentAccountRequired = invoiceRequiresPaymentAccount(invoice as Invoice)
-  if (!hasRequiredInvoicePaymentAccount(company as CompanySettings, invoice as Invoice)) {
-    return {
-      error:
-        getErrorEntry('INVOICE_SEND_PAYMENT_ACCOUNT_MISSING')?.message_sv
-        ?? 'Betalningskonto saknas för fakturans valuta.',
-      status: 400,
-    }
-  }
-
-  const recipients = resolveInvoiceEmailRecipients({
-    to: customer.email,
-    configuredCc: company.invoice_email_cc_addresses,
-    configuredBcc: company.invoice_email_bcc_addresses,
-    customerCc: customer.invoice_email_cc_addresses,
-    customerBcc: customer.invoice_email_bcc_addresses,
-    legacyCc: company.email || userEmail,
-  })
-  if (exceedsInvoiceEmailRecipientLimit(recipients)) {
-    return {
-      error:
-        getErrorEntry('INVOICE_SEND_TOO_MANY_RECIPIENTS')?.message_sv
-        ?? `Ett fakturautskick får inte ha ${invoiceEmailRecipientCount(recipients)} mottagare.`,
-      status: 400,
-    }
-  }
-
-  const items = (invoice.items as InvoiceItem[]).sort(
-    (a: InvoiceItem, b: InvoiceItem) => a.sort_order - b.sort_order
-  )
-
-  let originalInvoiceNumber: string | undefined
-  if (invoice.credited_invoice_id) {
-    const { data: orig } = await supabase
-      .from('invoices').select('invoice_number').eq('id', invoice.credited_invoice_id).single()
-    if (orig) originalInvoiceNumber = orig.invoice_number
-  }
-
-  // Preflight render: validate the PDF pipeline BEFORE consuming an F-series
-  // number, so a render failure can't leave a numbered-but-never-issued
-  // invoice (an F-series gap if the draft is later abandoned). Skipped when
-  // the row is already numbered (retry path): we'd render twice for no gain.
-  // Mirrors the send route (audit C17, this agent path assigned the number
-  // first and rendered unguarded).
-  const isFreshAllocation = !invoice.invoice_number
-  if (isFreshAllocation) {
-    try {
-      const preflight = await prepareInvoicePdfRender(
-        company as CompanySettings,
-        (invoice as Invoice).currency,
-        { paymentAccountRequired },
-      )
-      await renderToBuffer(
-        InvoicePDF({
-          invoice: { ...(invoice as Invoice), invoice_number: 'F-PREVIEW' },
-          customer,
-          items,
-          company: preflight.company,
-          originalInvoiceNumber,
-          branding: preflight.branding,
-        })
-      )
-    } catch (err) {
-      log.error('preflight PDF render failed before invoice number assignment (agent send)', err as Error, {
-        companyId,
-        userId,
-        invoiceId,
-      })
-      return {
-        error:
-          getErrorEntry('INVOICE_SEND_PDF_RENDER_FAILED')?.message_sv ??
-          'Fakturans PDF kunde inte skapas. Kontrollera fakturarader och kunduppgifter och försök igen.',
-        status: 500,
-      }
-    }
-  }
-
-  let deliveryId: string
-  try {
-    deliveryId = await reserveInvoiceDelivery({
-      supabase,
-      companyId,
-      userId,
-      invoiceId,
-    })
-  } catch (err) {
-    log.error('failed to reserve invoice delivery before agent number assignment', err as Error, {
-      companyId,
-      userId,
-      invoiceId,
-    })
-    return { error: 'Utskicksinformationen kunde inte sparas. Ingen e-post skickades.', status: 500 }
-  }
-
-  try {
-    await ensureInvoiceNumber(supabase, companyId, invoice as Invoice)
-  } catch (err) {
-    return { error: `Failed to assign invoice number: ${err instanceof Error ? err.message : 'unknown'}`, status: 500 }
-  }
-
-  // Override `status` to 'sent' on the in-memory copy. The DB flip happens
-  // after email delivery (line ~625); rendering with the stale 'draft' status
-  // would stamp the customer's PDF with "UTKAST: inte en giltig faktura".
-  const renderableInvoice = { ...(invoice as Invoice), status: 'sent' as const }
-  const { branding, company: renderCompany } = await prepareInvoicePdfRender(
-    company as CompanySettings,
-    renderableInvoice.currency,
-    { paymentAccountRequired },
-  )
-  const swishQrDataUrl = await buildSwishQrDataUrl(renderCompany, renderableInvoice)
-  const pdfBuffer = await renderToBuffer(
-    InvoicePDF({
-      invoice: renderableInvoice,
-      customer,
-      items,
-      company: renderCompany,
-      originalInvoiceNumber,
-      branding,
-      swishQrDataUrl,
-    })
-  )
-
-  const isCreditNote = !!invoice.credited_invoice_id
-  const filename = invoicePdfFilename({
-    companyName: company.company_name,
-    customerName: customer.name,
-    invoiceNumber: invoice.invoice_number,
-    invoiceId: invoice.id,
-    invoiceDate: invoice.invoice_date,
-    documentType: invoice.document_type,
-    isCreditNote,
-  })
-
-  const emailData = { invoice: renderableInvoice, customer, company: company as CompanySettings }
-  const subject = generateInvoiceEmailSubject(emailData)
-  const html = generateInvoiceEmailHtml(emailData)
-  const text = generateInvoiceEmailText(emailData)
-  let result
-  try {
-    result = await sendTrackedInvoiceEmail({
-      supabase,
-      emailService,
-      companyId,
-      userId,
-      invoiceId,
-      deliveryId,
-      to: recipients.to,
-      cc: recipients.cc,
-      bcc: recipients.bcc,
-      subject,
-      html,
-      text,
-      replyTo: company.email || undefined,
-      fromName: company.company_name,
-      filename,
-      pdfBuffer,
-    })
-  } catch (err) {
-    log.error('failed to persist invoice delivery snapshot before agent send', err as Error, {
-      companyId,
-      userId,
-      invoiceId,
-    })
-    return { error: 'Utskicksinformationen kunde inte sparas. Ingen e-post skickades.', status: 500 }
-  }
-
-  if (result.trackingWarning) {
-    log.warn('agent invoice delivery snapshot requires reconciliation', {
-      companyId,
-      userId,
-      invoiceId,
-      deliveryId: result.deliveryId,
-      warning: result.trackingWarning,
-    })
-  }
-
-  if (!result.success) return { error: `Failed to send email: ${result.error}`, status: 500 }
-
-  await supabase.from('invoices').update({ status: 'sent' }).eq('id', invoiceId).eq('company_id', companyId)
-
-  const isRealInvoice = !invoice.document_type || invoice.document_type === 'invoice'
-  let createdJournalEntryId: string | undefined
-  if (isRealInvoice && (company.accounting_method === 'accrual' || !company.accounting_method)) {
-    try {
-      const je = await createInvoiceJournalEntry(
-        supabase, companyId, userId, invoice as Invoice, (company as CompanySettings).entity_type
-      )
-      if (je) {
-        createdJournalEntryId = je.id
-        await supabase.from('invoices').update({ journal_entry_id: je.id }).eq('id', invoiceId)
-      }
-    } catch (err) {
-      await recordSkippedInvoiceJournalEntry(invoiceId, companyId, userId, 'send_invoice', err)
-    }
-  }
-
-  if (isRealInvoice && createdJournalEntryId) {
-    try {
-      await linkToJournalEntry(supabase, companyId, result.documentId, createdJournalEntryId)
-    } catch { /* non-blocking */ }
-  }
-
-  await eventBus.emit({ type: 'invoice.sent', payload: { invoice: invoice as Invoice, userId, companyId } })
-
-  return {
-    data: {
-      message: `Invoice ${invoice.invoice_number} sent to ${customer.email}`,
-      ...(result.trackingWarning
-        ? { warning: 'Delivery history requires reconciliation.' }
-        : {}),
-    },
-  }
 }
 
 async function commitMarkInvoiceSent(
@@ -4155,9 +3862,6 @@ async function commitPendingOperationInner(
         break
       case 'mark_invoice_paid':
         result = await commitMarkInvoicePaid(supabase, userId, companyId, pendingOp.params)
-        break
-      case 'send_invoice':
-        result = await commitSendInvoice(supabase, userId, companyId, pendingOp.params, opts.userEmail)
         break
       case 'mark_invoice_sent':
         result = await commitMarkInvoiceSent(supabase, userId, companyId, pendingOp.params)

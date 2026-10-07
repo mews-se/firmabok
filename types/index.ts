@@ -2175,7 +2175,6 @@ export type PendingOperationType =
   | 'create_supplier'
   | 'create_invoice'
   | 'mark_invoice_paid'
-  | 'send_invoice'
   | 'mark_invoice_sent'
   | 'match_transaction_invoice'
   // Stream 1 Phase 1: bookkeeping period operations

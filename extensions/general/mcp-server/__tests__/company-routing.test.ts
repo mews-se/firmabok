@@ -34,7 +34,7 @@ describe('MCP company routing', () => {
       required: ['invoice_id'],
     }
 
-    const projected = projectToolInputSchema({ name: 'gnubok_send_invoice', inputSchema })
+    const projected = projectToolInputSchema({ name: 'gnubok_mark_invoice_as_sent', inputSchema })
 
     expect(projected).not.toBe(inputSchema)
     expect(projected.properties).toEqual({

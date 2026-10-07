@@ -17,14 +17,12 @@ interface TaxSettingsFormProps {
   settings: CompanySettings
   /** Ledger-derived signal: EU sales postings exist (3108/3308/3107). */
   euSalesDetected?: boolean
-  /** Ledger-derived signal: utdelning/ägarlån postings exist (2898/2393/2893). */
-  kuSignalDetected?: boolean
   /** Invoice-derived signal: invoices with ROT/RUT deductions exist. */
   rotRutSignalDetected?: boolean
 }
 
 /**
- * Ledger/invoice-derived suggestion (EU sales, KU, ROT/RUT) as one visible
+ * Ledger/invoice-derived suggestion (EU sales, ROT/RUT) as one visible
  * warning-tone sentence. The full body, including the legal deadlines and
  * late-fee amounts, lives behind the "?" so the signal stays a single line.
  */
@@ -40,7 +38,6 @@ function SignalLine({ text, help }: { text: string; help: React.ReactNode }) {
 export function TaxSettingsForm({
   settings,
   euSalesDetected = false,
-  kuSignalDetected = false,
   rotRutSignalDetected = false,
 }: TaxSettingsFormProps) {
   const t = useTranslations('settings_tax_form')
@@ -52,12 +49,7 @@ export function TaxSettingsForm({
   )
   const [hasEuTrade, setHasEuTrade] = useState(settings.vat_has_eu_trade ?? false)
   const [psEnabled, setPsEnabled] = useState(settings.periodisk_sammanstallning_enabled ?? false)
-  const [kuEnabled, setKuEnabled] = useState(settings.kontrolluppgifter_enabled ?? false)
   const [rotRutEnabled, setRotRutEnabled] = useState(settings.rot_rut_enabled ?? false)
-  const [ossEnabled, setOssEnabled] = useState(settings.oss_enabled ?? false)
-  const [iossEnabled, setIossEnabled] = useState(settings.ioss_enabled ?? false)
-  const [intrastatEnabled, setIntrastatEnabled] = useState(settings.intrastat_enabled ?? false)
-  const [punktskattEnabled, setPunktskattEnabled] = useState(settings.punktskatt_enabled ?? false)
   const [fyllnadEnabled, setFyllnadEnabled] = useState(
     settings.fyllnadsinbetalning_enabled ?? false,
   )
@@ -331,30 +323,6 @@ export function TaxSettingsForm({
         </SettingsRow>
       </SettingsGroup>
 
-      {/* Kontrolluppgifter (KU) */}
-      <SettingsGroup label={t('kontrolluppgifter_heading')}>
-        {kuSignalDetected && !kuEnabled && (
-          <SignalLine text={t('ku_suggestion_title')} help={t('ku_suggestion_help')} />
-        )}
-
-        <SettingsRow
-          label={t('kontrolluppgifter_label')}
-          htmlFor="kontrolluppgifter_enabled"
-          help={t('kontrolluppgifter_help')}
-        >
-          <Switch
-            id="kontrolluppgifter_enabled"
-            checked={kuEnabled}
-            onCheckedChange={(v) => setKuEnabled(v === true)}
-          />
-          <input
-            type="hidden"
-            name="kontrolluppgifter_enabled"
-            value={kuEnabled ? 'true' : 'false'}
-          />
-        </SettingsRow>
-      </SettingsGroup>
-
       {/* ROT/RUT */}
       <SettingsGroup label={t('rot_rut_heading')}>
         {rotRutSignalDetected && !rotRutEnabled && (
@@ -399,54 +367,6 @@ export function TaxSettingsForm({
 
       {/* Long-tail deadlines: explicit opt-in only */}
       <SettingsGroup label={t('more_deadlines_heading')} help={t('more_deadlines_help')}>
-        {vatRegistered && (
-          <>
-            <SettingsRow label={t('oss_label')} htmlFor="oss_enabled" help={t('oss_help')}>
-              <Switch
-                id="oss_enabled"
-                checked={ossEnabled}
-                onCheckedChange={(v) => setOssEnabled(v === true)}
-              />
-              <input type="hidden" name="oss_enabled" value={ossEnabled ? 'true' : 'false'} />
-            </SettingsRow>
-
-            <SettingsRow label={t('ioss_label')} htmlFor="ioss_enabled" help={t('ioss_help')}>
-              <Switch
-                id="ioss_enabled"
-                checked={iossEnabled}
-                onCheckedChange={(v) => setIossEnabled(v === true)}
-              />
-              <input type="hidden" name="ioss_enabled" value={iossEnabled ? 'true' : 'false'} />
-            </SettingsRow>
-
-            <SettingsRow label={t('intrastat_label')} htmlFor="intrastat_enabled" help={t('intrastat_help')}>
-              <Switch
-                id="intrastat_enabled"
-                checked={intrastatEnabled}
-                onCheckedChange={(v) => setIntrastatEnabled(v === true)}
-              />
-              <input
-                type="hidden"
-                name="intrastat_enabled"
-                value={intrastatEnabled ? 'true' : 'false'}
-              />
-            </SettingsRow>
-          </>
-        )}
-
-        <SettingsRow label={t('punktskatt_label')} htmlFor="punktskatt_enabled" help={t('punktskatt_help')}>
-          <Switch
-            id="punktskatt_enabled"
-            checked={punktskattEnabled}
-            onCheckedChange={(v) => setPunktskattEnabled(v === true)}
-          />
-          <input
-            type="hidden"
-            name="punktskatt_enabled"
-            value={punktskattEnabled ? 'true' : 'false'}
-          />
-        </SettingsRow>
-
         <SettingsRow
           label={t('fyllnadsinbetalning_label')}
           htmlFor="fyllnadsinbetalning_enabled"

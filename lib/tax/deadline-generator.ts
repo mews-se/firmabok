@@ -65,17 +65,12 @@ export const TAX_RELEVANT_FIELDS = [
   'periodisk_sammanstallning_enabled',
   'periodisk_sammanstallning_period',
   'periodisk_sammanstallning_filing_method',
-  'kontrolluppgifter_enabled',
   'rot_rut_enabled',
-  'oss_enabled',
-  'ioss_enabled',
-  'intrastat_enabled',
-  'punktskatt_enabled',
   'fyllnadsinbetalning_enabled',
 ] as const
 
 export const DEADLINE_SETTINGS_SELECT =
-  'company_id, entity_type, moms_period, f_skatt, preliminary_tax_monthly, vat_registered, fiscal_year_start_month, vat_taxable_base_over_40m, vat_has_eu_trade, vat_filing_method, periodisk_sammanstallning_enabled, periodisk_sammanstallning_period, periodisk_sammanstallning_filing_method, kontrolluppgifter_enabled, rot_rut_enabled, oss_enabled, ioss_enabled, intrastat_enabled, punktskatt_enabled, fyllnadsinbetalning_enabled' as const
+  'company_id, entity_type, moms_period, f_skatt, preliminary_tax_monthly, vat_registered, fiscal_year_start_month, vat_taxable_base_over_40m, vat_has_eu_trade, vat_filing_method, periodisk_sammanstallning_enabled, periodisk_sammanstallning_period, periodisk_sammanstallning_filing_method, rot_rut_enabled, fyllnadsinbetalning_enabled' as const
 
 /**
  * Check if any tax-relevant fields changed
@@ -117,13 +112,8 @@ export function toDeadlineSettings(
     periodisk_sammanstallning_period: settings.periodisk_sammanstallning_period ?? 'monthly',
     periodisk_sammanstallning_filing_method:
       settings.periodisk_sammanstallning_filing_method ?? 'electronic',
-    kontrolluppgifter_enabled: settings.kontrolluppgifter_enabled ?? false,
     rot_rut_enabled: settings.rot_rut_enabled ?? false,
     rot_rut_payment_years: settings.rot_rut_payment_years,
-    oss_enabled: settings.oss_enabled ?? false,
-    ioss_enabled: settings.ioss_enabled ?? false,
-    intrastat_enabled: settings.intrastat_enabled ?? false,
-    punktskatt_enabled: settings.punktskatt_enabled ?? false,
     fyllnadsinbetalning_enabled: settings.fyllnadsinbetalning_enabled ?? false,
     tax_assessment_notices: settings.tax_assessment_notices,
   }

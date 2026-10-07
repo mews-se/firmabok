@@ -29,12 +29,7 @@ export interface CompanySettingsForDeadlines {
   periodisk_sammanstallning_enabled: boolean
   periodisk_sammanstallning_period: 'monthly' | 'quarterly'
   periodisk_sammanstallning_filing_method: TaxFilingMethod
-  kontrolluppgifter_enabled: boolean
   rot_rut_enabled: boolean
-  oss_enabled: boolean
-  ioss_enabled: boolean
-  intrastat_enabled: boolean
-  punktskatt_enabled: boolean
   fyllnadsinbetalning_enabled: boolean
   /**
    * Derived, NOT a company_settings column: distinct years with paid ROT/RUT

@@ -229,19 +229,12 @@ export interface CompanySettings {
   vat_filing_method: TaxFilingMethod
   periodisk_sammanstallning_enabled: boolean
   periodisk_sammanstallning_filing_method: TaxFilingMethod
-  // Annual kontrolluppgifter (KU10/KU20/KU31) reminder, due 31 January.
-  kontrolluppgifter_enabled: boolean
   // ROT/RUT begäran om utbetalning reminder, due 31 January after the
   // payment year (Lag 2009:194 8 §). Rows are only generated for years
   // that actually have paid ROT/RUT invoices.
   rot_rut_enabled: boolean
-  // Long-tail deadlines, explicit opt-in only ("Fler deadlines" in tax
-  // settings). OSS/IOSS are EU-law deadlines that never move to the next
-  // banking day.
-  oss_enabled: boolean
-  ioss_enabled: boolean
-  intrastat_enabled: boolean
-  punktskatt_enabled: boolean
+  // Long-tail deadline, explicit opt-in only ("Fler deadlines" in tax
+  // settings).
   fyllnadsinbetalning_enabled: boolean
 
   // Tax contact (SKV-filings, periodisk sammanställning, AGI, etc.)

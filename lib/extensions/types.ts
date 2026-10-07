@@ -167,15 +167,13 @@ export interface ExtensionStorage {
 /** Core services exposed to extensions */
 export interface ExtensionServices {
   /**
-   * List a company's cash accounts (cash_accounts table). Replaces ad-hoc reads
-   * of bank_connections.accounts_data for routing decisions. Returns rows
-   * sorted by `is_primary DESC, ledger_account ASC`.
+   * List a company's cash accounts (cash_accounts table). Returns rows sorted
+   * by `is_primary DESC, ledger_account ASC`.
    */
   getCashAccounts(supabase: SupabaseClient, companyId: string, opts?: { enabledOnly?: boolean }): Promise<CashAccount[]>
   /**
    * Primary cash account for a company, optionally filtered by currency.
    * Falls back to the global primary when no currency-specific row matches.
-   * Used by the skattekonto __PRIMARY_SEK__ sentinel and transfer-pairing.
    */
   getPrimaryCashAccount(supabase: SupabaseClient, companyId: string, currency?: string): Promise<CashAccount | null>
 }

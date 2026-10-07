@@ -3293,10 +3293,8 @@ async function commitCreateVoucher(
   // so a tampered or future direct-staging path can't inject
   // 'bank'/'invoice'/etc. and corrupt audit attribution. The default is
   // 'manual'. We only upgrade to 'opening_balance' after independently
-  // re-validating the entry genuinely looks like an ingående balans: this
-  // matters because bank reconciliation excludes an IB from the period movement
-  // ONLY when source_type='opening_balance' (lib/reconciliation/bank-reconciliation.ts);
-  // a mislabelled 'manual' IB shows up as a phantom reconciliation difference.
+  // re-validating the entry genuinely looks like an ingående balans:
+  // source_type='opening_balance' is what marks an entry as an IB downstream.
   let sourceType: JournalEntrySourceType = 'manual'
   if (params.is_opening_balance === true) {
     // Constraint 1: every line must be a balance-sheet account (BAS class 1 or

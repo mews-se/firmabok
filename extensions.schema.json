@@ -16,17 +16,12 @@
       "items": {
         "type": "string",
         "enum": [
-          "receipt-ocr",
-          "ai-categorization",
           "ai-chat",
           "push-notifications",
           "invoice-inbox",
-          "inbox-smart-match",
           "calendar",
-          "enable-banking",
           "email",
           "arcim-migration",
-          "tic",
           "mcp-server",
           "skatteverket",
           "cloud-backup",

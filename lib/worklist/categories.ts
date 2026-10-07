@@ -1,6 +1,6 @@
 /**
  * Per-category worklist queries: the single owner of every pending-work
- * predicate. Surfaces (dashboard, sidebar badges, /api/worklist, MCP tools)
+ * predicate. Surfaces (dashboard, sidebar badges, MCP tools)
  * must call these instead of inlining their own Supabase queries; see
  * lib/worklist/types.ts for each category's pending/done definition.
  *

@@ -125,8 +125,10 @@ const UNRESOLVED_CEILING = 375
  * 6 103.
  * Re-baselined 2026-10-07 after the KPI, cash flow, dropped deadline and
  * article import code was removed: 6 017.
+ * Re-baselined 2026-10-08 after the final dead-code sweep (test-only modules,
+ * the Grunddata archive, the K2/K3 selector and four uncalled routes): 5 888.
  */
-const RESOLVED_COLUMN_FLOOR = 5_900
+const RESOLVED_COLUMN_FLOOR = 5_800
 
 let schema: SchemaModel
 let scan: ScanResult

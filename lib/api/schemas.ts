@@ -1717,56 +1717,6 @@ export const SupplierImportExecuteSchema = z.object({
   update_duplicates: z.boolean(),
 })
 
-const ImportedArticleRowSchema = z.object({
-  row_index: z.number().int(),
-  name: z.string().min(1),
-  name_en: z.string().nullable(),
-  article_number: z.string().nullable(),
-  type: ArticleTypeSchema,
-  unit: z.string(),
-  price_excl_vat: nonNegativeAmount,
-  // ISO 4217 shape only; the execute route validates against the currencies
-  // table and drops unknown codes (mirrors revenue_account). Optional so rows
-  // parsed before this field existed still validate.
-  currency: z.string().regex(/^[A-Z]{3}$/).nullable().optional(),
-  vat_rate: vatRatePercent,
-  // The execute route re-validates against the chart of accounts (and drops
-  // unknown/inactive overrides), so a loose nullable string is enough here.
-  revenue_account: z.string().nullable(),
-  cost_price: nonNegativeAmount.nullable(),
-  ean: z.string().nullable(),
-  housework_type: z.string().nullable(),
-  notes: z.string().nullable(),
-})
-
-export const ArticleImportExecuteSchema = z.object({
-  rows: z.array(ImportedArticleRowSchema).min(1, 'At least one row is required'),
-  update_duplicates: z.boolean(),
-})
-
-// Validates the optional column-mapping override posted to the parse route, so
-// a malformed/hostile blob can't drive the parser with non-numeric or
-// unexpected column indices. Mirrors DetectedArticleColumns.
-const articleColumnIndex = z.number().int().min(0).nullable()
-export const ArticleColumnOverridesSchema = z.object({
-  name_col: z.number().int().min(0),
-  article_number_col: articleColumnIndex,
-  name_en_col: articleColumnIndex,
-  type_col: articleColumnIndex,
-  unit_col: articleColumnIndex,
-  price_col: articleColumnIndex,
-  // Optional + defaulted so a mapping payload from a client rendered before
-  // this column existed still validates.
-  currency_col: articleColumnIndex.optional().default(null),
-  vat_rate_col: articleColumnIndex,
-  revenue_account_col: articleColumnIndex,
-  cost_price_col: articleColumnIndex,
-  ean_col: articleColumnIndex,
-  housework_type_col: articleColumnIndex,
-  notes_col: articleColumnIndex,
-  confidence: z.number(),
-})
-
 // ============================================================
 // AI agent flow schemas
 // ============================================================

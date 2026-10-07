@@ -21,7 +21,6 @@ import {
 } from '@/lib/hooks/use-submit-with-account-activation'
 import { EmptyState } from '@/components/ui/empty-state'
 import { ContextPicker } from '@/components/common/ContextPicker'
-import { ReportExportMenu } from '@/components/reports/ReportExportMenu'
 import { cn, formatCurrency } from '@/lib/utils'
 import { compareArticles } from '@/lib/articles/sort'
 import {
@@ -274,17 +273,10 @@ function ArticlesPageInner() {
 
   return (
     <div className="space-y-8">
-      {/* Page header (concept scene 27): title + export + Ny artikel */}
+      {/* Page header (concept scene 27): title + Ny artikel */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="font-display text-2xl leading-8 tracking-tight">{t('title')}</h1>
         <div className="flex items-center gap-2">
-          <ReportExportMenu
-            size="default"
-            items={[
-              { format: 'xlsx', href: '/api/export/articles' },
-              { format: 'csv', href: '/api/export/articles?format=csv' },
-            ]}
-          />
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
               <Button

@@ -123,8 +123,10 @@ const UNRESOLVED_CEILING = 375
  * removed: 6 214.
  * Re-baselined 2026-10-07 after the bank transaction readers were removed:
  * 6 103.
+ * Re-baselined 2026-10-07 after the KPI, cash flow, dropped deadline and
+ * article import code was removed: 6 017.
  */
-const RESOLVED_COLUMN_FLOOR = 6_000
+const RESOLVED_COLUMN_FLOOR = 5_900
 
 let schema: SchemaModel
 let scan: ScanResult

@@ -2142,7 +2142,6 @@ export type TaxDeadlineType =
   | 'moms_quarterly'
   | 'moms_yearly'
   | 'f_skatt'
-  | 'skatteinbetalning'
   | 'inkomstdeklaration_ef'
   | 'periodisk_sammanstallning'
   | 'rot_rut_begaran'
@@ -2313,7 +2312,6 @@ export const TAX_DEADLINE_TYPE_LABELS: Record<TaxDeadlineType, string> = {
   moms_quarterly: 'Momsdeklaration (kvartal)',
   moms_yearly: 'Momsdeklaration (år)',
   f_skatt: 'Preliminärskatt (F-skatt)',
-  skatteinbetalning: 'Skatteinbetalning (storföretag)',
   inkomstdeklaration_ef: 'Inkomstdeklaration EF',
   periodisk_sammanstallning: 'Periodisk sammanställning',
   rot_rut_begaran: 'ROT/RUT-begäran om utbetalning',

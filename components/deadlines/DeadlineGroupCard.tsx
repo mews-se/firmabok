@@ -19,7 +19,6 @@ export const SKATTEKONTO_GROUP_TYPES = new Set([
   'moms_quarterly',
   'moms_yearly',
   'f_skatt',
-  'skatteinbetalning',
 ])
 
 export function isSkattekontoDeadline(d: Deadline): boolean {

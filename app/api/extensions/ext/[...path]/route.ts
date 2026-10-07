@@ -81,12 +81,7 @@ export const maxDuration = 300
  * client still renders the enabled flow). UI panels detect the 503 by
  * response code, not by reading the flag directly.
  */
-const EXTENSION_FEATURE_FLAGS: Record<string, { envVar: string; disabledMessage: string }> = {
-  skatteverket: {
-    envVar: 'SKATTEVERKET_ENABLED',
-    disabledMessage: 'Skatteverket-integrationen är inte aktiverad i denna miljö.',
-  },
-}
+const EXTENSION_FEATURE_FLAGS: Record<string, { envVar: string; disabledMessage: string }> = {}
 
 /**
  * Match a request path against a route pattern.

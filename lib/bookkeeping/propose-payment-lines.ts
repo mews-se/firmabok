@@ -113,7 +113,7 @@ export function proposePaymentLines(input: ProposePaymentLinesInput): FormLine[]
 /**
  * The 3740 (öres- och kronutjämning) residual line. Customer paid over the
  * stored total (rounded up) → credit (vinst); under (rounded down) → debit
- * (förlust). Same polarity as buildInvoicePaymentClearingLines.
+ * (förlust).
  */
 function oreRoundingLine(roundingDelta: number): FormLine {
   return {

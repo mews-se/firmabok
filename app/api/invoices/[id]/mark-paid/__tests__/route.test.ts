@@ -628,8 +628,6 @@ describe('POST /api/invoices/[id]/mark-paid', () => {
     const { status, body } = await parseJsonResponse<{ error: { code: string; details?: unknown } }>(response)
 
     expect(status).toBe(400)
-    // Same code the bank-match path throws for the same condition
-    // (lib/bookkeeping/invoice-payment-lines.ts).
     expect(body.error.code).toBe('MATCH_INVOICE_BOOKING_RATE_MISSING')
     expect(mockCreateJournalEntry).not.toHaveBeenCalled()
     expect(mockCreateInvoicePaymentJournalEntry).not.toHaveBeenCalled()

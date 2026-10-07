@@ -69,11 +69,10 @@ const SUPPORTED_CURRENCIES: ReadonlySet<string> = new Set([
 ])
 
 /**
- * Upper plausibility bound for a caller-supplied rate. Same value as the
- * module-local MAX_PLAUSIBLE_FX_RATE in lib/bookkeeping/invoice-payment-lines.ts
- * (which mirrors the match_batch_allocate RPC's 0 < rate < 100000 guard): a
- * rate that far out is as unusable as NULL, and accepting it here would store
- * total_sek at an absurd multiple that the booking path then posts verbatim.
+ * Upper plausibility bound for a caller-supplied rate (mirrors the
+ * match_batch_allocate RPC's 0 < rate < 100000 guard): a rate that far out is
+ * as unusable as NULL, and accepting it here would store total_sek at an
+ * absurd multiple that the booking path then posts verbatim.
  */
 const MAX_PLAUSIBLE_FX_RATE = 100000
 

@@ -136,9 +136,8 @@ describe('resolveSupplierInvoiceExchangeRate', () => {
   })
 
   it('refuses an implausibly large supplied rate instead of storing it', async () => {
-    // Same bound as lib/bookkeeping/invoice-payment-lines.ts and the
-    // match_batch_allocate RPC (0 < rate < 100000): a rate that far out is as
-    // unusable as NULL. Refused, not silently replaced by a fetched rate: the
+    // Same bound as the match_batch_allocate RPC (0 < rate < 100000): a rate
+    // that far out is as unusable as NULL. Refused, not silently replaced by a fetched rate: the
     // caller stated a rate and must get it bounced back for correction.
     const result = await resolveSupplierInvoiceExchangeRate(supabase, {
       currency: 'EUR',

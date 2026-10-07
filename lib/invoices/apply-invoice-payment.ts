@@ -124,13 +124,10 @@ const ORE_ROUNDING_ACCOUNT = '3740'
  * `planInvoicePayment` for caller-supplied booking lines (the mark-paid
  * dialog and the v1 API), where the server does NOT build the verifikat.
  *
- * Absorbing an öre residual is only safe when the lines actually book it:
- * in the server-built bank-match flow `buildInvoicePaymentClearingLines`
- * guarantees 1510 is credited the full remaining and 3740 carries the exact
- * residual, so plan and GL absorb together. Here the lines are caller-owned,
- * so absorption is granted only when the net 3740 amount (debit − credit)
- * equals the signed residual (remaining − payment). Otherwise fall back to
- * the strict plan: a sub-krona short payment stays a real partial and a
+ * Absorbing an öre residual is only safe when the lines actually book it.
+ * The lines are caller-owned, so absorption is granted only when the net
+ * 3740 amount (debit − credit) equals the signed residual (remaining −
+ * payment). Otherwise fall back to the strict plan: a sub-krona short payment stays a real partial and a
  * sub-krona overshoot is rejected, exactly as before absorption existed.
  * Without this gate an invoice could flip to paid while the posted lines
  * under-clear 1510, diverging the GL from the AR sub-ledger.

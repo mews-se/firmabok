@@ -119,9 +119,6 @@ export const POST = withRouteContext(
     if (needsFxConversion && fxRate === null) {
       // Never fall back to rate 1: that reads an 11 496,70 kr payment against a
       // 1 000 EUR invoice as 11 496,70 EUR and corrupts the AR sub-ledger.
-      // Same code as buildInvoicePaymentClearingLines' refusal
-      // (MATCH_INVOICE_BOOKING_RATE_MISSING, lib/bookkeeping/invoice-payment-lines.ts):
-      // one condition, one code across every invoice-settlement surface.
       opLog.warn('mark-paid rejected: foreign-currency invoice without exchange rate', {
         invoiceId: id,
         currency: invoice.currency,

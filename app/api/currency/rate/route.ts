@@ -2,17 +2,12 @@ import { NextResponse } from 'next/server'
 import { withRouteContext } from '@/lib/api/with-route-context'
 import { fetchExchangeRate, readCachedRate } from '@/lib/currency/riksbanken'
 import { createServiceClientNoCookies } from '@/lib/auth/api-keys'
-import { guardSandbox } from '@/lib/sandbox/guard'
 import type { Currency } from '@/types'
 
 const VALID_CURRENCIES: Currency[] = ['EUR', 'USD', 'GBP', 'NOK', 'DKK']
 
-// Riksbanken's open API is IP rate-limited: the sandbox guard keeps demo
-// traffic from eating that budget (withRouteContext already refuses
-// sessions without an active company).
-export const GET = withRouteContext('currency.rate', async (request, ctx) => {
-  const { supabase, companyId } = ctx
-
+// withRouteContext already refuses sessions without an active company.
+export const GET = withRouteContext('currency.rate', async (request) => {
   const { searchParams } = new URL(request.url)
   const currency = searchParams.get('currency') as Currency | null
   const dateStr = searchParams.get('date')
@@ -40,15 +35,10 @@ export const GET = withRouteContext('currency.rate', async (request, ctx) => {
   // exchange_rates is tenant-free public reference data (no company_id,
   // SELECT policy USING(true)), so a service-role read is safe here, and it
   // is the only client that can also WARM the cache: INSERT is service-role
-  // only since migration 20260710100000. The cache read runs in parallel
-  // with the sandbox guard (both are DB-only round trips); no Riksbanken
-  // traffic happens until the guard has resolved false, and only on a miss.
+  // only since migration 20260710100000. Riksbanken is only called on a
+  // cache miss.
   const service = createServiceClientNoCookies()
-  const [blocked, cached] = await Promise.all([
-    guardSandbox(supabase, companyId),
-    readCachedRate(service, currency, formattedDate),
-  ])
-  if (blocked) return blocked
+  const cached = await readCachedRate(service, currency, formattedDate)
 
   const rate = cached ?? (await fetchExchangeRate(currency, date, service))
 

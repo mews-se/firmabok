@@ -6,7 +6,6 @@ import type { Company, CompanyRole } from '@/types'
 interface CompanyContextValue {
   company: Company | null
   role: CompanyRole | null
-  isSandbox: boolean
 }
 
 const CompanyContext = createContext<CompanyContextValue | null>(null)

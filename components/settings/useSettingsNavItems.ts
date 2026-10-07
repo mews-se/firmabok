@@ -26,7 +26,7 @@ const GROUP_ORDER: SettingsGroupKey[] = ['account', 'company', 'accounting', 'sa
  * Single source of truth for the settings sections, their conditional
  * visibility, and their grouping. Consumed by both the full-page rail and the
  * routed settings modal so the two can never drift on which sections show for
- * AB vs EF, sandbox, identity-verified, or enabled extensions.
+ * AB vs EF, identity-verified, or enabled extensions.
  *
  * Visibility is derived from client context (no extra fetch): the company
  * comes from CompanyContext and extension availability from the generated

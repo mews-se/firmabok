@@ -330,9 +330,5 @@ describe('updateSession redirect destinations', () => {
         expect(locationOf(response)).toBe(`${ORIGIN}/`)
       }
     })
-
-    it('still bounces /sandbox to the dashboard, query and all', async () => {
-      expect(locationOf(await run('/sandbox?next=%2Fsettings%2Ftax'))).toBe(`${ORIGIN}/`)
-    })
   })
 })

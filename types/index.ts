@@ -356,9 +356,6 @@ export interface CompanySettings {
   // load-bearing for correctness. Free tier (founder decision 2026-07-02).
   dimensions_enabled: boolean
 
-  // Sandbox
-  is_sandbox: boolean
-
   // Timestamps
   created_at: string
   updated_at: string

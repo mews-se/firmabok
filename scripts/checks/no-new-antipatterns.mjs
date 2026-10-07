@@ -142,13 +142,12 @@ function findRawRouteAuth() {
 }
 
 // Sanctioned journal_entry_lines insert sites. engine/storno write mirrors via
-// dimension-resolver; sie-import and sandbox seed write neither dims nor
-// mirrors (DB defaults keep them consistent).
+// dimension-resolver; sie-import writes neither dims nor mirrors (DB defaults
+// keep them consistent).
 const JEL_INSERT_SANCTIONED = new Set([
   'lib/bookkeeping/engine.ts',
   'lib/core/bookkeeping/storno-service.ts',
   'lib/import/sie-import.ts',
-  'app/api/sandbox/seed/route.ts',
 ])
 // Matches an insert CHAINED on the lines table (`.from('journal_entry_lines').insert(`,
 // with optional whitespace/newlines in the chain): select-only readers don't count.

@@ -21,10 +21,6 @@ vi.mock('@/lib/currency/riksbanken', () => ({
   readCachedRate: vi.fn(),
 }))
 
-vi.mock('@/lib/sandbox/guard', () => ({
-  guardSandbox: vi.fn(),
-}))
-
 // Sentinel service client: the route must pass THIS client (not the user
 // client) to the cache read and to fetchExchangeRate, so the first live
 // fetch can warm the shared exchange_rates cache (INSERT is service-role
@@ -36,7 +32,6 @@ vi.mock('@/lib/auth/api-keys', () => ({
 
 import { GET } from '../route'
 import { fetchExchangeRate, readCachedRate } from '@/lib/currency/riksbanken'
-import { guardSandbox } from '@/lib/sandbox/guard'
 
 const mockUser = { id: 'user-1', email: 'test@test.se' }
 
@@ -49,7 +44,6 @@ const noParams = { params: Promise.resolve({}) }
 beforeEach(() => {
   vi.clearAllMocks()
   requireAuthMock.mockResolvedValue({ user: mockUser, supabase: mockSupabase, error: null })
-  vi.mocked(guardSandbox).mockResolvedValue(null)
   vi.mocked(readCachedRate).mockResolvedValue(null)
   vi.mocked(fetchExchangeRate).mockResolvedValue(null)
 })
@@ -94,21 +88,6 @@ describe('GET /api/currency/rate', () => {
 
     expect(status).toBe(400)
     expect(body.error).toBe('Invalid date (expected YYYY-MM-DD)')
-    expect(fetchExchangeRate).not.toHaveBeenCalled()
-  })
-
-  it('returns 403 for sandbox companies without any Riksbanken traffic', async () => {
-    vi.mocked(guardSandbox).mockResolvedValue(
-      NextResponse.json({ error: 'Inte tillgängligt i sandlådan.' }, { status: 403 }),
-    )
-    // Even with a cache miss the external fetch must never fire.
-    vi.mocked(readCachedRate).mockResolvedValue(null)
-
-    const res = await GET(makeReq('?currency=EUR&date=2025-01-15'), noParams)
-    const { status } = await parseJsonResponse(res)
-
-    expect(status).toBe(403)
-    expect(guardSandbox).toHaveBeenCalledWith(mockSupabase, 'company-1')
     expect(fetchExchangeRate).not.toHaveBeenCalled()
   })
 

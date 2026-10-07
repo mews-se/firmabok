@@ -8,7 +8,6 @@ import { Progress } from '@/components/ui/progress'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/ui/page-header'
 import { HelpPopover } from '@/components/ui/help-popover'
-import { AttnLine } from '@/components/ui/attn-line'
 import {
   Dialog,
   DialogContent,
@@ -1608,7 +1607,7 @@ function CSVDataImportWizard() {
 type ImportMode = null | 'psd2' | 'sie' | 'csv_data'
 
 export default function ImportPage() {
-  const { isSandbox, role } = useCompany()
+  const { role } = useCompany()
   const [mode, setMode] = useState<ImportMode>(null)
   const [view, setView] = useState<'import' | 'export'>('import')
   const [sieDialogOpen, setSieDialogOpen] = useState(false)
@@ -1622,10 +1621,7 @@ export default function ImportPage() {
   // Sync mode + view from URL search params (reacts to client-side navigation changes)
   const searchParams = useSearchParams()
   useEffect(() => {
-    // External imports (PSD2 bank connection) need live third-party
-    // credentials, so their deep links are ignored in the sandbox.
-    // Manual file-import modes (CSV/Excel, SIE) stay reachable.
-    const allowedModes = isSandbox ? ['sie', 'csv_data'] : ['psd2', 'sie', 'csv_data']
+    const allowedModes = ['psd2', 'sie', 'csv_data']
     const modeParam = searchParams.get('mode')
     if (modeParam && allowedModes.includes(modeParam)) {
       setMode(modeParam as ImportMode)
@@ -1634,7 +1630,7 @@ export default function ImportPage() {
     if (viewParam === 'export' || viewParam === 'import') {
       setView(viewParam)
     }
-  }, [isSandbox, searchParams])
+  }, [searchParams])
 
   // Hash-based deep links: both live on the export tab; #sie-export opens
   // the SIE dialog and #full-archive the archive download dialog.
@@ -1671,8 +1667,6 @@ export default function ImportPage() {
 
       {mode === null && (
         <>
-          {isSandbox && <AttnLine>{t('sandbox_disabled')}</AttnLine>}
-
           {/* Importera / Exportera as separate tabs (house seg), like before */}
           <div className="inline-flex shrink-0 gap-0.5 rounded-lg bg-muted/70 p-[3px]" role="tablist">
             {(

@@ -4,7 +4,6 @@ import { errorResponse, errorResponseFromCode } from '@/lib/errors/get-structure
 import { fetchExchangeRate } from '@/lib/currency/riksbanken'
 import { roundOre } from '@/lib/money'
 import { resolvePeriodStatusForDate } from '@/lib/core/bookkeeping/period-service'
-import { guardSandbox } from '@/lib/sandbox/guard'
 import type { Currency, Invoice } from '@/types'
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -58,10 +57,6 @@ export const POST = withRouteContext<{ params: Promise<{ id: string }> }>(
         details: { field: 'id', reason: 'not_a_uuid' },
       })
     }
-
-    // Riksbanken is a gated external service in the sandbox.
-    const blocked = await guardSandbox(supabase, companyId)
-    if (blocked) return blocked
 
     // The *_sek columns are projected solely so the post-update compensation
     // below can restore the exact prior values if a concurrent booking wins.

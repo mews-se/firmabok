@@ -5,7 +5,6 @@ import { MainContainer } from '@/components/dashboard/MainContainer'
 import LazyCommandPalette from '@/components/common/LazyCommandPalette'
 import { SettingsHotkey } from '@/components/settings/SettingsHotkey'
 import { SessionTimeoutController } from '@/components/auth/SessionTimeoutController'
-import { SandboxBanner } from '@/components/dashboard/SandboxBanner'
 import { CompanyProvider } from '@/contexts/CompanyContext'
 import { APP_NAME } from '@/lib/brand'
 import type { EntityType, CompanyRole } from '@/types'
@@ -79,7 +78,6 @@ export default async function DashboardLayout({
         value={{
           company: null,
           role: null,
-          isSandbox: false,
         }}
       >
         <SessionTimeoutController />
@@ -87,7 +85,6 @@ export default async function DashboardLayout({
           <DashboardNav
             companyName={APP_NAME.toLowerCase()}
             entityType="enskild_firma"
-            isSandbox={false}
           />
           <main
             id="main-content"
@@ -140,7 +137,6 @@ export default async function DashboardLayout({
     const companyContextValue = {
       company: null,
       role: null,
-      isSandbox: false,
     }
 
     return (
@@ -150,7 +146,6 @@ export default async function DashboardLayout({
           <DashboardNav
             companyName={APP_NAME.toLowerCase()}
             entityType="enskild_firma"
-            isSandbox={false}
           />
           <main id="main-content" className={MAIN_PANEL_CLASS} role="main">
             <div className="max-w-5xl mx-auto px-5 py-8 md:px-8 md:py-10">
@@ -188,8 +183,6 @@ export default async function DashboardLayout({
     entity_type: entityType,
   }
 
-  const isSandbox = settings?.is_sandbox === true
-
   // Client-driven UI preferences (sidebar collapse + fold state). Read here
   // so the shell renders at the right width on first paint; the nav toggles
   // flip the data attribute client-side and persist via /api/user/ui-state.
@@ -199,7 +192,6 @@ export default async function DashboardLayout({
   const companyContextValue = {
     company: companyWithName,
     role: memberRow.role as CompanyRole,
-    isSandbox,
   }
 
   return (
@@ -217,12 +209,10 @@ export default async function DashboardLayout({
         >
           Hoppa till innehåll
         </a>
-        {isSandbox && <SandboxBanner />}
         <DashboardNav
           companyName={settings?.company_name || 'Min verksamhet'}
           entityType={entityType}
           dimensionsEnabled={dimensionsEnabled}
-          isSandbox={isSandbox}
           userName={userProfile?.full_name ?? null}
           userEmail={user.email ?? null}
           initialUiState={uiState}

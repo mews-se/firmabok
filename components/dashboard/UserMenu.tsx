@@ -21,7 +21,6 @@ const APP_COMMIT = process.env.NEXT_PUBLIC_APP_COMMIT ?? ''
 interface UserMenuProps {
   userName: string | null
   userEmail: string | null
-  isSandbox: boolean
   collapsed: boolean
   onLogout: () => void
 }
@@ -46,11 +45,10 @@ function accountInitial(name: string | null, email: string | null): string {
 export default function UserMenu({
   userName,
   userEmail,
-  isSandbox,
   collapsed,
   onLogout,
 }: UserMenuProps) {
-  const { company, isSandbox: companyCtxSandbox } = useCompany()
+  const { company } = useCompany()
   const tNav = useTranslations('nav')
   const tCommon = useTranslations('common')
 
@@ -58,8 +56,6 @@ export default function UserMenu({
   const triggerRef = useRef<HTMLButtonElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
   const [menuPos, setMenuPos] = useState({ top: 0, left: 0 })
-
-  const sandbox = isSandbox || companyCtxSandbox
 
   const updatePosition = useCallback(() => {
     if (!triggerRef.current || !menuRef.current) return
@@ -194,7 +190,7 @@ export default function UserMenu({
                 className={cn(menuRow, 'text-destructive hover:text-destructive')}
               >
                 <LogOut className="h-4 w-4 flex-shrink-0" />
-                {sandbox ? tNav('logout_sandbox') : tCommon('logout')}
+                {tCommon('logout')}
               </button>
             </div>
 

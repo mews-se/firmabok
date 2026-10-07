@@ -143,12 +143,11 @@ describe('POST /api/invoices/[id]/refresh-exchange-rate', () => {
 
     expect(status).toBe(400)
     expect(body.error.code).toBe('VALIDATION_ERROR')
-    // Rejected before any DB work, including the sandbox lookup.
+    // Rejected before any DB work.
     expect(mockSupabase.from).not.toHaveBeenCalled()
   })
 
   it('returns 404 when the invoice does not exist for the company', async () => {
-    enqueue({ data: { is_sandbox: false } })
     enqueue({ data: null, error: { message: 'Not found' } })
 
     const { status, body } = await parseJsonResponse<{ error: { code: string } }>(await post())
@@ -158,7 +157,6 @@ describe('POST /api/invoices/[id]/refresh-exchange-rate', () => {
   })
 
   it('fills in the taxable-event rate on an unbooked SENT invoice without touching its currency amounts', async () => {
-    enqueue({ data: { is_sandbox: false } })
     enqueue({ data: sentEurInvoice })
     enqueue({ data: [] }) // journal_entries: nothing references the invoice
     enqueue({
@@ -201,7 +199,6 @@ describe('POST /api/invoices/[id]/refresh-exchange-rate', () => {
   })
 
   it('uses delivery_date as the rate date when it differs from the invoice date', async () => {
-    enqueue({ data: { is_sandbox: false } })
     enqueue({ data: { ...sentEurInvoice, delivery_date: '2026-05-20' } })
     enqueue({ data: [] })
     enqueue({ data: [sentEurInvoice] })
@@ -213,7 +210,6 @@ describe('POST /api/invoices/[id]/refresh-exchange-rate', () => {
   })
 
   it('refuses a booked invoice and points at the rättelse tracks', async () => {
-    enqueue({ data: { is_sandbox: false } })
     enqueue({ data: { ...sentEurInvoice, journal_entry_id: 'je-1' } })
 
     const { status, body } = await parseJsonResponse<{ error: { code: string } }>(await post())
@@ -226,7 +222,6 @@ describe('POST /api/invoices/[id]/refresh-exchange-rate', () => {
   })
 
   it('refuses when a verifikat references the invoice even though journal_entry_id is null (legacy rows)', async () => {
-    enqueue({ data: { is_sandbox: false } })
     enqueue({ data: sentEurInvoice })
     enqueue({ data: [{ id: 'je-9', voucher_series: 'A', voucher_number: 17 }] })
 
@@ -243,7 +238,6 @@ describe('POST /api/invoices/[id]/refresh-exchange-rate', () => {
       status: 'locked',
       lock_date: '2026-06-30',
     })
-    enqueue({ data: { is_sandbox: false } })
     enqueue({ data: sentEurInvoice })
     enqueue({ data: [] })
 
@@ -263,7 +257,6 @@ describe('POST /api/invoices/[id]/refresh-exchange-rate', () => {
       lock_date: null,
       lookup_failed: true,
     })
-    enqueue({ data: { is_sandbox: false } })
     enqueue({ data: sentEurInvoice })
     enqueue({ data: [] })
 
@@ -278,7 +271,6 @@ describe('POST /api/invoices/[id]/refresh-exchange-rate', () => {
 
   it('returns 502 and writes nothing when Riksbanken and the cache both fail', async () => {
     mockFetchExchangeRate.mockResolvedValue(null)
-    enqueue({ data: { is_sandbox: false } })
     enqueue({ data: sentEurInvoice })
     enqueue({ data: [] })
 
@@ -291,7 +283,6 @@ describe('POST /api/invoices/[id]/refresh-exchange-rate', () => {
   })
 
   it('is a no-op for a SEK invoice', async () => {
-    enqueue({ data: { is_sandbox: false } })
     enqueue({ data: makeInvoice({ id: INVOICE_ID, status: 'sent', currency: 'SEK' }) })
 
     const { status } = await parseJsonResponse(await post())
@@ -302,7 +293,6 @@ describe('POST /api/invoices/[id]/refresh-exchange-rate', () => {
   })
 
   it('writes nothing when the stored rate is already the taxable-event rate', async () => {
-    enqueue({ data: { is_sandbox: false } })
     enqueue({
       data: { ...sentEurInvoice, exchange_rate: 11.5, exchange_rate_date: '2026-06-15' },
     })
@@ -315,7 +305,6 @@ describe('POST /api/invoices/[id]/refresh-exchange-rate', () => {
   })
 
   it('reports the concurrent-booking race instead of silently succeeding', async () => {
-    enqueue({ data: { is_sandbox: false } })
     enqueue({ data: sentEurInvoice })
     enqueue({ data: [] })
     enqueue({ data: [] }) // update matched 0 rows: journal_entry_id was set meanwhile
@@ -340,7 +329,6 @@ describe('POST /api/invoices/[id]/refresh-exchange-rate', () => {
       vat_amount_sek: 0,
       total_sek: 11200,
     }
-    enqueue({ data: { is_sandbox: false } })
     enqueue({ data: previouslyRated })
     enqueue({ data: [] }) // pre-write guard: no entry references the invoice yet
     enqueue({ data: [{ ...previouslyRated, exchange_rate: 11.5 }] }) // guarded update succeeds
@@ -379,7 +367,6 @@ describe('POST /api/invoices/[id]/refresh-exchange-rate', () => {
   })
 
   it('does not revert when the post-update recheck finds no verifikat', async () => {
-    enqueue({ data: { is_sandbox: false } })
     enqueue({ data: sentEurInvoice })
     enqueue({ data: [] }) // pre-write guard
     enqueue({ data: [{ ...sentEurInvoice, exchange_rate: 11.5 }] }) // update
@@ -389,15 +376,5 @@ describe('POST /api/invoices/[id]/refresh-exchange-rate', () => {
 
     expect(status).toBe(200)
     expect(recorded.filter((q) => q.op === 'update')).toHaveLength(1)
-  })
-
-  it('is blocked in the sandbox', async () => {
-    enqueue({ data: { is_sandbox: true } })
-
-    const { status, body } = await parseJsonResponse<{ sandbox_blocked: boolean }>(await post())
-
-    expect(status).toBe(403)
-    expect(body.sandbox_blocked).toBe(true)
-    expect(mockFetchExchangeRate).not.toHaveBeenCalled()
   })
 })

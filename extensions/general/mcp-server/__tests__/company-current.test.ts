@@ -82,7 +82,7 @@ const EXPECTED_QUERIES: { table: string; columns: string[] }[] = [
       'f_skatt', 'vat_registered', 'vat_number', 'moms_period',
       'fiscal_year_start_month', 'accounting_method', 'default_voucher_series',
       'bookkeeping_locked_through', 'auto_lock_period_days', 'invoice_prefix',
-      'next_invoice_number', 'invoice_default_days', 'is_sandbox',
+      'next_invoice_number', 'invoice_default_days',
     ],
   },
   {

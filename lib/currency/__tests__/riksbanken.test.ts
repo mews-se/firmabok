@@ -224,9 +224,8 @@ describe('fetchExchangeRate', () => {
   })
 })
 
-// Exported so the currency.rate route can hit the exchange_rates cache in
-// parallel with its sandbox guard instead of always going through
-// fetchExchangeRate's sequential path.
+// Exported so the currency.rate route can hit the exchange_rates cache
+// directly instead of always going through fetchExchangeRate.
 describe('readCachedRate', () => {
   it('maps an exact-date cache row to an ExchangeRate', async () => {
     const maybeSingle = vi.fn().mockResolvedValue({

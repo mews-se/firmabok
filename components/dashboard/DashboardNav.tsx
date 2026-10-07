@@ -55,7 +55,6 @@ interface DashboardNavProps {
   // switched on. Drives visibility of the Kostnadsställen & projekt row:
   // fetched by the dashboard layout.
   dimensionsEnabled?: boolean
-  isSandbox?: boolean
   // Signed-in user's full name + email: drives the bottom-left account
   // popover trigger so the user can see WHO they're logged in as,
   // distinct from the active COMPANY shown up top.
@@ -206,7 +205,7 @@ const groupLabelKey: Record<Exclude<GroupKey, 'top'>, string> = {
   skatt: 'group_tax',
 }
 
-export default function DashboardNav({ companyName: _companyName, entityType, dimensionsEnabled = false, isSandbox = false, userName = null, userEmail = null, initialUiState }: DashboardNavProps) {
+export default function DashboardNav({ companyName: _companyName, entityType, dimensionsEnabled = false, userName = null, userEmail = null, initialUiState }: DashboardNavProps) {
   const pathname = usePathname()
   const router = useRouter()
   const { company } = useCompany()
@@ -268,7 +267,7 @@ export default function DashboardNav({ companyName: _companyName, entityType, di
 
   const handleLogout = async () => {
     await createClient().auth.signOut()
-    router.push(isSandbox ? '/sandbox' : '/login')
+    router.push('/login')
   }
 
   const isActive = (href: string) => {
@@ -606,7 +605,6 @@ export default function DashboardNav({ companyName: _companyName, entityType, di
               <UserMenu
                 userName={userName}
                 userEmail={userEmail}
-                isSandbox={isSandbox}
                 collapsed={collapsed}
                 onLogout={() => void handleLogout()}
               />
@@ -883,7 +881,7 @@ export default function DashboardNav({ companyName: _companyName, entityType, di
                 }}
               >
                 <LogOut className="mr-3 h-[18px] w-[18px]" />
-                {isSandbox ? tNav('logout_sandbox') : tCommon('logout')}
+                {tCommon('logout')}
               </Button>
             </div>
           </div>

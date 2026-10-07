@@ -153,23 +153,14 @@ export async function updateSession(request: NextRequest) {
   }
 
   // Public auth routes: allow access
-  if (
-    pathname.startsWith('/login') ||
-    pathname.startsWith('/register') ||
-    pathname.startsWith('/sandbox')
-  ) {
+  if (pathname.startsWith('/login') || pathname.startsWith('/register')) {
     // If user is logged in and trying to access auth pages, redirect to the
     // destination the auth page would have sent them to, dashboard otherwise.
     // /login?next=… is set by the bounce below; discarding the whole query
     // string here stranded an already-signed-in user on the dashboard
-    // instead of the deep link they clicked. Only /login and /register carry
-    // `next`; /sandbox bounces to '/' exactly as before.
+    // instead of the deep link they clicked.
     if (user) {
-      const carriesDestination =
-        pathname.startsWith('/login') || pathname.startsWith('/register')
-      const destination = carriesDestination
-        ? safeReturnTo(request.nextUrl.searchParams.get('next'), '/')
-        : '/'
+      const destination = safeReturnTo(request.nextUrl.searchParams.get('next'), '/')
       return NextResponse.redirect(new URL(destination, request.url))
     }
     return supabaseResponse

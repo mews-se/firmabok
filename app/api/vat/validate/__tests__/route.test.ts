@@ -22,11 +22,6 @@ vi.mock('@/lib/vat/vies-client', () => ({
   validateVatNumber: (...args: unknown[]) => mockValidateVatNumber(...args),
 }))
 
-// Company is not a sandbox, so VIES calls proceed.
-vi.mock('@/lib/sandbox/guard', () => ({
-  guardSandbox: vi.fn().mockResolvedValue(null),
-}))
-
 import { POST } from '../route'
 
 describe('POST /api/vat/validate', () => {

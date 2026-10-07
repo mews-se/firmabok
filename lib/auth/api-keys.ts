@@ -21,7 +21,6 @@ export const API_KEY_SCOPES = {
   // v1 REST API: added Phase 1
   'companies:read':     { label: 'Företag: läs',        description: 'Lista och visa företagsprofiler som API-nyckeln har tillgång till' },
   'companies:write':    { label: 'Företag: skriv',      description: 'Uppdatera företagsinställningar via stagade verktyg' },
-  'events:read':        { label: 'Händelser: läs',      description: 'Polla händelseloggen (event_log)' },
   'operations:read':    { label: 'Operationer: läs',    description: 'Hämta status för långkörande operationer (importer, bokslut, omvärdering)' },
   'documents:read':     { label: 'Dokument: läs',       description: 'Lista och hämta dokumentbilagor' },
   'documents:write':    { label: 'Dokument: skriv',     description: 'Ladda upp och koppla dokument till verifikationer' },

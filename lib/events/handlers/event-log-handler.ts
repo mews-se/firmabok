@@ -6,7 +6,7 @@ import { createLogger } from '@/lib/logger'
 const log = createLogger('event-log')
 
 /**
- * Event types persisted to the event_log table for external automation platforms.
+ * Event types persisted to the event_log table.
  * Excludes noise events that are always followed by an actionable event.
  */
 const PERSISTED_EVENT_TYPES: CoreEventType[] = [
@@ -191,7 +191,7 @@ async function persistEvent(
 
 /**
  * Register event log handlers on the event bus.
- * Persists events to the event_log table for external automation platforms.
+ * Persists events to the event_log table.
  * Returns an array of unsubscribe functions.
  */
 export function registerEventLogHandler(): (() => void)[] {

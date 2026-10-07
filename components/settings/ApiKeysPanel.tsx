@@ -108,12 +108,6 @@ const SCOPE_GROUPS: ScopeGroup[] = [
     write: null,
   },
   {
-    domain: 'events',
-    labelKey: 'group_events',
-    read: { scope: 'events:read', labelKey: 'scope_events_read', tools: 0 },
-    write: null,
-  },
-  {
     domain: 'operations',
     labelKey: 'group_operations',
     read: { scope: 'operations:read', labelKey: 'scope_operations_read', tools: 0 },

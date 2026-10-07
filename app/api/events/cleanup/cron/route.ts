@@ -7,8 +7,7 @@ import { errorResponse } from '@/lib/errors/get-structured-error'
  * GET /api/events/cleanup/cron: daily 02:00 UTC.
  *
  * Differentiated retention:
- * - Delivery events (invoice.created, transaction.synced, …): 30 days. They
- *   exist for external automation polling (n8n/Make/Zapier) and go stale fast.
+ * - Business events (invoice.created, journal_entry.committed, …): 30 days.
  * - Agent telemetry (mcp.*, agent.*): 180 days. Error-rate trends and
  *   skill-load correlation need more than one month of signal: a 30-day
  *   window made it impossible to tell whether a tool or skill change actually

@@ -18,11 +18,11 @@
  * Remediation per affected payment:
  *   1. reverseEntry(payment_je): storno cancels Dr 1930 / Cr 30xx / Cr 26xx
  *   2. createInvoicePaymentJournalEntry: posts the correct Dr 1930 / Cr 1510
- *   3. Re-link invoice_payments + transactions to the new JE
+ *   3. Re-link invoice_payments to the new JE
  *
  * Net effect on the books: 30xx and 26xx are restored to their correct
  * (single-count) amounts, 1510 is cleared, 1930 nets to a single debit,
- * invoice keeps status='paid', transaction keeps invoice_id linkage.
+ * invoice keeps status='paid'.
  */
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
@@ -44,7 +44,6 @@ type AffectedPayment = {
   counterparty_name: string | null
   amount: number
   payment_date: string
-  transaction_id: string | null
   invoice_journal_entry_id: string
 }
 
@@ -93,7 +92,7 @@ async function findAffected(
 
   const { data: payments, error: payErr } = await supabase
     .from('invoice_payments')
-    .select('id, invoice_id, journal_entry_id, amount, payment_date, transaction_id')
+    .select('id, invoice_id, journal_entry_id, amount, payment_date')
     .eq('company_id', companyId)
     .in('journal_entry_id', affectedJeIds)
   if (payErr) throw payErr
@@ -108,7 +107,6 @@ async function findAffected(
       counterparty_name: inv.counterparty_name,
       amount: p.amount as number,
       payment_date: p.payment_date as string,
-      transaction_id: (p.transaction_id as string | null) ?? null,
       invoice_journal_entry_id: inv.invoice_journal_entry_id,
     }
   })
@@ -208,22 +206,6 @@ export const POST = withRouteContext(
           .eq('id', t.payment_id)
           .eq('company_id', companyId)
         if (relinkPayErr) throw relinkPayErr
-
-        // Re-link the transaction too, so /transactions reflects the correct
-        // voucher when the user clicks through.
-        if (t.transaction_id) {
-          const { error: relinkTxErr } = await supabase
-            .from('transactions')
-            .update({ journal_entry_id: clearing.id })
-            .eq('id', t.transaction_id)
-            .eq('company_id', companyId)
-          if (relinkTxErr) {
-            log.warn('failed to relink transaction; voucher chain still correct via payment row', {
-              transactionId: t.transaction_id,
-              error: relinkTxErr.message,
-            })
-          }
-        }
 
         results.push({
           payment_id: t.payment_id,

@@ -117,8 +117,10 @@ const UNRESOLVED_CEILING = 375
  * removed: 6 480.
  * Re-baselined 2026-10-07 after the bank connection reads were removed:
  * 6 370.
+ * Re-baselined 2026-10-07 after the cash mismatch repair stopped touching
+ * transactions: 6 297.
  */
-const RESOLVED_COLUMN_FLOOR = 6_300
+const RESOLVED_COLUMN_FLOOR = 6_200
 
 let schema: SchemaModel
 let scan: ScanResult

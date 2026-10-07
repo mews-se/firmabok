@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import DashboardContent from '@/components/dashboard/DashboardContent'
-import { getWorklistCounts, listSuggestedMatches } from '@/lib/worklist'
+import { getWorklistCounts } from '@/lib/worklist'
 import { listResumeItems } from '@/lib/worklist/resume'
 import {
   getDashboardAuthContext,
@@ -36,7 +36,6 @@ export default async function DashboardPage() {
     { count: postedEntryCount, error: postedEntryError },
     { data: profile },
     worklist,
-    suggestedMatches,
     resumeItems,
   ] = await Promise.all([
     getDashboardSettings(),
@@ -45,10 +44,9 @@ export default async function DashboardPage() {
     supabase.from('journal_entries').select('*', { count: 'exact', head: true }).eq('company_id', companyId).in('status', ['posted', 'reversed']),
     // First name for the greeting.
     supabase.from('profiles').select('full_name').eq('id', user.id).maybeSingle(),
-    // Pending-work counts + suggested matches come from lib/worklist: the
-    // same source as the sidebar badges, so the numbers can never diverge.
+    // Pending-work counts come from lib/worklist: the same source as the
+    // sidebar badges, so the numbers can never diverge.
     getWorklistCounts(supabase, companyId),
-    listSuggestedMatches(supabase, companyId, 5),
     // In-progress work for the Fortsätt pane: pure draft-state derivation.
     listResumeItems(supabase, companyId),
   ])
@@ -78,7 +76,6 @@ export default async function DashboardPage() {
     <DashboardContent
       userFirstName={userFirstName}
       worklist={worklist}
-      suggestedMatches={suggestedMatches}
       resumeItems={resumeItems}
       emptyLedger={emptyLedger}
     />

@@ -5,7 +5,7 @@ import { useTranslations } from 'next-intl'
 import { useCompany } from '@/contexts/CompanyContext'
 import AttGoraSection from '@/components/dashboard/AttGoraSection'
 import ResumePane from '@/components/dashboard/ResumePane'
-import type { SuggestedMatch, WorklistCounts } from '@/lib/worklist/types'
+import type { WorklistCounts } from '@/lib/worklist/types'
 import type { ResumeItem } from '@/lib/worklist/resume'
 
 interface DashboardContentProps {
@@ -14,8 +14,6 @@ interface DashboardContentProps {
   userFirstName?: string | null
   /** Unified pending-work counts from lib/worklist: same source as the sidebar badges. */
   worklist: WorklistCounts
-  /** High-confidence transaction↔invoice matches for inline one-click confirm. */
-  suggestedMatches: SuggestedMatch[]
   /** In-progress work for the Fortsätt pane (lib/worklist/resume). */
   resumeItems: ResumeItem[]
   /**
@@ -36,7 +34,6 @@ interface DashboardContentProps {
 export default function DashboardContent({
   userFirstName,
   worklist,
-  suggestedMatches,
   resumeItems,
   emptyLedger = false,
 }: DashboardContentProps) {
@@ -78,7 +75,6 @@ export default function DashboardContent({
       >
         <AttGoraSection
           worklist={worklist}
-          suggestedMatches={suggestedMatches}
           emptyLedger={emptyLedger}
         />
         <ResumePane items={resumeItems} />

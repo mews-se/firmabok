@@ -10,11 +10,6 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createLogger } from '@/lib/logger'
-import {
-  MATCHABLE_INVOICE_STATUSES,
-  MATCHABLE_SUPPLIER_INVOICE_STATUSES,
-} from '@/lib/invoices/matchable-statuses'
-import type { SuggestedMatch } from './types'
 
 const log = createLogger('worklist')
 
@@ -54,27 +49,6 @@ function logAndZero(
   // to a tenant in monitoring.
   log.error(`worklist count failed: ${category}`, { companyId, reason: error?.message })
   return 0
-}
-
-/**
- * Unbooked bank transactions: the canonical "att bokföra" predicate.
- * All booking flows (incl. the bulk-book RPCs) set is_business = true, so
- * is_business IS NULL is sufficient; is_ignored excludes the user's
- * explicitly-suppressed rows. Served by the partial index
- * idx_transactions_company_unbooked.
- */
-export async function countUnbookedTransactions(
-  supabase: SupabaseClient,
-  companyId: string,
-): Promise<number> {
-  const { count, error } = await supabase
-    .from('transactions')
-    .select('id', { count: 'exact', head: true })
-    .eq('company_id', companyId)
-    .is('is_business', null)
-    .eq('is_ignored', false)
-  if (error) return logAndZero('book_transaction', companyId, error)
-  return count ?? 0
 }
 
 /**
@@ -127,35 +101,6 @@ export async function countInboxDocuments(
     total += count ?? 0
   }
   return total
-}
-
-/** Shared predicate for transactions carrying a match hint. */
-const SUGGESTED_MATCH_OR =
-  'potential_invoice_id.not.is.null,potential_supplier_invoice_id.not.is.null'
-
-/**
- * Cap on the hint scan behind countSuggestedMatches; clamps like
- * INBOX_SCAN_CAP. Above IN_CLAUSE_CHUNK on purpose: the candidate lookups it
- * feeds are chunked (fetchCandidatesChunked), so the URL length stays bounded
- * regardless of this number.
- */
-const SUGGESTED_MATCH_SCAN_CAP = 200
-
-/**
- * Unbooked transactions with a still-actionable invoice/supplier-invoice match
- * hint.
- *
- * Delegates to listSuggestedMatches so the badge can never claim a number the
- * list cannot render: a head count over the raw hint columns still counts a
- * pointer at an invoice settled elsewhere (issue #1259), which is exactly the
- * divergence lib/worklist exists to prevent (see types.ts).
- */
-export async function countSuggestedMatches(
-  supabase: SupabaseClient,
-  companyId: string,
-): Promise<number> {
-  const matches = await listSuggestedMatches(supabase, companyId, SUGGESTED_MATCH_SCAN_CAP)
-  return matches.length
 }
 
 /** Supplier invoices awaiting approval ("attestera"). */
@@ -260,175 +205,4 @@ export async function countPendingOperations(
     .eq('status', 'pending')
   if (error) return logAndZero('pending_operations', companyId, error)
   return count ?? 0
-}
-
-interface SuggestedMatchTxRow {
-  id: string
-  date: string
-  description: string | null
-  amount: number
-  currency: string | null
-  potential_invoice_id: string | null
-  potential_supplier_invoice_id: string | null
-}
-
-type CandidateRow = {
-  id: string
-  invoice_number?: string | null
-  supplier_invoice_number?: string | null
-  total: number | null
-  customer?: { name: string | null } | null
-  supplier?: { name: string | null } | null
-}
-
-/**
- * Run one candidate lookup over a chunked id list. PostgREST serialises .in()
- * into the GET query string, so a long list can push the URL past proxy limits
- * (HTTP 414) exactly as countInboxDocuments guards against. The first error
- * short-circuits: a partial candidate set would silently drop rows from the
- * list and, through countSuggestedMatches, from the badge.
- */
-async function fetchCandidatesChunked(
-  ids: string[],
-  runChunk: (
-    chunk: string[],
-  ) => PromiseLike<{ data: unknown; error: { message?: string } | null }>,
-): Promise<{ rows: CandidateRow[]; error: { message?: string } | null }> {
-  const rows: CandidateRow[] = []
-  for (let i = 0; i < ids.length; i += IN_CLAUSE_CHUNK) {
-    const { data, error } = await runChunk(ids.slice(i, i + IN_CLAUSE_CHUNK))
-    if (error) return { rows: [], error }
-    rows.push(...((data ?? []) as unknown as CandidateRow[]))
-  }
-  return { rows, error: null }
-}
-
-/**
- * Suggested transaction↔invoice matches with enough candidate context for a
- * one-click confirm row. Confirm endpoints:
- *   kind 'invoice'           → POST /api/transactions/{id}/match-invoice
- *   kind 'supplier_invoice'  → POST /api/transactions/{id}/match-supplier-invoice
- *
- * The hint columns are write-once suggestions: nothing revisits them when the
- * invoice is later settled by a DIFFERENT transaction (or by mark-paid, MCP,
- * bank reconciliation or a SIE import). So the candidate lookup revalidates
- * against MATCHABLE_*_STATUSES instead of trusting the pointer: an invoice
- * that has since been paid would otherwise render a one-click confirm row
- * whose endpoint can only answer ALREADY_PAID.
- *
- * Revalidation stays here, at read time, even though the high-traffic settle
- * paths now also retire sibling pointers
- * (lib/invoices/clear-settled-invoice-suggestions.ts, issue #1259): the settle
- * paths are many and a missed one leaks, while this check covers every route
- * into the list.
- */
-export async function listSuggestedMatches(
-  supabase: SupabaseClient,
-  companyId: string,
-  limit = 20,
-): Promise<SuggestedMatch[]> {
-  const { data: txRows, error } = await supabase
-    .from('transactions')
-    .select(
-      'id, date, description, amount, currency, potential_invoice_id, potential_supplier_invoice_id',
-    )
-    .eq('company_id', companyId)
-    .is('is_business', null)
-    .eq('is_ignored', false)
-    .or(SUGGESTED_MATCH_OR)
-    .order('date', { ascending: false })
-    .limit(limit)
-  if (error) {
-    // companyId matches logAndZero's convention so repeated failures can be
-    // correlated to a tenant in monitoring.
-    log.error('worklist listSuggestedMatches failed', { companyId, reason: error.message })
-    return []
-  }
-
-  const txs = (txRows ?? []) as SuggestedMatchTxRow[]
-  const invoiceIds = [
-    ...new Set(txs.map((t) => t.potential_invoice_id).filter((x): x is string => !!x)),
-  ]
-  const supplierInvoiceIds = [
-    ...new Set(txs.map((t) => t.potential_supplier_invoice_id).filter((x): x is string => !!x)),
-  ]
-
-  const [invoiceRes, supplierRes] = await Promise.all([
-    fetchCandidatesChunked(invoiceIds, (chunk) =>
-      supabase
-        .from('invoices')
-        .select('id, invoice_number, total, customer:customers(name)')
-        .eq('company_id', companyId)
-        .in('id', chunk)
-        .in('status', [...MATCHABLE_INVOICE_STATUSES])
-        .gt('remaining_amount', 0),
-    ),
-    fetchCandidatesChunked(supplierInvoiceIds, (chunk) =>
-      supabase
-        .from('supplier_invoices')
-        .select('id, supplier_invoice_number, total, supplier:suppliers(name)')
-        .eq('company_id', companyId)
-        .in('id', chunk)
-        .in('status', [...MATCHABLE_SUPPLIER_INVOICE_STATUSES])
-        .gt('remaining_amount', 0),
-    ),
-  ])
-
-  // A failed candidate lookup must not pass for "nothing is matchable": that
-  // would render an empty list and, through countSuggestedMatches, a silent
-  // zero badge. Log it (with companyId) and bail, same as the tx query above.
-  const candidateError = invoiceRes.error ?? supplierRes.error
-  if (candidateError) {
-    log.error('worklist listSuggestedMatches candidate lookup failed', {
-      companyId,
-      reason: candidateError.message,
-    })
-    return []
-  }
-
-  const invoiceById = new Map<string, CandidateRow>(invoiceRes.rows.map((r) => [r.id, r]))
-  const supplierById = new Map<string, CandidateRow>(supplierRes.rows.map((r) => [r.id, r]))
-
-  const matches: SuggestedMatch[] = []
-  for (const tx of txs) {
-    const base = {
-      transaction_id: tx.id,
-      transaction_date: tx.date,
-      transaction_description: tx.description ?? '',
-      transaction_amount: tx.amount,
-      transaction_currency: tx.currency ?? 'SEK',
-    }
-    // Mirror the transactions page: an invoice hint wins over a supplier hint
-    // when both are present (income matches are rarer and higher-signal).
-    const invoice = tx.potential_invoice_id
-      ? invoiceById.get(tx.potential_invoice_id)
-      : undefined
-    if (invoice) {
-      matches.push({
-        ...base,
-        kind: 'invoice',
-        candidate_id: invoice.id,
-        candidate_number: invoice.invoice_number ?? null,
-        counterparty_name: invoice.customer?.name ?? null,
-        candidate_total: invoice.total ?? null,
-      })
-      continue
-    }
-    const supplierInvoice = tx.potential_supplier_invoice_id
-      ? supplierById.get(tx.potential_supplier_invoice_id)
-      : undefined
-    if (supplierInvoice) {
-      matches.push({
-        ...base,
-        kind: 'supplier_invoice',
-        candidate_id: supplierInvoice.id,
-        candidate_number: supplierInvoice.supplier_invoice_number ?? null,
-        counterparty_name: supplierInvoice.supplier?.name ?? null,
-        candidate_total: supplierInvoice.total ?? null,
-      })
-    }
-    // Hint pointing at a deleted, foreign or already-settled candidate → drop
-    // the row rather than render an unconfirmable suggestion.
-  }
-  return matches
 }

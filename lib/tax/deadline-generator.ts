@@ -72,21 +72,6 @@ export const TAX_RELEVANT_FIELDS = [
 export const DEADLINE_SETTINGS_SELECT =
   'company_id, entity_type, moms_period, f_skatt, preliminary_tax_monthly, vat_registered, fiscal_year_start_month, vat_taxable_base_over_40m, vat_has_eu_trade, vat_filing_method, periodisk_sammanstallning_enabled, periodisk_sammanstallning_period, periodisk_sammanstallning_filing_method, rot_rut_enabled, fyllnadsinbetalning_enabled' as const
 
-/**
- * Check if any tax-relevant fields changed
- */
-export function didTaxFieldsChange(
-  oldSettings: Partial<CompanySettingsForDeadlines>,
-  newSettings: Partial<CompanySettingsForDeadlines>
-): boolean {
-  for (const field of TAX_RELEVANT_FIELDS) {
-    if (oldSettings[field] !== newSettings[field]) {
-      return true
-    }
-  }
-  return false
-}
-
 export function hasTaxRelevantFields(body: Record<string, unknown>): boolean {
   return TAX_RELEVANT_FIELDS.some((field) => Object.prototype.hasOwnProperty.call(body, field))
 }

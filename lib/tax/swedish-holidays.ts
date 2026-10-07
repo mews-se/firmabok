@@ -140,18 +140,6 @@ export function isSwedishHoliday(date: Date): boolean {
 }
 
 /**
- * Check if an ISO date string (YYYY-MM-DD) is a Swedish public holiday.
- * Parses by string only: no Date / timezone math: so callers using UTC
- * boundaries (e.g. the shift-premium engine) get a stable answer.
- */
-export function isSwedishHolidayISO(isoDate: string): boolean {
-  const year = parseInt(isoDate.slice(0, 4), 10)
-  if (Number.isNaN(year)) return false
-  const holidays = getSwedishHolidays(year)
-  return holidays.includes(isoDate)
-}
-
-/**
  * Check if a date is a weekend (Saturday or Sunday)
  */
 export function isWeekend(date: Date): boolean {
@@ -182,66 +170,9 @@ export function getNextBankingDay(date: Date): Date {
 }
 
 /**
- * Get the previous banking day from a given date
- * If the date is already a banking day, return it
- * Otherwise, find the previous banking day
- */
-export function getPreviousBankingDay(date: Date): Date {
-  const result = new Date(date)
-
-  while (!isBankingDay(result)) {
-    result.setDate(result.getDate() - 1)
-  }
-
-  return result
-}
-
-/**
  * Adjust a deadline date to the next banking day if it falls on a weekend or holiday
  * Skatteverket deadlines that fall on non-banking days are moved to the next banking day
  */
 export function adjustDeadlineToNextBankingDay(date: Date): Date {
   return getNextBankingDay(date)
-}
-
-/**
- * Get the month name in Swedish
- */
-export function getSwedishMonthName(month: number): string {
-  const months = [
-    'januari',
-    'februari',
-    'mars',
-    'april',
-    'maj',
-    'juni',
-    'juli',
-    'augusti',
-    'september',
-    'oktober',
-    'november',
-    'december',
-  ]
-  return months[month]
-}
-
-/**
- * Get quarter number (1-4) from month (0-11)
- */
-export function getQuarterFromMonth(month: number): number {
-  return Math.floor(month / 3) + 1
-}
-
-/**
- * Get the first month of a quarter (0-indexed)
- */
-export function getFirstMonthOfQuarter(quarter: number): number {
-  return (quarter - 1) * 3
-}
-
-/**
- * Get the last month of a quarter (0-indexed)
- */
-export function getLastMonthOfQuarter(quarter: number): number {
-  return quarter * 3 - 1
 }

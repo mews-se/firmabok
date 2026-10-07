@@ -46,17 +46,6 @@ export function isValidTransition(
 }
 
 /**
- * Calculate days until a deadline
- */
-export function daysUntilDeadline(dueDate: string): number {
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  const deadline = new Date(dueDate)
-  deadline.setHours(0, 0, 0, 0)
-  return Math.ceil((deadline.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
-}
-
-/**
  * Update deadline statuses automatically (called by daily cron)
  */
 export async function updateDeadlineStatuses(
@@ -171,34 +160,4 @@ export async function updateDeadlineStatus(
   }
 
   return { success: true }
-}
-
-/**
- * Get deadlines that need attention (action_needed or overdue)
- */
-export async function getDeadlinesNeedingAttention(
-  supabase: SupabaseClient,
-  companyId: string
-): Promise<{
-  actionNeeded: Array<{ id: string; title: string; due_date: string; tax_deadline_type: string | null }>
-  overdue: Array<{ id: string; title: string; due_date: string; tax_deadline_type: string | null }>
-}> {
-  const { data: deadlines, error } = await supabase
-    .from('deadlines')
-    .select('id, title, due_date, tax_deadline_type, status')
-    .eq('company_id', companyId)
-    .eq('is_completed', false)
-    .is('dismissed_at', null)
-    .in('status', ['action_needed', 'overdue'])
-    .order('due_date', { ascending: true })
-
-  if (error) {
-    log.error('Error fetching deadlines needing attention:', error)
-    return { actionNeeded: [], overdue: [] }
-  }
-
-  const actionNeeded = deadlines?.filter((d) => d.status === 'action_needed') || []
-  const overdue = deadlines?.filter((d) => d.status === 'overdue') || []
-
-  return { actionNeeded, overdue }
 }

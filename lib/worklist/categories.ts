@@ -174,8 +174,7 @@ export async function countOverdueInvoices(
 }
 
 /**
- * Deadlines needing attention: same predicate as
- * lib/deadlines/status-engine.ts getDeadlinesNeedingAttention(), as a
+ * Deadlines needing attention (open, status action_needed or overdue), as a
  * head-count so badges don't fetch rows.
  */
 export async function countDeadlinesNeedingAction(

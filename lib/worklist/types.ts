@@ -44,8 +44,7 @@ export const WORKLIST_CATEGORIES = [
   /**
    * Tax/VAT deadlines needing attention.
    * Pending:  deadlines.is_completed = false AND status IN
-   *           ('action_needed', 'overdue'): same predicate as
-   *           lib/deadlines/status-engine.ts getDeadlinesNeedingAttention().
+   *           ('action_needed', 'overdue').
    * Done:     submitted/confirmed (is_completed or status transition).
    */
   'deadline_action',

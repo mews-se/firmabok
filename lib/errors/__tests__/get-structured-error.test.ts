@@ -35,14 +35,6 @@ describe('getStructuredError', () => {
     expect(result.remediation?.tool).toBe('gnubok_lock_period')
   })
 
-  it('infers PERIOD_HAS_UNBOOKED_TRANSACTIONS from Swedish lock-error message', () => {
-    const result = getStructuredError(
-      new Error('Kan inte låsa period: 3 affärstransaktion(er) saknar bokföring.')
-    )
-    expect(result.code).toBe('PERIOD_HAS_UNBOOKED_TRANSACTIONS')
-    expect(result.remediation?.tool).toBeUndefined()
-  })
-
   it('produces INSUFFICIENT_SCOPE remediation with attempted scope', () => {
     const result = getStructuredError(
       new Error('Insufficient scope: this API key does not have the "bookkeeping:write" scope'),

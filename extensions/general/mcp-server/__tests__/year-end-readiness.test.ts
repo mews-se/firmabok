@@ -49,7 +49,7 @@ describe('gnubok_year_end_readiness: registration', () => {
   })
 
   // The description is the only thing an agent reads before deciding what to
-  // pre-check, and the 280-char budget does not fit all eleven kinds. It must
+  // pre-check, and the 280-char budget does not fit all ten kinds. It must
   // therefore name every kind the caller can DO something about ahead of time;
   // the four period-state kinds are summarized, since nothing can be
   // pre-checked about them.
@@ -67,18 +67,11 @@ describe('gnubok_year_end_readiness: registration', () => {
     )
     // Guards the summarizing itself: if a kind stops being period-state, or a
     // new one appears, it has to show up in the description.
-    expect(actionable.length).toBe(7)
+    expect(actionable.length).toBe(6)
     for (const kind of actionable) {
       expect(tool.description, `blocker kind ${kind} missing from description`).toContain(kind)
     }
     expect(tool.description).toContain('period-state')
-  })
-
-  it('names unbooked transactions as the most common blocker', () => {
-    // The omission that sent agents pre-checking the wrong things: this is the
-    // blocker a real close trips on, and the description never mentioned it.
-    const tool = tools.find((t) => t.name === 'gnubok_year_end_readiness')!
-    expect(tool.description).toMatch(/unbooked_transactions \(most common\)/)
   })
 
   it('does not present open foreign-currency items as a blocker', () => {
@@ -120,18 +113,12 @@ describe('gnubok_year_end_readiness: execute', () => {
         // Classification is by code, so an off-wording message (here the legacy
         // English one) must still land on sequence_mismatch.
         { code: 'SEQUENCE_COUNTER_BEHIND', message: 'Sequence counter integrity error in series A: counter=3 but max voucher=5' },
-        { code: 'UNBOOKED_TRANSACTIONS', message: '3 transaktioner i perioden saknar bokföring: bokför dem eller markera dem som privata innan bokslut' },
-        // The fail-closed variant shares the kind: an agent reacts to both by
-        // going to look at the transactions and re-running readiness.
-        { code: 'UNBOOKED_CHECK_FAILED', message: 'Kontrollen av obokförda transaktioner kunde inte genomföras: försök igen' },
       ],
       errors: [
         '3 utkast måste bokföras eller raderas innan bokslut',
         'Oförklarat verifikationsnummerglapp i serie A: 5-7',
         'Råbalansen balanserar inte: debet=100, kredit=200',
         'Sequence counter integrity error in series A: counter=3 but max voucher=5',
-        '3 transaktioner i perioden saknar bokföring: bokför dem eller markera dem som privata innan bokslut',
-        'Kontrollen av obokförda transaktioner kunde inte genomföras: försök igen',
       ],
       warnings: ['Inga bokförda verifikationer i perioden'],
       draftCount: 3,
@@ -167,8 +154,6 @@ describe('gnubok_year_end_readiness: execute', () => {
       'unexplained_voucher_gap',
       'trial_balance_unbalanced',
       'sequence_mismatch',
-      'unbooked_transactions',
-      'unbooked_transactions',
     ])
     expect(kinds).not.toContain('other')
     expect(result.summary).toMatch(/Inte klart/)

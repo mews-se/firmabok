@@ -75,8 +75,7 @@ export function FiscalYearsManager() {
       })
       const body = await res.json().catch(() => ({}))
       if (!res.ok) {
-        // Surface the backend's message verbatim: e.g. "X affärstransaktion(er)
-        // saknar bokföring", which tells the user exactly what to fix first.
+        // Surface the backend's message verbatim: it says what to fix first.
         throw new Error(body?.error?.message || t('fy_action_error'))
       }
       toast({ title: action === 'lock' ? t('fy_lock_success') : t('fy_unlock_success') })

@@ -44,20 +44,6 @@ describe('POST /api/bookkeeping/fiscal-periods/[id]/lock', () => {
     expect(body.data.id).toBe('p1')
   })
 
-  // Regression: an unbooked-transactions failure must surface as a clear 400,
-  // not a generic 500. lockPeriod throws a plain Error (no code) with the
-  // Swedish count message; the route maps it to PERIOD_HAS_UNBOOKED_TRANSACTIONS.
-  it('maps the unbooked-transactions error to a 400, not a 500', async () => {
-    mockAuth()
-    ;(lockPeriod as ReturnType<typeof vi.fn>).mockRejectedValue(
-      new Error('Kan inte låsa period: 3 affärstransaktion(er) saknar bokföring. Bokför alla transaktioner innan perioden låses.'),
-    )
-    const res = await POST(lockRequest(), createMockRouteParams({ id: 'p1' }))
-    expect(res.status).toBe(400)
-    const body = await res.json()
-    expect(body.error.code).toBe('PERIOD_HAS_UNBOOKED_TRANSACTIONS')
-  })
-
   it('maps an already-locked period to a 409', async () => {
     mockAuth()
     ;(lockPeriod as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('Period is already locked'))

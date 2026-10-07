@@ -33,7 +33,7 @@ If the company has open foreign-currency receivables/payables (1510/2440 in EUR/
 
 ### Step 3: Lock the period
 
-\`gnubok_lock_period(fiscal_period_id)\`. Required before year-end. Refuses if business transactions are unbooked.
+\`gnubok_lock_period(fiscal_period_id)\`. Required before year-end.
 
 ### Step 4: Run year-end
 

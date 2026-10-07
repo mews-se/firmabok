@@ -197,10 +197,9 @@ describe('POST /api/bookkeeping/fiscal-periods', () => {
     expect(body.error).toMatch(/must start on 2026-01-01/)
   })
 
-  // Regression (BFL 5 kap 2 §): this used to be a 409. One unbooked December
-  // bank transaction makes FY 2025 unlockable (lockPeriod refuses, correctly),
-  // and the old guard then refused to create FY 2026, so ALL bookkeeping in the
-  // new year stopped, while BFL 5 kap 2 § requires the new year's
+  // Regression (BFL 5 kap 2 §): this used to be a 409. A prior year that was
+  // not locked made the old guard refuse to create FY 2026, so ALL bookkeeping
+  // in the new year stopped, while BFL 5 kap 2 § requires the new year's
   // affärshändelser to be booked "så snart det kan ske" (senast månaden efter)
   // and BFL 6 kap gives the bokslut 6 months. Both bind at once: the new
   // räkenskapsår must be creatable with the prior one still fully open.

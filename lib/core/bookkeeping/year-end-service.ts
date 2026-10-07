@@ -16,7 +16,6 @@ import {
 import {
   lockPeriod,
   closePeriod,
-  countUnbookedInPeriod,
   createNextPeriod,
   findNextPeriod,
 } from './period-service'
@@ -340,37 +339,6 @@ export async function validateYearEndReadiness(
     }
   }
 
-  // Check: unbooked bank transactions in the period. lockPeriod enforces this
-  // at step 7 of executeYearEndClosing, AFTER the closing entry has already
-  // posted at step 4: without this readiness check a period with unbooked
-  // transactions reported ready: true and then aborted mid-flow, leaving a
-  // posted closing entry on an unlocked, unclosed period. Same counter as the
-  // lock guard (countUnbookedInPeriod), so the number reconciles with the
-  // "att bokföra" badge. Fails CLOSED like lockPeriod: a check that could not
-  // run must not pass.
-  let unbookedTransactionCount = 0
-  try {
-    const unbooked = await countUnbookedInPeriod(
-      supabase,
-      companyId,
-      period.period_start,
-      period.period_end,
-    )
-    unbookedTransactionCount = unbooked.untriaged + unbooked.businessUnbooked
-    if (unbookedTransactionCount > 0) {
-      blockers.push({
-        code: 'UNBOOKED_TRANSACTIONS',
-        message: `${unbookedTransactionCount} transaktioner i perioden saknar bokföring: bokför dem eller markera dem som privata innan bokslut`,
-      })
-    }
-  } catch (err) {
-    log.warn('unbooked-transaction readiness check failed', err as Error)
-    blockers.push({
-      code: 'UNBOOKED_CHECK_FAILED',
-      message: 'Kontrollen av obokförda transaktioner kunde inte genomföras: försök igen',
-    })
-  }
-
   return {
     ready: blockers.length === 0,
     blockers,
@@ -381,7 +349,6 @@ export async function validateYearEndReadiness(
     unexplainedGaps,
     sequenceMismatches,
     trialBalanceBalanced,
-    unbookedTransactionCount,
   }
 }
 

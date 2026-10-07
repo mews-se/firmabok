@@ -158,8 +158,8 @@ export const POST = withRouteContext(
       //     posted into it, for months into the new year.
       // Running the two years in parallel is not a tolerated edge case, it is
       // the normal and legally required state during that window. The old guard
-      // made one unbooked December bank transaction (which blocks lockPeriod,
-      // correctly, per BFL 5 kap 2 §) freeze ALL bookkeeping in the new year.
+      // refused to create the new year until the prior one was locked, which
+      // froze ALL bookkeeping in the new year.
       //
       // What genuinely protects the prior year is unchanged and lives
       // elsewhere: period locked_at (enforce_period_lock) and

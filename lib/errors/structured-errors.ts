@@ -327,15 +327,6 @@ const BOOKKEEPING: Record<string, StructuredErrorEntry> = {
       tool: 'gnubok_lock_period',
     },
   },
-  PERIOD_HAS_UNBOOKED_TRANSACTIONS: {
-    httpStatus: 400,
-    message_sv:
-      'Perioden innehåller okategoriserade affärstransaktioner. Bokför eller markera dem som privata innan låsning.',
-    message_en: 'The period contains uncategorized business transactions.',
-    remediation: {
-      description: 'Categorize or mark uncategorized transactions before locking.',
-    },
-  },
   YEAR_END_NOT_RUN: {
     httpStatus: 400,
     message_sv: 'Bokslutsåtgärder måste utföras innan perioden kan stängas.',

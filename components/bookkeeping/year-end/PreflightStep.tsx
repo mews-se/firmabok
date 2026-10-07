@@ -135,9 +135,7 @@ export function PreflightStep({ report, isLoading, error, onContinue }: Prefligh
  * Renders a blocker with a contextual action link derived from its stable
  * machine code (YearEndBlockerCode). Codes without an existing remediation
  * page (voucher gaps, sequence counter, period state) render as plain text:
- * a link must never point at a page that does not exist. UNBOOKED_CHECK_FAILED
- * is deliberately link-less too: the remedy is to re-run the check, not to
- * visit a page.
+ * a link must never point at a page that does not exist.
  */
 function BlockerRow({ blocker }: { blocker: DisplayBlocker }) {
   let href: string | null = null
@@ -148,11 +146,6 @@ function BlockerRow({ blocker }: { blocker: DisplayBlocker }) {
     // query param, so the link goes to the plain list.
     href = '/bookkeeping'
     actionLabel = 'Visa utkast'
-  } else if (blocker.code === 'UNBOOKED_TRANSACTIONS') {
-    // Transaktionslistan is where an unbooked transaction is either booked or
-    // marked private, the two remedies the message names.
-    href = '/transactions'
-    actionLabel = 'Visa transaktioner'
   } else if (blocker.code === 'TRIAL_BALANCE_UNBALANCED') {
     href = '/reports/trial-balance'
     actionLabel = 'Öppna saldobalansen'

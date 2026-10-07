@@ -31,15 +31,6 @@ export const POST = withRouteContext(
           details: { reason: getErrorMessage(err) },
         })
       }
-      // lockPeriod() refuses to lock a period that still has uncategorized
-      // business transactions (the count is in the thrown message). Surface it
-      // as a clear 400 instead of letting it fall through to a generic 500.
-      if (/saknar bokföring|okategoriserade affärstransaktion/i.test(message)) {
-        return errorResponseFromCode('PERIOD_HAS_UNBOOKED_TRANSACTIONS', opLog, {
-          requestId,
-          details: { reason: getErrorMessage(err) },
-        })
-      }
       return errorResponse(err, opLog, { requestId })
     }
   },

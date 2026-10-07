@@ -149,7 +149,6 @@ function extractCode(error: unknown): string | null {
 function inferCode(message: string): string | null {
   if (/Period must be locked before closing/i.test(message)) return 'PERIOD_NOT_LOCKED'
   if (/Year-end closing must be executed/i.test(message)) return 'YEAR_END_NOT_RUN'
-  if (/Kan inte låsa period:.*affärstransaktion/i.test(message)) return 'PERIOD_HAS_UNBOOKED_TRANSACTIONS'
   if (/Insufficient scope/i.test(message)) return 'INSUFFICIENT_SCOPE'
   if (/already has a journal entry/i.test(message)) return 'TRANSACTION_ALREADY_CATEGORIZED'
   if (/already been sent/i.test(message) || /already sent/i.test(message)) return 'INVOICE_ALREADY_SENT'

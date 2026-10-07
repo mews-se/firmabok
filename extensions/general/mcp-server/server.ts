@@ -142,7 +142,7 @@ import {
   validateVoucherForSupplierInvoiceLink,
 } from '@/lib/invoices/supplier-voucher-matching'
 import { findFiscalPeriod, reverseEntry, validateBalance } from '@/lib/bookkeeping/engine'
-import { closePeriod, countUnbookedInPeriod, lockPeriod, resolvePeriodStatusForDate, type PeriodStatusForDate } from '@/lib/core/bookkeeping/period-service'
+import { closePeriod, lockPeriod, resolvePeriodStatusForDate, type PeriodStatusForDate } from '@/lib/core/bookkeeping/period-service'
 import { validateYearEndReadiness, previewYearEndClosing } from '@/lib/core/bookkeeping/year-end-service'
 import { generateSIEExport } from '@/lib/reports/sie-export'
 import { generateFullArchive, estimateArchiveSize } from '@/lib/reports/full-archive-export'
@@ -789,13 +789,6 @@ async function resolveJournalEntryRef(
   return matches[0].id
 }
 
-// ── Lock-period staging guard ────────────────────────────────────────────────
-//
-// The staging pre-check runs the exact same countUnbookedInPeriod the commit
-// path (lockPeriod) enforces, imported from period-service so the two legal
-// guards cannot drift apart. See the DECISIONS.md 2026-07-26 lock-guard entry
-// for the predicate semantics.
-
 // ── Output schema helpers ────────────────────────────────────
 
 const PAGINATION_PROPS = {
@@ -1367,14 +1360,10 @@ const RC_COMPLETENESS_CODES = new Set<VatDeclarationCheck['code']>([
  * are deliberately NOT the codes themselves: a code may be renamed or split
  * without breaking a consumer, as long as it keeps mapping to the same kind.
  *
- * UNBOOKED_CHECK_FAILED shares 'unbooked_transactions' with the real count:
- * the fail-closed variant means "we could not tell", and an agent should react
- * to it the same way (go look at the transactions, then re-run readiness).
- *
  * Exported so the tool-description test can assert that every kind an agent
  * can receive is actually named in the description it plans against: the
  * description drifted once already (it advertised FX revaluation, a WARNING,
- * as a blocker and never mentioned unbooked transactions, the common one).
+ * as a blocker).
  */
 export const YEAR_END_BLOCKER_KIND: Record<YearEndBlockerCode, string> = {
   PERIOD_NOT_FOUND: 'period_not_found',
@@ -1387,8 +1376,6 @@ export const YEAR_END_BLOCKER_KIND: Record<YearEndBlockerCode, string> = {
   TRIAL_BALANCE_UNBALANCED: 'trial_balance_unbalanced',
   CONTINUITY_MISMATCH: 'opening_balance_continuity',
   NEXT_PERIOD_HAS_IB: 'next_period_ib_posted',
-  UNBOOKED_TRANSACTIONS: 'unbooked_transactions',
-  UNBOOKED_CHECK_FAILED: 'unbooked_transactions',
 }
 
 /**
@@ -1398,7 +1385,6 @@ export const YEAR_END_BLOCKER_KIND: Record<YearEndBlockerCode, string> = {
  */
 function classifyYearEndBlockerMessage(message: string): string {
   if (/draft journal entries|utkast måste bokföras/i.test(message)) return 'draft_entries'
-  if (/unbooked transaction|saknar bokföring|obokförda transaktioner/i.test(message)) return 'unbooked_transactions'
   if (/voucher gap|verifikationsnummerglapp/i.test(message)) return 'unexplained_voucher_gap'
   if (/Sequence counter integrity|Nummerserien i serie/i.test(message)) return 'sequence_mismatch'
   if (/Trial balance is not balanced|Råbalansen balanserar inte/i.test(message)) return 'trial_balance_unbalanced'
@@ -8085,7 +8071,7 @@ export const tools: McpTool[] = [
   {
     name: 'gnubok_lock_period',
     title: 'Lock Fiscal Period',
-    description: 'Stage period lock: blocks new entries. Requires zero untriaged or unbooked business transactions in the period. High-risk, always staged.',
+    description: 'Stage period lock: blocks new entries. High-risk, always staged.',
     inputSchema: {
       type: 'object',
       additionalProperties: false,
@@ -8116,50 +8102,6 @@ export const tools: McpTool[] = [
       if (period.is_closed) throw new Error('Period is already closed')
       if (period.locked_at) throw new Error('Period is already locked')
 
-      // Same predicate the commit path (lockPeriod in period-service.ts)
-      // enforces, so the approval card can never claim zero unbooked while
-      // the period holds untriaged or unbooked business transactions. Fail
-      // closed: a guard that cannot run must not wave the staging through.
-      let unbooked: { untriaged: number; businessUnbooked: number }
-      try {
-        unbooked = await countUnbookedInPeriod(
-          supabase, companyId, period.period_start, period.period_end,
-        )
-      } catch (err) {
-        log.error('lock-period staging guard failed, refusing to stage', {
-          companyId,
-          fiscalPeriodId,
-          reason: err instanceof Error ? err.message : String(err),
-        })
-        // Deliberately matches NEITHER of the two load-bearing phrases below:
-        // an unreachable DB must not send an agent off remediating
-        // transactions (mirrors period-service.ts).
-        throw new Error(
-          'Kunde inte kontrollera obokförda banktransaktioner i perioden. Ingen låsning har föreslagits. Försök igen.'
-        )
-      }
-
-      const blockingCount = unbooked.untriaged + unbooked.businessUnbooked
-      if (blockingCount > 0) {
-        // Wording mirrors lockPeriod in period-service.ts and is load-bearing:
-        // "saknar bokföring" and /Kan inte låsa period:.*affärstransaktion/
-        // both feed matchers (inferCode in lib/errors/get-structured-error.ts
-        // derives PERIOD_HAS_UNBOOKED_TRANSACTIONS for the MCP surface).
-        const breakdown = [
-          unbooked.untriaged > 0 ? `${unbooked.untriaged} ej hanterade` : null,
-          unbooked.businessUnbooked > 0
-            ? `${unbooked.businessUnbooked} markerade som affärshändelse men utan verifikat`
-            : null,
-        ]
-          .filter(Boolean)
-          .join(', ')
-        throw new Error(
-          `Kan inte låsa period: ${blockingCount} banktransaktion(er) i perioden saknar bokföring ` +
-            `(${breakdown}). Alla affärstransaktioner måste vara bokförda innan perioden låses. ` +
-            `Bokför dem eller markera dem som privata eller ignorerade, och lås perioden därefter.`
-        )
-      }
-
       return stagePendingOperation(supabase, companyId, userId, 'lock_period',
         `Lås period: ${period.name} (${period.period_start} till ${period.period_end})`,
         { fiscal_period_id: fiscalPeriodId },
@@ -8167,10 +8109,6 @@ export const tools: McpTool[] = [
           period_name: period.name,
           period_start: period.period_start,
           period_end: period.period_end,
-          // Both guard legs verified zero above; the commit path re-checks via
-          // lockPeriod, so this figure can never silently go stale.
-          unbooked_business_transactions: 0,
-          untriaged_transactions: 0,
         },
         actor,
         {
@@ -8601,7 +8539,7 @@ export const tools: McpTool[] = [
     // there, the period either is closable or is not. Open items in foreign
     // currency are warnings, never blockers, because executeYearEndClosing
     // revalues them in step 2 (lib/core/bookkeeping/year-end-service.ts).
-    description: "Pre-flight for irreversible gnubok_run_year_end. Blockers: unbooked_transactions (most common), draft_entries, unexplained_voucher_gap, sequence_mismatch, trial_balance_unbalanced, opening_balance_continuity, next_period_ib_posted, period-state. FX = warning, never blocker.",
+    description: "Pre-flight for irreversible gnubok_run_year_end. Blockers: draft_entries, unexplained_voucher_gap, sequence_mismatch, trial_balance_unbalanced, opening_balance_continuity, next_period_ib_posted, period-state. FX = warning, never blocker.",
     inputSchema: {
       type: 'object',
       additionalProperties: false,

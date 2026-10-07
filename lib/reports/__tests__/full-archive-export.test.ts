@@ -3,7 +3,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import JSZip from 'jszip'
 import {
   generateFullArchive,
-  generateBaseDataArchive,
   estimateArchiveSize,
   MASTER_DATA_DUMP_TABLES,
 } from '../full-archive-export'
@@ -858,74 +857,6 @@ describe('generateFullArchive', () => {
       expect(zip.file('sie/original/manifest.json')).toBeNull()
       expect(zip.file('data/customers.json')).not.toBeNull()
     })
-  })
-})
-
-describe('generateBaseDataArchive', () => {
-  let supabase: ReturnType<typeof createQueuedMockSupabase>['supabase']
-  let enqueueMany: ReturnType<typeof createQueuedMockSupabase>['enqueueMany']
-
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockGetAuditLog.mockResolvedValue({ data: [], count: 0 })
-    mockStorage(storageDefaults())
-    const mock = createQueuedMockSupabase()
-    supabase = mock.supabase
-    enqueueMany = mock.enqueueMany
-  })
-
-  it('bundles unlinked documents, master data, SIE sources and the audit trail', async () => {
-    const masterDataQueue = buildMasterDataQueue({
-      direct: { customers: [{ id: 'cust-1', name: 'Acme AB' }] },
-    })
-
-    enqueueMany([
-      { data: COMPANY_ROW }, // fetchCompany
-      { data: [PERIOD_2024] }, // fetchAllPeriods
-      {
-        data: [
-          // Orphan: goes into Grunddata.
-          {
-            id: 'doc-orphan',
-            file_name: 'inbox.pdf',
-            storage_path: 'p/inbox.pdf',
-            journal_entry_id: null,
-            journal_entries: null,
-          },
-          // Linked to a posted entry: belongs to the period archive, not here.
-          {
-            id: 'doc-linked',
-            file_name: 'kvitto.pdf',
-            storage_path: 'p/kvitto.pdf',
-            journal_entry_id: 'e-1',
-            journal_entries: { voucher_number: 5, voucher_series: 'A', entry_date: '2024-05-01' },
-          },
-        ],
-      }, // document_attachments
-      { data: [{ id: 'e-1', fiscal_period_id: PERIOD_2024.id }] }, // entry->period map
-      { data: [] }, // sie_imports
-      { data: [] }, // sie_account_mappings
-      ...masterDataQueue,
-    ])
-
-    const buffer = await generateBaseDataArchive(supabase as any, 'company-1')
-    const zip = await JSZip.loadAsync(buffer)
-
-    const manifest = JSON.parse(await zip.file('dokument/manifest.json')!.async('text'))
-    expect(manifest).toHaveLength(1)
-    expect(manifest[0].document_id).toBe('doc-orphan')
-    expect(zip.file('dokument/_okopplade/inbox.pdf')).not.toBeNull()
-
-    expect(zip.file('data/customers.json')).not.toBeNull()
-    expect(zip.file('sie/imports.json')).not.toBeNull()
-    expect(zip.file('revision/behandlingshistorik.json')).not.toBeNull()
-    expect(zip.file('revision/systemdokumentation.json')).not.toBeNull()
-
-    const readme = await zip.file('LÄSMIG.txt')!.async('text')
-    expect(readme).toContain('Grunddata')
-    // Period-scoped content stays out of Grunddata.
-    expect(zip.file('bokforing.se')).toBeNull()
-    expect(zip.file('rapporter/saldobalans.json')).toBeNull()
   })
 })
 

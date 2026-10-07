@@ -18,7 +18,7 @@ import {
   generalLedgerToCsv,
   type TrialBalanceLike,
 } from './archive-csv'
-import { buildArchiveReadme, buildDriveFolderReadme } from './archive-readme'
+import { buildArchiveReadme } from './archive-readme'
 import type { GeneralLedgerReport } from './general-ledger'
 import { fileStorage } from '@/lib/storage/local'
 import type {
@@ -101,9 +101,6 @@ const REPORT_CONCURRENCY = 3
 // JSON dumps and raw imported SIE files (the bucket caps each file at 50 MB,
 // but typical SIE4 files are tens of KB so a few MB covers most companies).
 export const ARCHIVE_OVERHEAD_BYTES = 8 * 1024 * 1024
-
-/** Documents included in an archive: per-period, everything, or only the rest. */
-type DocumentMode = ArchiveScope | 'unlinked'
 
 /**
  * Generate a full archive ZIP for a company.
@@ -197,50 +194,6 @@ export async function generateFullArchive(
       generatedAt: new Date().toISOString(),
       scope: options.scope,
       periodLabel: options.scope === 'period' ? periodLabel(periods[0]) : undefined,
-      appName: APP_NAME,
-    })
-  )
-
-  return zip.generateAsync({ type: 'arraybuffer' })
-}
-
-/**
- * Generate the "Grunddata" archive for the per-fiscal-year Drive backup:
- * everything that is not tied to a single fiscal year. Master-data JSON
- * dumps, original imported SIE files, documents no period archive carries
- * (unlinked/draft), the full behandlingshistorik and the system
- * documentation. Complements one `generateFullArchive(scope='period')` ZIP
- * per räkenskapsår.
- */
-export async function generateBaseDataArchive(
-  supabase: SupabaseClient,
-  companyId: string,
-  options: { include_documents?: boolean } = {}
-): Promise<ArrayBuffer> {
-  const company = await fetchCompany(supabase, companyId)
-  const periods = await fetchAllPeriods(supabase, companyId)
-  const includeDocuments = options.include_documents !== false
-
-  const zip = new JSZip()
-
-  if (includeDocuments) {
-    await writeDocuments(zip, supabase, companyId, periods, 'unlinked')
-  }
-  await writeSieSourceFiles(zip, supabase, companyId, includeDocuments)
-  await writeMasterData(zip, supabase, companyId)
-
-  const revision = zip.folder('revision')!
-  const auditEntries = await fetchAllAuditEntries(supabase, companyId, {})
-  revision.file('behandlingshistorik.json', JSON.stringify(auditEntries, null, 2))
-  const systemDoc = await buildSystemDoc(supabase, companyId, periods, 'all')
-  revision.file('systemdokumentation.json', JSON.stringify(systemDoc, null, 2))
-
-  zip.file(
-    'LÄSMIG.txt',
-    buildDriveFolderReadme({
-      companyName: company.company_name || 'Okänt företag',
-      orgNumber: company.org_number,
-      generatedAt: new Date().toISOString(),
       appName: APP_NAME,
     })
   )
@@ -420,7 +373,7 @@ async function writeDocuments(
   supabase: SupabaseClient,
   companyId: string,
   periods: FiscalPeriodRow[],
-  scope: DocumentMode
+  scope: ArchiveScope
 ): Promise<void> {
   const dokument = zip.folder('dokument')!
   const manifest: DocumentManifestEntry[] = []
@@ -433,7 +386,7 @@ async function writeDocuments(
           'id, file_name, storage_path, journal_entry_id, sha256_hash, version, digitization_date, upload_source, mime_type, file_size_bytes, journal_entries:journal_entry_id(voucher_number, voucher_series, entry_date)'
         )
         .eq('company_id', companyId)
-      // Backups (scope=all/unlinked) include every document, even those not
+      // Backups (scope=all) include every document, even those not
       // yet linked to an entry: inbox items and unbooked receipts are
       // räkenskapsinformation too. The per-period archive keeps the
       // linked-only filter.
@@ -455,13 +408,7 @@ async function writeDocuments(
       const inScopeDocuments =
         scope === 'period'
           ? documents.filter((d) => d.journal_entry_id && entryIdToPeriodId.has(d.journal_entry_id))
-          : scope === 'unlinked'
-            ? // Grunddata mode: only what no period archive carries (orphans
-              // and docs linked to draft/unposted entries).
-              documents.filter(
-                (d) => !d.journal_entry_id || !entryIdToPeriodId.has(d.journal_entry_id)
-              )
-            : documents // all-mode: keep every doc, linked or not
+          : documents // all-mode: keep every doc, linked or not
 
       // Track used paths so we can disambiguate collisions (two documents with
       // identical voucher prefix + filename) by appending a short id suffix.

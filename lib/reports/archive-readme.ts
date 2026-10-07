@@ -14,53 +14,6 @@ export interface ArchiveReadmeParams {
   appName?: string
 }
 
-export interface DriveFolderReadmeParams {
-  companyName: string
-  orgNumber: string | null
-  generatedAt: string
-  appName?: string
-}
-
-/**
- * README for the Drive backup folder layout: one `Arkiv <år>.zip` per
- * räkenskapsår plus `Grunddata.zip`. Uploaded both as a standalone
- * LÄSMIG.txt in the Drive folder and inside Grunddata.zip.
- */
-export function buildDriveFolderReadme(params: DriveFolderReadmeParams): string {
-  const app = params.appName || 'Accounted'
-  return [
-    `SÄKERHETSKOPIA FRÅN ${app.toUpperCase()}`,
-    '='.repeat(30),
-    '',
-    `Företag: ${params.companyName}${params.orgNumber ? ` (${params.orgNumber})` : ''}`,
-    `Senast uppdaterad: ${params.generatedAt}`,
-    '',
-    'Den här mappen innehåller företagets löpande säkerhetskopia:',
-    '',
-    'Arkiv <år>.zip       Ett komplett arkiv per räkenskapsår: bokföringen som',
-    '                     SIE4-fil, rapporter (JSON och CSV), underlag döpta',
-    '                     efter verifikat samt behandlingshistorik för årets',
-    '                     bokföring.',
-    'Grunddata.zip        Register (kunder, leverantörer, fakturor, tillgångar',
-    '                     med mera), ursprungliga SIE-filer,',
-    '                     dokument som ännu inte kopplats till verifikat samt',
-    '                     fullständig behandlingshistorik.',
-    '',
-    'Filerna uppdateras på plats vid varje säkerhetskopiering: bara år med',
-    'ändringar laddas upp på nytt. Google Drive sparar tidigare versioner i',
-    'cirka 30 dagar (högerklicka på filen och välj Hantera versioner).',
-    '',
-    'Den här mappen är en extra säkerhetskopia som du själv råder över.',
-    'Filer i Drive kan ändras eller raderas, så mappen utgör inte företagets',
-    `lagliga arkiv enligt bokföringslagen: ${app} bevarar`,
-    'räkenskapsinformationen i oföränderligt skick i minst 7 år (BFL 7 kap.).',
-    '',
-    'Varje zip innehåller en egen LÄSMIG.txt som beskriver innehållet.',
-    `${app} är öppen källkod (AGPL): bokföringen förblir läsbar utan tjänsten.`,
-    '',
-  ].join('\n')
-}
-
 export function buildArchiveReadme(params: ArchiveReadmeParams): string {
   const app = params.appName || 'Accounted'
   const scopeLine =

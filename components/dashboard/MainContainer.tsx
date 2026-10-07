@@ -5,15 +5,9 @@ import { useEffect } from 'react'
 import type { ReactNode } from 'react'
 
 /**
- * Picks the dashboard chrome container based on route. Extension workspaces
- * (/e/*) and the /chat app shell want the full viewport for their own
- * multi-pane layouts; everything else gets the centered max-w-5xl card.
- *
- * Lives in a client component because the parent (dashboard) layout is
- * shared across all dashboard routes. Server-side pathname checks done in
- * the layout don't re-evaluate reliably on soft navigation between sibling
- * routes, so the wrapper class would otherwise stick on whichever branch
- * the first render picked.
+ * Centered max-w-5xl container for the dashboard pages. Lives in a client
+ * component because the parent (dashboard) layout is shared across all
+ * dashboard routes and the panel scroll has to reset on every route change.
  */
 export function MainContainer({
   companyId,
@@ -32,22 +26,8 @@ export function MainContainer({
     document.getElementById('main-content')?.scrollTo(0, 0)
   }, [pathname])
 
-  // The salary run detail page drives a wide, horizontal-flow layout (progress
-  // band + 5-up KPIs + full-width employee ledger) that the standard max-w-5xl
-  // column squeezes. It opts into a wider canvas — a deliberate, scoped
-  // exception to the locked container token. Match only /salary/runs/{id}, not
-  // its nested employee sub-pages.
-  const isWide = /^\/salary\/runs\/[^/]+$/.test(pathname)
-
   return (
-    <div
-      key={companyId ?? ''}
-      className={
-        isWide
-          ? 'max-w-7xl mx-auto px-5 py-8 md:px-8 md:py-10'
-          : 'max-w-5xl mx-auto px-5 py-8 md:px-8 md:py-10'
-      }
-    >
+    <div key={companyId ?? ''} className="max-w-5xl mx-auto px-5 py-8 md:px-8 md:py-10">
       {children}
     </div>
   )

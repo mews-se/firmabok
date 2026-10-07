@@ -2136,14 +2136,6 @@ export interface OnboardingStepData {
 // Calendar view mode
 export type CalendarViewMode = 'month' | 'week' | 'day'
 
-// Payment calendar day (for invoice due date tracking)
-export interface PaymentCalendarDay {
-  date: string
-  invoices: Invoice[]
-  totalExpected: number
-  overdueCount: number
-}
-
 // Tax deadline types (Swedish Skatteverket)
 export type TaxDeadlineType =
   | 'moms_monthly'

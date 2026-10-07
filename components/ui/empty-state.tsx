@@ -8,8 +8,6 @@ import { cn } from '@/lib/utils'
 import {
   ReceiptText,
   Users,
-  FileText,
-  Calendar,
   Plus,
   type LucideIcon,
 } from 'lucide-react'
@@ -108,32 +106,6 @@ export function EmptyCustomers({ onAction }: { onAction?: () => void } = {}) {
       actionLabel={t('preset_customers_action')}
       actionHref={onAction ? undefined : '/customers/new'}
       onAction={onAction}
-    />
-  )
-}
-
-export function EmptyDeadlines() {
-  const t = useTranslations('empty')
-  return (
-    <EmptyState
-      icon={Calendar}
-      title={t('preset_deadlines_title')}
-      description={t('preset_deadlines_description')}
-    />
-  )
-}
-
-export function EmptyReports() {
-  const t = useTranslations('empty')
-  return (
-    <EmptyState
-      icon={FileText}
-      title={t('preset_reports_title')}
-      description={t('preset_reports_description')}
-      actionLabel={t('preset_reports_action')}
-      actionHref="/invoices?new=1"
-      secondaryActionLabel={t('preset_reports_secondary')}
-      secondaryActionHref="/import"
     />
   )
 }

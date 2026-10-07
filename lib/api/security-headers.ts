@@ -36,18 +36,6 @@ export const PUBLIC_SECURITY_HEADERS: Record<string, string> = {
 }
 
 /**
- * Additional headers applied ONLY to authenticated v1 responses. AI bots
- * that respect X-Robots-Tag (Claude, ChatGPT, Perplexity, Google-Extended)
- * will skip these payloads for training; others will ignore the hint.
- * Public discovery routes deliberately omit this so they remain
- * AI-discoverable.
- */
-export const WRAPPED_RESPONSE_HEADERS: Record<string, string> = {
-  ...PUBLIC_SECURITY_HEADERS,
-  'X-Robots-Tag': 'noai, noimageai',
-}
-
-/**
  * Merge the public security headers onto an arbitrary header dict so callers
  * can keep their own Content-Type / Cache-Control entries.
  */

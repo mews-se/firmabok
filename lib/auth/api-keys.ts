@@ -86,20 +86,6 @@ export function findStageApproveConflict(scopes: ApiKeyScope[]): ApiKeyScope | n
   return scopes.find((s) => STAGING_SCOPES.includes(s)) ?? null
 }
 
-/** Scope domain groups for UI rendering */
-export const SCOPE_GROUPS = [
-  { domain: 'companies',           label: 'Företag',              read: 'companies:read' as const,           write: 'companies:write' as const },
-  { domain: 'transactions',        label: 'Transaktioner',        read: 'transactions:read' as const,        write: 'transactions:write' as const },
-  { domain: 'customers',           label: 'Kunder',               read: 'customers:read' as const,           write: 'customers:write' as const },
-  { domain: 'articles',            label: 'Artiklar',             read: 'articles:read' as const,            write: 'articles:write' as const },
-  { domain: 'invoices',            label: 'Fakturor',             read: 'invoices:read' as const,            write: 'invoices:write' as const },
-  { domain: 'suppliers',           label: 'Leverantörer',         read: 'suppliers:read' as const,           write: 'suppliers:write' as const },
-  { domain: 'reports',             label: 'Rapporter',            read: 'reports:read' as const,             write: null },
-  { domain: 'bookkeeping',         label: 'Bokföring',            read: null,                                 write: 'bookkeeping:write' as const },
-  { domain: 'pending_operations',  label: 'Stagade operationer',  read: 'pending_operations:read' as const,  write: 'pending_operations:approve' as const },
-  { domain: 'agent',               label: 'Agent',                read: 'agent:read' as const,               write: 'agent:write' as const },
-] as const
-
 /** Map MCP tool name → required scope. Tools omitted from this map are available to any authenticated key (e.g. discovery/search/skill loading). */
 export const TOOL_SCOPE_MAP: Record<string, ApiKeyScope> = {
   // Companies

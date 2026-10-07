@@ -46,5 +46,3 @@ export const SETTINGS_SECTIONS: Record<string, ComponentType> = {
   templates: TemplatesSettingsContent,
   api: ApiSettingsContent,
 }
-
-export type SettingsSectionId = keyof typeof SETTINGS_SECTIONS

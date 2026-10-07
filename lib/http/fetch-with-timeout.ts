@@ -18,10 +18,6 @@ export function isTimeoutError(error: unknown): boolean {
   )
 }
 
-export const OAUTH_TIMEOUT_MS = 10_000
-export const OAUTH_REVOKE_TIMEOUT_MS = 5_000
-export const SKATTEVERKET_EXCHANGE_TIMEOUT_MS = 8_000
-
 interface FetchWithTimeoutOptions {
   timeoutMs: number
   description: string

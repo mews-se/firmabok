@@ -42,10 +42,6 @@
     {
       "path": "/api/supplier-invoices/overdue/cron",
       "schedule": "0 6 * * *"
-    },
-    {
-      "path": "/api/invoices/deliveries/redact/cron",
-      "schedule": "15 3 * * *"
     }
   ]
 }

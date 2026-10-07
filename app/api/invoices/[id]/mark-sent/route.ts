@@ -13,7 +13,6 @@ import {
 import { ensureInitialized } from '@/lib/init'
 import { withRouteContext } from '@/lib/api/with-route-context'
 import { parseCustomIssuanceLines } from '@/lib/invoices/issuance-custom-lines'
-import { recordManualInvoiceDelivery } from '@/lib/invoices/invoice-deliveries'
 import { InvoicePDF } from '@/lib/invoices/pdf-template'
 import { prepareInvoicePdfRender, buildSwishQrDataUrl } from '@/lib/invoices/pdf-render-helpers'
 import { invoicePdfFilename } from '@/lib/invoices/pdf-filename'
@@ -38,7 +37,8 @@ ensureInitialized()
 /**
  * POST /api/invoices/[id]/mark-sent
  *
- * Manually marks a draft invoice as sent (for invoices delivered outside the system).
+ * Marks a draft invoice as sent: allocates the invoice number if missing, flips
+ * the status and archives the PDF. The system delivers nothing itself.
  * Under faktureringsmetoden (accrual): creates the journal entry (Debit 1510, Credit 30xx/26xx).
  * Under kontantmetoden (cash): no journal entry; booking happens at payment.
  */
@@ -359,7 +359,7 @@ export const POST = withRouteContext<{ params: Promise<{ id: string }> }>(
   }
 
   // Render and archive the PDF as underlag so it remains retrievable even if
-  // the invoice row is later cancelled. Mirrors the send route.
+  // the invoice row is later cancelled.
   if (isRealInvoice) {
     try {
       const items = (invoice.items as InvoiceItem[] | null ?? []).slice().sort(
@@ -412,23 +412,6 @@ export const POST = withRouteContext<{ params: Promise<{ id: string }> }>(
       partialFailures.push({
         step: 'pdf_archive',
         reason: 'Fakturans PDF kunde inte arkiveras.',
-      })
-    }
-  }
-
-  if (statusFlipped) {
-    try {
-      await recordManualInvoiceDelivery({
-        supabase,
-        companyId,
-        userId: user.id,
-        invoiceId: id,
-      })
-    } catch (err) {
-      log.error('failed to record manual invoice delivery', err as Error)
-      partialFailures.push({
-        step: 'delivery_history',
-        reason: 'Utskicket kunde inte sparas i fakturans historik.',
       })
     }
   }

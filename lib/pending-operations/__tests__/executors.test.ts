@@ -8,7 +8,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { eventBus } from '@/lib/events/bus'
 import {
   createQueuedMockSupabase,
-  makeCustomer,
   makeInvoice,
   makeFiscalPeriod,
   makeSupplierInvoice,
@@ -80,11 +79,6 @@ vi.mock('@/lib/bookkeeping/supplier-invoice-entries', async () => {
 
 vi.mock('@/lib/invoices/ensure-invoice-number', () => ({
   ensureInvoiceNumber: vi.fn(),
-}))
-
-const mockRecordManualInvoiceDelivery = vi.fn().mockResolvedValue({ id: 'delivery-1' })
-vi.mock('@/lib/invoices/invoice-deliveries', () => ({
-  recordManualInvoiceDelivery: (...args: unknown[]) => mockRecordManualInvoiceDelivery(...args),
 }))
 
 import { commitPendingOperation } from '../commit'
@@ -208,7 +202,7 @@ describe('commitPendingOperation: credit-note issuance guard', () => {
     expect(result.error).toContain('Credit notes must be issued')
   })
 
-  it('records delivery history when a regular invoice is marked as sent', async () => {
+  it('marks a regular invoice as sent without a verifikat under kontantmetoden', async () => {
     const { supabase, enqueue } = createQueuedMockSupabase()
     enqueue({ data: { id: 'op-1' }, error: null }) // CAS claim
     enqueue({
@@ -240,12 +234,6 @@ describe('commitPendingOperation: credit-note issuance guard', () => {
     )
 
     expect(result.status).toBe('committed')
-    expect(mockRecordManualInvoiceDelivery).toHaveBeenCalledWith({
-      supabase,
-      companyId: 'company-1',
-      userId: 'user-1',
-      invoiceId: 'invoice-1',
-    })
   })
 
   it.each(['SEK', 'EUR'] as const)(
@@ -265,52 +253,6 @@ describe('commitPendingOperation: credit-note issuance guard', () => {
     })
     enqueue({ data: { invoice_payment_accounts: {} }, error: null })
     enqueue({ data: null, error: null }) // dispatcher rejected update
-
-    const op = makePendingOp({
-      operation_type: 'mark_invoice_sent',
-      params: { invoice_id: 'invoice-1' },
-    })
-
-    const result = await commitPendingOperation(
-      supabase as never,
-      'user-1',
-      'company-1',
-      op,
-    )
-
-    expect(result.status).toBe('failed')
-    expect(result.http_status).toBe(400)
-    expect(ensureInvoiceNumber).not.toHaveBeenCalled()
-    expect(mockRecordManualInvoiceDelivery).not.toHaveBeenCalled()
-    },
-  )
-})
-
-describe('commitPendingOperation: invoice payment account guard', () => {
-  it.each(['SEK', 'EUR'] as const)(
-    'rejects a %s invoice before number allocation',
-    async (currency) => {
-    const { supabase, enqueue } = createQueuedMockSupabase()
-    enqueue({ data: { id: 'op-1' }, error: null }) // CAS claim
-    enqueue({
-      data: makeInvoice({
-        id: 'invoice-1',
-        status: 'draft',
-        invoice_number: null,
-        currency,
-        customer: makeCustomer({ id: 'customer-1', email: 'customer@example.test' }),
-        items: [],
-      }),
-      error: null,
-    })
-    enqueue({
-      data: {
-        company_name: 'Test AB',
-        invoice_payment_accounts: {},
-      },
-      error: null,
-    })
-    enqueue({ data: null, error: null }) // dispatcher's rejected update
 
     const op = makePendingOp({
       operation_type: 'mark_invoice_sent',

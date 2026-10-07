@@ -7,9 +7,9 @@
  * Docker deployments run the same HTTP endpoints through supercronic, so their
  * crontabs are generated from that array instead of hand-maintained.
  *
- * Hand-maintaining them is exactly what went wrong: seven of sixteen jobs were
- * missing from Docker entirely (recurring invoices never sent, webhooks never
- * dispatched, idempotency_keys grew unbounded), /api/tax-deadlines/cron had
+ * Hand-maintaining them is exactly what went wrong: several jobs were missing
+ * from Docker entirely (recurring invoices never created, idempotency_keys
+ * grew unbounded), /api/tax-deadlines/cron had
  * degraded from daily to "0 0 2 1 *" (once a year, on 2 January), and
  * /api/documents/verify/cron ran weekly against a daily vercel.json.
  *

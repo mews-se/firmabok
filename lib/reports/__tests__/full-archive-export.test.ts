@@ -641,10 +641,6 @@ describe('generateFullArchive', () => {
           invoice_exchange_rate: null,
         },
       ])
-      expect(supabase.rpc).toHaveBeenCalledWith(
-        'export_invoice_delivery_evidence',
-        { p_company_id: 'company-1' },
-      )
     })
 
     it('makes a foreign-currency invoice line readable without joining the parent', async () => {

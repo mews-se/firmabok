@@ -71,7 +71,6 @@ import { PartialCommitError } from '@/lib/pending-operations/errors'
 import { linkToJournalEntry } from '@/lib/core/documents/document-service'
 import { hasRequiredInvoicePaymentAccount } from '@/lib/invoices/payment-accounts'
 import { ensureInvoiceNumber } from '@/lib/invoices/ensure-invoice-number'
-import { recordManualInvoiceDelivery } from '@/lib/invoices/invoice-deliveries'
 import { createLogger } from '@/lib/logger'
 import { appendProcessingHistory } from '@/lib/processing-history/append'
 import { CreateSupplierParamsSchema } from '@/lib/pending-operations/schemas/create-supplier'
@@ -2024,18 +2023,6 @@ async function commitMarkInvoiceSent(
 
   if (updateError) return { error: 'Failed to update invoice status', status: 500 }
 
-  let deliveryHistoryWarning: string | undefined
-  try {
-    await recordManualInvoiceDelivery({ supabase, companyId, userId, invoiceId })
-  } catch (err) {
-    log.error('failed to persist manual invoice delivery from pending operation', err as Error, {
-      companyId,
-      userId,
-      invoiceId,
-    })
-    deliveryHistoryWarning = 'Fakturan markerades som skickad men utskickshistoriken kunde inte sparas.'
-  }
-
   const isRealInvoice = !invoice.document_type || invoice.document_type === 'invoice'
   let journalEntryId: string | null = null
 
@@ -2059,7 +2046,6 @@ async function commitMarkInvoiceSent(
     data: {
       status: 'sent',
       journal_entry_id: journalEntryId,
-      ...(deliveryHistoryWarning ? { warning: deliveryHistoryWarning } : {}),
     },
   }
 }

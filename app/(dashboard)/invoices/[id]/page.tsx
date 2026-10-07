@@ -17,13 +17,6 @@ import { getDisplayTotal } from '@/lib/invoices/rounding'
 import { isEditableInvoiceDraft } from '@/lib/invoices/is-editable-draft'
 import { creditNoteNeedsJournalEntry } from '@/lib/invoices/issue-credit-note'
 import { canCopyInvoice } from '@/lib/invoices/copy-invoice'
-import {
-  invoiceDocumentCaveat,
-  invoiceRerenderUrl,
-  resolveInvoicePdfSource,
-  type InvoicePdfRerenderReason,
-  type InvoicePdfSource,
-} from '@/lib/invoices/invoice-pdf-source'
 import { contentDispositionFilename } from '@/lib/api/content-disposition'
 import {
   Loader2,
@@ -34,7 +27,6 @@ import {
   Download,
   Eye,
   XCircle,
-  Mail,
   ReceiptText,
   ExternalLink,
   Bell,
@@ -51,10 +43,6 @@ import { useCompany } from '@/contexts/CompanyContext'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import PaymentBookingDialog from '@/components/invoices/PaymentBookingDialog'
 import MarkSentDialog from '@/components/invoices/MarkSentDialog'
-import {
-  InvoiceDeliveryHistory,
-  type InvoiceDeliveryView,
-} from '@/components/invoices/InvoiceDeliveryHistory'
 import CorrectionAffordance from '@/components/bookkeeping/CorrectionAffordance'
 import {
   Dialog,
@@ -77,18 +65,6 @@ const statusVariantMap: Record<InvoiceStatus, 'default' | 'secondary' | 'success
   credited: 'secondary',
 }
 
-// Why the downloaded file is not the invoice the customer received. One key
-// per reason: "no archived copy exists" and "the archive could not be reached"
-// are different facts and must not be told as the same story.
-const RERENDER_CAVEAT_KEYS: Record<
-  Exclude<InvoicePdfRerenderReason, 'not_sent_yet'>,
-  string
-> = {
-  sent_outside_accounted: 'pdf_rerender_reason_sent_outside',
-  no_archived_copy: 'pdf_rerender_reason_no_archive',
-  archive_unreachable: 'pdf_rerender_reason_archive_unreachable',
-}
-
 // A line is periodiserad when both period dates are set: the revenue was
 // parked on the 29xx interim account and dissolves monthly via accrual_schedules.
 const itemHasAccrual = (item: InvoiceItem): boolean =>
@@ -100,7 +76,7 @@ interface InvoiceWithRelations extends Invoice {
   customer: Customer
   items: InvoiceItem[]
   // Optional reference to the issuance verifikation. Populated by the
-  // backend when the invoice flow auto-books an entry on send; absent on
+  // backend when marking the invoice as sent books an entry; absent on
   // older invoices and on companies where issuance is not auto-booked.
   journal_entry_id?: string | null
 }
@@ -116,19 +92,6 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
 
   const [invoice, setInvoice] = useState<InvoiceWithRelations | null>(null)
   const [reminders, setReminders] = useState<InvoiceReminder[]>([])
-  const [deliveries, setDeliveries] = useState<InvoiceDeliveryView[]>([])
-  // An empty deliveries list means "nothing was ever sent through Accounted".
-  // A failed read also produces an empty list, and the two must never be
-  // conflated: the archived PDF the customer received is the räkenskapsunderlag
-  // (BFL 7 kap), and a freshly re-rendered one is a different document.
-  const [deliveriesUnreadable, setDeliveriesUnreadable] = useState(false)
-  // Set when the archived copy could not be produced, so the user is asked
-  // instead of being handed a substitute that looks like the original.
-  const [pdfArchiveIssue, setPdfArchiveIssue] = useState<'history' | 'document' | null>(null)
-  // Which action raised that question: the dialog's fallback must do what the
-  // user originally asked for (open in the browser vs save the file), not
-  // silently switch mechanism (#1190).
-  const [pdfIntent, setPdfIntent] = useState<'download' | 'preview'>('download')
   // Payment history backing the new Betalningsstatus card. Fetched alongside
   // the invoice itself so the card stays in sync with paid_amount /
   // remaining_amount on the invoice row.
@@ -175,34 +138,6 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
     fetchInvoice()
   }, [id])
 
-  /**
-   * Read the delivery history, keeping "read failed" distinct from "nothing
-   * has been sent". Both used to arrive as `[]`, which is what let a network
-   * blip silently downgrade the invoice download from the archived PDF the
-   * customer received to a freshly re-rendered one.
-   */
-  async function loadDeliveries(): Promise<{
-    ok: boolean
-    deliveries: InvoiceDeliveryView[]
-  }> {
-    try {
-      const response = await fetch(`/api/invoices/${encodeURIComponent(id)}/deliveries`)
-      if (!response.ok) return { ok: false, deliveries: [] }
-      const payload = (await response.json()) as { data?: InvoiceDeliveryView[] }
-      if (!Array.isArray(payload.data)) return { ok: false, deliveries: [] }
-      return { ok: true, deliveries: payload.data }
-    } catch {
-      return { ok: false, deliveries: [] }
-    }
-  }
-
-  async function retryLoadDeliveries() {
-    const result = await loadDeliveries()
-    setDeliveries(result.deliveries)
-    setDeliveriesUnreadable(!result.ok)
-    return result
-  }
-
   async function fetchInvoice() {
     setIsLoading(true)
 
@@ -216,11 +151,9 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
           .maybeSingle()
       : Promise.resolve(null)
 
-    const deliveriesPromise = loadDeliveries()
-
-    // Invoice, reminders, payments, and deliveries all key on the route id: one
-    // parallel batch. Only the follow-ups below need the invoice row.
-    const [{ data, error }, { data: reminderData }, { data: paymentData }, deliveryData] =
+    // Invoice, reminders and payments all key on the route id: one parallel
+    // batch. Only the follow-ups below need the invoice row.
+    const [{ data, error }, { data: reminderData }, { data: paymentData }] =
       await Promise.all([
         supabase
           .from('invoices')
@@ -247,7 +180,6 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
           )
           .eq('invoice_id', id)
           .order('payment_date', { ascending: true }),
-        deliveriesPromise,
       ])
 
     if (error || !data) {
@@ -266,8 +198,6 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
     }
 
     setInvoice(data as InvoiceWithRelations)
-    setDeliveries(deliveryData.deliveries)
-    setDeliveriesUnreadable(!deliveryData.ok)
 
     if (reminderData) {
       setReminders(reminderData as InvoiceReminder[])
@@ -487,40 +417,13 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
     setIsConverting(false)
   }
 
-  /**
-   * Fetch and save one specific document, then say truthfully which one it was.
-   *
-   * The archived delivery is the invoice the customer actually received and is
-   * the räkenskapsunderlag kept for 7 years (BFL 7 kap). A re-render comes off
-   * today's invoice row, customer row, company settings and logo, so it is a
-   * different document whenever any of those moved. It may be served when it
-   * is the only thing that exists, but never under the plain "nedladdad" toast
-   * that reads as "here is what you sent".
-   */
-  async function runInvoiceDownload(source: InvoicePdfSource) {
+  async function downloadPDF() {
     if (!invoice) return
-
-    if (source.kind === 'unavailable') {
-      setPdfIntent('download')
-      setPdfArchiveIssue('history')
-      return
-    }
-
     setIsDownloading(true)
 
     try {
-      const response = await fetch(source.url)
-
-      if (!response.ok) {
-        // A missing archive is not a generation failure and must not offer a
-        // silent substitute: hand the choice back to the user.
-        if (source.kind === 'archived') {
-          setPdfIntent('download')
-          setPdfArchiveIssue('document')
-          return
-        }
-        throw new Error(t('pdf_generate_failed'))
-      }
+      const response = await fetch(`/api/invoices/${encodeURIComponent(invoice.id)}/pdf`)
+      if (!response.ok) throw new Error(t('pdf_generate_failed'))
 
       const blob = await response.blob()
       const url = window.URL.createObjectURL(blob)
@@ -533,20 +436,12 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
       window.URL.revokeObjectURL(url)
       document.body.removeChild(a)
 
-      const caveat = invoiceDocumentCaveat(source)
-      if (caveat) {
-        toast({
-          title: t('pdf_rerender_downloaded_title'),
-          description: t(RERENDER_CAVEAT_KEYS[caveat]),
-        })
-      } else {
-        toast({
-          title: t('pdf_downloaded_title'),
-          description: invoice.invoice_number
-            ? t('pdf_downloaded_with_number', { number: invoice.invoice_number })
-            : t('pdf_downloaded_draft'),
-        })
-      }
+      toast({
+        title: t('pdf_downloaded_title'),
+        description: invoice.invoice_number
+          ? t('pdf_downloaded_with_number', { number: invoice.invoice_number })
+          : t('pdf_downloaded_draft'),
+      })
     } catch (error) {
       toast({
         title: t('pdf_download_failed_title'),
@@ -558,114 +453,18 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
     }
   }
 
-  async function downloadPDF() {
+  // Show the PDF in the browser instead of saving it (#1190): granskning
+  // should not require leaving the app for the Downloads folder.
+  function previewPDF() {
     if (!invoice) return
-    setPdfArchiveIssue(null)
-    await runInvoiceDownload(
-      resolveInvoicePdfSource({
-        invoiceId: invoice.id,
-        invoiceStatus: invoice.status,
-        deliveriesLoaded: !deliveriesUnreadable,
-        deliveries,
-      }),
-    )
-  }
-
-  /**
-   * Show one specific document in the browser instead of saving it (#1190):
-   * granskning should not require leaving the app for the Downloads folder.
-   *
-   * Which document may be shown is the same question as for the download, and
-   * gets the same answer: the archived delivery when it exists, a re-render only
-   * with the caveat spelled out, and a question rather than a guess when the
-   * delivery history could not be read. Only the mechanism differs, so a tab is
-   * opened synchronously (before any await) to keep the click's user activation
-   * and stay clear of the popup blocker.
-   */
-  function runInvoicePreview(source: InvoicePdfSource) {
-    if (!invoice) return
-
-    if (source.kind === 'unavailable') {
-      setPdfIntent('preview')
-      setPdfArchiveIssue('history')
-      return
-    }
-
-    const url =
-      source.kind === 'archived' ? source.url : invoiceRerenderUrl(invoice.id, { inline: true })
-
+    const url = `/api/invoices/${encodeURIComponent(invoice.id)}/pdf?disposition=inline`
     if (!window.open(url, '_blank', 'noopener,noreferrer')) {
       toast({
         title: t('pdf_preview_blocked_title'),
         description: t('pdf_preview_blocked_description'),
         variant: 'destructive',
       })
-      return
     }
-
-    const caveat = invoiceDocumentCaveat(source)
-    if (caveat) {
-      toast({
-        title: t('pdf_rerender_preview_title'),
-        description: t(RERENDER_CAVEAT_KEYS[caveat]),
-      })
-    }
-  }
-
-  function previewPDF() {
-    if (!invoice) return
-    setPdfArchiveIssue(null)
-    runInvoicePreview(
-      resolveInvoicePdfSource({
-        invoiceId: invoice.id,
-        invoiceStatus: invoice.status,
-        deliveriesLoaded: !deliveriesUnreadable,
-        deliveries,
-      }),
-    )
-  }
-
-  // "Försök igen" from the archive dialog. Re-reads the delivery history first
-  // so a transient list failure resolves back to the archived copy instead of
-  // getting stuck on the stale empty state.
-  async function retryArchivedDownload() {
-    if (!invoice) return
-    setIsDownloading(true)
-    const result = await retryLoadDeliveries()
-    setIsDownloading(false)
-    setPdfArchiveIssue(null)
-    const source = resolveInvoicePdfSource({
-      invoiceId: invoice.id,
-      invoiceStatus: invoice.status,
-      deliveriesLoaded: result.ok,
-      deliveries: result.deliveries,
-    })
-    // The retry is a second attempt at what the user asked for, not a switch to
-    // the other mechanism. A preview retry re-resolves the source first, so the
-    // tab it opens is no longer inside the original click's activation window;
-    // a blocked popup is reported rather than swallowed.
-    if (pdfIntent === 'preview') {
-      runInvoicePreview(source)
-      return
-    }
-    await runInvoiceDownload(source)
-  }
-
-  // The user explicitly accepted a re-render after being told it is not the
-  // document that was sent. The toast still says so.
-  async function downloadRerenderAnyway() {
-    if (!invoice) return
-    setPdfArchiveIssue(null)
-    const source = {
-      kind: 'rerender' as const,
-      url: invoiceRerenderUrl(invoice.id),
-      reason: 'archive_unreachable' as const,
-    }
-    if (pdfIntent === 'preview') {
-      runInvoicePreview(source)
-      return
-    }
-    await runInvoiceDownload(source)
   }
 
   // Open the finalize dialog and peek the next F-number so the user can see
@@ -835,9 +634,6 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
   const isEditableDraft = isEditableInvoiceDraft(invoice)
   const isCopyable = canCopyInvoice(invoice)
   const hasAccruedItems = invoice.items.some(itemHasAccrual)
-  const latestCompletedDelivery = deliveries.find(
-    (delivery) => delivery.status === 'sent' || delivery.status === 'marked_sent',
-  )
   return (
     <div className="space-y-8">
       {/* Header */}
@@ -870,8 +666,6 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
             </div>
             <p className="text-muted-foreground">
               {t('created_at', { date: formatDate(invoice.created_at) })}
-              {latestCompletedDelivery?.sent_at &&
-                t('sent_at_suffix', { date: formatDate(latestCompletedDelivery.sent_at) })}
             </p>
           </div>
         </div>
@@ -1189,44 +983,6 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
             </CardContent>
           </Card>
           )}
-
-        {/* The legacy empty state asserts "sent before delivery history
-            existed". A failed read produces the same empty list, so that
-            claim would be a guess: say what actually happened instead. */}
-        {isRealInvoice && !isSelfBilled && deliveriesUnreadable && (
-          <Card className="lg:col-span-2">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Mail className="h-5 w-5" />
-                {t('delivery_history_title')}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
-                <p className="font-medium text-foreground">
-                  {t('delivery_history_unreadable_title')}
-                </p>
-                <p className="mt-1">{t('delivery_history_unreadable_description')}</p>
-              </div>
-              <Button variant="outline" size="sm" onClick={() => void retryLoadDeliveries()}>
-                {t('delivery_history_unreadable_retry')}
-              </Button>
-            </CardContent>
-          </Card>
-        )}
-
-        {isRealInvoice && !isSelfBilled && !deliveriesUnreadable && (
-          <InvoiceDeliveryHistory
-            deliveries={deliveries}
-            showLegacyEmptyState={[
-              'sent',
-              'paid',
-              'partially_paid',
-              'overdue',
-              'credited',
-            ].includes(invoice.status)}
-          />
-        )}
 
         {/* Sidebar */}
         <div className="lg:col-start-3 lg:row-start-1 lg:row-span-3 space-y-6">
@@ -1723,49 +1479,6 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
             <Button onClick={finalizeInvoice} disabled={isFinalizing}>
               {isFinalizing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {t('finalize_dialog_confirm')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* The archived PDF the customer received could not be produced. Nothing
-          has been downloaded at this point: a re-render is a different
-          document, so the user chooses it deliberately or not at all. */}
-      <Dialog
-        open={pdfArchiveIssue !== null}
-        onOpenChange={(open) => {
-          if (!open) setPdfArchiveIssue(null)
-        }}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t('pdf_archive_issue_title')}</DialogTitle>
-            <DialogDescription>
-              {pdfArchiveIssue === 'document'
-                ? t('pdf_archive_issue_document_desc')
-                : t('pdf_archive_issue_history_desc')}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setPdfArchiveIssue(null)}
-              disabled={isDownloading}
-            >
-              {t('pdf_archive_issue_cancel')}
-            </Button>
-            <Button
-              variant="secondary"
-              onClick={downloadRerenderAnyway}
-              disabled={isDownloading}
-            >
-              {pdfIntent === 'preview'
-                ? t('pdf_archive_issue_rerender_preview')
-                : t('pdf_archive_issue_rerender')}
-            </Button>
-            <Button onClick={retryArchivedDownload} disabled={isDownloading}>
-              {isDownloading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {t('pdf_archive_issue_retry')}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -102,7 +102,6 @@ const EXPECTED_QUERIES: { table: string; columns: string[] }[] = [
     ],
   },
   { table: 'journal_entries', columns: ['created_at'] },
-  { table: 'invoice_deliveries', columns: ['sent_at'] },
   { table: 'bank_connections', columns: ['last_synced_at'] },
   { table: 'deadlines', columns: ['id', 'title', 'due_date', 'deadline_type', 'priority', 'status'] },
 ]
@@ -154,25 +153,6 @@ describe('Accounted://company/current query shape', () => {
     })
   })
 
-  it('reads the sent timestamp from invoice_deliveries, never from invoices', async () => {
-    const { supabase, calls } = createRecordingSupabase(emptyResults())
-
-    await companyCurrentResource.read(ctx(supabase))
-
-    // invoices has no sent timestamp of any kind; selecting one there always
-    // yields null, which the agent reads as "no invoice was ever sent".
-    for (const call of findCall(calls, 'invoices')) {
-      expect(parseColumns(call.select)).not.toContain('sent_at')
-    }
-
-    const [delivery] = findCall(calls, 'invoice_deliveries')
-    expect(delivery).toBeDefined()
-    expect(parseColumns(delivery.select)).toEqual(['sent_at'])
-    expect(argsOf(delivery, 'eq')).toContainEqual(['company_id', 'company-1'])
-    expect(argsOf(delivery, 'not')).toContainEqual(['sent_at', 'is', null])
-    expect(argsOf(delivery, 'order')).toContainEqual(['sent_at', { ascending: false }])
-  })
-
   it('filters categorizations on a source_type the engine actually writes', async () => {
     const { supabase, calls } = createRecordingSupabase(emptyResults())
 
@@ -187,24 +167,21 @@ describe('Accounted://company/current query shape', () => {
 })
 
 describe('Accounted://company/current recency signals', () => {
-  it('surfaces the delivery timestamp as last_invoice_sent_at', async () => {
+  it('surfaces the categorization and bank sync timestamps', async () => {
     const results = emptyResults()
     results[9] = { data: { created_at: '2026-07-20T08:00:00.000Z' } }
-    results[10] = { data: { sent_at: '2026-07-25T13:09:31.130Z' } }
-    results[11] = { data: { last_synced_at: '2026-07-26T04:00:00.000Z' } }
+    results[10] = { data: { last_synced_at: '2026-07-26T04:00:00.000Z' } }
     const { supabase } = createRecordingSupabase(results)
 
     const result = (await companyCurrentResource.read(ctx(supabase))) as {
       recent: {
         last_categorization_at: string | null
-        last_invoice_sent_at: string | null
         last_bank_sync_at: string | null
       }
     }
 
     expect(result.recent).toEqual({
       last_categorization_at: '2026-07-20T08:00:00.000Z',
-      last_invoice_sent_at: '2026-07-25T13:09:31.130Z',
       last_bank_sync_at: '2026-07-26T04:00:00.000Z',
     })
   })
@@ -218,19 +195,8 @@ describe('Accounted://company/current recency signals', () => {
 
     expect(result.recent).toEqual({
       last_categorization_at: null,
-      last_invoice_sent_at: null,
       last_bank_sync_at: null,
     })
-  })
-
-  it('throws instead of reporting a failed delivery read as "never sent"', async () => {
-    const results = emptyResults()
-    results[10] = { error: { code: '42703', message: 'column invoice_deliveries.sent_at does not exist' } }
-    const { supabase } = createRecordingSupabase(results)
-
-    await expect(companyCurrentResource.read(ctx(supabase))).rejects.toThrow(
-      /Failed to read last invoice delivery/,
-    )
   })
 
   it('throws when the categorization or bank-sync read fails', async () => {
@@ -241,7 +207,7 @@ describe('Accounted://company/current recency signals', () => {
     ).rejects.toThrow(/Failed to read last categorization/)
 
     const bankSyncFailed = emptyResults()
-    bankSyncFailed[11] = { error: { code: '57014', message: 'statement timeout' } }
+    bankSyncFailed[10] = { error: { code: '57014', message: 'statement timeout' } }
     await expect(
       companyCurrentResource.read(ctx(createRecordingSupabase(bankSyncFailed).supabase)),
     ).rejects.toThrow(/Failed to read last bank sync/)
@@ -256,6 +222,6 @@ describe('Accounted://company/current recency signals', () => {
       recent: Record<string, string | null>
     }
 
-    expect(result.recent.last_invoice_sent_at).toBeNull()
+    expect(result.recent.last_bank_sync_at).toBeNull()
   })
 })

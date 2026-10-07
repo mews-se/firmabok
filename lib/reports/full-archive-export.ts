@@ -828,9 +828,6 @@ export const MASTER_DATA_DUMP_TABLES: MasterDataTableSpec[] = [
   },
   { name: 'invoice_payments', file: 'invoice_payments.json', orderBy: 'payment_date' },
   { name: 'invoice_reminders', file: 'invoice_reminders.json' },
-  // Delivery metadata proves which recipient received the archived PDF and
-  // when, so it is räkenskapsinformation alongside the invoice itself.
-  { name: 'invoice_deliveries', file: 'invoice_deliveries.json', orderBy: 'created_at' },
   { name: 'recurring_invoice_schedules', file: 'recurring_invoice_schedules.json' },
   // Supplier invoicing
   { name: 'supplier_invoices', file: 'supplier_invoices.json', orderBy: 'invoice_date' },
@@ -986,6 +983,7 @@ export const ARCHIVE_EXCLUDED_TABLES: Record<string, string> = {
   graph_counterparties: 'derived AI context graph, regenerable',
   graph_transaction_counterparties: 'derived AI context graph, regenerable',
   idempotency_keys: 'infrastructure',
+  invoice_deliveries: 'e-mail delivery log of the retired invoice send path, no rows are written any more',
   inbox_rate_counters: 'infrastructure',
   mcp_tasks: 'MCP task handles: transient tool-call state with a 1-hour TTL',
   metered_events: 'billing telemetry',
@@ -1086,39 +1084,30 @@ async function writeMasterData(
   for (const t of MASTER_DATA_DUMP_TABLES) {
     const pageKey = t.pageKey ?? 'id'
     try {
-      const rows = t.name === 'invoice_deliveries'
-        ? await fetchAllRows<Record<string, unknown>>(({ from, to }) =>
-            supabase
-              .rpc('export_invoice_delivery_evidence', { p_company_id: companyId })
-              .order('created_at', { ascending: true })
-              .order('id', { ascending: true })
-              .range(from, to),
-          { dedupeBy: (row) => String(row.id) })
-        : t.via
-          ? await fetchChildTableRows(supabase, companyId, t)
-          : await fetchAllRows<Record<string, unknown>>(({ from, to }) => {
-            let q = supabase.from(t.name).select(t.columns ?? '*').eq('company_id', companyId)
-            if (t.orderBy) {
-              q = q.order(t.orderBy, { ascending: true })
-            }
-            // Always end on the unique PK so paging has a stable TOTAL order. A
-            // non-unique display order (e.g. created_at) or no order at all
-            // silently SKIPS/DUPLICATES rows across page boundaries: data loss in
-            // a statutory 7-year retention archive. dedupeBy is defense-in-depth
-            // against the duplicate case.
-            //
-            // The select list is built at runtime (spec.columns), so
-            // PostgREST's literal-string type inference cannot resolve it and
-            // falls back to an error type; the runtime shape is the declared
-            // columns, by construction. Same cast as fetchChildTableRows.
-            return q.order(pageKey, { ascending: true }).range(from, to) as unknown as PromiseLike<{
-              data: Record<string, unknown>[] | null
-              error: { message: string } | null
-            }>
-          }, { dedupeBy: (r) => String(r[pageKey]) })
+      const rows = t.via
+        ? await fetchChildTableRows(supabase, companyId, t)
+        : await fetchAllRows<Record<string, unknown>>(({ from, to }) => {
+          let q = supabase.from(t.name).select(t.columns ?? '*').eq('company_id', companyId)
+          if (t.orderBy) {
+            q = q.order(t.orderBy, { ascending: true })
+          }
+          // Always end on the unique PK so paging has a stable TOTAL order. A
+          // non-unique display order (e.g. created_at) or no order at all
+          // silently SKIPS/DUPLICATES rows across page boundaries: data loss in
+          // a statutory 7-year retention archive. dedupeBy is defense-in-depth
+          // against the duplicate case.
+          //
+          // The select list is built at runtime (spec.columns), so
+          // PostgREST's literal-string type inference cannot resolve it and
+          // falls back to an error type; the runtime shape is the declared
+          // columns, by construction. Same cast as fetchChildTableRows.
+          return q.order(pageKey, { ascending: true }).range(from, to) as unknown as PromiseLike<{
+            data: Record<string, unknown>[] | null
+            error: { message: string } | null
+          }>
+        }, { dedupeBy: (r) => String(r[pageKey]) })
       data.file(t.file, JSON.stringify(rows, null, 2))
     } catch (err) {
-      if (t.name === 'invoice_deliveries') throw err
       data.file(
         t.file,
         JSON.stringify(

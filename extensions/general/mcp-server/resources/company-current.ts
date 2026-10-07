@@ -28,7 +28,6 @@ export const companyCurrentResource: McpResource = {
       openSupplierInvoiceCountRes,
       voucherSequencesRes,
       lastCategorizationRes,
-      lastInvoiceSentRes,
       lastBankSyncRes,
       upcomingDeadlinesRes,
     ] = await Promise.all([
@@ -109,21 +108,6 @@ export const companyCurrentResource: McpResource = {
         .limit(1)
         .maybeSingle(),
 
-      // "Sent" lives in the delivery log, not on invoices: that table has no
-      // sent timestamp at all. Both send paths write invoice_deliveries.sent_at
-      // (email -> status 'sent', manual mark-as-sent -> 'marked_sent'), and the
-      // invoice detail view reads the same rows for its "Skickad" date, so the
-      // agent and the UI now agree. Only sent_at is selected: the rest of the
-      // delivery row is recipient/message PII this resource has no use for.
-      supabase
-        .from('invoice_deliveries')
-        .select('sent_at')
-        .eq('company_id', companyId)
-        .not('sent_at', 'is', null)
-        .order('sent_at', { ascending: false })
-        .limit(1)
-        .maybeSingle(),
-
       supabase
         .from('bank_connections')
         .select('last_synced_at')
@@ -159,7 +143,6 @@ export const companyCurrentResource: McpResource = {
     // legitimate no-rows case and stays null.
     const recencyReads = [
       { label: 'last categorization', error: lastCategorizationRes.error },
-      { label: 'last invoice delivery', error: lastInvoiceSentRes.error },
       { label: 'last bank sync', error: lastBankSyncRes.error },
     ]
     for (const read of recencyReads) {
@@ -225,7 +208,6 @@ export const companyCurrentResource: McpResource = {
       voucher_series: voucherSeries,
       recent: {
         last_categorization_at: lastCategorizationRes.data?.created_at ?? null,
-        last_invoice_sent_at: lastInvoiceSentRes.data?.sent_at ?? null,
         last_bank_sync_at: lastBankSyncRes.data?.last_synced_at ?? null,
       },
       upcoming_deadlines: upcomingDeadlinesRes.data ?? [],

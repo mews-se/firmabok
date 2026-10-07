@@ -54,7 +54,7 @@ export default async function DashboardPage() {
     getWorklistCounts(supabase, companyId),
     listSuggestedMatches(supabase, companyId, 5),
     // In-progress work for the Fortsätt pane: pure draft-state derivation.
-    listResumeItems(supabase, companyId, now),
+    listResumeItems(supabase, companyId),
   ])
 
   // A FAILED settings read must not masquerade as "onboarding not done":

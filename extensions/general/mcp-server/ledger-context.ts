@@ -88,7 +88,6 @@ export interface LedgerContext {
   conventions: {
     accounting_method: string | null
     voucher_series_in_use: string[]
-    salary_run_active: boolean
     typical_booking_lag_days: number | null
   }
 }
@@ -140,7 +139,7 @@ export async function buildLedgerContext(
   const fromDate = windowFrom(now)
   const today = now.toISOString().slice(0, 10)
 
-  const [statsRes, settingsRes, rulesRes, templatesRes, entryCountRes, voucherSeriesRes, salaryRes] =
+  const [statsRes, settingsRes, rulesRes, templatesRes, entryCountRes, voucherSeriesRes] =
     await Promise.all([
       supabase.rpc('get_ledger_usage_stats', {
         p_company_id: companyId,
@@ -149,7 +148,7 @@ export async function buildLedgerContext(
 
       supabase
         .from('company_settings')
-        .select('vat_registered, moms_period, accounting_method, pays_salaries')
+        .select('vat_registered, moms_period, accounting_method')
         .eq('company_id', companyId)
         .maybeSingle(),
 
@@ -184,12 +183,6 @@ export async function buildLedgerContext(
         .from('voucher_sequences')
         .select('voucher_series')
         .eq('company_id', companyId),
-
-      supabase
-        .from('salary_runs')
-        .select('id', { count: 'exact', head: true })
-        .eq('company_id', companyId)
-        .gte('payment_date', fromDate),
     ])
 
   if (statsRes.error) {
@@ -205,7 +198,6 @@ export async function buildLedgerContext(
     ['categorization_templates', templatesRes],
     ['journal_entries count', entryCountRes],
     ['voucher_sequences', voucherSeriesRes],
-    ['salary_runs count', salaryRes],
   ]
   for (const [label, res] of secondary) {
     if (res.error) {
@@ -313,7 +305,6 @@ export async function buildLedgerContext(
     conventions: {
       accounting_method: settings?.accounting_method ?? null,
       voucher_series_in_use: voucherSeries,
-      salary_run_active: (salaryRes.count ?? 0) > 0,
       typical_booking_lag_days:
         stats.median_booking_lag_days === null ? null : Math.round(stats.median_booking_lag_days),
     },

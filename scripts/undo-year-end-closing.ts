@@ -8,25 +8,23 @@
  * bookkeeping engine (BFL 5 kap 5 §). Nothing is edited or deleted.
  *
  * What it does, in order:
- *   1. Preconditions: the period has a closing entry; no årsredovisning
- *      submission or signature request exists for the company; the next
- *      period (if any) is open and has no closing entry of its own. Other
- *      posted entries in the next period are reported but do not block
- *      (their balances are independent of the IB; the re-run's continuity
- *      check revalidates everything).
- *   2. Reverse the next period's result_appropriation entry (2099 -> 2098).
- *   3. Reverse the next period's opening_balance entry. reverseEntry()
+ *   1. Preconditions: the period has a closing entry; the next period (if
+ *      any) is open and has no closing entry of its own. Other posted
+ *      entries in the next period are reported but do not block (their
+ *      balances are independent of the IB; the re-run's continuity check
+ *      revalidates everything).
+ *   2. Reverse the next period's opening_balance entry. reverseEntry()
  *      itself clears opening_balance_entry_id + opening_balances_set on the
  *      period (two-step, per enforce_opening_balance_immutability).
- *   4. Reset the next period's continuity_verified to NULL.
- *   5. Reopen the closed period (is_closed=false, closed_at=null,
+ *   3. Reset the next period's continuity_verified to NULL.
+ *   4. Reopen the closed period (is_closed=false, closed_at=null,
  *      locked_at=null).
- *   6. Reverse the closing entry (storno in the reopened period).
- *   7. Clear closing_entry_id. This must come AFTER the storno: the
+ *   5. Reverse the closing entry (storno in the reopened period).
+ *   6. Clear closing_entry_id. This must come AFTER the storno: the
  *      enforce_opening_balance_immutability trigger only allows detaching a
  *      closing entry that is reversed with a posted storno chain
  *      (migration 20260720140000).
- *   8. Write an explicit audit_log row (BFNAR 2013:2 kap. 8: reopening is a
+ *   7. Write an explicit audit_log row (BFNAR 2013:2 kap. 8: reopening is a
  *      sensitive control change) and verify the final state.
  *
  * RESUMABLE: every step is idempotent-or-skipped, so if a run dies midway
@@ -35,9 +33,8 @@
  * when the period is already open, and the run continues from the first
  * incomplete step.
  *
- * Dispositions already booked in the period (periodiseringsfond, SLP,
- * överavskrivningar) are NOT touched: only the closing entry and the two
- * auto-generated new-year entries are reversed.
+ * Entries already booked in the period are NOT touched: only the closing
+ * entry and the auto-generated opening balance entry are reversed.
  *
  * Attribution (BFL 5 kap 6 §): pass --user-id to attribute the stornos
  * explicitly (normally the company owner who requested the reset); defaults
@@ -149,20 +146,6 @@ async function main() {
   }
 
   // ── Preconditions ──────────────────────────────────────────────
-  const { count: submissions } = await supabase
-    .from('arsredovisning_submissions')
-    .select('id', { count: 'exact', head: true })
-    .eq('company_id', COMPANY_ID)
-    .eq('fiscal_period_id', PERIOD_ID)
-  if ((submissions ?? 0) > 0) fail('an årsredovisning submission exists for this period: refuse to reopen')
-
-  const { count: signatureRequests } = await supabase
-    .from('arsredovisning_signature_requests')
-    .select('id', { count: 'exact', head: true })
-    .eq('company_id', COMPANY_ID)
-    .eq('fiscal_period_id', PERIOD_ID)
-  if ((signatureRequests ?? 0) > 0) fail('an årsredovisning signature request exists for this period: refuse to reopen')
-
   const { data: settings } = await supabase
     .from('company_settings')
     .select('bookkeeping_locked_through')
@@ -193,7 +176,7 @@ async function main() {
   // Chain lookup first, then date-based fallback (day after period_end),
   // mirroring findNextPeriod() in period-service: periods created before the
   // previous_period_id chain was wired up must still be found, or their
-  // IB/appropriation entries would be left posted and block the re-run.
+  // IB entry would be left posted and block the re-run.
   let { data: nextPeriod } = await supabase
     .from('fiscal_periods')
     .select('*')
@@ -214,7 +197,6 @@ async function main() {
   }
 
   let ibEntry: EntryRow | null = null
-  let appropriationEntry: EntryRow | null = null
 
   if (nextPeriod) {
     console.log(`Next period: ${nextPeriod.name} (${nextPeriod.period_start} - ${nextPeriod.period_end})`)
@@ -241,8 +223,6 @@ async function main() {
         (!nextPeriod.opening_balance_entry_id || e.id === nextPeriod.opening_balance_entry_id)
       ) {
         ibEntry = e
-      } else if (e.source_type === 'result_appropriation') {
-        appropriationEntry = e
       } else {
         // Real bookkeeping already exists in the new year. That is fine for
         // the reset itself (their balances are independent of the IB), but
@@ -251,7 +231,6 @@ async function main() {
       }
     }
     if (ibEntry) console.log(`Opening balance entry: ${label(ibEntry)}`)
-    if (appropriationEntry) console.log(`Result appropriation entry: ${label(appropriationEntry)}`)
   } else {
     console.log('No next period found: only the closing entry will be reversed')
   }
@@ -284,25 +263,18 @@ async function main() {
 
   if (!COMMIT) {
     console.log('\nDry run only. Planned actions:')
-    if (appropriationEntry) console.log(`  1. Storno ${label(appropriationEntry)}`)
-    if (ibEntry) console.log(`  2. Storno ${label(ibEntry)} (clears IB link + flag on next period)`)
-    if (nextPeriod) console.log('  3. Reset next period continuity_verified to NULL')
+    if (ibEntry) console.log(`  1. Storno ${label(ibEntry)} (clears IB link + flag on next period)`)
+    if (nextPeriod) console.log('  2. Reset next period continuity_verified to NULL')
     if (period.is_closed || period.locked_at) {
-      console.log(`  4. Reopen ${period.name}: is_closed=false, closed_at=null, locked_at=null`)
+      console.log(`  3. Reopen ${period.name}: is_closed=false, closed_at=null, locked_at=null`)
     }
-    if (closingEntry.status === 'posted') console.log(`  5. Storno ${label(closingEntry)}`)
-    console.log('  6. Clear closing_entry_id on the reopened period (+ audit_log)')
+    if (closingEntry.status === 'posted') console.log(`  4. Storno ${label(closingEntry)}`)
+    console.log('  5. Clear closing_entry_id on the reopened period (+ audit_log)')
     console.log('Re-run with --commit to apply.')
     return
   }
 
   // ── Execute ────────────────────────────────────────────────────
-  if (appropriationEntry) {
-    console.log('Reversing result appropriation entry…')
-    const storno = await reverseEntry(supabase, COMPANY_ID!, userId!, appropriationEntry.id)
-    console.log(`  posted storno ${storno.voucher_series}${storno.voucher_number}`)
-  }
-
   if (ibEntry) {
     console.log('Reversing opening balance entry…')
     const storno = await reverseEntry(supabase, COMPANY_ID!, userId!, ibEntry.id)

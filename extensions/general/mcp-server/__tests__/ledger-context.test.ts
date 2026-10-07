@@ -8,7 +8,7 @@ const NOW = new Date('2026-07-07T10:00:00Z')
 
 // Queue order mirrors the Promise.all call order in buildLedgerContext:
 // rpc stats, company_settings, mapping_rules, categorization_templates,
-// posted-entry count, voucher_sequences, salary_runs.
+// posted-entry count, voucher_sequences.
 function enqueueAll(
   mock: ReturnType<typeof createQueuedMockSupabase>,
   overrides: {
@@ -18,7 +18,6 @@ function enqueueAll(
     templates?: unknown[]
     entryCount?: number
     voucherSeries?: unknown[]
-    salaryCount?: number
   } = {},
 ) {
   mock.enqueueMany([
@@ -28,7 +27,6 @@ function enqueueAll(
     { data: overrides.templates ?? [] },
     { count: overrides.entryCount ?? 0 },
     { data: overrides.voucherSeries ?? [] },
-    { count: overrides.salaryCount ?? 0 },
   ])
 }
 
@@ -157,9 +155,8 @@ describe('buildLedgerContext', () => {
   it('derives vat profile and conventions from settings, stats, and series', async () => {
     enqueueAll(mock, {
       stats: { ...emptyStats(), vat_treatments_used: ['standard_25'], median_booking_lag_days: 2.6 },
-      settings: { vat_registered: true, moms_period: 'quarterly', accounting_method: 'accrual', pays_salaries: true },
+      settings: { vat_registered: true, moms_period: 'quarterly', accounting_method: 'accrual' },
       voucherSeries: [{ voucher_series: 'B' }, { voucher_series: 'A' }, { voucher_series: 'A' }],
-      salaryCount: 3,
     })
     const ctx = await buildLedgerContext(mock.supabase as unknown as SupabaseClient, COMPANY_ID, NOW)
 
@@ -171,7 +168,6 @@ describe('buildLedgerContext', () => {
     expect(ctx.conventions).toEqual({
       accounting_method: 'accrual',
       voucher_series_in_use: ['A', 'B'],
-      salary_run_active: true,
       typical_booking_lag_days: 3,
     })
   })
@@ -184,7 +180,6 @@ describe('buildLedgerContext', () => {
       { data: [] },
       { count: 0 },
       { data: [] },
-      { count: 0 },
     ])
     await expect(
       buildLedgerContext(mock.supabase as unknown as SupabaseClient, COMPANY_ID, NOW),
@@ -199,7 +194,6 @@ describe('buildLedgerContext', () => {
       { data: [] },
       { count: 0 },
       { data: [] },
-      { count: 0 },
     ])
     await expect(
       buildLedgerContext(mock.supabase as unknown as SupabaseClient, COMPANY_ID, NOW),
@@ -252,7 +246,6 @@ describe('buildLedgerContext', () => {
       })),
       entryCount: 5000,
       voucherSeries: [{ voucher_series: 'A' }, { voucher_series: 'B' }, { voucher_series: 'C' }],
-      salaryCount: 12,
     })
     const ctx = await buildLedgerContext(mock.supabase as unknown as SupabaseClient, COMPANY_ID, NOW)
 

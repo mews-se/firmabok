@@ -31,7 +31,6 @@ export type SkillTier = 'workflow' | 'horizontal' | 'vertical' | 'modifier'
  * Each condition is optional and ANDed:
  *  - `entity_type: 'AB'` hides the skill for sole traders (EF)
  *  - `entity_type: 'EF'` hides it for limited companies
- *  - `requires: ['employees']` hides the skill until the company has ≥ 1 employee
  *  - `requires: ['vat_registered']` hides it for non-VAT-registered companies
  *
  * Workflow skills that are universal (e.g. invoicing-rules) leave applicability
@@ -39,7 +38,7 @@ export type SkillTier = 'workflow' | 'horizontal' | 'vertical' | 'modifier'
  */
 export interface SkillApplicability {
   entity_type?: 'AB' | 'EF' | 'both'
-  requires?: ('employees' | 'vat_registered')[]
+  requires?: 'vat_registered'[]
 }
 
 export interface Skill {

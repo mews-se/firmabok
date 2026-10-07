@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { Badge } from '@/components/ui/badge'
 import { cn, formatCurrency } from '@/lib/utils'
-import { BookOpen, ChevronRight, FileText, HandCoins } from 'lucide-react'
+import { BookOpen, ChevronRight, FileText } from 'lucide-react'
 import type { ResumeItem } from '@/lib/worklist/resume'
 
 /**
@@ -53,21 +53,6 @@ export default function ResumePane({ items }: { items: ResumeItem[] }) {
             .filter(Boolean)
             .join(' · '),
         }
-      case 'salary_run': {
-        const key =
-          item.salaryStatus === 'review'
-            ? 'resume_salary_review'
-            : item.salaryStatus === 'approved'
-              ? 'resume_salary_approved'
-              : item.salaryStatus === 'paid'
-                ? 'resume_salary_paid'
-                : 'resume_salary_draft'
-        return {
-          icon: HandCoins,
-          title: t(key, { period: item.context ?? '' }),
-          sub: t('resume_edited', { when: relativeLabel(item.updated_at) }),
-        }
-      }
       case 'journal_draft':
       default:
         return {

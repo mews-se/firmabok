@@ -2428,7 +2428,7 @@ export const tools: McpTool[] = [
         },
         include_all: {
           type: 'boolean',
-          description: 'When true, ignore the company-context filter (entity_type, employees, vat_registered) and return all skills. Default false.',
+          description: 'When true, ignore the company-context filter (entity_type, vat_registered) and return all skills. Default false.',
         },
       },
     },
@@ -2458,7 +2458,6 @@ export const tools: McpTool[] = [
           description: 'Snapshot of the filter inputs used to compute the list: useful when debugging "why isn\'t skill X showing up?".',
           properties: {
             entity_type: { type: ['string', 'null'] },
-            has_employees: { type: 'boolean' },
             vat_registered: { type: 'boolean' },
           },
         },
@@ -2479,21 +2478,13 @@ export const tools: McpTool[] = [
       // Resolve company context: read once per call. Failures degrade
       // gracefully: an unresolved field means "don't filter on it" so a
       // misconfigured company still gets the full skill list.
-      const [settings, employeeCount] = await Promise.all([
-        supabase
-          .from('company_settings')
-          .select('entity_type, vat_registered')
-          .eq('company_id', companyId)
-          .maybeSingle(),
-        supabase
-          .from('employees')
-          .select('id', { count: 'exact', head: true })
-          .eq('company_id', companyId)
-          .eq('is_active', true),
-      ])
+      const settings = await supabase
+        .from('company_settings')
+        .select('entity_type, vat_registered')
+        .eq('company_id', companyId)
+        .maybeSingle()
       const entityType = (settings.data?.entity_type as string | undefined) ?? null
       const vatRegistered = Boolean(settings.data?.vat_registered)
-      const hasEmployees = (employeeCount.count ?? 0) > 0
 
       const all = await loadAllSkills(supabase)
 
@@ -2513,7 +2504,6 @@ export const tools: McpTool[] = [
             if (!s.applicability) return true
             const a = s.applicability
             if (a.entity_type && a.entity_type !== 'both' && entityType && entityType !== a.entity_type) return false
-            if (a.requires?.includes('employees') && !hasEmployees) return false
             if (a.requires?.includes('vat_registered') && !vatRegistered) return false
             return true
           })
@@ -2530,7 +2520,6 @@ export const tools: McpTool[] = [
         hidden_count: tagFiltered.length - applicable.length,
         company_context: {
           entity_type: entityType,
-          has_employees: hasEmployees,
           vat_registered: vatRegistered,
         },
       }

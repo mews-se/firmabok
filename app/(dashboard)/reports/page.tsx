@@ -31,16 +31,12 @@ export default function ReportsPage() {
   const t = useTranslations('reports')
   const { openedAt, pushRecent } = useRecentReports(company?.id)
 
-  // Open a report. Route-owning reports (cash flow, annual report, KPI, SIE)
-  // navigate to their own page; the rest open the focused /reports/[slug] route.
+  // Open a report. Route-owning reports (cash flow, KPI, SIE) navigate to
+  // their own page; the rest open the focused /reports/[slug] route.
   const openReport = (slug: string) => {
     const report = getReport(slug)
     if (report?.route) {
-      const href =
-        slug === 'arsredovisning' && selectedPeriod
-          ? `${report.route}?period=${selectedPeriod}`
-          : report.route
-      router.push(href)
+      router.push(report.route)
       return
     }
     pushRecent(slug)

@@ -123,8 +123,8 @@ interface NavItem {
   // company_settings.dimensions_enabled (UI-visibility gate only; the pages
   // and APIs work regardless, dimensions plan §2).
   requiresDimensions?: boolean
-  // Statutory surfaces that only exist for one company form (INK2 vs
-  // NE-bilaga, årsredovisning): hidden for the other entity type.
+  // Statutory surfaces that only exist for one company form (NE-bilaga):
+  // hidden for the other entity type.
   entityOnly?: EntityType
   hidden?: boolean
   comingSoon?: boolean
@@ -159,9 +159,9 @@ const navItems: NavItem[] = [
   { href: '/dimensions', labelKey: 'dimensions', icon: Tags, group: 'data', fold: 'register', requiresDimensions: true },
   { href: '/import', labelKey: 'import', icon: Upload, group: 'data' },
   // Skatt & bokslut: everything submitted to the state; the year-end chain
-  // (periodiseringar → årsbokslut → årsredovisning → inkomstdeklaration)
-  // lives in the Bokslut fold in workflow order; the last two are
-  // entity-gated because the surface only exists for one company form.
+  // (periodiseringar → årsbokslut → inkomstdeklaration) lives in the
+  // Bokslut fold in workflow order; the last is entity-gated because the
+  // surface only exists for one company form.
   { href: '/reports/vat-declaration', labelKey: 'vat_declaration', icon: Percent, group: 'skatt' },
   { href: '/deadlines', labelKey: 'deadlines', icon: CalendarClock, group: 'skatt' },
   { href: '/bookkeeping/periodiseringar', labelKey: 'periodiseringar', icon: CalendarRange, group: 'skatt', fold: 'bokslut' },
@@ -286,16 +286,12 @@ export default function DashboardNav({ companyName: _companyName, entityType, di
       )
     }
     if (href === '/bookkeeping/year-end') {
-      return (
-        pathname.startsWith('/bookkeeping/year-end') &&
-        !pathname.startsWith('/bookkeeping/year-end/arsredovisning')
-      )
+      return pathname.startsWith('/bookkeeping/year-end')
     }
     if (href === '/reports') {
       return (
         pathname.startsWith('/reports') &&
         !pathname.startsWith('/reports/vat-declaration') &&
-        !pathname.startsWith('/reports/ink2-declaration') &&
         !pathname.startsWith('/reports/ne-declaration')
       )
     }
@@ -324,8 +320,8 @@ export default function DashboardNav({ companyName: _companyName, entityType, di
     // Dimension surfaces are hidden until the company opts in via the
     // bookkeeping settings toggle (company_settings.dimensions_enabled).
     if (item.requiresDimensions && !dimensionsEnabled) return false
-    // Entity-gated statutory surfaces: INK2/ÅR for aktiebolag, NE for
-    // enskild firma; the page for the other form doesn't exist.
+    // Entity-gated statutory surfaces: NE-bilaga for enskild firma; the
+    // page for the other form doesn't exist.
     if (item.entityOnly && item.entityOnly !== entityType) return false
     // Granskning stays in the top nav at all times now: the badge
     // surfaces the count when there are pending ops, but the link is

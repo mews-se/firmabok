@@ -849,22 +849,7 @@ export const MASTER_DATA_DUMP_TABLES: MasterDataTableSpec[] = [
       'id, created_at, source, status, document_id, matched_transaction_id, ' +
       'created_journal_entry_id, created_supplier_invoice_id',
   },
-  // Receipts
-  { name: 'receipts', file: 'receipts.json', orderBy: 'receipt_date' },
-  // `receipts` has no exchange_rate column, so only the currency is copied:
-  // enough to read the unit, which is what the line was missing.
-  {
-    name: 'receipt_line_items',
-    file: 'receipt_line_items.json',
-    via: { parent: 'receipts', fk: 'receipt_id' },
-    denormalize: { prefix: 'receipt_', columns: ['currency'] },
-  },
-  // Bank and categorization
-  // NOTE: the date column on transactions is `date` (a previous spec said
-  // booking_date, which does not exist: every backup got an error stub).
-  { name: 'transactions', file: 'transactions.json', orderBy: 'date' },
-  { name: 'transaction_voucher_links', file: 'transaction_voucher_links.json' },
-  { name: 'bank_file_imports', file: 'bank_file_imports.json', orderBy: 'created_at' },
+  // Cash accounts and categorization
   { name: 'cash_accounts', file: 'cash_accounts.json' },
   { name: 'mapping_rules', file: 'mapping_rules.json' },
   { name: 'categorization_templates', file: 'categorization_templates.json' },
@@ -930,6 +915,7 @@ export const ARCHIVE_EXCLUDED_TABLES: Record<string, string> = {
   arsredovisning_signature_requests: 'annual report module of the retired aktiebolag path, no rows are written any more',
   arsredovisning_submissions: 'annual report module of the retired aktiebolag path, no rows are written any more',
   bank_connections: 'PSD2 connection state and tokens, not portable',
+  bank_file_imports: 'bank import module removed, no rows are written any more',
   bolagsverket_avtal_acceptances: 'service agreement acceptance state',
   bolagsverket_subscriptions: 'integration subscription state',
   booking_template_usage: 'usage telemetry',
@@ -975,6 +961,8 @@ export const ARCHIVE_EXCLUDED_TABLES: Record<string, string> = {
   payment_match_log: 'derived matching log',
   pending_operations: 'staged-operation workflow state',
   processing_history: 'internal processing log; behandlingshistorik exports from audit_log',
+  receipt_line_items: 'receipt module removed, no rows are written any more',
+  receipts: 'receipt module removed, no rows are written any more',
   salary_absence_days: 'payroll module removed, no rows are written any more',
   salary_line_items: 'payroll module removed, no rows are written any more',
   salary_payslip_deliveries: 'delivery log',
@@ -988,6 +976,8 @@ export const ARCHIVE_EXCLUDED_TABLES: Record<string, string> = {
   skatteverket_api_audit_log: 'integration audit log',
   skatteverket_company_connections: 'integration connection state',
   skatteverket_tokens: 'secrets',
+  transaction_voucher_links: 'bank import module removed, no rows are written any more',
+  transactions: 'bank import module removed, no rows are written any more',
   vacation_year_closures: 'payroll module removed, no rows are written any more',
   webhook_deliveries: 'automation delivery log',
   webhooks: 'automation config with signing secrets',

@@ -720,7 +720,7 @@ describe('generateFullArchive', () => {
       })
     })
 
-    it('carries the unit on supplier invoice lines and receipt lines too', async () => {
+    it('carries the unit on supplier invoice lines too', async () => {
       enqueueMany([
         { data: COMPANY_ROW },
         { data: [PERIOD_2024] },
@@ -734,11 +734,6 @@ describe('generateFullArchive', () => {
               children: [
                 { id: 'sitem-1', supplier_invoice_id: 'sinv-1', line_total: 200 },
               ],
-            },
-            // receipts has no exchange_rate column: currency alone.
-            receipt_line_items: {
-              parents: [{ id: 'rec-1', currency: 'NOK' }],
-              children: [{ id: 'rline-1', receipt_id: 'rec-1', line_total: 49 }],
             },
           },
         }),
@@ -754,12 +749,6 @@ describe('generateFullArchive', () => {
       )
       expect(supplierItems[0].supplier_invoice_currency).toBe('USD')
       expect(supplierItems[0].supplier_invoice_exchange_rate).toBe(9.87)
-
-      const receiptLines = JSON.parse(
-        await zip.file('data/receipt_line_items.json')!.async('text')
-      )
-      expect(receiptLines[0].receipt_currency).toBe('NOK')
-      expect(receiptLines[0]).not.toHaveProperty('receipt_exchange_rate')
     })
 
     it('does not invent a unit for rot/rut payout items (parent has no currency)', async () => {

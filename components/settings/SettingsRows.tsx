@@ -224,7 +224,7 @@ interface SettingsSegProps<T extends string> {
   disabled?: boolean
 }
 
-/** Quiet segmented control (theme, plan interval, sv/en texts). */
+/** Quiet segmented control (theme, sv/en texts). */
 export function SettingsSeg<T extends string>({
   value,
   onChange,

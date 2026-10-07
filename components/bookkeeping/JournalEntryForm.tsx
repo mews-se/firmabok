@@ -126,9 +126,9 @@ export default function JournalEntryForm({
   const router = useRouter()
   const { company } = useCompany()
   const t = useTranslations('journal_form')
-  // Reused only for the bilingual entity-type labels the shared TemplateForm
-  // expects (matches BookingTemplatesPanel); the form itself already pulls its
-  // copy from this namespace.
+  // Reused only for the entity-type labels the shared TemplateForm expects
+  // (matches BookingTemplatesPanel); the form itself pulls its copy from
+  // journal_form.
   const tTpl = useTranslations('settings_booking_templates')
   const [periods, setPeriods] = useState<FiscalPeriod[]>([])
   const [selectedPeriod, setSelectedPeriod] = useState('')

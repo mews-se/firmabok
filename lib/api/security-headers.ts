@@ -1,26 +1,16 @@
 /**
- * Common security headers for public v1 responses.
- *
- * Applied to discovery routes (`/llms.txt`, `/.well-known/skills/index.json`,
- * `/api/v1/openapi.json`) that bypass the auth wrapper.
- *
- * The wrapped routes don't need these explicitly: NextResponse's defaults +
- * the auth wrapper's stamping cover them. Public routes are an exception
- * because they're plain `NextResponse.json/text` returns with caching.
+ * Common security headers for the public skills discovery route
+ * (`/.well-known/skills/index.json`), which bypasses the auth wrapper and
+ * returns a plain `NextResponse.json` with caching.
  *
  *   X-Content-Type-Options: nosniff  : block MIME sniffing on text/json
  *   Referrer-Policy: strict-origin...: limit referrer leakage if a link is
  *                                       embedded somewhere unexpected
  *   X-Frame-Options: DENY            : discovery surfaces should never
  *                                       legitimately render in a frame
- */
-
-/**
- * Headers applied to BOTH public discovery routes and authenticated v1
- * responses. Includes CSP, HSTS, and frame/sniff/referrer protections, but
- * NOT X-Robots-Tag: discovery routes (llms.txt, skills index, OpenAPI)
- * exist to be crawled by AI agents; authenticated routes get an additional
- * X-Robots-Tag at the wrapper level via WRAPPED_RESPONSE_NOAI_HEADERS.
+ *
+ * Includes CSP and HSTS, but NOT X-Robots-Tag: the skills index exists to be
+ * read by agents.
  */
 export const PUBLIC_SECURITY_HEADERS: Record<string, string> = {
   'X-Content-Type-Options': 'nosniff',

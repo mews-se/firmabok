@@ -126,7 +126,7 @@ export interface SupplierInvoiceRateInput {
  *      above the bound is refused, not silently replaced by a fetch.
  *   3. Otherwise          → fetch from Riksbanken for the invoice date, WITH
  *      the supabase client so the shared `exchange_rates` cache is consulted
- *      and populated. Same call shape as lib/transactions/ingest.ts.
+ *      and populated.
  *   4. Fetch produced nothing → `{ ok: false }`; the caller must refuse the
  *      create (SI_FX_RATE_MISSING).
  *

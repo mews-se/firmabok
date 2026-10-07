@@ -444,9 +444,6 @@ function periodLookupFailed(
  * `lookup_failed: true` rather than `open`. Never reintroduce a bare
  * `const { data } = await ...` here; dropping the `error` is what turned this
  * shared helper into a fail-open on every write path that consults it.
- *
- * Mirrors lib/api/v1/check-period-lock.ts (used by the v1 REST surface). The
- * two helpers share the same query pattern; if either changes, update both.
  */
 export async function resolvePeriodStatusForDate(
   supabase: SupabaseClient,

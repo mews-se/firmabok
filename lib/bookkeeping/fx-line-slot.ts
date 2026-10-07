@@ -18,10 +18,10 @@
  *
  * Everything that reads the metadata back finds the line BY ACCOUNT and then
  * trusts the label, so a misplaced stamp is not cosmetic:
- *   lib/reconciliation/bank-reconciliation.ts `ledgerLineAmountIn()` reconciles
- *     a foreign cash account against `amount_in_currency` on that account's own
- *     lines. Metadata on the SEK leg instead leaves the EUR account with no
- *     comparable figure at all, and labels a SEK movement as a EUR one.
+ *   lib/bookkeeping/ledger-line-amount.ts `ledgerLineAmountIn()` reads
+ *     `amount_in_currency` off an account's own lines. Metadata on the SEK leg
+ *     instead leaves the EUR account with no comparable figure at all, and
+ *     labels a SEK movement as a EUR one.
  *   lib/invoices/voucher-matching.ts narrows candidate vouchers with
  *     `journal_entry_lines.currency = invoice.currency` under the 1510/2440
  *     prefix: the metadata has to be on that leg or the voucher is invisible.

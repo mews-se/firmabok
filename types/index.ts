@@ -330,10 +330,9 @@ export interface CashAccount {
 }
 
 /**
- * Closed vocabulary for HOW money moved (the payment rail), classified at
- * ingest by classifyTransactionMethod() (lib/transactions/transaction-method.ts).
- * Mirrored by the transactions_transaction_method_check DB constraint
- * (migration 20260808090000): keep the three in sync when adding a value.
+ * Closed vocabulary for HOW money moved (the payment rail). Mirrored by the
+ * transactions_transaction_method_check DB constraint (migration
+ * 20260808090000): keep the two in sync when adding a value.
  */
 export const TRANSACTION_METHODS = [
   'card',

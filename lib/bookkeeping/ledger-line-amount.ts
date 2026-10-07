@@ -14,10 +14,6 @@
  * then compares a SEK ledger amount against a foreign figure. Every site that
  * needs a ledger line's amount in some currency must go through this module
  * instead of reading the raw column.
- *
- * Extracted from lib/reconciliation/bank-reconciliation.ts (which re-exports
- * `ledgerLineAmountIn` unchanged for its existing importers) so the invoice /
- * supplier-invoice voucher matchers share one rule with bank reconciliation.
  */
 
 /**

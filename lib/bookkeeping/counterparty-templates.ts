@@ -340,8 +340,7 @@ export async function findCounterpartyTemplatesBatch(
     // the ingest boundary strips the trailing channel phrase off description
     // ("SPOTIFY AB Kortköp" → "SPOTIFY AB") and users can rename it, but
     // templates were learned from the full bank string, so matching the
-    // original keeps every era's keys and aliases aligned (same rationale as
-    // buildMerchantHistory in lib/transactions/category-suggestions.ts).
+    // original keeps every era's keys and aliases aligned.
     const rawName = tx.merchant_name || tx.original_description || tx.description
     if (!rawName) continue
 

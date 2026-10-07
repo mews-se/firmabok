@@ -96,9 +96,7 @@ const NAIVE_ROUND_RE = /Math\.round\([^\n]*\*\s*100\s*\)\s*\/\s*100/
 // Skatteverket-bound org-number paths did not agree on what "valid" meant.
 //
 // Only the two unambiguous regex families are counted. An org-number
-// digit-strip is too varied in shape to match reliably by regex; the
-// cross-path test in lib/invariants/__tests__/org-number-cross-path.test.ts is
-// the guard on that one instead.
+// digit-strip is too varied in shape to match reliably by regex.
 const HAND_ROLLED_INVARIANT_RES = [
   // /^\d{4}$/ or /^[0-9]{4}$/  → accountNumberSchema or fiscalYearSchema
   /\/\^(?:\\d|\[0-9\])\{4\}\$\//,
@@ -767,7 +765,7 @@ if (newUngatedRoutes.length) {
   newUngatedRoutes.forEach((f) => console.error(`    ${f}`))
   console.error(
     "  → call loadExtensions() and refuse (503 EXTENSION_DISABLED) when extensionRegistry.get('<id>')\n" +
-      '    is undefined, like app/api/extensions/push-notifications/cron/route.ts.',
+      '    is undefined, like app/api/extensions/ext/[...path]/route.ts.',
   )
 }
 

@@ -14,11 +14,10 @@
  *
  * Routes that spread that result into `.update()` therefore reset every
  * defaulted column on every PATCH: naming one field silently rewrites the
- * others. The repo hit this three times independently (an
- * `EmployeeSchemaPatchBase` re-declaration in lib/api/schemas.ts and a
- * hand-rolled `rawKeys` intersection in three v1 routes). This module is the
- * shared version of the `rawKeys` intersection, which is the one that
- * generalises: it needs nothing from the schema's internals, so it works on
+ * others. The repo hit this several times independently, fixed once with a
+ * re-declared default-free patch base and three times with a hand-rolled
+ * `rawKeys` intersection. This module is the shared version of the `rawKeys`
+ * intersection, which is the one that generalises: it needs nothing from the schema's internals, so it works on
  * `.partial()`, `.omit()`, and `.superRefine()`-wrapped schemas alike, and it
  * cannot drift the way a hand-maintained duplicate base shape does.
  *
@@ -68,8 +67,8 @@
  * 2. **A CROSS-FIELD `.refine` / `.superRefine`.** The refinement runs on the
  *    default-filled parse, so it judges values the caller never sent: it can
  *    reject a legitimate patch and accept an illegitimate one. Strip the
- *    defaults from the patch base instead (see `EmployeeSchemaPatchBase` in
- *    `lib/api/schemas.ts`), or validate against the stored row in the route.
+ *    defaults from the patch base instead (declare a patch base without
+ *    `.default()`), or validate against the stored row in the route.
  *
  * A schema whose own top-level `.transform()` reshapes the output is also out of
  * scope: the intersection runs against the raw body's keys, so invented keys are

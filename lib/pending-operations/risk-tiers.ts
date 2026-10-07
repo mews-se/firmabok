@@ -1,9 +1,6 @@
 /**
- * Risk tier classification for pending_operations.
- *
- * Used by lib/pending-operations/should-auto-commit.ts to decide whether a
- * staged proposal from a trusted agent can be auto-committed without human
- * review.
+ * Risk tier classification for pending_operations. The MCP server stores the
+ * tier on every staged operation (risk_level).
  *
  * Tiering principles:
  *   - **low**: no booking impact, no external side-effects, no audit risk.

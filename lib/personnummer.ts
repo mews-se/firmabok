@@ -87,12 +87,8 @@ export function extractLast4(personnummer: string): string {
  *
  * A samordningsnummer is the identity number Skatteverket assigns to a person
  * who has no personnummer. It has the same shape, except the day field carries
- * an added 60, so the printed day is 61-91 instead of 1-31. Skatteverket files
- * these under FK215 in the arbetsgivardeklaration exactly like a personnummer,
- * and our own AGI generator accepts them (see IDENTITET_PATTERN in
- * lib/salary/agi/xml-generator.ts, which spells out "samordningsnummer where
- * day = actual_day + 60"). Rejecting them here meant the system could file an
- * AGI for someone it refused to register as an employee.
+ * an added 60, so the printed day is 61-91 instead of 1-31. Skatteverket
+ * treats them exactly like a personnummer, so they validate here too.
  *
  * The Luhn check digit is computed over the printed digits, the +60 day
  * included: a samordningsnummer has no underlying non-offset form to compute it

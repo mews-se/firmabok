@@ -12163,9 +12163,8 @@ export async function handleMcpRequest(request: Request): Promise<Response> {
         )
       }
 
-      // Test-mode API keys are simulation-only. Mirror the v1 REST guard
-      // (lib/api/v1/with-api-v1.ts): force dry-run on any write tool that
-      // supports it, and block writes that cannot be simulated. Without this a
+      // Test-mode API keys are simulation-only: force dry-run on any write
+      // tool that supports it, and block writes that cannot be simulated. Without this a
       // gnubok_sk_test_ key (which is bound to the real active company) could
       // stage real pending_operations here and, with the approve scope, commit
       // them. Runs before execute() so nothing is ever staged for a test key.

@@ -48,7 +48,7 @@ export const POST = withRouteContext<{ params: Promise<{ id: string }> }>(
 - `/api/invoices/*`, `/api/supplier-invoices/*`: CRUD + state transitions
 - `/api/customers/*`, `/api/suppliers/*`: CRUD
 - `/api/documents/*`: CRUD, versions, link, match-sweep, verify cron
-- `/api/reports/*`: report endpoints (GL, TB, BS, IS, AR/supplier ledger, VAT, SIE, INK2, NE-bilaga, audit, continuity, monthly, full-archive)
+- `/api/reports/*`: report endpoints (GL, TB, BS, IS, AR/supplier ledger, VAT, SIE, NE-bilaga, audit, continuity, monthly, full-archive)
 - `/api/import/*`: SIE (parse/execute/mappings)
 - `/api/settings/*`, `/api/company/*`
 - `/api/deadlines/*`, `/api/tax-deadlines/*`: CRUD + crons

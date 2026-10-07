@@ -11,7 +11,7 @@ ensureInitialized()
 /**
  * POST /api/documents/[id]/link: link a document to a journal entry.
  *
- * Body: { journal_entry_id: string, journal_entry_line_id?: string, transaction_id?: string }
+ * Body: { journal_entry_id: string, journal_entry_line_id?: string }
  *
  * The inbox side needs no work here: the sync trigger on
  * document_attachments.journal_entry_id (migration 20260809220000) stamps
@@ -21,14 +21,6 @@ ensureInitialized()
  * created_journal_entry_id itself when the client passed inbox_item_id, but
  * that pointer is UNIQUE for the book-direct race guard and rejected the
  * second document linked to the same verifikat.)
- *
- * When `transaction_id` is supplied (booking-flow callers that link underlag
- * right after booking a bank transaction), the doc is also pinned to the
- * transaction row (transactions.document_id) so the /transactions list shows
- * the underlag indicator. Only set when the tx has no pin yet: first linked
- * doc wins, and an existing räkenskapsinformation pin is never swapped (which
- * would trip the immutability trigger). Best-effort: a pin failure is logged
- * but does not fail the request (the doc link is the legally-relevant write).
  */
 export const POST = withRouteContext(
   'document.link',
@@ -59,25 +51,6 @@ export const POST = withRouteContext(
         body.journal_entry_id,
         body.journal_entry_line_id,
       )
-
-      if (body.transaction_id) {
-        const { error: pinError } = await supabase
-          .from('transactions')
-          .update({ document_id: id })
-          .eq('id', body.transaction_id)
-          .eq('company_id', companyId!)
-          // Never swap an existing pin: keeps "first linked doc wins" semantics
-          // for multi-doc bookings and avoids the BFL immutability trigger.
-          .is('document_id', null)
-        if (pinError) {
-          // Non-fatal: the verifikat ↔ underlag link already succeeded; the
-          // pin is row-level UX on the /transactions list.
-          opLog.warn('transaction pin after link failed', {
-            transactionId: body.transaction_id,
-            reason: getUserErrorMessage(pinError),
-          })
-        }
-      }
 
       return NextResponse.json({ data: document })
     } catch (err) {

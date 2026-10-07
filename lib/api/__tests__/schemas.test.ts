@@ -56,7 +56,6 @@ import {
   UpdateSupplierInvoiceSchema,
   // Correct/evaluate schemas
   CorrectJournalEntrySchema,
-  EvaluateMappingRulesSchema,
   // Report query schemas
   VatDeclarationQuerySchema,
   PaginationQuerySchema,
@@ -2045,52 +2044,6 @@ describe('CorrectJournalEntrySchema', () => {
         validJournalEntryLine({ account_number: '1930', debit_amount: 0, credit_amount: 500 }),
       ],
     })
-    expect(result.success).toBe(false)
-  })
-})
-
-// ============================================================
-// Evaluate mapping rules schema
-// ============================================================
-
-describe('EvaluateMappingRulesSchema', () => {
-  it('accepts valid transaction_id', () => {
-    const result = EvaluateMappingRulesSchema.safeParse({ transaction_id: validUuid })
-    expect(result.success).toBe(true)
-  })
-
-  it('accepts raw transaction data with amount', () => {
-    const result = EvaluateMappingRulesSchema.safeParse({
-      description: 'Office supplies',
-      amount: -500,
-    })
-    expect(result.success).toBe(true)
-  })
-
-  it('accepts raw data with all fields', () => {
-    const result = EvaluateMappingRulesSchema.safeParse({
-      description: 'Spotify',
-      amount: -129,
-      merchant_name: 'Spotify AB',
-      mcc_code: '5815',
-      date: '2025-03-15',
-    })
-    expect(result.success).toBe(true)
-  })
-
-  it('rejects non-UUID transaction_id', () => {
-    // First branch fails (invalid UUID), second branch matches only if amount is present
-    const result = EvaluateMappingRulesSchema.safeParse({ transaction_id: 'not-uuid' })
-    expect(result.success).toBe(false)
-  })
-
-  it('rejects empty object (no transaction_id and no amount)', () => {
-    const result = EvaluateMappingRulesSchema.safeParse({})
-    expect(result.success).toBe(false)
-  })
-
-  it('rejects missing amount in raw data', () => {
-    const result = EvaluateMappingRulesSchema.safeParse({ description: 'Test' })
     expect(result.success).toBe(false)
   })
 })

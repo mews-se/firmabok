@@ -8,8 +8,8 @@ import { tools } from '../server'
  * showing up in gnubok_list_unmatched_documents even though nothing was left
  * to do with them, while gnubok_list_inbox_items(unprocessed_only) already
  * considered them terminal-linked and correctly omitted them. The two tools
- * disagreed because this query only excluded created_supplier_invoice_id and
- * a transactions.document_id match, never created_journal_entry_id.
+ * disagreed because this query only excluded created_supplier_invoice_id,
+ * never created_journal_entry_id.
  *
  * lib/pending-operations/__tests__/inbox-link-status.pg.test.ts already
  * documents the intended contract ("the link column alone drops the row out
@@ -44,7 +44,7 @@ describe('gnubok_list_unmatched_documents', () => {
     expect(schema.properties.count).toBeDefined()
   })
 
-  it('describes journal entries as a terminal link, not just bank transactions and supplier invoices', () => {
+  it('describes journal entries as a terminal link, not just supplier invoices', () => {
     expect(tool.description).toMatch(/journal entry/)
   })
 
@@ -68,7 +68,7 @@ describe('gnubok_list_unmatched_documents', () => {
     expect(result).toEqual({ items: [], count: 0 })
   })
 
-  it('maps extracted_data fields and drops documents already pinned to a transaction', async () => {
+  it('maps extracted_data fields', async () => {
     const { supabase, enqueue } = createQueuedMockSupabase()
     enqueue({
       data: [
@@ -99,15 +99,13 @@ describe('gnubok_list_unmatched_documents', () => {
       ],
       error: null,
     })
-    // doc-2 is already pinned to a bank transaction; doc-1 is not.
-    enqueue({ data: [{ document_id: 'doc-2' }], error: null })
 
     const result = (await tool.execute({ limit: 20 }, 'company-1', 'user-1', supabase as never)) as {
       items: Array<{ inbox_item_id: string; vendor_name: string | null; amount: number | null }>
       count: number
     }
 
-    expect(result.count).toBe(1)
+    expect(result.count).toBe(2)
     expect(result.items[0].inbox_item_id).toBe('inbox-1')
     expect(result.items[0].vendor_name).toBe('DNB Finans')
     expect(result.items[0].amount).toBe(13428)

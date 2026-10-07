@@ -36,7 +36,6 @@ const mockUser = { id: 'user-1', email: 'test@test.se' }
 const JE_ID = '11111111-1111-4111-8111-111111111111'
 const OTHER_JE_ID = '22222222-2222-4222-8222-222222222222'
 const INBOX_ID = '33333333-3333-4333-8333-333333333333'
-const TX_ID = '44444444-4444-4444-8444-444444444444'
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -122,51 +121,6 @@ describe('POST /api/documents/[id]/link', () => {
 
     expect(status).toBe(200)
     expect(mockSupabase.from).not.toHaveBeenCalledWith('invoice_inbox_items')
-  })
-
-  it('pins the document to the transaction when transaction_id is given', async () => {
-    enqueue({ data: { id: 'je-1' } }) // journal entry company check
-    enqueue({ data: { id: 'doc-1', journal_entry_id: 'je-1', file_name: 'x.pdf' } }) // link update
-    enqueue({ data: null }) // transaction pin update
-
-    const res = await POST(
-      makeReq({ journal_entry_id: JE_ID, transaction_id: TX_ID }),
-      createMockRouteParams({ id: 'doc-1' }),
-    )
-    const { status } = await parseJsonResponse(res)
-
-    expect(status).toBe(200)
-    expect(mockSupabase.from).toHaveBeenCalledWith('transactions')
-  })
-
-  it('does not touch transactions when no transaction_id is given', async () => {
-    enqueue({ data: { id: 'je-1' } }) // journal entry company check
-    enqueue({ data: { id: 'doc-1', journal_entry_id: 'je-1', file_name: 'x.pdf' } }) // link update
-
-    const res = await POST(
-      makeReq({ journal_entry_id: JE_ID }),
-      createMockRouteParams({ id: 'doc-1' }),
-    )
-    const { status } = await parseJsonResponse(res)
-
-    expect(status).toBe(200)
-    expect(mockSupabase.from).not.toHaveBeenCalledWith('transactions')
-  })
-
-  it('tolerates a failing transaction pin: the JE link is the primary effect', async () => {
-    enqueue({ data: { id: 'je-1' } }) // journal entry company check
-    enqueue({ data: { id: 'doc-1', journal_entry_id: 'je-1', file_name: 'x.pdf' } }) // link update
-    enqueue({ data: null, error: { message: 'rls denied' } }) // transaction pin fails
-
-    const res = await POST(
-      makeReq({ journal_entry_id: JE_ID, transaction_id: TX_ID }),
-      createMockRouteParams({ id: 'doc-1' }),
-    )
-    const { status, body } = await parseJsonResponse<{ data: { id: string } }>(res)
-
-    // The pin is row-level UX; its failure must not fail the (compliant) link.
-    expect(status).toBe(200)
-    expect(body.data.id).toBe('doc-1')
   })
 
   it('maps a period-lock trigger error to PERIOD_LOCKED', async () => {

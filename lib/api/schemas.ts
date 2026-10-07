@@ -1486,14 +1486,6 @@ export const CreateMappingRuleSchema = z.object({
   confidence_score: z.number().min(0).max(1).optional(),
 })
 
-export const EvaluateMappingRulesSchema = z.union([
-  z.object({ transaction_id: uuid }),
-  z.object({
-    description: z.string().optional(),
-    amount: z.number(),
-  }).passthrough(),
-])
-
 // ============================================================
 // Deadline schemas
 // ============================================================
@@ -1810,7 +1802,6 @@ export const AttachDocumentSchema = z.object({
 export const LinkDocumentSchema = z.object({
   journal_entry_id: uuid,
   journal_entry_line_id: uuid.optional(),
-  transaction_id: uuid.optional(),
 })
 
 // PATCH /api/inbox/[id]: dismiss puts an unhandled item aside, restore brings

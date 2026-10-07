@@ -25,7 +25,7 @@
  *    operation_type and only exists where the op's params identify a target
  *    row whose posted state is observable (see findPostedEvidence). There is
  *    no generic side-effect -> pending_op linkage today (that is #842's
- *    "record posted ids" work), so most types have no probe.
+ *    "record posted ids" work), so no type has a probe.
  *
  *  - Rows with no detectable evidence go to terminal 'rejected' with a
  *    result_data explanation. NEVER back to 'pending': re-executing could
@@ -72,10 +72,7 @@ export interface StuckCommittingRow {
  * into result_data.recovery.evidence so an auditor can see the basis for a
  * recovered 'committed'.
  */
-export type PostedEvidence =
-  | 'transaction_booked'
-  | 'transaction_linked_to_target_entry'
-  | 'invoice_payment_recorded'
+export type PostedEvidence = string
 
 export interface RecoverySummary {
   scanned: number
@@ -93,91 +90,16 @@ export interface RecoverySummary {
  * Throws on probe/database errors: the caller must then SKIP the row (leave
  * it 'committing' for the next run) rather than reject on a transient error.
  *
- * Probes exist only where params identify the target and the posted state is
- * unambiguous:
- *
- *  - categorize_transaction: the staged transaction is anchored to a
- *    verifikat per the canonical is_transaction_booked(uuid) predicate
- *    (transactions.journal_entry_id, payment rows, or voucher links).
- *    Skipped when params.allow_duplicate=true: those ops intentionally post
- *    on an already-booked transaction, so "booked" proves nothing.
- *  - link_transaction_journal_entry: the exact (transaction, journal entry)
- *    pair from params is linked, via transactions.journal_entry_id or a
- *    transaction_voucher_links row.
- *  - match_transaction_invoice: an invoice_payments row exists for the exact
- *    (transaction, invoice) pair from params (unique index guarantees the
- *    pair is only ever written by a match).
- *
- * Everything else returns null by design: create_* ops don't know the id of
- * the row they would have created, and state-flag types (period locks,
- * invoice statuses) can't be distinguished from a user doing the same thing
- * manually while the row sat stuck. Be conservative: no evidence, no
- * 'committed'.
+ * No operation type has a probe today: create_* ops don't know the id of the
+ * row they would have created, and state-flag types (period locks, invoice
+ * statuses) can't be distinguished from a user doing the same thing manually
+ * while the row sat stuck. Be conservative: no evidence, no 'committed'.
  */
 export async function findPostedEvidence(
-  supabase: SupabaseClient,
-  row: StuckCommittingRow,
+  _supabase: SupabaseClient,
+  _row: StuckCommittingRow,
 ): Promise<PostedEvidence | null> {
-  const params = row.params ?? {}
-
-  switch (row.operation_type) {
-    case 'categorize_transaction': {
-      const transactionId = params.transaction_id
-      if (typeof transactionId !== 'string' || transactionId.length === 0) return null
-      // allow_duplicate ops post a second entry on an already-booked tx:
-      // "booked" would be true before the executor ever ran.
-      if (params.allow_duplicate === true) return null
-      const { data, error } = await supabase.rpc('is_transaction_booked', {
-        p_transaction_id: transactionId,
-      })
-      if (error) throw new Error(`is_transaction_booked probe failed: ${error.message}`)
-      return data === true ? 'transaction_booked' : null
-    }
-
-    case 'link_transaction_journal_entry': {
-      const transactionId = params.transaction_id
-      const journalEntryId = params.journal_entry_id
-      if (typeof transactionId !== 'string' || typeof journalEntryId !== 'string') return null
-
-      const { data: tx, error: txError } = await supabase
-        .from('transactions')
-        .select('id')
-        .eq('id', transactionId)
-        .eq('company_id', row.company_id)
-        .eq('journal_entry_id', journalEntryId)
-        .maybeSingle()
-      if (txError) throw new Error(`transactions probe failed: ${txError.message}`)
-      if (tx) return 'transaction_linked_to_target_entry'
-
-      const { data: link, error: linkError } = await supabase
-        .from('transaction_voucher_links')
-        .select('id')
-        .eq('company_id', row.company_id)
-        .eq('transaction_id', transactionId)
-        .eq('journal_entry_id', journalEntryId)
-        .maybeSingle()
-      if (linkError) throw new Error(`transaction_voucher_links probe failed: ${linkError.message}`)
-      return link ? 'transaction_linked_to_target_entry' : null
-    }
-
-    case 'match_transaction_invoice': {
-      const transactionId = params.transaction_id
-      const invoiceId = params.invoice_id
-      if (typeof transactionId !== 'string' || typeof invoiceId !== 'string') return null
-      const { data, error } = await supabase
-        .from('invoice_payments')
-        .select('id')
-        .eq('company_id', row.company_id)
-        .eq('transaction_id', transactionId)
-        .eq('invoice_id', invoiceId)
-        .maybeSingle()
-      if (error) throw new Error(`invoice_payments probe failed: ${error.message}`)
-      return data ? 'invoice_payment_recorded' : null
-    }
-
-    default:
-      return null
-  }
+  return null
 }
 
 /**

@@ -4152,7 +4152,7 @@ export const tools: McpTool[] = [
           .single()
 
         if (!periods) {
-          throw new Error('No fiscal periods found. Categorize some transactions first to auto-create a period.')
+          throw new Error('No fiscal periods found. Create a fiscal period first.')
         }
         periodId = periods.id
       }
@@ -4371,7 +4371,7 @@ export const tools: McpTool[] = [
           .single()
 
         if (!periods) {
-          throw new Error('No fiscal periods found. Categorize some transactions first.')
+          throw new Error('No fiscal periods found. Create a fiscal period first.')
         }
         periodId = periods.id
       }
@@ -4470,7 +4470,7 @@ export const tools: McpTool[] = [
           .single()
 
         if (!periods) {
-          throw new Error('No fiscal periods found. Categorize some transactions first.')
+          throw new Error('No fiscal periods found. Create a fiscal period first.')
         }
         periodId = periods.id
       }
@@ -5863,7 +5863,7 @@ export const tools: McpTool[] = [
           .single()
 
         if (!periods) {
-          throw new Error('No fiscal periods found. Categorize some transactions first to auto-create a period.')
+          throw new Error('No fiscal periods found. Create a fiscal period first.')
         }
         periodId = periods.id
       }
@@ -7123,13 +7123,13 @@ export const tools: McpTool[] = [
   {
     name: 'gnubok_list_inbox_items',
     title: 'List Inbox Items',
-    description: 'List document inbox items, including each original file_name. `processed` covers every terminal link (transaction, supplier invoice, journal entry — created or document-linked). unprocessed_only=true returns docs still needing handling; dismissed items excluded.',
+    description: 'List document inbox items, including each original file_name. `processed` covers every terminal link (supplier invoice, journal entry — created or document-linked). unprocessed_only=true returns docs still needing handling; dismissed items excluded.',
     inputSchema: {
       type: 'object',
       additionalProperties: false,
       properties: {
         status: { type: 'string', enum: ['received', 'error'], description: 'Filter by status (error doubles as the dismissed/parked state)' },
-        unprocessed_only: { type: 'boolean', description: 'When true, only return items with no terminal link yet (not matched to a transaction, supplier invoice, or journal entry, and not linked to a verifikat at document level) that are not dismissed, i.e. documents that still need handling. Default false.' },
+        unprocessed_only: { type: 'boolean', description: 'When true, only return items with no terminal link yet (not linked to a supplier invoice or journal entry, and not linked to a verifikat at document level) that are not dismissed, i.e. documents that still need handling. Default false.' },
         limit: { type: 'number', description: 'Max results (default 20, max 50)' },
         cursor: {
           type: 'string',
@@ -7695,7 +7695,7 @@ export const tools: McpTool[] = [
   {
     name: 'gnubok_list_unmatched_documents',
     title: 'List Unmatched Documents',
-    description: 'List inbox documents not yet attached to any bank transaction, supplier invoice, or journal entry. Returns vendor/amount/currency/date hints. Amount is in the invoice currency; FX-normalise before comparing to transactions.amount.',
+    description: 'List inbox documents not yet attached to any supplier invoice or journal entry. Returns vendor/amount/currency/date hints. Amount is in the invoice currency.',
     inputSchema: {
       type: 'object',
       additionalProperties: false,
@@ -7741,10 +7741,7 @@ export const tools: McpTool[] = [
       // Pull recent non-dismissed inbox items with a document, no supplier
       // invoice, no direct journal entry and no document-level verifikat link
       // yet (all are terminal links per the same "processed" semantics
-      // gnubok_list_inbox_items uses), then filter out those whose document
-      // is already pinned to a transaction.
-      // Two-step query because PostgREST doesn't expose anti-joins.
-      const fetchSize = limit * 2
+      // gnubok_list_inbox_items uses).
       let inboxQuery = supabase
         .from('invoice_inbox_items')
         .select('id, document_id, source, email_from, email_subject, email_received_at, extracted_data, created_at')
@@ -7756,7 +7753,7 @@ export const tools: McpTool[] = [
         .is('linked_journal_entry_id', null)
         .order('created_at', { ascending: false })
         .order('id', { ascending: false })
-        .limit(fetchSize)
+        .limit(limit)
 
       if (cursorTs && cursorId) {
         // (created_at, id) < (cursorTs, cursorId): keyset pagination
@@ -7773,19 +7770,8 @@ export const tools: McpTool[] = [
         return { items: [], count: 0 }
       }
 
-      const docIds = inboxRows.map((r) => r.document_id).filter((d): d is string => d != null)
-      const { data: txMatches, error: txError } = await supabase
-        .from('transactions')
-        .select('document_id')
-        .eq('company_id', companyId)
-        .in('document_id', docIds)
-
-      if (txError) throw new Error(`Database error: ${txError.message}`)
-      const matchedDocIds = new Set((txMatches || []).map((t) => t.document_id))
-
       const unmatched = inboxRows
-        .filter((r) => r.document_id && !matchedDocIds.has(r.document_id))
-        .slice(0, limit)
+        .filter((r) => r.document_id)
         .map((item) => {
           const extracted = item.extracted_data as Record<string, unknown> | null
           let vendorName: string | null = null
@@ -7802,10 +7788,7 @@ export const tools: McpTool[] = [
             vendorName = (supplier?.name as string) || null
             orgNumber = (supplier?.orgNumber as string) || null
             amount = (totals?.total as number) || null
-            // Surface currency alongside amount so the agent doesn't compare a
-            // non-SEK invoice numerically to a SEK transaction. transactions.amount
-            // is in transactions.currency; if these don't match, the agent must
-            // FX-normalise before ranking matches. Defaulting to null when absent
+            // Surface currency alongside amount. Defaulting to null when absent
             // (rather than 'SEK') makes the missing-currency case explicit.
             currency = (invoice?.currency as string) || null
             invoiceDate = (invoice?.invoiceDate as string) || null
@@ -7829,18 +7812,9 @@ export const tools: McpTool[] = [
           }
         })
 
-      // Pagination contract: emit next_cursor whenever the caller might be
-      // missing rows. Two cases:
-      //   (a) slice was full → cursor on last returned item (next page picks up
-      //       any leftover unmatched rows we filtered past);
-      //   (b) slice was short but inbox query returned a full batch → cursor on
-      //       last inspected row (more unmatched may exist deeper in the inbox).
-      // Only suppress the cursor when we exhausted the inbox stream entirely.
+      // Emit next_cursor whenever the page is full: more rows may follow.
       let nextCursor: string | null = null
-      if (unmatched.length === limit) {
-        const last = unmatched[unmatched.length - 1]
-        nextCursor = `${last.created_at}__${last.inbox_item_id}`
-      } else if (inboxRows.length === fetchSize) {
+      if (inboxRows.length === limit) {
         const last = inboxRows[inboxRows.length - 1]
         nextCursor = `${last.created_at}__${last.id}`
       }
@@ -7856,7 +7830,7 @@ export const tools: McpTool[] = [
   {
     name: 'gnubok_get_document_content',
     title: 'Get Document Content',
-    description: 'Get a 5-minute signed download URL for a document so the agent can read its contents (e.g. with vision). Use after gnubok_list_unmatched_documents to inspect a specific PDF before deciding which transaction it matches.',
+    description: 'Get a 5-minute signed download URL for a document so the agent can read its contents (e.g. with vision). Use after gnubok_list_unmatched_documents to inspect a specific PDF before deciding which supplier invoice or verifikat it belongs to.',
     inputSchema: {
       type: 'object',
       additionalProperties: false,
@@ -9600,7 +9574,7 @@ export const tools: McpTool[] = [
   {
     name: 'gnubok_create_voucher',
     title: 'Create Manual Voucher (Verifikation)',
-    description: 'Stage a manual verifikation with arbitrary balanced lines: capitalization (1010), accruals, FX adjustments, rättelser outside categorize_transaction. Lines accept dimensions bags {sie_dim_no: code or name}. Pass inbox_item_id to book a kvitto direct. HIGH risk.',
+    description: 'Stage a manual verifikation with arbitrary balanced lines: capitalization (1010), accruals, FX adjustments, rättelser. Lines accept dimensions bags {sie_dim_no: code or name}. Pass inbox_item_id to book a kvitto direct. HIGH risk.',
     inputSchema: {
       type: 'object',
       additionalProperties: false,

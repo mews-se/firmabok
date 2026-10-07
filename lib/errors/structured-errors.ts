@@ -71,11 +71,6 @@ const GENERIC: Record<string, StructuredErrorEntry> = {
     message_sv: 'Din session har gått ut. Logga in igen.',
     message_en: 'Authentication required.',
   },
-  MFA_REQUIRED: {
-    httpStatus: 403,
-    message_sv: 'Tvåstegsverifiering krävs för att utföra åtgärden.',
-    message_en: 'MFA verification required.',
-  },
   FORBIDDEN: {
     httpStatus: 403,
     message_sv: 'Du har inte behörighet att utföra denna åtgärd.',
@@ -135,6 +130,11 @@ const GENERIC: Record<string, StructuredErrorEntry> = {
     remediation: {
       description: 'Use a live key for this endpoint, or pick an endpoint that supports dry-run.',
     },
+  },
+  EXTENSION_DISABLED: {
+    httpStatus: 503,
+    message_sv: 'Integrationen är inte aktiverad i denna miljö.',
+    message_en: 'The integration is not enabled in this environment.',
   },
 }
 
@@ -399,13 +399,6 @@ const MATCH_SI: Record<string, StructuredErrorEntry> = {
       'Kontantmetoden kan inte bokföra delbetalningar av en obokförd leverantörsfaktura automatiskt: hela fakturan bokförs vid betalning. Betala hela beloppet i en betalning eller bokför betalningen manuellt som verifikation.',
     message_en:
       'The cash method cannot auto-book partial payments of an unbooked supplier invoice: the generated entry always books the full invoice. Pay the full amount in one payment or book the payment manually as a journal entry.',
-  },
-  MATCH_SI_AMOUNT_EXCEEDS_REMAINING: {
-    httpStatus: 400,
-    message_sv:
-      'Betalningsbeloppet är större än leverantörsfakturans återstående belopp. Registrera högst det återstående beloppet.',
-    message_en:
-      'Payment amount exceeds the supplier invoice remaining amount. Register at most the remaining amount.',
   },
 }
 
@@ -783,37 +776,6 @@ const INVOICE: Record<string, StructuredErrorEntry> = {
     message_en:
       'The recurring schedule update failed and the compensating rollback did not fully apply: the schedule may be left in a partial state (header fields and items out of sync). Inspect the schedule fields and items before retrying.',
   },
-  // Quotes / Offerter
-  QUOTE_NOT_FOUND: {
-    httpStatus: 404,
-    message_sv: 'Offerten kunde inte hittas.',
-    message_en: 'Quote not found.',
-  },
-  QUOTE_INVALID_STATE: {
-    httpStatus: 400,
-    message_sv: 'Offerten är inte i en status som tillåter denna åtgärd.',
-    message_en: 'Quote is not in a state that allows this action.',
-  },
-  QUOTE_TOKEN_INVALID: {
-    httpStatus: 404,
-    message_sv: 'Länken är ogiltig eller har gått ut.',
-    message_en: 'The link is invalid or has expired.',
-  },
-  QUOTE_NUMBER_ASSIGN_FAILED: {
-    httpStatus: 500,
-    message_sv: 'Kunde inte tilldela offertnummer.',
-    message_en: 'Failed to assign quote number.',
-  },
-  QUOTE_CONVERSION_FAILED: {
-    httpStatus: 500,
-    message_sv: 'Offerten kunde inte konverteras till faktura.',
-    message_en: 'Failed to convert quote to invoice.',
-  },
-  QUOTE_NOT_QUOTE: {
-    httpStatus: 400,
-    message_sv: 'Detta dokument är inte en offert.',
-    message_en: 'This document is not a quote.',
-  },
 }
 
 const SUPPLIER_INVOICE: Record<string, StructuredErrorEntry> = {
@@ -911,25 +873,6 @@ const SUPPLIER_INVOICE: Record<string, StructuredErrorEntry> = {
       description:
         'Set exchange_rate on the supplier invoice (the rate at the invoice date) and retry the booking.',
     },
-  },
-  PO_THREE_WAY_MATCH_FAILED: {
-    httpStatus: 422,
-    message_sv:
-      'Trevägs-matchning misslyckades: leverantörsfakturan stämmer inte med inköpsordern eller godsmottagningen.',
-    message_en:
-      'Three-way match failed: the supplier invoice does not reconcile with the purchase order / goods receipt.',
-  },
-  PO_LINK_REQUIRED: {
-    httpStatus: 422,
-    message_sv:
-      'Inställningarna kräver att varje leverantörsfaktura kopplas till en inköpsorder.',
-    message_en:
-      'Company settings require every supplier invoice to be linked to a purchase order.',
-  },
-  PO_NOT_FOUND: {
-    httpStatus: 404,
-    message_sv: 'Inköpsordern kunde inte hittas.',
-    message_en: 'Purchase order not found.',
   },
 }
 
@@ -1234,6 +1177,11 @@ const SIE_IMPORT: Record<string, StructuredErrorEntry> = {
     message_sv: 'SIE-importen kunde inte ångras.',
     message_en: 'Failed to undo SIE import.',
   },
+  SIE_IMPORT_DUPLICATE: {
+    httpStatus: 409,
+    message_sv: 'Den här SIE-filen har redan importerats.',
+    message_en: 'This SIE file has already been imported.',
+  },
 }
 
 const OPENING_BALANCE_IMPORT: Record<string, StructuredErrorEntry> = {
@@ -1372,127 +1320,6 @@ const REGISTER_IMPORT: Record<string, StructuredErrorEntry> = {
     httpStatus: 500,
     message_sv: 'Importen misslyckades.',
     message_en: 'Register import failed.',
-  },
-}
-
-// ─────────────────────────────────────────────────────────────────
-// Wave 3 tail: provider migration extension codes
-// ─────────────────────────────────────────────────────────────────
-
-const PROVIDER_MIGRATION: Record<string, StructuredErrorEntry> = {
-  PROVIDER_INVALID: {
-    httpStatus: 400,
-    message_sv: 'Okänd leverantör.',
-    message_en: 'Unknown provider.',
-  },
-  PROVIDER_CONSENT_NOT_READY: {
-    httpStatus: 400,
-    message_sv: 'Anslutningen är inte klar. Slutför inloggningen först.',
-    message_en: 'Provider consent is not ready; finish authentication first.',
-  },
-  PROVIDER_CONSENT_NOT_FOUND: {
-    httpStatus: 404,
-    message_sv: 'Anslutningen kunde inte hittas.',
-    message_en: 'Provider consent not found.',
-  },
-  PROVIDER_CONNECT_FAILED: {
-    httpStatus: 500,
-    message_sv: 'Kunde inte starta anslutningen till leverantören.',
-    message_en: 'Failed to start provider connection flow.',
-  },
-  PROVIDER_TOKEN_REQUIRED: {
-    httpStatus: 400,
-    message_sv: 'API-token krävs för den här leverantören.',
-    message_en: 'apiToken is required for this provider.',
-  },
-  PROVIDER_COMPANY_ID_REQUIRED: {
-    httpStatus: 400,
-    message_sv: 'companyId krävs för den här leverantören.',
-    message_en: 'companyId is required for this provider.',
-  },
-  PROVIDER_TOKEN_SUBMIT_FAILED: {
-    httpStatus: 500,
-    message_sv: 'Tokensubmissionen misslyckades.',
-    message_en: 'Failed to submit provider token.',
-  },
-  PROVIDER_TOKEN_INVALID: {
-    // 422 (not 401): the UPSTREAM provider rejected the pasted credentials.
-    // The caller's own session is fine: a 401 here can trip client-side auth
-    // interceptors into logging the user out. Clients must dispatch on the
-    // error code, never on the HTTP status.
-    httpStatus: 422,
-    message_sv:
-      'Leverantören avvisade uppgifterna. Kontrollera att konto-ID och applikationstoken stämmer och försök igen.',
-    message_en:
-      'The provider rejected the credentials. Check that the account ID and application token are correct and try again.',
-  },
-  PROVIDER_COMPANY_MISMATCH: {
-    // 422, same reasoning as PROVIDER_TOKEN_INVALID: the credentials are valid,
-    // but they open a DIFFERENT legal entity than the one being imported into.
-    // Importing anyway mixes another company's ledger into this one, which is
-    // both a bookkeeping and a data-protection problem: refuse at the boundary.
-    httpStatus: 422,
-    message_sv:
-      'Uppgifterna gäller ett annat företag än det du importerar till. Kontrollera att du valt rätt företag hos leverantören och försök igen.',
-    message_en:
-      'These credentials belong to a different company than the one you are importing into. Check that you picked the right company at the provider and try again.',
-  },
-  PROVIDER_PREVIEW_FAILED: {
-    httpStatus: 500,
-    message_sv: 'Förhandsgranskningen från leverantören misslyckades.',
-    message_en: 'Provider preview failed.',
-  },
-  PROVIDER_SIE_FETCH_FAILED: {
-    httpStatus: 502,
-    message_sv: 'Kunde inte hämta SIE-data från leverantören.',
-    message_en: 'Failed to fetch SIE data from the provider.',
-  },
-  PROVIDER_SIE_NO_YEARS: {
-    // The supported window is rolling (current year and the two before it):
-    // the route interpolates the actual range via the messageSv/messageEn
-    // overrides on errorResponseFromCode(); this entry is the static fallback.
-    httpStatus: 404,
-    message_sv: 'Inga räkenskapsår inom det stödda intervallet hittades hos leverantören.',
-    message_en: 'No fiscal years available within the supported range.',
-  },
-  PROVIDER_SIE_NOT_SUPPORTED: {
-    httpStatus: 400,
-    message_sv:
-      'Den här leverantören stöder inte SIE-hämtning via API. Ladda upp en SIE-fil manuellt istället.',
-    message_en:
-      'This provider does not support fetching SIE via API. Upload a SIE file manually instead.',
-  },
-  PROVIDER_SIE_IMPORT_REQUIRED: {
-    httpStatus: 409,
-    message_sv:
-      'Bokföringsdata (SIE) måste importeras först. Ladda upp en SIE-fil med kontoplan, ingående balanser och verifikationer innan du hämtar kunder, leverantörer och fakturor från den här leverantören.',
-    message_en:
-      'A completed SIE import is required first. Import the SIE file (chart of accounts, opening balances and verifications) before importing customers, suppliers and invoices from this provider.',
-  },
-  PROVIDER_MIGRATE_FAILED: {
-    httpStatus: 500,
-    message_sv: 'Migrationen från leverantören misslyckades.',
-    message_en: 'Provider migration failed.',
-  },
-  PROVIDER_IMPORT_DOCUMENTS_FAILED: {
-    httpStatus: 500,
-    message_sv: 'Kunde inte importera underlag från leverantören.',
-    message_en: 'Failed to import documents from provider.',
-  },
-  PROVIDER_DISCONNECT_FAILED: {
-    httpStatus: 500,
-    message_sv: 'Frånkoppling från leverantören misslyckades.',
-    message_en: 'Provider disconnect failed.',
-  },
-  PROVIDER_ACCEPT_FAILED: {
-    httpStatus: 500,
-    message_sv: 'Kunde inte slutföra anslutningen.',
-    message_en: 'Failed to accept consent.',
-  },
-  PROVIDER_STATUS_FAILED: {
-    httpStatus: 500,
-    message_sv: 'Kunde inte hämta status från leverantören.',
-    message_en: 'Failed to fetch provider status.',
   },
 }
 
@@ -1800,220 +1627,12 @@ const SUPPLIER_INVOICE_WAVE4: Record<string, StructuredErrorEntry> = {
   },
 }
 
-const SALARY: Record<string, StructuredErrorEntry> = {
-  SALARY_RUN_NOT_FOUND: {
-    httpStatus: 404,
-    message_sv: 'Lönekörningen kunde inte hittas.',
-    message_en: 'Salary run not found.',
-  },
-  SALARY_RUN_NO_EMPLOYEES: {
-    httpStatus: 400,
-    message_sv: 'Inga aktiva anställda finns i företaget.',
-    message_en: 'No active employees in the company.',
-  },
-  SALARY_RUN_LINE_NOT_DRAFT: {
-    httpStatus: 400,
-    message_sv: 'Lönebeskedets rader kan bara redigeras medan lönekörningen är ett utkast.',
-    message_en: 'Payslip lines can only be edited while the salary run is a draft.',
-  },
-  SALARY_RUN_EMPLOYEE_NOT_FOUND: {
-    httpStatus: 404,
-    message_sv: 'Anställd finns inte i denna lönekörning.',
-    message_en: 'Employee is not part of this salary run.',
-  },
-  SALARY_LINE_NOT_FOUND: {
-    httpStatus: 404,
-    message_sv: 'Lönebeskedsraden kunde inte hittas.',
-    message_en: 'Payslip line not found.',
-  },
-  SALARY_RUN_EMPLOYEE_DUPLICATE: {
-    httpStatus: 409,
-    message_sv: 'Den anställda finns redan i lönekörningen.',
-    message_en: 'Employee is already part of this salary run.',
-  },
-  SALARY_RUN_EMPLOYEES_NOT_DRAFT: {
-    httpStatus: 400,
-    message_sv: 'Anställda kan bara läggas till eller tas bort medan lönekörningen är ett utkast.',
-    message_en: 'Employees can only be added or removed while the salary run is a draft.',
-  },
-  ABSENCE_RANGE_TOO_LARGE: {
-    httpStatus: 400,
-    message_sv: 'Frånvarointervallet är för stort. Max 92 dagar per anrop.',
-    message_en: 'Absence range too large. Maximum 92 days per request.',
-  },
-  ABSENCE_HOURS_CONFLICT: {
-    httpStatus: 409,
-    message_sv: 'Total frånvarotid för dagen överstiger 24 timmar.',
-    message_en: 'Total absence hours for the day exceed 24 hours.',
-  },
-  OPENING_BALANCES_LOCKED: {
-    httpStatus: 409,
-    message_sv: 'Ingående saldon är låsta: den anställda har en bokförd lönekörning.',
-    message_en: 'Opening balances are locked: the employee has a booked salary run.',
-  },
-  VACATION_YEAR_NOT_ENDED: {
-    httpStatus: 400,
-    message_sv: 'Semesteråret kan inte stängas innan det har tagit slut.',
-    message_en: 'The vacation year cannot be closed before it has ended.',
-  },
-  VACATION_YEAR_ALREADY_CLOSED: {
-    httpStatus: 409,
-    message_sv: 'Semesteråret är redan stängt.',
-    message_en: 'The vacation year is already closed.',
-  },
-  VACATION_CLOSE_ADJUSTMENT_FAILED: {
-    httpStatus: 500,
-    message_sv: 'Semestersaldon rullades men justeringsverifikationen kunde inte bokföras. Bokför justeringen manuellt från rapporten.',
-    message_en: 'Vacation balances rolled but the adjustment entry failed to post. Book the adjustment manually from the report.',
-  },
-  VACATION_BALANCE_NOT_FOUND: {
-    httpStatus: 404,
-    message_sv: 'Inget semestersaldo finns för den anställda ännu.',
-    message_en: 'No vacation balance exists for the employee yet.',
-  },
-  SALARY_RUN_TAX_TABLE_MISSING: {
-    httpStatus: 400,
-    message_sv: 'Skattetabellen saknas för perioden. Importera skattetabellen först.',
-    message_en: 'Tax table is missing for the period.',
-  },
-  SALARY_RUN_PERIOD_LOCKED: {
-    httpStatus: 400,
-    message_sv: 'Lönekörningen kan inte göras i en låst period.',
-    message_en: 'Salary run cannot be processed in a locked period.',
-  },
-  SALARY_RUN_NOT_CALCULATED: {
-    httpStatus: 400,
-    message_sv: 'Lönekörningen måste beräknas innan bokföring.',
-    message_en: 'Salary run must be calculated before booking.',
-  },
-  SALARY_RUN_CREATE_FAILED: {
-    httpStatus: 500,
-    message_sv: 'Lönekörningen kunde inte skapas.',
-    message_en: 'Failed to create salary run.',
-  },
-  SALARY_RUN_CALCULATE_FAILED: {
-    httpStatus: 500,
-    message_sv: 'Lönekörningen kunde inte beräknas.',
-    message_en: 'Failed to calculate salary run.',
-  },
-  SALARY_RUN_BOOK_FAILED: {
-    httpStatus: 500,
-    message_sv: 'Lönekörningen kunde inte bokföras.',
-    message_en: 'Failed to book salary run.',
-  },
-  AGI_NO_SALARY_RUN: {
-    httpStatus: 400,
-    message_sv: 'Det finns ingen lönekörning för perioden.',
-    message_en: 'No salary run exists for the period.',
-  },
-  AGI_FSKATT_VERIFICATION_FAILED: {
-    httpStatus: 400,
-    message_sv: 'F-skattekontrollen misslyckades. Kontrollera leverantörens F-skatt.',
-    message_en: 'F-skatt verification failed.',
-  },
-  AGI_GENERATION_FAILED: {
-    httpStatus: 500,
-    message_sv: 'AGI-deklarationen kunde inte genereras.',
-    message_en: 'Failed to generate AGI declaration.',
-  },
-  // Phase 5 PR-1: v1 REST surface error codes.
-  EMPLOYEE_NOT_FOUND: {
-    httpStatus: 404,
-    message_sv: 'Den anställda kunde inte hittas.',
-    message_en: 'Employee not found.',
-  },
-  EMPLOYEE_DUPLICATE_PERSONNUMMER: {
-    httpStatus: 409,
-    message_sv: 'En anställd med samma personnummer finns redan.',
-    message_en: 'An employee with that personnummer already exists.',
-  },
-  SALARY_RUN_DUPLICATE_PERIOD: {
-    httpStatus: 409,
-    message_sv: 'En lönekörning för perioden finns redan.',
-    message_en: 'A salary run for that period already exists.',
-  },
-  SALARY_RUN_PATCH_NOT_DRAFT: {
-    httpStatus: 400,
-    message_sv: 'Endast utkast (draft) kan uppdateras.',
-    message_en: 'Only draft salary runs can be patched.',
-  },
-  SALARY_RUN_DELETE_NOT_DRAFT: {
-    httpStatus: 400,
-    message_sv: 'Endast utkast (draft) kan raderas.',
-    message_en: 'Only draft salary runs can be deleted.',
-  },
-  SALARY_RUN_CALCULATE_NOT_DRAFT: {
-    httpStatus: 400,
-    message_sv: 'Lönekörningen måste vara i status draft för beräkning.',
-    message_en: 'Salary run must be in draft status to calculate.',
-  },
-  SALARY_RUN_APPROVE_NOT_REVIEW: {
-    httpStatus: 400,
-    message_sv: 'Lönekörningen måste vara i status review för godkännande.',
-    message_en: 'Salary run must be in review status to approve.',
-  },
-  SALARY_RUN_APPROVE_VALIDATION_FAILED: {
-    httpStatus: 400,
-    message_sv: 'Valideringsfel: korrigera innan godkännande.',
-    message_en: 'Validation failed: fix issues before approving.',
-  },
-  SALARY_RUN_MARK_PAID_NOT_APPROVED: {
-    httpStatus: 400,
-    message_sv: 'Lönekörningen måste vara godkänd för att markeras som betald.',
-    message_en: 'Salary run must be approved before it can be marked paid.',
-  },
-  SALARY_RUN_BOOK_NOT_PAID: {
-    httpStatus: 400,
-    message_sv: 'Lönekörningen måste vara markerad som betald för bokföring.',
-    message_en: 'Salary run must be marked paid before booking.',
-  },
-  SALARY_RUN_ALREADY_BOOKED: {
-    httpStatus: 409,
-    message_sv: 'Lönekörningen är redan bokförd.',
-    message_en: 'Salary run is already booked.',
-  },
-  SALARY_PAYSLIPS_SEND_INVALID_STATUS: {
-    httpStatus: 400,
-    message_sv: 'Lönespecifikationer kan bara skickas efter godkännande.',
-    message_en: 'Payslips can only be sent after the salary run is approved.',
-  },
-  SALARY_PAYSLIPS_NO_EMPLOYEES: {
-    httpStatus: 400,
-    message_sv: 'Inga anställda i lönekörningen.',
-    message_en: 'No employees in the salary run.',
-  },
-  AGI_GENERATE_NOT_BOOKABLE: {
-    httpStatus: 400,
-    message_sv: 'AGI kan endast genereras för lönekörningar i status review, approved, paid, booked eller corrected.',
-    message_en: 'AGI can only be generated for salary runs in review, approved, paid, booked, or corrected status.',
-  },
-  AGI_INCOMPLETE_DATA: {
-    httpStatus: 400,
-    message_sv: 'AGI-data ofullständig: kontrollera att företaget har organisationsnummer, kontaktnamn, telefon och e-post.',
-    message_en: 'AGI data is incomplete: verify the company has org number, contact name, phone, and email.',
-  },
+const COMPANY: Record<string, StructuredErrorEntry> = {
   COMPANY_NOT_FOUND: {
     httpStatus: 404,
     message_sv: 'Företaget kunde inte hittas.',
     message_en: 'Company not found.',
   },
-  // Phase 5 PR-1 carry-over: distinct error code for the salary-run DELETE
-  // FK-null guard so an operator seeing this in logs knows a journal entry
-  // is at risk, not just a status race.
-  SALARY_RUN_DELETE_HAS_JOURNAL_ENTRY: {
-    httpStatus: 400,
-    message_sv: 'Lönekörningen är kopplad till en verifikation och kan inte raderas (BFL 5 kap räkenskapsinformation).',
-    message_en: 'Salary run is linked to a journal entry and cannot be deleted (BFL 5 kap räkenskapsinformation).',
-  },
-  // Phase 5 PR-3: additional import error codes.
-  SIE_IMPORT_DUPLICATE: {
-    httpStatus: 409,
-    message_sv: 'Den här SIE-filen har redan importerats.',
-    message_en: 'This SIE file has already been imported.',
-  },
-}
-
-const COMPANY: Record<string, StructuredErrorEntry> = {
   COMPANY_CREATE_DUPLICATE_ORG_NUMBER: {
     httpStatus: 409,
     message_sv: 'Ett företag med samma organisationsnummer finns redan.',
@@ -2067,48 +1686,6 @@ const API_KEY: Record<string, StructuredErrorEntry> = {
       description:
         'Inform the user of the segregation-of-duties risk, then re-POST the same scopes with acknowledge_sod: true to create the key anyway.',
     },
-  },
-}
-
-// ─────────────────────────────────────────────────────────────────
-// Provider connection / external HTTP codes
-// ─────────────────────────────────────────────────────────────────
-
-const PROVIDER: Record<string, StructuredErrorEntry> = {
-  PROVIDER_AUTH_EXPIRED: {
-    httpStatus: 401,
-    message_sv: 'Anslutningen till leverantören har gått ut. Återanslut för att fortsätta.',
-    message_en: 'Provider authentication expired or refresh failed.',
-  },
-  PROVIDER_LICENSE_MISSING: {
-    httpStatus: 403,
-    message_sv:
-      'Fortnox nekade anslutningen eftersom integrationslicensen inte är aktiv. Aktivera tilläggstjänsten "Fortnox Integration" i ditt Fortnox-konto (Inställningar → Tilläggstjänster) och återanslut sedan. Du kan även importera via SIE-fil under tiden.',
-    message_en:
-      'Fortnox refused the connection because the integration license is not active. Activate the "Fortnox Integration" add-on in your Fortnox account, then reconnect. You can also import via SIE file in the meantime.',
-  },
-  PROVIDER_API_MODULE_INACTIVE: {
-    httpStatus: 403,
-    message_sv:
-      'Visma nekade åtkomst eftersom API-modulen inte är aktiverad för företaget ("No access to module: api_standard"). Aktivera API:et i Visma/Spiris under Inställningar, Appar och tillägg. På de mindre abonnemangen är API:et ett tillägg (Integration) som kostar extra. Kontrollera också att inget standardföretag är valt i menyn uppe till höger i Visma, det kan göra att inloggningen hamnar på ett företag utan giltig licens. Försök sedan igen. Du kan även importera via SIE-fil under tiden.',
-    message_en:
-      'Visma refused access because the API module is not activated for the company ("No access to module: api_standard"). Activate the API in Visma/Spiris under Settings, Apps and extensions (on smaller plans the API is a paid add-on called Integration), and make sure no default company is selected in the top-right menu. Then try again. You can also import via SIE file in the meantime.',
-  },
-  PROVIDER_RATE_LIMITED: {
-    httpStatus: 429,
-    message_sv:
-      'Leverantören begränsar antalet anrop just nu. Vänta en stund och försök igen.',
-    message_en: 'Provider rate limit exceeded.',
-  },
-  PROVIDER_UNREACHABLE: {
-    httpStatus: 502,
-    message_sv: 'Leverantörens tjänst är inte tillgänglig just nu. Försök igen om en stund.',
-    message_en: 'Provider service is unreachable (network/DNS error).',
-  },
-  PROVIDER_UPSTREAM_ERROR: {
-    httpStatus: 502,
-    message_sv: 'Leverantören svarade med ett fel. Försök igen om en stund.',
-    message_en: 'Provider returned an upstream 5xx error.',
   },
 }
 
@@ -2234,194 +1811,6 @@ const LINK_SI_VOUCHER: Record<string, StructuredErrorEntry> = {
     httpStatus: 500,
     message_sv: 'Databasfel under länkning. Försök igen.',
     message_en: 'Database error while linking the voucher. Please retry.',
-  },
-}
-
-// ─────────────────────────────────────────────────────────────────
-// Skatteverket filing codes (PR5: MCP momsdeklaration + AGI tools)
-// ─────────────────────────────────────────────────────────────────
-
-const SKATTEVERKET: Record<string, StructuredErrorEntry> = {
-  EXTENSION_DISABLED: {
-    httpStatus: 503,
-    message_sv: 'Skatteverket-integrationen är inte aktiverad i denna miljö.',
-    message_en: 'The Skatteverket integration is not enabled in this environment.',
-  },
-  SKATTEVERKET_NOT_CONNECTED: {
-    httpStatus: 401,
-    message_sv:
-      'Anslutningen till Skatteverket saknas eller har gått ut. Anslut med BankID under Inställningar → Skatteverket.',
-    message_en: 'No valid Skatteverket connection. Reconnect with BankID before retrying.',
-    remediation: {
-      description:
-        'Connect (or reconnect) to Skatteverket with BankID under Settings → Skatteverket, then retry.',
-    },
-  },
-  SKATTEVERKET_ACCESS_DENIED: {
-    httpStatus: 403,
-    message_sv:
-      'Behörighet saknas hos Skatteverket för det här företaget. Kontrollera att du är firmatecknare eller deklarationsombud.',
-    message_en:
-      'Skatteverket denied access for this company (missing authorisation or scope).',
-    remediation: {
-      description:
-        'Verify the signed-in user is firmatecknare/deklarationsombud for this company at Skatteverket, then reconnect with BankID.',
-    },
-  },
-  SKATTEVERKET_RATE_LIMITED: {
-    httpStatus: 429,
-    message_sv: 'För många förfrågningar mot Skatteverket. Vänta en stund och försök igen.',
-    message_en: 'Skatteverket rate limit exceeded.',
-    retryable: true,
-  },
-}
-
-// ─────────────────────────────────────────────────────────────────
-// Bolagsverket filing codes (digital inlämning av årsredovisning)
-// ─────────────────────────────────────────────────────────────────
-
-const BOLAGSVERKET: Record<string, StructuredErrorEntry> = {
-  BOLAGSVERKET_API_ERROR: {
-    httpStatus: 502,
-    message_sv: 'Bolagsverkets tjänst svarade med ett fel. Se detaljerna och försök igen.',
-    message_en: 'The Bolagsverket API returned an error. See details for the upstream message.',
-  },
-  BOLAGSVERKET_SUBMISSION_EXISTS: {
-    httpStatus: 409,
-    message_sv:
-      'Det finns redan en aktiv inlämning av årsredovisningen för räkenskapsåret. Invänta Bolagsverkets besked innan du lämnar in på nytt.',
-    message_en:
-      'An active årsredovisning submission already exists for this fiscal period. Wait for Bolagsverket to resolve it before submitting again.',
-  },
-  BOLAGSVERKET_FORBIDDEN: {
-    httpStatus: 403,
-    message_sv: 'Otillräcklig behörighet för att lämna in årsredovisning för det här företaget.',
-    message_en:
-      'Insufficient role to file an årsredovisning for this company (viewer members cannot submit).',
-  },
-  BOLAGSVERKET_INVALID_ENVIRONMENT: {
-    httpStatus: 400,
-    message_sv: "Ogiltig Bolagsverket-miljö. Tillåtna värden: 'test', 'accept', 'prod'.",
-    message_en: "Invalid Bolagsverket environment. Allowed values: 'test', 'accept', 'prod'.",
-  },
-  BOLAGSVERKET_ENV_NOT_ALLOWED: {
-    httpStatus: 403,
-    message_sv:
-      'Den valda Bolagsverket-miljön är inte tillåten i den här installationen. Plattformens BOLAGSVERKET_ENV sätter taket.',
-    message_en:
-      'The selected Bolagsverket environment exceeds the platform ceiling set by BOLAGSVERKET_ENV (order: test < accept < prod; unset means test).',
-  },
-  BOLAGSVERKET_CONFIG_MISSING: {
-    httpStatus: 503,
-    message_sv:
-      'Serverkonfiguration saknas för Bolagsverket-integrationen. Kontakta administratören.',
-    message_en:
-      'Server configuration required by the Bolagsverket integration is missing (see details).',
-  },
-  BOLAGSVERKET_NO_SUBSCRIPTION: {
-    httpStatus: 404,
-    message_sv: 'Ingen händelseprenumeration finns för företaget ännu.',
-    message_en:
-      'No Bolagsverket event subscription exists for this company yet. One is created on the first submission.',
-  },
-  BOLAGSVERKET_NOT_RELEASED: {
-    httpStatus: 503,
-    message_sv:
-      'Direktinlämning till Bolagsverket är inte öppnad i den här installationen. Använd pappersflödet tills anslutningen är godkänd.',
-    message_en:
-      'Connected filing to Bolagsverket is not enabled for this installation. Use the paper flow until acceptance is complete.',
-    retryable: false,
-  },
-  BOLAGSVERKET_VERSION_NOT_FOUND: {
-    httpStatus: 404,
-    message_sv: 'Den valda versionen av årsredovisningen finns inte.',
-    message_en: 'The selected annual report version was not found.',
-    retryable: false,
-  },
-  BOLAGSVERKET_VERSION_NOT_SIGNED: {
-    httpStatus: 409,
-    message_sv: 'Årsredovisningsversionen måste vara låst och undertecknad före inlämning.',
-    message_en: 'The annual report version must be finalized and signed before submission.',
-    retryable: false,
-  },
-  BOLAGSVERKET_DIGITAL_INELIGIBLE: {
-    httpStatus: 409,
-    message_sv:
-      'Den låsta årsredovisningsversionen är inte godkänd för digital inlämning. Använd pappersflödet och följ kontrollpunkterna i årsredovisningsstudion.',
-    message_en:
-      'The locked annual report version is not eligible for connected filing. Use the paper workflow and review the Annual Report Studio checks.',
-    retryable: false,
-  },
-  BOLAGSVERKET_SIGNATURE_EVIDENCE_INCOMPLETE: {
-    httpStatus: 409,
-    message_sv: 'Verifierbart underskriftsunderlag saknas för en eller flera undertecknare.',
-    message_en: 'Verifiable signature evidence is missing for one or more required signers.',
-    retryable: false,
-  },
-  BOLAGSVERKET_CERTIFICATE_SIGNER_MISMATCH: {
-    httpStatus: 409,
-    message_sv:
-      'Undertecknaren av fastställelseintyget stämmer inte med den person som låstes i årsredovisningsversionen.',
-    message_en:
-      'The certificate signer does not match the person locked into the annual report version.',
-    retryable: false,
-  },
-  BOLAGSVERKET_ARELLE_UNAVAILABLE: {
-    httpStatus: 503,
-    message_sv:
-      'Taxonomivalideringen med Arelle är inte tillgänglig. Inlämningen har stoppats innan något skickades.',
-    message_en:
-      'Arelle taxonomy validation is unavailable. Filing was stopped before anything was sent.',
-    retryable: true,
-  },
-  BOLAGSVERKET_ARELLE_FAILED: {
-    httpStatus: 409,
-    message_sv:
-      'Arelle hittade blockerande fel i iXBRL-dokumentet. Rätta felen och skapa en ny version.',
-    message_en:
-      'Arelle found blocking errors in the iXBRL document. Correct them and create a new version.',
-    retryable: false,
-  },
-  ARSREDOVISNING_INCOMPLETE: {
-    httpStatus: 409,
-    message_sv: 'Årsredovisningen har blockerande kontrollfel och kan inte versionssparas ännu.',
-    message_en: 'The annual report has blocking validation errors and cannot be versioned yet.',
-    retryable: false,
-  },
-  ARSREDOVISNING_VERSION_NOT_SIGNABLE: {
-    httpStatus: 409,
-    message_sv: 'Den valda årsredovisningsversionen är inte öppen för underskrift.',
-    message_en: 'The selected annual report version is not open for signing.',
-    retryable: false,
-  },
-  ARSREDOVISNING_SIGNATURE_DATE_INVALID: {
-    httpStatus: 400,
-    message_sv:
-      'Underskriftsdatumet måste vara samma dag som eller senare än versionens låsdatum och får inte ligga i framtiden.',
-    message_en:
-      'The signature date must be on or after the version finalization date and cannot be in the future.',
-    retryable: false,
-  },
-  ARSREDOVISNING_SIGNER_ROSTER_LOCKED: {
-    httpStatus: 409,
-    message_sv:
-      'Undertecknarlistan är låst eftersom en årsredovisningsversion redan väntar på underskrift.',
-    message_en:
-      'The signer roster is locked because an annual report version is already awaiting signatures.',
-    retryable: false,
-  },
-  ARSREDOVISNING_SIGNER_ALREADY_EXISTS: {
-    httpStatus: 409,
-    message_sv: 'Undertecknaren finns redan i den aktuella undertecknarlistan.',
-    message_en: 'The signer is already present in the current signer roster.',
-    retryable: false,
-  },
-  ARSREDOVISNING_REGISTERED: {
-    httpStatus: 409,
-    message_sv:
-      'Årsredovisningen för räkenskapsåret är registrerad hos Bolagsverket och texterna kan inte längre ändras.',
-    message_en:
-      'The årsredovisning for this fiscal period has been registered with Bolagsverket; its narrative texts can no longer be edited.',
   },
 }
 
@@ -2631,19 +2020,14 @@ const REGISTRY: Record<string, StructuredErrorEntry> = {
   ...SIE_IMPORT,
   ...OPENING_BALANCE_IMPORT,
   ...REGISTER_IMPORT,
-  ...PROVIDER_MIGRATION,
   ...DOCUMENT,
   ...INBOX,
   ...CUSTOMER,
   ...ARTICLE,
   ...SUPPLIER,
   ...SUPPLIER_INVOICE_WAVE4,
-  ...SALARY,
   ...COMPANY,
   ...API_KEY,
-  ...PROVIDER,
-  ...SKATTEVERKET,
-  ...BOLAGSVERKET,
   ...ASSETS,
   ...DIMENSION,
   ...NODE_SYSTEM,

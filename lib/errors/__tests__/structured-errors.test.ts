@@ -39,10 +39,9 @@ describe('structured-errors registry', () => {
     }
   })
 
-  it('registers the bookkeeping, provider and transient network codes', () => {
+  it('registers the bookkeeping and transient network codes', () => {
     for (const code of [
       'JOURNAL_ENTRY_NOT_BALANCED',
-      'PROVIDER_AUTH_EXPIRED',
       'CANNOT_EDIT_NON_DRAFT',
       'MANDATORY_DIMENSION_MISSING',
       'ECONNREFUSED',
@@ -112,10 +111,10 @@ describe('errorResponse', () => {
   })
 
   it('passes through entries with remediation hints', async () => {
-    const res = errorResponseFromCode('PROVIDER_AUTH_EXPIRED', noopLogger, { requestId: 'req_6' })
+    const res = errorResponseFromCode('INSUFFICIENT_SCOPE', noopLogger, { requestId: 'req_6' })
     const body = await readEnvelope(res)
-    expect(body.error.code).toBe('PROVIDER_AUTH_EXPIRED')
-    expect(res.status).toBe(401)
+    expect(body.error.code).toBe('INSUFFICIENT_SCOPE')
+    expect(res.status).toBe(403)
   })
 
   it('errorResponseFromCode emits requestId in header', () => {

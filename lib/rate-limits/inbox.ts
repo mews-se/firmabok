@@ -3,9 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 /**
  * Per-company rate limiter for document-inbox ingestion. Backed by the
  * `check_and_increment_inbox_quota` Postgres RPC (atomic check + increment),
- * not Upstash: keeps the limiter on the same shared distributed store the
- * rest of the app already hits, and works without extra env vars on Vercel
- * and Docker self-hosters alike.
+ * so it needs no extra env vars.
  *
  * Both windows are per-company. On a single-user install the only real
  * client is the owner or their MCP agent, and an agent batch-importing a

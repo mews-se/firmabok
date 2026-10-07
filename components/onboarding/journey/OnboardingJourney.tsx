@@ -43,11 +43,6 @@ const STATION_FRACS = [0.07, 0.285, 0.5, 0.715, 0.93]
 const LOG = '[onboarding-journey]'
 function logError(message: string, extra?: Record<string, unknown>) {
   console.error(LOG, message, extra ?? '')
-  fetch('/api/log', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message: `onboarding-journey: ${message}`, extra }),
-  }).catch(() => {})
 }
 
 interface OnboardingJourneyProps {

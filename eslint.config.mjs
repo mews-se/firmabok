@@ -30,14 +30,12 @@ const eslintConfig = defineConfig([
     },
   },
   // No raw console.* in lib/ or app/api/. Use createLogger from @/lib/logger
-  // so log lines carry requestId + structured context. lib/logger.ts and
-  // app/api/log/route.ts are the two intentional exemptions because they ARE
-  // the logger plumbing.
+  // so log lines carry requestId + structured context. lib/logger.ts is the
+  // intentional exemption because it IS the logger plumbing.
   {
     files: ["lib/**/*.ts", "lib/**/*.tsx", "app/api/**/*.ts", "app/api/**/*.tsx"],
     ignores: [
       "lib/logger.ts",
-      "app/api/log/route.ts",
       // Test files have legitimate console use for assertions / debugging.
       "**/__tests__/**",
       "**/*.test.ts",

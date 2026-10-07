@@ -5,7 +5,6 @@ import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip-provider";
-import { DeployReloadPrompt } from "@/components/system/DeployReloadPrompt";
 import { ThemeProvider } from "@/components/theme-provider";
 import { PaletteProvider } from "@/components/providers/PaletteProvider";
 import { SWRProvider } from "@/components/providers/SWRProvider";
@@ -93,7 +92,6 @@ export default async function RootLayout({
                 <TooltipProvider>
                   {children}
                   <Toaster />
-                  <DeployReloadPrompt />
                   <ScrollbarReveal />
                 </TooltipProvider>
               </SWRProvider>

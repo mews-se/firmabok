@@ -35,28 +35,25 @@ interface Divergence {
 
 /**
  * Seeded templates whose packs were deliberately removed with the payroll
- * module. The seeded fixture predates the removal (migrations are immutable),
- * so these names are excluded from the lossless comparison.
+ * module and the aktiebolag-only flows. The seeded fixture predates the removal
+ * (migrations are immutable), so these names are excluded from the lossless
+ * comparison.
  */
 const INTENTIONAL_REMOVALS = new Set([
   'Löneutbetalning',
   'Arbetsgivaravgifter',
   'Arbetsgivaravgifter via skattekonto',
+  'Aktieägarlån — insättning',
+  'Aktieägarlån — återbetalning',
+  'Utdelning till aktieägare',
+  'Preliminär F-skatt (AB)',
+  'Beräknad bolagsskatt',
+  'Periodiseringsfond avsättning (AB)',
+  'Periodiseringsfond återföring (AB)',
+  'Överavskrivning inventarier',
 ])
 
 const INTENTIONAL_DIVERGENCES: Record<string, Divergence> = {
-  'periodiseringsfond-avsattning-ab': {
-    seededName: 'Periodiseringsfond avsättning (AB)',
-    reason:
-      'Seeded version used account 2113, i.e. the fund for tax year 2013 under the pre-2020 ' +
-    'year-tagged block. Those funds had to be reversed years ago and the account is not in ' +
-    'BAS 2026, so the template could not resolve. Now uses 2110 Periodiseringsfonder, which ' +
-    'does not rot annually; the legal_note points at the year-tagged 2120-2129 alternative.',
-  },
-  'periodiseringsfond-aterforing-ab': {
-    seededName: 'Periodiseringsfond återföring (AB)',
-    reason: 'Same 2113 fix as periodiseringsfond-avsattning-ab.',
-  },
   'preliminar-f-skatt-ef': {
     seededName: 'Preliminär F-skatt (EF)',
     reason:
@@ -139,9 +136,9 @@ describe('pack catalogue is a lossless port of the seeded system templates', () 
     }
   })
 
-  it('covers all seeded templates except the removed payroll ones', () => {
+  it('covers all seeded templates except the removed ones', () => {
     expect(packs).toHaveLength((seeded as SeededTemplate[]).length - INTENTIONAL_REMOVALS.size)
-    expect(packs).toHaveLength(23)
+    expect(packs).toHaveLength(15)
   })
 
   it('preserves shipped Swedish text verbatim, em dashes included', () => {
@@ -150,7 +147,10 @@ describe('pack catalogue is a lossless port of the seeded system templates', () 
     // user-visible strings: changing them is a content decision, not a format
     // one. This test pins that so a future cleanup is deliberate.
     const packText = packs.map((p) => `${p.pack.meta.name} ${p.pack.meta.description}`).join('\n')
-    const dbText = (seeded as SeededTemplate[]).map((t) => `${t.name} ${t.description}`).join('\n')
+    const dbText = (seeded as SeededTemplate[])
+      .filter((t) => !INTENTIONAL_REMOVALS.has(t.name))
+      .map((t) => `${t.name} ${t.description}`)
+      .join('\n')
 
     const countEmDash = (s: string) => (s.match(/—/g) ?? []).length
     expect(countEmDash(packText)).toBe(countEmDash(dbText))

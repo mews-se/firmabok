@@ -3,7 +3,7 @@
 Reusable bookkeeping patterns, as data. One YAML file per pattern.
 
 These are the templates a user picks in the app when booking something common:
-representation, EU-handel, periodiseringsfond, löneutbetalning. They used to be
+representation, EU-handel, skattekonto, eget uttag. They used to be
 rows frozen inside a database migration. They are files now, so correcting one
 is a one-line edit and a green CI run instead of a new migration.
 

@@ -34,7 +34,7 @@ describe('booking packs MCP resource', () => {
 
   it('exposes every template with its slug, the lookup key an agent names', async () => {
     const { templates } = await read()
-    expect(templates.length).toBe(23)
+    expect(templates.length).toBe(15)
     for (const t of templates) {
       expect(t.slug, `${t.name} has no slug`).toMatch(/^[a-z0-9]+(-[a-z0-9]+)*$/)
       expect(t.lines.length).toBeGreaterThanOrEqual(2)
@@ -48,7 +48,7 @@ describe('booking packs MCP resource', () => {
     // dropped it the information would be unreachable to an agent entirely.
     const withNote = templates.filter((t) => t.legal_note)
     expect(withNote.length).toBeGreaterThan(0)
-    expect(withNote.some((t) => t.slug.startsWith('periodiseringsfond'))).toBe(true)
+    expect(withNote.some((t) => t.slug.startsWith('representation'))).toBe(true)
   })
 
   it('orders templates by meta.order, matching what the user sees', async () => {

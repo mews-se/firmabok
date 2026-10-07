@@ -54,9 +54,9 @@ interface AttGoraSectionProps {
   suggestedMatches: SuggestedMatch[]
   expiringBankConnections?: ExpiringBankConnection[]
   /**
-   * True while the setup checklist is open and the company has zero posted
-   * journal entries. An empty ledger is not an achievement: the all-clear
-   * state then says "nothing here yet" instead of a false "all caught up".
+   * True when the company has zero posted journal entries. An empty ledger
+   * is not an achievement: the all-clear state then says "nothing here yet"
+   * instead of a false "all caught up".
    */
   emptyLedger?: boolean
 }

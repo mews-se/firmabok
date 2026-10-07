@@ -2328,25 +2328,7 @@ export interface PendingOperation {
   updated_at: string
 }
 
-// Onboarding progress for new user checklist
-export interface OnboardingProgress {
-  hasCustomers: boolean
-  hasInvoices: boolean
-  hasBankConnected: boolean
-  hasSIEImport: boolean
-  /** True when the active user has a stored Skatteverket OAuth token. */
-  hasSkatteverketConnected: boolean
-  /** True when the company has ever received an item in the document inbox. */
-  hasInboxItems: boolean
-}
-
 export type InitialSetupPath = 'migration' | 'bank' | 'fresh'
-
-export interface InitialSetupState {
-  path: InitialSetupPath | null
-  completedAt: string | null
-  dismissedAt: string | null
-}
 
 // Onboarding step data
 export interface OnboardingStepData {

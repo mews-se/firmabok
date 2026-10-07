@@ -1,18 +1,12 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
-import { createClient } from '@/lib/supabase/client'
-import { AttnLine } from '@/components/ui/attn-line'
 import { useCompany } from '@/contexts/CompanyContext'
-import NewUserChecklist from '@/components/onboarding/NewUserChecklist'
 import AttGoraSection from '@/components/dashboard/AttGoraSection'
 import ResumePane from '@/components/dashboard/ResumePane'
-import type { InitialSetupState, OnboardingProgress } from '@/types'
 import type { SuggestedMatch, WorklistCounts } from '@/lib/worklist/types'
 import type { ResumeItem } from '@/lib/worklist/resume'
-import type { VatDeadlineLine } from '@/lib/onboarding/checklist'
 
 interface DashboardContentProps {
   /** Signed-in user's first name for the greeting; null falls back to a
@@ -27,19 +21,9 @@ interface DashboardContentProps {
   /** In-progress work for the Fortsätt pane (lib/worklist/resume). */
   resumeItems: ResumeItem[]
   /**
-   * True when this account looks bookkeeping-empty while a same-orgnr
-   * company with real bookkeeping exists in another account (#1231): the
-   * user probably signed in with the wrong login (stale BankID account).
-   */
-  otherAccountHint?: boolean
-  onboardingProgress?: OnboardingProgress
-  initialSetup: InitialSetupState
-  /** Personalized VAT-deadline line for the checklist's Skatteverket step. */
-  vatLine?: VatDeadlineLine
-  /**
-   * True while the setup checklist is still open and the company has zero
-   * posted journal entries: Att göra's all-clear then reads as "empty, get
-   * started" instead of a false "all caught up".
+   * True when the company has zero posted journal entries: Att göra's
+   * all-clear then reads as "empty, get started" instead of a false
+   * "all caught up".
    */
   emptyLedger?: boolean
 }
@@ -57,23 +41,10 @@ export default function DashboardContent({
   worklist,
   suggestedMatches,
   resumeItems,
-  otherAccountHint = false,
-  onboardingProgress,
-  initialSetup,
-  vatLine = null,
   emptyLedger = false,
 }: DashboardContentProps) {
   const t = useTranslations('dashboard')
   const { company } = useCompany()
-  const router = useRouter()
-
-  // Wrong-account hint action: sign out so the user can come back in with
-  // their other login (email+password). Same flow as SandboxBanner.
-  async function handleSwitchAccount() {
-    const supabase = createClient()
-    await supabase.auth.signOut()
-    router.push('/login')
-  }
 
   // Time-of-day greeting (concept: "God morgon, Jakob."). Client-side clock
   // on purpose (the user's local morning, not the server's), captured once
@@ -99,24 +70,7 @@ export default function DashboardContent({
           {dateLine}
           {company?.name ? ` · ${company.name}` : ''}
         </p>
-        {otherAccountHint && (
-          <AttnLine
-            className="mt-3"
-            action={{ label: t('other_account_hint_action'), onClick: handleSwitchAccount }}
-          >
-            {t('other_account_hint')}
-          </AttnLine>
-        )}
       </section>
-
-      <NewUserChecklist
-        initialState={initialSetup}
-        hasBookkeepingImported={!!onboardingProgress?.hasSIEImport}
-        hasBankConnected={!!onboardingProgress?.hasBankConnected}
-        hasSkatteverketConnected={!!onboardingProgress?.hasSkatteverketConnected}
-        hasInboxItems={!!onboardingProgress?.hasInboxItems}
-        vatLine={vatLine}
-      />
 
       {/* The two panes (concept hem-grid). When nothing is in progress the
           right pane renders null and Att göra takes the full width. */}

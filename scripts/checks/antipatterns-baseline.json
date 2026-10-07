@@ -5,18 +5,15 @@
     "files": []
   },
   "naiveOreRound": {
-    "count": 405
+    "count": 392
   },
   "handRolledInvariants": {
-    "count": 66
+    "count": 65
   },
   "ledgerScanningReports": {
-    "count": 4,
+    "count": 1,
     "files": [
-      "lib/bokslut/assets/asset-service.ts",
-      "lib/bokslut/reserves/periodiseringsfond-service.ts",
-      "lib/bokslut/tax-provision/bolagsskatt-calculator.ts",
-      "lib/bokslut/tax-provision/sarskild-loneskatt-calculator.ts"
+      "lib/bokslut/assets/asset-service.ts"
     ]
   }
 }

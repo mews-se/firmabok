@@ -81,8 +81,6 @@ const OPERATION_LABEL_KEYS: Record<string, string> = {
   link_supplier_invoice_voucher: 'type_link_supplier_invoice_voucher',
   retag_line_dimensions: 'type_retag_line_dimensions',
   set_voucher_note: 'type_set_voucher_note',
-  // Bulk booking
-  bulk_book_inbox_items: 'type_bulk_book_inbox_items',
   // Periods, year-end, depreciation
   close_period: 'type_close_period',
   lock_period: 'type_lock_period',
@@ -95,17 +93,6 @@ const OPERATION_LABEL_KEYS: Record<string, string> = {
   // SIE
   import_sie: 'type_import_sie',
   undo_sie_import: 'type_undo_sie_import',
-  // Payroll & Skatteverket filings
-  create_salary_run: 'type_create_salary_run',
-  book_salary_run: 'type_book_salary_run',
-  generate_agi: 'type_generate_agi',
-  update_payslip_line: 'type_update_payslip_line',
-  register_absence: 'type_register_absence',
-  delete_absence: 'type_delete_absence',
-  create_employee: 'type_create_employee',
-  update_employee: 'type_update_employee',
-  set_employee_opening_balances: 'type_set_employee_opening_balances',
-  vacation_year_close: 'type_vacation_year_close',
 }
 
 // Fallback for an operation_type with no entry above (e.g. a newly added op

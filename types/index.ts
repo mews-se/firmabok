@@ -1744,7 +1744,6 @@ export interface CreateJournalEntryLineInput {
 // ── Pending Operations ────────────────────────────────────────
 
 export type PendingOperationType =
-  | 'categorize_transaction'
   | 'create_customer'
   | 'update_customer'
   | 'update_company_settings'
@@ -1757,7 +1756,6 @@ export type PendingOperationType =
   | 'create_invoice'
   | 'mark_invoice_paid'
   | 'mark_invoice_sent'
-  | 'match_transaction_invoice'
   // Stream 1 Phase 1: bookkeeping period operations
   | 'close_period'
   | 'lock_period'
@@ -1772,15 +1770,9 @@ export type PendingOperationType =
   | 'undo_sie_import'
   // Stream 1 Phase 1: voucher gap explanations
   | 'explain_voucher_gap'
-  // Stream 1 Phase 1: transaction reversal
-  | 'uncategorize_transaction'
-  // Document inbox: pin doc to bank transaction
-  | 'attach_document_to_transaction'
   // Link a document directly to a journal entry (verifikation): for imported/
   // manual vouchers that have no bank-transaction row.
   | 'link_document_to_voucher'
-  // Manual transaction ingestion (uncategorized row, reversible by delete)
-  | 'create_transaction'
   // Stream 1 Phase 1: supplier invoice lifecycle
   | 'approve_supplier_invoice'
   | 'credit_supplier_invoice'
@@ -1806,54 +1798,17 @@ export type PendingOperationType =
   | 'set_voucher_note'
   // Bokslut: planenlig avskrivning (one journal entry per asset)
   | 'post_annual_depreciation'
-  // Payroll: salary run creation + AGI declaration
-  | 'create_salary_run'
-  | 'generate_agi'
-  // Körjournal: log a trip (pure travel documentation) + book the period's
-  // milersättning as one verifikat (7331 at schablon rate)
-  | 'log_mileage_trip'
-  | 'book_mileage_period'
   // Mark invoice paid by linking an existing posted verifikat (no new JE)
   | 'link_invoice_voucher'
   // Supplier-side mirror: mark a leverantörsfaktura paid by linking an existing
   // posted verifikat that debits 2440 (no new JE)
   | 'link_supplier_invoice_voucher'
-  // PR #603/#607: allocate 1 bank tx across N customer or supplier invoices
-  | 'match_batch_allocate'
-  // PR #606/#610: bulk-book N bank txs into 1 combined verifikat
-  | 'bulk_book_transactions'
-  // Bulk-book N selected Underlag (Dokumentinkorgen) against their matched bank
-  // transactions: one verifikat per item, sharing a category + VAT treatment
-  | 'bulk_book_inbox_items'
-  // PR #614: link a single bank tx to an already-posted verifikat (no new JE)
-  | 'link_transaction_journal_entry'
-  // PR5: Skatteverket filing via MCP. Commit = "send for BankID signing"
-  // (returns a signing link); the user's signature in the browser files it.
-  | 'submit_vat_declaration'
-  | 'submit_agi'
   // Dimensions PR3: stage a new dimension value (kostnadsställe/projekt object
   // code, SIE #OBJEKT): agents never silently mint reporting values.
   | 'create_dimension_value'
   // Dimensions PR6: bulk retag of posted-line dimensions via the audited
   // retag_line_dimensions RPC (gnubok_tag_journal_lines).
   | 'retag_line_dimensions'
-  // Payroll gap-closure: payslip line edits + absence registration (1.7),
-  // employee master data (1.8; personnummer encrypted at staging), and
-  // cutover opening balances for mid-year migrations (2.4).
-  | 'update_payslip_line'
-  | 'register_absence'
-  | 'create_employee'
-  | 'update_employee'
-  | 'set_employee_opening_balances'
-  // Payroll e2e parity with the v1 REST surface: book a calculated run
-  // (walks review → approved → paid → booked; the staged approval is the
-  // authorization act) and remove registered absence days. Employee
-  // archiving needs no own op: update_employee with is_active=false.
-  | 'book_salary_run'
-  | 'delete_absence'
-  // Semesterårsavslut: rolls vacation balances into the next year and may
-  // post a 2920/2940 drift-adjustment verifikation (Phase 3).
-  | 'vacation_year_close'
 // 'failed_partial' (issue #842, DB CHECK widened in 20260722134114): terminal
 // state for ops whose executor posted an irreversible side-effect (voucher,
 // credit note) and then failed a later step. Not re-committable, not pending

@@ -35,5 +35,3 @@ export const UpdateCustomerParamsSchema = z
     changes: CustomerChangesSchema,
   })
   .strict()
-
-export type UpdateCustomerParams = z.infer<typeof UpdateCustomerParamsSchema>

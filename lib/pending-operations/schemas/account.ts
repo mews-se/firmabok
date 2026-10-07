@@ -102,6 +102,3 @@ export const UpdateAccountParamsSchema = z.object({
   sru_code: clearableString(16),
   is_active: z.boolean().optional(),
 })
-
-export type CreateAccountParams = z.infer<typeof CreateAccountParamsSchema>
-export type UpdateAccountParams = z.infer<typeof UpdateAccountParamsSchema>

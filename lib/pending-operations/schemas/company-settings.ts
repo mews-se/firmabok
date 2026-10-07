@@ -51,7 +51,3 @@ export const UpdateCompanySettingsParamsSchema = z
     changes: CompanySettingsChangesSchema,
   })
   .strict()
-
-export type UpdateCompanySettingsParams = z.infer<
-  typeof UpdateCompanySettingsParamsSchema
->

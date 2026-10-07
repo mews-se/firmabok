@@ -48,7 +48,7 @@ export const PUT = withRouteContext(
     // Fetch current settings to check for tax-relevant changes
     const { data: oldSettings } = await supabase
       .from('company_settings')
-      .select(`${DEADLINE_SETTINGS_SELECT}, vat_number, onboarding_complete, aktiekapital, antal_aktier`)
+      .select(`${DEADLINE_SETTINGS_SELECT}, vat_number, onboarding_complete`)
       .eq('company_id', companyId)
       .single()
 
@@ -101,22 +101,6 @@ export const PUT = withRouteContext(
         { error: 'Enskild firma måste använda kalenderår (BFL 3 kap.)' },
         { status: 400 }
       )
-    }
-
-    // Share capital is all-or-nothing: the antal aktier/kvotvärde note (ÅRL 5 kap 34 §)
-    // needs both the registered amount and the share count, and the DB pair
-    // constraint enforces it. Validate against the effective (body-or-stored)
-    // values so the user gets a clear message instead of a raw constraint 500.
-    if (body.aktiekapital !== undefined || body.antal_aktier !== undefined) {
-      const old = oldSettings as { aktiekapital?: number | null; antal_aktier?: number | null } | null
-      const effectiveAktiekapital = body.aktiekapital !== undefined ? body.aktiekapital : old?.aktiekapital ?? null
-      const effectiveAntalAktier = body.antal_aktier !== undefined ? body.antal_aktier : old?.antal_aktier ?? null
-      if ((effectiveAktiekapital === null) !== (effectiveAntalAktier === null)) {
-        return NextResponse.json(
-          { error: 'Aktiekapital och antal aktier måste anges tillsammans. Fyll i båda fälten eller lämna båda tomma.' },
-          { status: 400 },
-        )
-      }
     }
 
     // Turning VAT registration off retires the VAT-dependent flags, and

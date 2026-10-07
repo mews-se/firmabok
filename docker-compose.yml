@@ -46,7 +46,6 @@ services:
       CRON_SECRET: ${CRON_SECRET:?generated into .env by install-debian.sh}
       NEXT_PUBLIC_BRANDING_APP_NAME: Firmabok
       NEXT_PUBLIC_SELF_HOSTED: "true"
-      AUTH_SIGNUPS_DISABLED: ${AUTH_SIGNUPS_DISABLED}
       STORAGE_DIR: /var/lib/firmabok-storage
       NODE_OPTIONS: --max-old-space-size=384
     volumes:

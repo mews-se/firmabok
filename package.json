@@ -44,7 +44,6 @@
     "date-fns": "^4.4.0",
     "framer-motion": "^13.4.3",
     "fuse.js": "^7.5.0",
-    "ics": "^3.12.0",
     "js-yaml": "5.4.2",
     "jszip": "^3.10.2",
     "lucide-react": "^1.48.0",
@@ -81,7 +80,6 @@
     "vitest": "^5.0.1"
   },
   "overrides": {
-    "ws": "^8.21.0",
     "sharp": "^0.35.4",
     "postcss": "^8.5.18"
   }

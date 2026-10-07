@@ -45,8 +45,6 @@ import type {
   PendingOperation,
   PendingOperationRejectionCategory,
 } from '@/types'
-import { AttachDocumentPreview } from '@/components/bookkeeping/AttachDocumentPreview'
-import { MatchTransactionInvoicePreview } from '@/components/bookkeeping/MatchTransactionInvoicePreview'
 
 // Short human label (i18n key in the "pending" namespace) for each staged
 // operation_type. Keep in sync with OPERATION_RISK_TIERS in
@@ -55,16 +53,13 @@ import { MatchTransactionInvoicePreview } from '@/components/bookkeeping/MatchTr
 // snake_case tool name (e.g. "create_supplier_invoice_from_inbox"), which is
 // long and pushes the meta row to wrap awkwardly on mobile.
 const OPERATION_LABEL_KEYS: Record<string, string> = {
-  categorize_transaction: 'type_categorize_transaction',
   create_customer: 'type_create_customer',
   create_invoice: 'type_create_invoice',
-  create_transaction: 'type_create_transaction',
   create_voucher: 'type_create_voucher',
   correct_entry: 'type_correct_entry',
   reverse_entry: 'type_reverse_entry',
   mark_invoice_paid: 'type_mark_invoice_paid',
   mark_invoice_sent: 'type_mark_invoice_sent',
-  match_transaction_invoice: 'type_match_transaction_invoice',
   // Master data
   create_supplier: 'type_create_supplier',
   create_article: 'type_create_article',
@@ -81,17 +76,12 @@ const OPERATION_LABEL_KEYS: Record<string, string> = {
   credit_invoice: 'type_credit_invoice',
   convert_invoice: 'type_convert_invoice',
   // Documents & links
-  attach_document_to_transaction: 'type_attach_document_to_transaction',
   link_document_to_voucher: 'type_link_document_to_voucher',
   link_invoice_voucher: 'type_link_invoice_voucher',
   link_supplier_invoice_voucher: 'type_link_supplier_invoice_voucher',
-  link_transaction_journal_entry: 'type_link_transaction_journal_entry',
-  uncategorize_transaction: 'type_uncategorize_transaction',
   retag_line_dimensions: 'type_retag_line_dimensions',
   set_voucher_note: 'type_set_voucher_note',
-  // Bulk booking / allocation
-  match_batch_allocate: 'type_match_batch_allocate',
-  bulk_book_transactions: 'type_bulk_book_transactions',
+  // Bulk booking
   bulk_book_inbox_items: 'type_bulk_book_inbox_items',
   // Periods, year-end, depreciation
   close_period: 'type_close_period',
@@ -134,19 +124,9 @@ function operationLabel(operationType: string, t: (key: string) => string): stri
 // Terse per-type labels used in the bulk confirmation dialog list. Phrased so
 // they read naturally under the heading "Genom att bekräfta utförs följande:".
 const bulkActionDescriptions: Record<string, (count: number) => string> = {
-  create_transaction: (n) =>
-    n === 1 ? 'En transaktion skapas.' : `${n} transaktioner skapas.`,
   create_customer: (n) => (n === 1 ? 'En ny kund skapas.' : `${n} nya kunder skapas.`),
   create_invoice: (n) =>
     n === 1 ? 'Ett fakturautkast skapas (skickas inte).' : `${n} fakturautkast skapas (skickas inte).`,
-  categorize_transaction: (n) =>
-    n === 1 ? 'En transaktion kategoriseras och bokförs.' : `${n} transaktioner kategoriseras och bokförs.`,
-  match_transaction_invoice: (n) =>
-    n === 1 ? 'En transaktion matchas mot en faktura.' : `${n} transaktioner matchas mot fakturor.`,
-  attach_document_to_transaction: (n) =>
-    n === 1 ? 'Ett dokument bifogas en transaktion.' : `${n} dokument bifogas transaktioner.`,
-  uncategorize_transaction: (n) =>
-    n === 1 ? 'En kategorisering tas bort.' : `${n} kategoriseringar tas bort.`,
 }
 
 function bulkActionLabel(operationType: string, count: number, t: (key: string) => string): string {
@@ -161,13 +141,8 @@ function bulkActionLabel(operationType: string, count: number, t: (key: string) 
 // reviewers scanning the source see the destructive paths grouped together.
 const singleActionWarnings: Record<string, string> = {
   // Low/medium risk: light verifikation work
-  create_transaction: 'Genom att klicka godkänn så skapar du en transaktion.',
   create_customer: 'Genom att klicka godkänn så skapar du en kund.',
   create_invoice: 'Genom att klicka godkänn så skapas ett fakturautkast (det skickas inte).',
-  categorize_transaction: 'Genom att klicka godkänn så kategoriseras transaktionen och en verifikation skapas.',
-  match_transaction_invoice: 'Genom att klicka godkänn så matchas transaktionen mot fakturan.',
-  attach_document_to_transaction: 'Genom att klicka godkänn så bifogas dokumentet till transaktionen.',
-  uncategorize_transaction: 'Genom att klicka godkänn så tas kategoriseringen bort.',
   mark_invoice_paid: 'Genom att klicka godkänn så bokförs en betalning på fakturan.',
   mark_invoice_sent: 'Genom att klicka godkänn så märks fakturan som skickad och en verifikation skapas.',
   // High risk: period/year-end/voucher edits. These are the ones the reviewer
@@ -299,83 +274,6 @@ function formatRelativeTime(dateStr: string): string {
   return `${diffDays} dagar sedan`
 }
 
-function CategorizePreview({ data }: { data: Record<string, unknown> }) {
-  // The exact journal lines the approval will post (net cost line, VAT line,
-  // gross bank line, SEK) — staged by the server since the preview-lines fix.
-  const lines = (data.lines as Array<{ account_number?: string; debit_amount?: number; credit_amount?: number; description?: string }>) || []
-  const vatLines = (data.vat_lines as Array<{ account_number: string; debit_amount: number; credit_amount: number; description: string }>) || []
-
-  if (lines.length > 0) {
-    return (
-      <div className="space-y-1 text-sm">
-        <p className="text-xs text-muted-foreground mb-1">Verifikat</p>
-        {lines.map((line, i) => {
-          const debitAmt = typeof line.debit_amount === 'number' ? line.debit_amount : 0
-          const creditAmt = typeof line.credit_amount === 'number' ? line.credit_amount : 0
-          return (
-            <div key={i} className="flex justify-between gap-4 font-mono text-xs">
-              <span className="truncate">{line.account_number ?? '?'}{line.description ? ` ${line.description}` : ''}</span>
-              <span className="tabular-nums shrink-0">
-                {debitAmt > 0 ? `D ${formatCurrency(debitAmt)}` : `K ${formatCurrency(creditAmt)}`}
-              </span>
-            </div>
-          )
-        })}
-      </div>
-    )
-  }
-
-  // Some operations carry their kontering under the generic `preview_lines`
-  // key instead (the shape every other staged type renders through). Read it
-  // before falling through to the legacy summary, which would otherwise show
-  // blank accounts for a preview that does describe the entry in full.
-  if (isKonteringLines(data.preview_lines)) {
-    return (
-      <div className="space-y-1 text-sm">
-        <p className="text-xs text-muted-foreground mb-1">Verifikat</p>
-        <PreviewKonteringTable lines={data.preview_lines} />
-      </div>
-    )
-  }
-
-  // Legacy summary for operations staged before the preview carried full
-  // lines: debit/credit accounts + gross amount + separate VAT rows.
-  const legacyAmount = typeof data.amount === 'number' && Number.isFinite(data.amount)
-    ? data.amount
-    : null
-  return (
-    <div className="space-y-3 text-sm">
-      <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-        <span className="text-muted-foreground">Debetkonto</span>
-        <span className="font-mono">{String(data.debit_account ?? '')}</span>
-        <span className="text-muted-foreground">Kreditkonto</span>
-        <span className="font-mono">{String(data.credit_account ?? '')}</span>
-        <span className="text-muted-foreground">Belopp</span>
-        <span className="font-mono tabular-nums">
-          {/* A preview with no usable amount used to render "NaN kr": show the
-              gap as a gap instead of a number that isn't one. */}
-          {legacyAmount === null
-            ? '-'
-            : formatCurrency(legacyAmount, (data.currency as string) || 'SEK')}
-        </span>
-      </div>
-      {vatLines.length > 0 && (
-        <div className="border-t pt-2">
-          <p className="text-xs text-muted-foreground mb-1">Momsrader</p>
-          {vatLines.map((line, i) => (
-            <div key={i} className="flex justify-between font-mono text-xs">
-              <span>{line.account_number} {line.description}</span>
-              <span className="tabular-nums">
-                {line.debit_amount > 0 ? `D ${formatCurrency(line.debit_amount)}` : `K ${formatCurrency(line.credit_amount)}`}
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
 function CustomerPreview({ data }: { data: Record<string, unknown> }) {
   return (
     <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
@@ -432,30 +330,6 @@ function InvoicePreview({ data }: { data: Record<string, unknown> }) {
         <span className="font-medium">Totalt</span>
         <span className="tabular-nums font-medium text-right">{formatCurrency(data.total as number, (data.currency as string) || 'SEK')}</span>
       </div>
-    </div>
-  )
-}
-
-function CreateTransactionPreview({ data }: { data: Record<string, unknown> }) {
-  const amount = data.amount as number
-  const currency = (data.currency as string) || 'SEK'
-
-  return (
-    <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
-      <span className="text-muted-foreground">Datum</span>
-      <span className="font-mono">{String(data.date ?? '')}</span>
-      <span className="text-muted-foreground">Beskrivning</span>
-      <span className="truncate">{String(data.description ?? '')}</span>
-      <span className="text-muted-foreground">Belopp</span>
-      <span className="font-mono tabular-nums">
-        {formatCurrency(amount, currency)}
-      </span>
-      {data.external_id ? (
-        <>
-          <span className="text-muted-foreground">Extern referens</span>
-          <span className="font-mono text-xs truncate">{String(data.external_id)}</span>
-        </>
-      ) : null}
     </div>
   )
 }
@@ -681,22 +555,14 @@ function GenericPreview({ data }: { data: Record<string, unknown> }) {
 function OperationPreview({ op }: { op: PendingOperation }) {
   const body = (() => {
     switch (op.operation_type) {
-      case 'categorize_transaction':
-        return <CategorizePreview data={op.preview_data} />
       case 'create_customer':
         return <CustomerPreview data={op.preview_data} />
       case 'create_invoice':
         return <InvoicePreview data={op.preview_data} />
-      case 'create_transaction':
-        return <CreateTransactionPreview data={op.preview_data} />
       case 'create_voucher':
         return <VoucherPreview data={op.preview_data} />
       case 'correct_entry':
         return <CorrectEntryPreview data={op.preview_data} />
-      case 'attach_document_to_transaction':
-        return <AttachDocumentPreview data={op.preview_data} params={op.params} />
-      case 'match_transaction_invoice':
-        return <MatchTransactionInvoicePreview data={op.preview_data} />
       default:
         return <GenericPreview data={op.preview_data} />
     }

@@ -60,8 +60,6 @@ import { PATCH } from '../[id]/route'
 type CustomerRow = {
   customer_number?: string | null
   contact_person?: string | null
-  invoice_email_cc_addresses?: string[] | null
-  invoice_email_bcc_addresses?: string[] | null
 }
 
 describe('customer_number on POST /api/customers', () => {
@@ -151,7 +149,7 @@ describe('customer_number on POST /api/customers', () => {
     expect((captured.insert[0] as CustomerRow).customer_number).toBeNull()
   })
 
-  it('stores customer invoice contact metadata on create', async () => {
+  it('stores the customer contact person on create', async () => {
     queryResult = {
       data: { id: 'cust-1', name: 'Test AB', customer_type: 'swedish_business' },
       error: null,
@@ -162,36 +160,12 @@ describe('customer_number on POST /api/customers', () => {
         name: 'Test AB',
         customer_type: 'swedish_business',
         contact_person: 'Anna Andersson',
-        invoice_email_cc_addresses: ['finance@example.test'],
-        invoice_email_bcc_addresses: ['archive@example.test'],
       },
     })
 
     const response = await POST(request, { params: Promise.resolve({}) })
     expect((await parseJsonResponse(response)).status).toBe(200)
-    expect(captured.insert[0]).toMatchObject({
-      contact_person: 'Anna Andersson',
-      invoice_email_cc_addresses: ['finance@example.test'],
-      invoice_email_bcc_addresses: ['archive@example.test'],
-    })
-  })
-
-  it('rejects more than 19 customer invoice copy recipients', async () => {
-    const request = createMockRequest('/api/customers', {
-      method: 'POST',
-      body: {
-        name: 'Test AB',
-        customer_type: 'swedish_business',
-        invoice_email_cc_addresses: Array.from(
-          { length: 20 },
-          (_, index) => `copy-${index}@example.test`,
-        ),
-      },
-    })
-
-    const response = await POST(request, { params: Promise.resolve({}) })
-    expect((await parseJsonResponse(response)).status).toBe(400)
-    expect(captured.insert).toHaveLength(0)
+    expect(captured.insert[0]).toMatchObject({ contact_person: 'Anna Andersson' })
   })
 })
 
@@ -276,22 +250,16 @@ describe('customer_number on PATCH /api/customers/[id]', () => {
     expect(captured.update[0]).not.toHaveProperty('customer_number')
   })
 
-  it('updates customer invoice contact metadata', async () => {
+  it('updates the customer contact person', async () => {
     const request = createMockRequest('/api/customers/cust-1', {
       method: 'PATCH',
       body: {
         contact_person: '',
-        invoice_email_cc_addresses: [],
-        invoice_email_bcc_addresses: ['archive@example.test'],
       },
     })
 
     const response = await PATCH(request, routeParams)
     expect((await parseJsonResponse(response)).status).toBe(200)
-    expect(captured.update[0]).toMatchObject({
-      contact_person: '',
-      invoice_email_cc_addresses: [],
-      invoice_email_bcc_addresses: ['archive@example.test'],
-    })
+    expect(captured.update[0]).toMatchObject({ contact_person: '' })
   })
 })

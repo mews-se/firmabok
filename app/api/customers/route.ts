@@ -68,8 +68,6 @@ export const POST = withRouteContext(
         contact_person: body.contact_person ?? null,
         email: body.email,
         phone: body.phone,
-        invoice_email_cc_addresses: body.invoice_email_cc_addresses ?? null,
-        invoice_email_bcc_addresses: body.invoice_email_bcc_addresses ?? null,
         address_line1: body.address_line1,
         address_line2: body.address_line2,
         postal_code: body.postal_code,

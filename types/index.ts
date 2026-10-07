@@ -197,22 +197,6 @@ export interface Profile {
   updated_at: string
 }
 
-// Editable invoice email texts (standard invoices only; sv + en).
-// Missing / whitespace-only fields fall back to the hardcoded defaults in
-// lib/email/invoice-templates.ts. Supports the fixed placeholder set
-// {fakturanummer} {kundnamn} {förnamn} {företag} {förfallodatum} {belopp}.
-export interface InvoiceEmailTextOverrides {
-  subject?: string
-  greeting?: string
-  body?: string
-  signoff?: string
-}
-
-export interface InvoiceEmailTexts {
-  sv?: InvoiceEmailTextOverrides
-  en?: InvoiceEmailTextOverrides
-}
-
 export type InvoiceFontFamily =
   | 'Helvetica'
   | 'Times-Roman'
@@ -371,14 +355,6 @@ export interface CompanySettings {
   invoice_custom_font_name: string | null
   invoice_header_text: string | null
   invoice_footer_text: string | null
-
-  // Editable invoice email texts. null = all defaults.
-  invoice_email_texts: InvoiceEmailTexts | null
-  // Fixed invoice-email recipients. null means the company has not configured
-  // the setting yet and keeps the historical automatic CC fallback. [] is an
-  // explicit choice to send no copies.
-  invoice_email_cc_addresses?: string[] | null
-  invoice_email_bcc_addresses?: string[] | null
 
   // Logo
   logo_url: string | null
@@ -659,8 +635,6 @@ export interface Customer {
   contact_person: string | null
   email: string | null
   phone: string | null
-  invoice_email_cc_addresses: string[] | null
-  invoice_email_bcc_addresses: string[] | null
 
   // Address
   address_line1: string | null
@@ -1260,8 +1234,6 @@ export interface CreateCustomerInput {
   contact_person?: string | null
   email?: string
   phone?: string
-  invoice_email_cc_addresses?: string[] | null
-  invoice_email_bcc_addresses?: string[] | null
   address_line1?: string
   address_line2?: string
   postal_code?: string

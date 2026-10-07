@@ -125,8 +125,6 @@ export const POST = withRouteContext('invoice.preview_pdf', async (request, {
       vat_number_validated_at: null,
       personal_number: null,
       contact_person: null,
-      invoice_email_cc_addresses: null,
-      invoice_email_bcc_addresses: null,
       language: 'sv',
       default_payment_terms: 30,
       notes: null,

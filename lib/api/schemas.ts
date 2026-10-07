@@ -9,7 +9,6 @@ import {
 import { ISO_DATE_RE, ISO_DATE_MESSAGE_SV } from '@/lib/invariants/iso-date'
 import { countCalendarMonths } from '@/lib/bookkeeping/accruals/compute'
 import { DimensionsBagSchema } from '@/lib/bookkeeping/dimension-resolver'
-import { MAX_INVOICE_EMAIL_COPY_RECIPIENTS } from '@/lib/invoices/email-recipients'
 import { INVOICE_POSTING_ACCOUNT_REGEX } from '@/lib/invoices/posting-account'
 import { PERSONAL_NUMBER_INPUT_RE } from '@/lib/customers/mask-personal-number'
 import type { AuditAction } from '@/types'
@@ -68,19 +67,6 @@ const exchangeRate = z
   .lt(
     100000,
     'Växelkursen måste vara mindre än 100 000. Ange kursen per 1 enhet av valutan, till exempel 11,45 för EUR, inte fakturans belopp.',
-  )
-
-const invoiceEmailAddress = z
-  .string()
-  .trim()
-  .email('Ange en giltig e-postadress')
-  .max(254, 'E-postadressen får vara max 254 tecken')
-
-const invoiceEmailAddressList = z
-  .array(invoiceEmailAddress)
-  .max(
-    MAX_INVOICE_EMAIL_COPY_RECIPIENTS,
-    `Högst ${MAX_INVOICE_EMAIL_COPY_RECIPIENTS} kopiemottagare är tillåtna`,
   )
 
 /** Invoice-line posting account: an asset, liability/equity, or revenue account. */
@@ -810,8 +796,6 @@ export const CreateCustomerSchema = z.object({
   contact_person: z.string().trim().max(200).nullable().optional(),
   email: z.string().email('Invalid email address').optional(),
   phone: z.string().optional(),
-  invoice_email_cc_addresses: invoiceEmailAddressList.nullable().optional(),
-  invoice_email_bcc_addresses: invoiceEmailAddressList.nullable().optional(),
   address_line1: z.string().optional(),
   address_line2: z.string().optional(),
   postal_code: z.string().optional(),
@@ -836,17 +820,6 @@ export const CreateCustomerSchema = z.object({
       message: 'Personal number is only allowed for individual customers',
     })
   }
-  if (
-    (customer.invoice_email_cc_addresses?.length ?? 0)
-    + (customer.invoice_email_bcc_addresses?.length ?? 0)
-    > MAX_INVOICE_EMAIL_COPY_RECIPIENTS
-  ) {
-    ctx.addIssue({
-      code: 'custom',
-      path: ['invoice_email_cc_addresses'],
-      message: `At most ${MAX_INVOICE_EMAIL_COPY_RECIPIENTS} customer invoice copy recipients are allowed in total`,
-    })
-  }
 })
 
 export const UpdateCustomerSchema = z.object({
@@ -856,8 +829,6 @@ export const UpdateCustomerSchema = z.object({
   contact_person: z.string().trim().max(200).nullable().optional(),
   email: z.string().email('Invalid email address').optional(),
   phone: z.string().optional(),
-  invoice_email_cc_addresses: invoiceEmailAddressList.nullable().optional(),
-  invoice_email_bcc_addresses: invoiceEmailAddressList.nullable().optional(),
   address_line1: z.string().optional(),
   address_line2: z.string().optional(),
   postal_code: z.string().optional(),
@@ -885,18 +856,6 @@ export const UpdateCustomerSchema = z.object({
   // Whole days 0-365; 0 = betalning direkt / vid mottagande.
   default_payment_terms: z.number().int().min(0).max(365).optional(),
   notes: z.string().optional(),
-}).superRefine((customer, ctx) => {
-  if (
-    (customer.invoice_email_cc_addresses?.length ?? 0)
-    + (customer.invoice_email_bcc_addresses?.length ?? 0)
-    > MAX_INVOICE_EMAIL_COPY_RECIPIENTS
-  ) {
-    ctx.addIssue({
-      code: 'custom',
-      path: ['invoice_email_cc_addresses'],
-      message: `At most ${MAX_INVOICE_EMAIL_COPY_RECIPIENTS} customer invoice copy recipients are allowed in total`,
-    })
-  }
 })
 
 // ============================================================
@@ -1320,24 +1279,6 @@ export const LinkSupplierInvoiceToVoucherSchema = z.object({
 // Settings schemas
 // ============================================================
 
-// Editable invoice email texts (standard invoices only). Nested JSONB:
-// unknown keys inside are stripped (Zod default, consistent with this file).
-// Empty strings pass validation; the template resolver treats whitespace-only
-// as unset, and the UI prunes empties before saving so the stored object
-// stays minimal. Subject is a mail header: CR/LF are stripped at render time
-// regardless.
-const InvoiceEmailTextsLangSchema = z.object({
-  subject: z.string().max(200, 'Ämnesraden får vara max 200 tecken').optional(),
-  greeting: z.string().max(200, 'Hälsningen får vara max 200 tecken').optional(),
-  body: z.string().max(2000, 'Brödtexten får vara max 2000 tecken').optional(),
-  signoff: z.string().max(200, 'Avslutningen får vara max 200 tecken').optional(),
-})
-
-export const InvoiceEmailTextsSchema = z.object({
-  sv: InvoiceEmailTextsLangSchema.optional(),
-  en: InvoiceEmailTextsLangSchema.optional(),
-})
-
 const InvoiceIbanSchema = z.string()
   .transform((value) => value.replace(/\s/g, '').toUpperCase())
   .pipe(z.string().regex(/^[A-Z]{2}\d{2}[A-Z0-9]{11,30}$/, 'Ogiltigt IBAN'))
@@ -1483,12 +1424,6 @@ export const UpdateSettingsSchema = z.object({
   // Opt-in for the invoice payment-link feature (the editor field).
   // Default off at the DB level.
   invoice_payment_links_enabled: z.boolean().optional(),
-  // Editable invoice email texts: { sv?: {...}, en?: {...} }; null clears
-  // all overrides. Without this entry the generic PUT would silently strip
-  // the field (the schema is the de-facto column whitelist).
-  invoice_email_texts: InvoiceEmailTextsSchema.nullable().optional(),
-  invoice_email_cc_addresses: invoiceEmailAddressList.nullable().optional(),
-  invoice_email_bcc_addresses: invoiceEmailAddressList.nullable().optional(),
   // Invoice branding: colors enforced as #RRGGBB at the DB level too
   // (see migration 20260526120200_invoice_branding.sql). The dedicated
   // /api/settings/invoicing/branding route is the primary path; these
@@ -1512,16 +1447,6 @@ export const UpdateSettingsSchema = z.object({
   // load-bearing for correctness (dev_docs/dimensions_implementation_plan.md §2).
   dimensions_enabled: z.boolean().optional(),
 }).refine(
-  (data) => (
-    (data.invoice_email_cc_addresses?.length ?? 0)
-    + (data.invoice_email_bcc_addresses?.length ?? 0)
-    <= MAX_INVOICE_EMAIL_COPY_RECIPIENTS
-  ),
-  {
-    message: `Högst ${MAX_INVOICE_EMAIL_COPY_RECIPIENTS} fasta kopiemottagare är tillåtna totalt`,
-    path: ['invoice_email_cc_addresses'],
-  },
-).refine(
   (data) => {
     // BFL 3 kap.: Enskild firma must have fiscal year starting January
     if (data.entity_type === 'enskild_firma' && data.fiscal_year_start_month !== undefined) {

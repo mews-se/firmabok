@@ -72,11 +72,7 @@ describe('commitPendingOperation: update_company_settings', () => {
     expect(supabase.from).toHaveBeenNthCalledWith(2, 'company_settings')
   })
 
-  it('updates contact details and invoice email texts', async () => {
-    const emailTexts = {
-      sv: { subject: 'Faktura {fakturanummer}', body: 'Tack for fortroendet.' },
-      en: { greeting: 'Hi {förnamn},' },
-    }
+  it('updates contact details', async () => {
     const { supabase, enqueue } = createQueuedMockSupabase()
     enqueue({ data: { id: 'op-settings-1' } })
     enqueue({
@@ -93,7 +89,6 @@ describe('commitPendingOperation: update_company_settings', () => {
         email: 'faktura@example.se',
         phone: '08-123 456 78',
         website: 'https://example.se',
-        invoice_email_texts: emailTexts,
       },
     })
     enqueue({ data: null })
@@ -107,7 +102,6 @@ describe('commitPendingOperation: update_company_settings', () => {
           email: 'faktura@example.se',
           phone: '08-123 456 78',
           website: 'https://example.se',
-          invoice_email_texts: emailTexts,
         },
       }),
     )
@@ -118,31 +112,8 @@ describe('commitPendingOperation: update_company_settings', () => {
       email: 'faktura@example.se',
       phone: '08-123 456 78',
       website: 'https://example.se',
-      invoice_email_texts: emailTexts,
     })
     expect(supabase.from).toHaveBeenNthCalledWith(2, 'company_settings')
-  })
-
-  it('rejects an unknown invoice email placeholder at the commit boundary', async () => {
-    const { supabase, enqueue } = createQueuedMockSupabase()
-    enqueue({ data: { id: 'op-settings-1' } })
-    enqueue({ data: null })
-
-    const result = await commitPendingOperation(
-      supabase as never,
-      'user-1',
-      'company-1',
-      makePendingOp({
-        changes: {
-          invoice_email_texts: { sv: { body: 'Betala med OCR {ocr}.' } },
-        },
-      }),
-    )
-
-    expect(result.status).toBe('failed')
-    expect(result.http_status).toBe(400)
-    expect(result.error).toMatch(/placeholder/i)
-    expect(supabase.from).toHaveBeenCalledTimes(2)
   })
 
   it('rejects tampered staged fields at the commit boundary', async () => {

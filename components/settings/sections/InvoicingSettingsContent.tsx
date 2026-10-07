@@ -4,8 +4,6 @@ import { useTranslations } from 'next-intl'
 import { InvoiceSettingsForm } from '@/components/settings/InvoiceSettingsForm'
 import { InvoicePaymentLinkSettings } from '@/components/settings/InvoicePaymentLinkSettings'
 import { InvoicePaymentAccountsSettings } from '@/components/settings/InvoicePaymentAccountsSettings'
-import { InvoiceEmailTextsSettings } from '@/components/settings/InvoiceEmailTextsSettings'
-import { InvoiceEmailRecipientsSettings } from '@/components/settings/InvoiceEmailRecipientsSettings'
 import { InvoicePreviewCard } from '@/components/settings/InvoicePreviewCard'
 import { PdfPrintSettings } from '@/components/settings/PdfPrintSettings'
 import { SettingsFormWrapper } from '@/components/settings/SettingsFormWrapper'
@@ -60,12 +58,6 @@ export function InvoicingSettingsContent() {
 
       {/* PDF settings: saves individually via toggle switches */}
       <PdfPrintSettings settings={settings} onUpdate={updateSettings} />
-
-      {/* Fixed invoice email recipients: explicit save (owner/admin only) */}
-      <InvoiceEmailRecipientsSettings settings={settings} onUpdate={updateSettings} />
-
-      {/* Invoice email texts: autosaves on blur */}
-      <InvoiceEmailTextsSettings settings={settings} onUpdate={updateSettings} />
     </div>
   )
 }

@@ -210,10 +210,8 @@ describe('PUT /api/settings', () => {
     expect((await parseJsonResponse(response)).status).toBe(200)
   })
 
-  it('updates invoice email recipients and payment accounts', async () => {
+  it('updates invoice payment accounts', async () => {
     const updates = {
-      invoice_email_cc_addresses: ['info@example.com', 'owner@example.com'],
-      invoice_email_bcc_addresses: ['archive@example.com'],
       invoice_payment_accounts: {
         EUR: {
           bank_name: 'Example Bank',
@@ -237,29 +235,6 @@ describe('PUT /api/settings', () => {
 
     expect(status).toBe(200)
     expect(body.data).toMatchObject(updates)
-  })
-
-  it('rejects fixed invoice recipient changes from a regular member', async () => {
-    enqueueMany([
-      { data: { entity_type: 'aktiebolag', onboarding_complete: true } },
-      { data: { role: 'member' }, error: null },
-    ])
-
-    const response = await PUT(createMockRequest('/api/settings', {
-      method: 'PUT',
-      body: { invoice_email_bcc_addresses: ['archive@example.com'] },
-    }), { params: Promise.resolve({}) })
-    const { status, body } = await parseJsonResponse<{
-      error: { code: string; details?: { required_roles?: string[] } }
-    }>(response)
-
-    expect(status).toBe(403)
-    expect(body.error.code).toBe('FORBIDDEN')
-    expect(body.error.details?.required_roles).toEqual(['owner', 'admin'])
-    expect(supabase.from.mock.calls.map(([table]) => table)).toEqual([
-      'company_settings',
-      'company_members',
-    ])
   })
 
   it('rejects invoice payment instruction changes from a regular member', async () => {
@@ -290,30 +265,12 @@ describe('PUT /api/settings', () => {
     ])
   })
 
-  it('rejects invalid invoice recipients with otherwise valid payment accounts', async () => {
+  it('rejects a foreign payment account without IBAN', async () => {
     enqueue({ data: { entity_type: 'aktiebolag', onboarding_complete: true } })
 
     const response = await PUT(createMockRequest('/api/settings', {
       method: 'PUT',
       body: {
-        invoice_email_cc_addresses: ['not-an-email'],
-        invoice_payment_accounts: {
-          EUR: { bank_name: 'Example Bank', iban: 'SE0022222222222222222222' },
-        },
-      },
-    }), { params: Promise.resolve({}) })
-
-    expect(response.status).toBe(400)
-    expect(supabase.from).toHaveBeenCalledTimes(1)
-  })
-
-  it('rejects a foreign payment account without IBAN with valid recipients', async () => {
-    enqueue({ data: { entity_type: 'aktiebolag', onboarding_complete: true } })
-
-    const response = await PUT(createMockRequest('/api/settings', {
-      method: 'PUT',
-      body: {
-        invoice_email_cc_addresses: ['billing@example.com'],
         invoice_payment_accounts: { EUR: { bank_name: 'Example Bank' } },
       },
     }), { params: Promise.resolve({}) })

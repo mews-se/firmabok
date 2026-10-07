@@ -394,7 +394,7 @@ async function commitUpdateCompanySettings(
     .from('company_settings')
     .update(validated.changes)
     .eq('company_id', companyId)
-    .select('bank_name, clearing_number, account_number, bankgiro, plusgiro, swish, iban, bic, default_our_reference, email, phone, website, invoice_email_texts')
+    .select('bank_name, clearing_number, account_number, bankgiro, plusgiro, swish, iban, bic, default_our_reference, email, phone, website')
     .single()
 
   if (error) {
@@ -419,7 +419,6 @@ async function commitUpdateCompanySettings(
       email: data.email ?? null,
       phone: data.phone ?? null,
       website: data.website ?? null,
-      invoice_email_texts: data.invoice_email_texts ?? null,
     },
   }
 }

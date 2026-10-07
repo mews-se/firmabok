@@ -56,9 +56,6 @@ export const PUT = withRouteContext(
     if (!validation.success) return validation.response
     const body = validation.data
 
-    const changesInvoiceEmailRecipients =
-      body.invoice_email_cc_addresses !== undefined
-      || body.invoice_email_bcc_addresses !== undefined
     const changesInvoicePaymentInstructions =
       body.invoice_payment_accounts !== undefined
       || body.bank_name !== undefined
@@ -69,7 +66,7 @@ export const PUT = withRouteContext(
       || body.swish !== undefined
       || body.iban !== undefined
       || body.bic !== undefined
-    if (changesInvoiceEmailRecipients || changesInvoicePaymentInstructions) {
+    if (changesInvoicePaymentInstructions) {
       const { data: membership, error: membershipError } = await supabase
         .from('company_members')
         .select('role')

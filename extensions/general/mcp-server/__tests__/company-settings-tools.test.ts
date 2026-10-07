@@ -52,7 +52,6 @@ describe('company settings MCP tools: registration', () => {
         'contact_person',
         'email',
         'iban',
-        'invoice_email_texts',
         'phone',
         'plusgiro',
         'swish',
@@ -201,24 +200,7 @@ describe('gnubok_update_company_settings', () => {
     expect(supabase.from).toHaveBeenCalledTimes(1)
   })
 
-  it('rejects an unknown invoice email placeholder before querying the database', async () => {
-    const { supabase } = createQueuedMockSupabase()
-
-    await expect(
-      updateTool().execute(
-        {
-          invoice_email_texts: { sv: { body: 'Betala med OCR {ocr}.' } },
-          dry_run: true,
-        },
-        'company-1',
-        'user-1',
-        supabase as never,
-      ),
-    ).rejects.toThrow(/placeholder/i)
-    expect(supabase.from).not.toHaveBeenCalled()
-  })
-
-  it('stages contact details and invoice email texts with a mapped preview', async () => {
+  it('stages contact details with a mapped preview', async () => {
     const { supabase, enqueue } = createQueuedMockSupabase()
     enqueue({
       data: {
@@ -234,7 +216,6 @@ describe('gnubok_update_company_settings', () => {
         email: null,
         phone: null,
         website: null,
-        invoice_email_texts: null,
       },
     })
     enqueue({ data: { id: 'op-settings-2' } })
@@ -244,7 +225,6 @@ describe('gnubok_update_company_settings', () => {
         email: 'faktura@example.se',
         phone: '08-123 456 78',
         website: 'https://example.se',
-        invoice_email_texts: { sv: { subject: 'Faktura {fakturanummer}' } },
       },
       'company-1',
       'user-1',
@@ -264,7 +244,6 @@ describe('gnubok_update_company_settings', () => {
       email: 'faktura@example.se',
       phone: '08-123 456 78',
       website: 'https://example.se',
-      invoice_email_texts: { sv: { subject: 'Faktura {fakturanummer}' } },
     })
     expect(result.preview.changes).not.toHaveProperty('default_our_reference')
     expect(result.preview.proposed).toMatchObject({

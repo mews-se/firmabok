@@ -977,8 +977,6 @@ export function InvoicePDF({ invoice, customer, items, company, originalInvoiceN
               )
             )}
             {(() => {
-              // Shared with the invoice email (lib/email/invoice-templates.ts)
-              // so the mail and the PDF always state the same "Att betala".
               const { rounding, deductionApplies: showDeduction, toPay: grandTotal } =
                 getAmountToPay(invoice, company)
               return (

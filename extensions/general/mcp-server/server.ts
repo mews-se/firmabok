@@ -2226,7 +2226,7 @@ export const tools: McpTool[] = [
   {
     name: 'gnubok_get_company_settings',
     title: 'Get Company Settings',
-    description: 'Get invoice payment details, company contact details and the custom invoice email texts. Use before creating invoices or staging a settings update.',
+    description: 'Get invoice payment details and company contact details. Use before creating invoices or staging a settings update.',
     inputSchema: {
       type: 'object',
       additionalProperties: false,
@@ -2249,33 +2249,6 @@ export const tools: McpTool[] = [
         email: { type: ['string', 'null'], description: 'Company contact email shown on invoices.' },
         phone: { type: ['string', 'null'], description: 'Company contact phone shown on invoices.' },
         website: { type: ['string', 'null'], description: 'Company website shown on invoices.' },
-        invoice_email_texts: {
-          type: ['object', 'null'],
-          additionalProperties: false,
-          description: 'Per-language overrides of the invoice email texts. Null or a missing field means the standard text is used.',
-          properties: {
-            sv: {
-              type: 'object',
-              additionalProperties: false,
-              properties: {
-                subject: { type: 'string' },
-                greeting: { type: 'string' },
-                body: { type: 'string' },
-                signoff: { type: 'string' },
-              },
-            },
-            en: {
-              type: 'object',
-              additionalProperties: false,
-              properties: {
-                subject: { type: 'string' },
-                greeting: { type: 'string' },
-                body: { type: 'string' },
-                signoff: { type: 'string' },
-              },
-            },
-          },
-        },
       },
       required: [
         'company_id',
@@ -2291,7 +2264,6 @@ export const tools: McpTool[] = [
         'email',
         'phone',
         'website',
-        'invoice_email_texts',
       ],
     },
     annotations: {
@@ -2303,7 +2275,7 @@ export const tools: McpTool[] = [
     async execute(_args, companyId, _userId, supabase) {
       const { data, error } = await supabase
         .from('company_settings')
-        .select('bank_name, clearing_number, account_number, bankgiro, plusgiro, swish, iban, bic, default_our_reference, email, phone, website, invoice_email_texts')
+        .select('bank_name, clearing_number, account_number, bankgiro, plusgiro, swish, iban, bic, default_our_reference, email, phone, website')
         .eq('company_id', companyId)
         .maybeSingle()
 
@@ -2324,7 +2296,6 @@ export const tools: McpTool[] = [
         email: data.email ?? null,
         phone: data.phone ?? null,
         website: data.website ?? null,
-        invoice_email_texts: data.invoice_email_texts ?? null,
       }
     },
   },
@@ -2332,7 +2303,7 @@ export const tools: McpTool[] = [
   {
     name: 'gnubok_update_company_settings',
     title: 'Update Company Settings',
-    description: 'Stage changes to invoice payment details, company contact details or the custom invoice email texts. Requires approval before company settings are updated.',
+    description: 'Stage changes to invoice payment details or company contact details. Requires approval before company settings are updated.',
     outputSchema: STAGED_OPERATION_SCHEMA,
     inputSchema: {
       type: 'object',
@@ -2350,35 +2321,6 @@ export const tools: McpTool[] = [
         email: { type: 'string', format: 'email', description: 'Company contact email shown on invoices. Empty string clears it.' },
         phone: { type: 'string', description: 'Company contact phone shown on invoices. Empty string clears it.' },
         website: { type: 'string', description: 'Company website shown on invoices. Empty string clears it.' },
-        invoice_email_texts: {
-          type: ['object', 'null'],
-          additionalProperties: false,
-          description: 'Overrides the invoice email texts per language, standard invoices only. Omit a field to keep the standard text. Null clears every override.',
-          properties: {
-            sv: {
-              type: 'object',
-              additionalProperties: false,
-              description: 'Swedish texts. Only these placeholders are allowed: {fakturanummer} {kundnamn} {förnamn} {företag} {förfallodatum} {belopp}. Any other {token} is rejected.',
-              properties: {
-                subject: { type: 'string', maxLength: 200 },
-                greeting: { type: 'string', maxLength: 200 },
-                body: { type: 'string', maxLength: 2000 },
-                signoff: { type: 'string', maxLength: 200 },
-              },
-            },
-            en: {
-              type: 'object',
-              additionalProperties: false,
-              description: 'English texts, used when the customer language is en. Same placeholder set as sv.',
-              properties: {
-                subject: { type: 'string', maxLength: 200 },
-                greeting: { type: 'string', maxLength: 200 },
-                body: { type: 'string', maxLength: 2000 },
-                signoff: { type: 'string', maxLength: 200 },
-              },
-            },
-          },
-        },
         dry_run: { type: 'boolean', description: 'Validate and preview without staging or changing data.' },
         idempotency_key: { type: 'string', description: 'Random per-operation UUID. Reusing it with the same payload returns the original staged response.' },
       },
@@ -2403,7 +2345,6 @@ export const tools: McpTool[] = [
         'email',
         'phone',
         'website',
-        'invoice_email_texts',
       ]) {
         if (args[key] !== undefined) rawChanges[key] = args[key]
       }
@@ -2419,7 +2360,7 @@ export const tools: McpTool[] = [
 
       const { data: current, error } = await supabase
         .from('company_settings')
-        .select('bank_name, clearing_number, account_number, bankgiro, plusgiro, swish, iban, bic, default_our_reference, email, phone, website, invoice_email_texts')
+        .select('bank_name, clearing_number, account_number, bankgiro, plusgiro, swish, iban, bic, default_our_reference, email, phone, website')
         .eq('company_id', companyId)
         .maybeSingle()
 
@@ -2440,7 +2381,6 @@ export const tools: McpTool[] = [
         email: current.email ?? null,
         phone: current.phone ?? null,
         website: current.website ?? null,
-        invoice_email_texts: current.invoice_email_texts ?? null,
       }
       const previewChanges = {
         ...parsed.data.changes,

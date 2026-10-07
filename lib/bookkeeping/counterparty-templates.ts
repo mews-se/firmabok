@@ -2,7 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import {
   normalizeMerchantName,
   levenshteinDistance,
-} from '@/lib/documents/core-receipt-matcher'
+} from './merchant-name'
 import {
   generateInputVatLine,
   generateReverseChargeLines,

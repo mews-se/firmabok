@@ -25,14 +25,10 @@ const PERSISTED_EVENT_TYPES: CoreEventType[] = [
   'customer.created',
   'article.deleted',
   'supplier.created',
-  'receipt.matched',
-  'receipt.confirmed',
   'supplier_invoice.registered',
   'supplier_invoice.approved',
   'supplier_invoice.paid',
   'supplier_invoice.credited',
-  'invoice.match_confirmed',
-  'supplier_invoice.match_confirmed',
   'supplier_invoice.confirmed',
   // MCP telemetry: every tool invocation, tools/list call, and resources/read.
   // Lightweight metadata only. mcp.*/agent.* rows are retained 180 days by the
@@ -54,17 +50,10 @@ const PERSISTED_EVENT_TYPES: CoreEventType[] = [
   // description was wrong", etc. Reviewed weekly (matches the gnubok_feedback
   // reply copy); triage → dev_docs/mcp_optimization_plan.md.
   'agent.feedback',
-  // Bank connection consent lifecycle: required audit trail per ASVS V16
-  // and GDPR Art.30 (records of processing) for PSD2 consent decisions.
-  'bank_connection.consent_granted',
-  'bank_connection.account_selection_changed',
-  'bank_connection.revoked',
-  'bank_connection.cash_account_mirror_failed',
 ]
 
 // Excluded (with reasoning):
 // - journal_entry.drafted: always followed by .committed
-// - receipt.extracted: intermediate AI step; .matched/.confirmed are actionable
 // - supplier_invoice.received: inbox receipt; .confirmed is actionable
 // - supplier_invoice.extracted: intermediate AI step
 
@@ -74,7 +63,7 @@ const PERSISTED_EVENT_TYPES: CoreEventType[] = [
 function extractEntityId(payload: Record<string, unknown>): string | null {
   // Try common entity shapes in priority order
   const entityKeys = [
-    'entry', 'invoice', 'transaction', 'customer', 'supplier', 'receipt',
+    'entry', 'invoice', 'customer', 'supplier',
     'supplierInvoice', 'creditNote', 'period', 'document', 'inboxItem',
   ] as const
 
@@ -87,12 +76,8 @@ function extractEntityId(payload: Record<string, unknown>): string | null {
   }
 
   // Flat-string ID fields on events that don't carry a full entity object.
-  // Bank connection events fall into this category: the connection lives in
-  // an extension table, so we record its id directly. invoice.draft_deleted
-  // carries only invoiceId because the row is already gone.
-  if (typeof payload.connectionId === 'string') {
-    return payload.connectionId
-  }
+  // invoice.draft_deleted carries only invoiceId because the row is already
+  // gone.
   if (typeof payload.invoiceId === 'string') {
     return payload.invoiceId
   }

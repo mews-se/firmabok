@@ -1,13 +1,11 @@
 import type {
   JournalEntry,
   Invoice,
-  Transaction,
   Customer,
   Supplier,
   Article,
   FiscalPeriod,
   DocumentAttachment,
-  Receipt,
   CreditNote,
   InvoiceInboxItem,
   SupplierInvoice,
@@ -46,25 +44,6 @@ export type CoreEvent =
       userId: string
       companyId: string
     } }
-  // Bank connection lifecycle: consent + account selection are the
-  // GDPR/PSD2 audit points; emitted to event_log for compliance trail.
-  | { type: 'bank_connection.consent_granted'; payload: { connectionId: string; bankName: string | null; accountCount: number; consentExpiresAt: string | null; userId: string; companyId: string } }
-  | { type: 'bank_connection.account_selection_changed'; payload: { connectionId: string; bankName: string | null; previousStatus: string; newStatus: string; enabledCount: number; totalCount: number; userId: string; companyId: string } }
-  | { type: 'bank_connection.revoked'; payload: { connectionId: string; bankName: string | null; userId: string; companyId: string } }
-  // Emitted when the PSD2 callback fails to mirror a returned account into
-  // cash_accounts. ASVS V16 / ISO 27001 A.8.15: security-relevant failures
-  // must land in a structured audit log (event_log, 30-day TTL) rather than
-  // being lost to console.error.
-  | { type: 'bank_connection.cash_account_mirror_failed'; payload: {
-      connectionId: string
-      bankName: string | null
-      accountUid: string
-      ledgerAccount: string
-      currency: string
-      reason: string
-      userId: string
-      companyId: string
-    } }
   // Periods
   | { type: 'period.locked'; payload: { period: FiscalPeriod; userId: string; companyId: string } }
   | { type: 'period.unlocked'; payload: { period: FiscalPeriod; userId: string; companyId: string } }
@@ -77,38 +56,12 @@ export type CoreEvent =
   | { type: 'article.deleted'; payload: { articleId: string; userId: string; companyId: string } }
   // Suppliers
   | { type: 'supplier.created'; payload: { supplier: Supplier; userId: string; companyId: string } }
-  // Receipts
-  | { type: 'receipt.extracted'; payload: {
-      receipt: Receipt;
-      documentId: string | null;
-      confidence: number;
-      userId: string;
-      companyId: string;
-    }}
-  | { type: 'receipt.matched'; payload: {
-      receipt: Receipt;
-      transaction: Transaction;
-      confidence: number;
-      autoMatched: boolean;
-      userId: string;
-      companyId: string;
-    }}
-  | { type: 'receipt.confirmed'; payload: {
-      receipt: Receipt;
-      businessTotal: number;
-      privateTotal: number;
-      userId: string;
-      companyId: string;
-    }}
   // Supplier Invoice Lifecycle
   | { type: 'supplier_invoice.registered'; payload: { supplierInvoice: SupplierInvoice; userId: string; companyId: string } }
   | { type: 'supplier_invoice.approved'; payload: { supplierInvoice: SupplierInvoice; userId: string; companyId: string } }
   | { type: 'supplier_invoice.paid'; payload: { supplierInvoice: SupplierInvoice; paymentAmount: number; userId: string; companyId: string } }
   | { type: 'supplier_invoice.credited'; payload: { supplierInvoice: SupplierInvoice; creditNote: SupplierInvoice; userId: string; companyId: string } }
   | { type: 'supplier_invoice.uncredited'; payload: { supplierInvoice: SupplierInvoice; reversedCreditNoteId: string; reversalEntryId: string | null; userId: string; companyId: string } }
-  // Payment Matching
-  | { type: 'invoice.match_confirmed'; payload: { invoice: Invoice; transaction: Transaction; userId: string; companyId: string } }
-  | { type: 'supplier_invoice.match_confirmed'; payload: { supplierInvoice: SupplierInvoice; transaction: Transaction; userId: string; companyId: string } }
   // Supplier Invoice Inbox
   | { type: 'supplier_invoice.received'; payload: { inboxItem: InvoiceInboxItem; userId: string; companyId: string } }
   | { type: 'supplier_invoice.extracted'; payload: { inboxItem: InvoiceInboxItem; confidence: number; userId: string; companyId: string } }

@@ -97,15 +97,6 @@ describe('event-log-handler', () => {
     expect(mockInsert).not.toHaveBeenCalled()
   })
 
-  it('does NOT persist receipt.extracted (excluded noise event)', async () => {
-    await eventBus.emit({
-      type: 'receipt.extracted',
-      payload: { receipt: {} as never, documentId: null, confidence: 0.9, userId: 'user-1', companyId: 'company-1' },
-    })
-
-    expect(mockInsert).not.toHaveBeenCalled()
-  })
-
   it('does NOT persist supplier_invoice.received (excluded noise event)', async () => {
     await eventBus.emit({
       type: 'supplier_invoice.received',

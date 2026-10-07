@@ -10,7 +10,7 @@ interface BankOption {
   bic?: string
 }
 
-const FALLBACK_BANKS: BankOption[] = [
+const BANKS: BankOption[] = [
   { name: 'Nordea', bic: 'NDEASESS' },
   { name: 'SEB', bic: 'ESSESESS' },
   { name: 'Swedbank', bic: 'SWEDSESS' },
@@ -27,11 +27,10 @@ interface BankNameComboboxProps {
   defaultValue?: string
   value?: string
   onChange?: (value: string) => void
-  enableBankingEnabled?: boolean
   'aria-label'?: string
 }
 
-export function BankNameCombobox({ defaultValue = '', value: controlledValue, onChange, enableBankingEnabled = false, 'aria-label': ariaLabel }: BankNameComboboxProps) {
+export function BankNameCombobox({ defaultValue = '', value: controlledValue, onChange, 'aria-label': ariaLabel }: BankNameComboboxProps) {
   const isControlled = controlledValue !== undefined
   const [internalValue, setInternalValue] = useState(defaultValue)
   const value = isControlled ? controlledValue : internalValue
@@ -39,36 +38,15 @@ export function BankNameCombobox({ defaultValue = '', value: controlledValue, on
     if (!isControlled) setInternalValue(v)
     onChange?.(v)
   }
-  const [banks, setBanks] = useState<BankOption[]>(FALLBACK_BANKS)
   const [isOpen, setIsOpen] = useState(false)
   const [highlightedIndex, setHighlightedIndex] = useState(-1)
   const containerRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const listRef = useRef<HTMLUListElement>(null)
 
-  useEffect(() => {
-    if (!enableBankingEnabled) return
-
-    let cancelled = false
-    async function fetchBanks() {
-      try {
-        const res = await fetch('/api/extensions/ext/enable-banking/banks')
-        if (!res.ok) return
-        const data = await res.json()
-        if (!cancelled && data.banks?.length > 0) {
-          setBanks(data.banks)
-        }
-      } catch {
-        // Keep fallback list
-      }
-    }
-    fetchBanks()
-    return () => { cancelled = true }
-  }, [enableBankingEnabled])
-
   const filtered = value.trim()
-    ? banks.filter((b) => b.name.toLowerCase().includes(value.toLowerCase()))
-    : banks
+    ? BANKS.filter((b) => b.name.toLowerCase().includes(value.toLowerCase()))
+    : BANKS
 
   useEffect(() => {
     setHighlightedIndex(-1)

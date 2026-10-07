@@ -3,7 +3,6 @@
  */
 import { vi } from 'vitest'
 import type {
-  Receipt,
   Transaction,
   FiscalPeriod,
   JournalEntry,
@@ -136,40 +135,6 @@ export function makeCompanyMember(overrides: Partial<CompanyMember> = {}): Compa
     joined_at: '2024-01-01T00:00:00Z',
     created_at: '2024-01-01T00:00:00Z',
     updated_at: '2024-01-01T00:00:00Z',
-    ...overrides,
-  }
-}
-
-export function makeReceipt(overrides: Partial<Receipt> = {}): Receipt {
-  return {
-    id: nextId(),
-    user_id: 'user-1',
-    company_id: 'company-1',
-    image_url: 'https://example.com/receipt.jpg',
-    image_thumbnail_url: null,
-    status: 'confirmed',
-    extraction_confidence: 0.95,
-    merchant_name: 'ICA Maxi',
-    merchant_org_number: null,
-    merchant_vat_number: null,
-    receipt_date: '2024-06-15',
-    receipt_time: '14:30',
-    total_amount: 299.0,
-    currency: 'SEK',
-    vat_amount: 59.8,
-    is_restaurant: false,
-    is_systembolaget: false,
-    is_foreign_merchant: false,
-    representation_persons: null,
-    representation_purpose: null,
-    representation_business_connection: null,
-    source: 'upload',
-    email_from: null,
-    matched_transaction_id: null,
-    match_confidence: null,
-    raw_extraction: null,
-    created_at: '2024-06-15T14:30:00Z',
-    updated_at: '2024-06-15T14:30:00Z',
     ...overrides,
   }
 }

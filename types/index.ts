@@ -163,11 +163,6 @@ export interface ProcessingHistoryEvent {
   appended_at: string
 }
 
-// Bank connection status
-// 'pending_selection' = PSD2 consent granted, awaiting user to pick which
-// accounts to actually sync. No transactions are pulled in this state.
-export type BankConnectionStatus = 'pending' | 'pending_selection' | 'active' | 'expired' | 'revoked' | 'error'
-
 // Currency types
 export type Currency = 'SEK' | 'EUR' | 'USD' | 'GBP' | 'NOK' | 'DKK'
 
@@ -361,62 +356,8 @@ export interface CompanySettings {
   updated_at: string
 }
 
-// Bank Connection
-export interface BankConnection {
-  id: string
-  user_id: string
-  company_id: string
-
-  bank_name: string
-  provider: string
-
-  // Enable Banking specific
-  session_id: string | null
-  authorization_id: string | null
-
-  // Account info
-  accounts_data: BankAccount[]
-
-  // Status
-  status: BankConnectionStatus
-
-  // PSD2 PSU type chosen at authorization. Reused on reconnect so consent
-  // renewals keep the account type that actually worked. NULL on legacy rows.
-  psu_type: 'personal' | 'business' | null
-
-  // Consent
-  consent_expires: string | null
-  last_synced_at: string | null
-  error_message: string | null
-
-  // Initial-sync metadata. initial_sync_completed_at gates the cron's
-  // first-sync 90-day backfill path independently of last_synced_at, so
-  // a manual "Sync now" doesn't permanently lose the deep backfill window.
-  // The returned-date columns power the "we requested X but got Y" UI when
-  // an ASPSP truncates history below the requested window.
-  initial_sync_completed_at: string | null
-  initial_sync_requested_from: string | null
-  initial_sync_returned_min_date: string | null
-  initial_sync_returned_max_date: string | null
-  initial_sync_lookback_days: number | null
-
-  created_at: string
-  updated_at: string
-}
-
-export interface BankAccount {
-  uid: string  // Enable Banking account UID
-  iban: string | null
-  name: string | null
-  currency: Currency
-  balance: number | null
-  balance_updated_at?: string | null
-}
-
-// Cash account: first-class entity for ledger-account routing decisions.
-// Backed by the cash_accounts table; bank_connections.accounts_data remains
-// the source for PSD2 sync metadata + UI display until a follow-up migration
-// drops it 30 days after this PR.
+// Cash account: first-class entity for ledger-account routing decisions,
+// backed by the cash_accounts table.
 export type CashAccountSource = 'enable_banking' | 'manual' | 'sie_import'
 
 export interface CashAccount {
@@ -438,17 +379,6 @@ export interface CashAccount {
   created_at: string
   updated_at: string
 }
-
-// Import source identifiers
-export type ImportSource =
-  | 'enable_banking'
-  | 'csv_nordea'
-  | 'csv_seb'
-  | 'csv_swedbank'
-  | 'csv_handelsbanken'
-  | 'csv_generic'
-  | 'camt053'
-  | 'manual'
 
 /**
  * Closed vocabulary for HOW money moved (the payment rail), classified at
@@ -567,28 +497,6 @@ export interface Transaction {
   // Notes
   notes: string | null
 
-  created_at: string
-  updated_at: string
-}
-
-// Bank File Import (tracking table for file-based imports)
-export type BankFileImportStatus = 'pending' | 'processing' | 'completed' | 'failed'
-
-export interface BankFileImport {
-  id: string
-  user_id: string
-  company_id: string
-  filename: string
-  file_hash: string
-  file_format: string
-  transaction_count: number
-  imported_count: number
-  duplicate_count: number
-  matched_count: number
-  date_from: string | null
-  date_to: string | null
-  status: BankFileImportStatus
-  error_message: string | null
   created_at: string
   updated_at: string
 }
@@ -1322,16 +1230,6 @@ export interface CreateInvoiceItemInput {
   work_type?: string | null
   housing_designation?: string | null
   apartment_number?: string | null
-}
-
-export interface CreateTransactionInput {
-  date: string
-  description: string
-  amount: number
-  currency: Currency
-  category?: TransactionCategory
-  is_business?: boolean
-  notes?: string
 }
 
 // API Response types
@@ -2536,188 +2434,6 @@ export interface InvoiceInboxItem {
   document?: DocumentAttachment
   supplier?: Supplier
   supplier_invoice?: SupplierInvoice
-}
-
-// ============================================================
-// Receipt Types
-// ============================================================
-
-// Receipt extraction status
-export type ReceiptStatus = 'pending' | 'processing' | 'extracted' | 'confirmed' | 'error'
-
-// Receipt record
-export interface Receipt {
-  id: string
-  user_id: string
-  company_id: string
-
-  // Image storage
-  image_url: string
-  image_thumbnail_url: string | null
-
-  // Extraction status
-  status: ReceiptStatus
-  extraction_confidence: number | null
-
-  // Extracted header data
-  merchant_name: string | null
-  merchant_org_number: string | null
-  merchant_vat_number: string | null
-  receipt_date: string | null
-  receipt_time: string | null
-  total_amount: number | null
-  currency: string
-  vat_amount: number | null
-
-  // Special flags
-  is_restaurant: boolean
-  is_systembolaget: boolean
-  is_foreign_merchant: boolean
-
-  // Restaurant representation data
-  representation_persons: number | null
-  representation_purpose: string | null
-  representation_business_connection: string | null
-
-  // Source tracking (for email-originated receipts)
-  source: 'upload' | 'camera' | 'email'
-  email_from: string | null
-
-  // Transaction matching
-  matched_transaction_id: string | null
-  match_confidence: number | null
-
-  // Raw extraction data
-  raw_extraction: ReceiptExtractionResult | null
-
-  created_at: string
-  updated_at: string
-
-  // Relations (populated when fetched)
-  line_items?: ReceiptLineItem[]
-  matched_transaction?: Transaction
-}
-
-// Receipt line item record
-export interface ReceiptLineItem {
-  id: string
-  receipt_id: string
-
-  // Extracted data
-  description: string
-  quantity: number
-  unit_price: number | null
-  line_total: number
-  vat_rate: number | null
-  vat_amount: number | null
-
-  // Classification
-  is_business: boolean | null
-  category: TransactionCategory | null
-  bas_account: string | null
-
-  // Confidence
-  extraction_confidence: number | null
-  suggested_category: string | null
-
-  sort_order: number
-  created_at: string
-}
-
-// AI extraction result from Claude Vision
-export interface ReceiptExtractionResult {
-  merchant: {
-    name: string | null
-    orgNumber: string | null
-    vatNumber: string | null
-    isForeign: boolean
-  }
-  receipt: {
-    date: string | null
-    time: string | null
-    currency: string
-  }
-  lineItems: ExtractedLineItem[]
-  totals: {
-    subtotal: number | null
-    vatAmount: number | null
-    total: number | null
-  }
-  flags: {
-    isRestaurant: boolean
-    isSystembolaget: boolean
-    isForeignMerchant: boolean
-  }
-  confidence: number
-  suggestedTemplateId?: string
-}
-
-// Extracted line item from AI
-export interface ExtractedLineItem {
-  description: string
-  quantity: number
-  unitPrice: number | null
-  lineTotal: number
-  vatRate: number | null
-  suggestedCategory: string | null
-  suggestedTemplateId?: string
-  confidence?: number
-}
-
-// Match candidate for receipt-to-transaction matching
-export interface ReceiptMatchCandidate {
-  transaction: Transaction
-  confidence: number
-  matchReasons: string[]
-  dateVariance: number
-  amountVariance: number
-}
-
-// Input for creating a receipt
-export interface CreateReceiptInput {
-  image_url: string
-  image_thumbnail_url?: string
-}
-
-// Input for confirming receipt line items
-export interface ConfirmReceiptInput {
-  line_items: ConfirmLineItemInput[]
-  matched_transaction_id?: string
-  representation_persons?: number
-  representation_purpose?: string
-}
-
-export interface ConfirmLineItemInput {
-  id: string
-  is_business: boolean
-  category?: TransactionCategory
-  bas_account?: string
-}
-
-// Receipt queue summary
-export interface ReceiptQueueSummary {
-  unmatched_receipts_count: number
-  unmatched_transactions_count: number
-  pending_review_count: number
-  streak_count: number
-}
-
-// Camera quality feedback
-export interface CameraQualityFeedback {
-  lightingOk: boolean
-  distanceOk: boolean
-  focusOk: boolean
-  readyToCapture: boolean
-  message?: string
-}
-
-// Swedish labels for receipt status
-export const RECEIPT_STATUS_LABELS: Record<ReceiptStatus, string> = {
-  pending: 'Väntar',
-  processing: 'Analyserar',
-  extracted: 'Extraherat',
-  confirmed: 'Bekräftat',
-  error: 'Fel'
 }
 
 // ============================================================

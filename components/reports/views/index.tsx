@@ -1302,8 +1302,7 @@ function VatBookingCard({
 
 
 /** The Stegen header (concept Moms C): the filing pipeline as a clickable
- *  horizontal stepper with honest per-step status subs. Statutory surface,
- *  Swedish in both locales like the rest of the declaration. */
+ *  horizontal stepper with honest per-step status subs. */
 function VatStepper({
   active,
   onSelect,

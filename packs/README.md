@@ -75,9 +75,8 @@ rejects it, but quote it anyway so the file reads correctly.
 
 ## Swedish stays Swedish
 
-`name`, `description` and `legal_note` are user-facing Swedish and are not
-translated, in either locale. They are statutory content, per
-`.claude/rules/i18n.md`.
+`name`, `description` and `legal_note` are user-facing Swedish statutory
+content and are not translated.
 
 ## Known-broken templates
 

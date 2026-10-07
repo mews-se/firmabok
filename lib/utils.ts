@@ -18,8 +18,8 @@ const INVALID_DATE_PLACEHOLDER = '-'
 /**
  * Money with a currency symbol, sv-SE grouping: `1234.5` -> `1 234,50 kr`.
  *
- * `currency` defaults to SEK and stays sv-SE in both locales: that is a Swedish
- * accounting convention, not a UI string (.claude/rules/i18n.md), and the
+ * `currency` defaults to SEK with sv-SE grouping: that is a Swedish
+ * accounting convention (.claude/rules/i18n.md), and the
  * single-argument form is the correct call on the hundreds of values that ARE
  * kronor (ledger amounts, KPI aggregates, salary, tax).
  *
@@ -99,9 +99,8 @@ export function formatDateTime(date: Date | string): string {
  * Bare amount with sv-SE grouping and exactly two decimals, no currency symbol:
  * `1234.5` → `1 234,50`. Use in table cells / inputs where the column header or
  * surrounding context already conveys "kr" and `formatCurrency`'s symbol would
- * be noise. Stays sv-SE in both locales (Swedish accounting convention, not a
- * UI string): same rule as `formatCurrency`. When you need the SEK symbol, use
- * `formatCurrency`.
+ * be noise. sv-SE like `formatCurrency` (Swedish accounting convention). When
+ * you need the SEK symbol, use `formatCurrency`.
  */
 export function formatAmount(amount: number): string {
   return new Intl.NumberFormat('sv-SE', {
@@ -126,18 +125,13 @@ export function formatWholeKr(amount: number): string {
 }
 
 /**
- * Long-form date for metadata/audit contexts (e.g. "9 maj 2026" / "May 9, 2026").
+ * Long-form date for metadata/audit contexts (e.g. "9 maj 2026").
  * Use formatDate for transaction/voucher/invoice dates that need to align in tables.
- *
- * The locale arg is the UI language ('sv' | 'en'); default 'sv' keeps existing
- * server-side callers (logs, audit) Swedish without churn. For client UI use
- * the useFormat() hook which pulls the active locale from next-intl.
  */
-export function formatDateLong(date: Date | string, locale: string = 'sv'): string {
+export function formatDateLong(date: Date | string): string {
   const d = typeof date === 'string' ? parseISO(date) : date
   if (!isValid(d)) return INVALID_DATE_PLACEHOLDER
-  const intlLocale = locale === 'en' ? 'en-US' : 'sv-SE'
-  return d.toLocaleDateString(intlLocale, {
+  return d.toLocaleDateString('sv-SE', {
     day: 'numeric',
     month: 'short',
     year: 'numeric',

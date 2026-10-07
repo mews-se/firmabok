@@ -17,7 +17,7 @@ import { SegmentedControl } from '@/components/ui/segmented-control'
 import { Switch } from '@/components/ui/switch'
 import { useToast } from '@/components/ui/use-toast'
 import { useCompany } from '@/contexts/CompanyContext'
-import { useFormat } from '@/lib/hooks/use-format'
+import { formatDateLong } from '@/lib/utils'
 import { getErrorMessage, type ErrorLocale } from '@/lib/errors/get-error-message'
 import { FiscalYearSelector } from '@/components/common/FiscalYearSelector'
 import { Download, Loader2 } from 'lucide-react'
@@ -50,7 +50,6 @@ export function FullArchiveDialog({
   const errorLocale = useLocale() as ErrorLocale
   const { toast } = useToast()
   const { company } = useCompany()
-  const { formatDateLong } = useFormat()
 
   const [scope, setScope] = useState<Scope>('all')
   const [periodId, setPeriodId] = useState<string | null>(null)

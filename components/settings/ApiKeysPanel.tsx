@@ -1,6 +1,6 @@
 'use client'
 
-import { useLocale, useTranslations } from 'next-intl'
+import { useTranslations } from 'next-intl'
 import { useState, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -238,7 +238,6 @@ function ScopeCard({
 
 export function ApiKeysPanel() {
   const t = useTranslations('settings_api_keys')
-  const locale = useLocale()
   const { toast } = useToast()
   const { dialogProps: revokeDialogProps, confirm: confirmRevoke } = useDestructiveConfirm()
   const { dialogProps: sodDialogProps, confirm: confirmSod } = useDestructiveConfirm()
@@ -421,10 +420,10 @@ export function ApiKeysPanel() {
                     <span className="font-mono">{key.key_prefix}...</span>
                   </span>
                   <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
-                    {t('created')} {formatDateLong(key.created_at, locale)}
+                    {t('created')} {formatDateLong(key.created_at)}
                     {' · '}
                     {key.last_used_at
-                      ? t('used_on', { date: formatDateLong(key.last_used_at, locale) })
+                      ? t('used_on', { date: formatDateLong(key.last_used_at) })
                       : t('never_used')}
                   </span>
                 </div>

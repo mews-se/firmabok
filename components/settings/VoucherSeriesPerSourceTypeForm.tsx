@@ -43,9 +43,8 @@ const VISIBLE_SOURCE_TYPES: Array<{ key: JournalEntrySourceType; labelKey: strin
 // Keeps the map's iteration order intact: we only split it, never reorder.
 const ALWAYS_VISIBLE_COUNT = 3
 
-// Swedish labels. Kept inline so this component is self-contained: these
-// labels are bookkeeping-domain terms that intentionally stay Swedish across
-// locales (see CLAUDE.md i18n table).
+// Swedish bookkeeping-domain labels, kept inline so this component is
+// self-contained.
 const SV_LABELS: Record<string, string> = {
   manual: 'Manuella verifikat',
   invoice_created: 'Kundfakturor (skapande)',

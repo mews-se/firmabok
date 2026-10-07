@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { useTranslations, useLocale } from 'next-intl'
+import { useTranslations } from 'next-intl'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -130,7 +130,6 @@ export default function JournalEntryForm({
   // expects (matches BookingTemplatesPanel); the form itself already pulls its
   // copy from this namespace.
   const tTpl = useTranslations('settings_booking_templates')
-  const locale = useLocale()
   const [periods, setPeriods] = useState<FiscalPeriod[]>([])
   const [selectedPeriod, setSelectedPeriod] = useState('')
   const [entryDate, setEntryDate] = useState(initialDate ?? new Date().toISOString().split('T')[0])
@@ -700,12 +699,12 @@ export default function JournalEntryForm({
     (ym: string) => {
       const [y, m] = ym.split('-').map(Number)
       if (!y || !m) return ym
-      return new Date(y, m - 1, 1).toLocaleDateString(locale === 'en' ? 'en-GB' : 'sv-SE', {
+      return new Date(y, m - 1, 1).toLocaleDateString('sv-SE', {
         month: 'long',
         year: 'numeric',
       })
     },
-    [locale]
+    []
   )
   const entryMonth = entryDate.slice(0, 7)
   const monthChanged = lastPostedMonth != null && entryMonth !== lastPostedMonth

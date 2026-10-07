@@ -75,8 +75,7 @@ export function buildFiledAmounts(rutor: VatDeclarationRutor): {
  * so a manual filer sees every box that needs a value and nothing that doesn't.
  * Ruta 49 is always rendered last, mirroring its position on the SKV 4700 form.
  *
- * Swedish-only by design: these are Skatteverket form labels (VAT_RUTA_LABELS),
- * which stay Swedish in both locales.
+ * Swedish-only by design: these are Skatteverket form labels (VAT_RUTA_LABELS).
  */
 export function buildManualFilingRows(rutor: VatDeclarationRutor): ManualFilingRow[] {
   const { amounts, net } = buildFiledAmounts(rutor)

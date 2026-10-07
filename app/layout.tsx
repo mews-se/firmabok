@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Hedvig_Letters_Serif } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
-import { getLocale, getMessages } from "next-intl/server";
+import { getMessages } from "next-intl/server";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip-provider";
 import { ThemeProvider } from "@/components/theme-provider";
@@ -66,10 +66,9 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const locale = await getLocale();
   const messages = await getMessages();
   return (
-    <html lang={locale} suppressHydrationWarning className={`${geistSans.variable} ${geistMono.variable} ${hedvigSerif.variable}`}>
+    <html lang="sv" suppressHydrationWarning className={`${geistSans.variable} ${geistMono.variable} ${hedvigSerif.variable}`}>
       <head>
         <link rel="apple-touch-icon" href="/icons/icon-192.png" />
       </head>
@@ -78,7 +77,7 @@ export default async function RootLayout({
       >
         {/* timeZone is passed explicitly: client components must format in the
             same zone the server rendered with, or timestamps shift on hydration. */}
-        <NextIntlClientProvider locale={locale} messages={messages} timeZone={APP_TIME_ZONE}>
+        <NextIntlClientProvider locale="sv" messages={messages} timeZone={APP_TIME_ZONE}>
           <ThemeProvider
             attribute="class"
             defaultTheme="light"

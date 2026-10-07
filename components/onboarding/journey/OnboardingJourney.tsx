@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useLocale, useTranslations } from 'next-intl'
+import { useTranslations } from 'next-intl'
 import { createCompanyFromOnboarding } from '@/lib/company/actions'
 import { computeFiscalPeriod } from '@/lib/company/compute-fiscal-period'
 import { normalizeOrgNumber } from '@/lib/invariants/org-number'
@@ -54,7 +54,6 @@ export default function OnboardingJourney({
 }: OnboardingJourneyProps) {
   const router = useRouter()
   const t = useTranslations('onboarding')
-  const locale = useLocale()
   const [state, dispatch] = useReducer(
     journeyReducer,
     { initialOrgNumber },
@@ -77,13 +76,13 @@ export default function OnboardingJourney({
   const isEf = entity === 'enskild_firma'
 
   const monthLong = useMemo(() => {
-    const fmt = new Intl.DateTimeFormat(locale === 'en' ? 'en' : 'sv', { month: 'long' })
+    const fmt = new Intl.DateTimeFormat('sv', { month: 'long' })
     return Array.from({ length: 12 }, (_, i) => fmt.format(new Date(2026, i, 1)))
-  }, [locale])
+  }, [])
   const monthShort = useMemo(() => {
-    const fmt = new Intl.DateTimeFormat(locale === 'en' ? 'en' : 'sv', { month: 'short' })
+    const fmt = new Intl.DateTimeFormat('sv', { month: 'short' })
     return Array.from({ length: 12 }, (_, i) => fmt.format(new Date(2026, i, 1)).replace('.', ''))
-  }, [locale])
+  }, [])
 
   const formatDayMonthYear = useCallback(
     (isoDate: string) => {

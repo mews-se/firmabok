@@ -7,6 +7,7 @@ import { commitPendingOperation } from '../commit'
 
 const CUSTOMER_ID = '11111111-1111-4111-8111-111111111111'
 const SCHEDULE_ID = '22222222-2222-4222-8222-222222222222'
+const OTHER_CUSTOMER_ID = '33333333-3333-4333-8333-333333333333'
 
 function makePendingOp(
   operationType: 'create_recurring_schedule' | 'update_recurring_schedule',
@@ -42,7 +43,6 @@ const createParams = {
   send_hour: 8,
   payment_terms_days: 30,
   currency: 'SEK',
-  auto_send: false,
   start_date: '2999-09-25',
   items: [{ description: 'Support', quantity: 1, unit: 'st', unit_price: 5000 }],
 }
@@ -89,7 +89,7 @@ describe('commitPendingOperation: create_recurring_schedule', () => {
   it('creates the schedule with its items and returns qualified ids', async () => {
     const { supabase, enqueue } = createQueuedMockSupabase()
     enqueue({ data: { id: 'op-recurring-1' } }) // claim
-    enqueue({ data: { id: CUSTOMER_ID, email: 'billing@example.test' } }) // customer
+    enqueue({ data: { id: CUSTOMER_ID } }) // customer
     enqueue({ data: { id: SCHEDULE_ID } }) // schedule insert
     enqueue({ data: null }) // items insert
     enqueue({ data: null }) // finalize
@@ -106,7 +106,6 @@ describe('commitPendingOperation: create_recurring_schedule', () => {
       recurring_schedule_id: SCHEDULE_ID,
       customer_id: CUSTOMER_ID,
       status: 'active',
-      auto_send: false,
       next_run_date: '2999-09-25',
       item_count: 1,
     })
@@ -118,7 +117,7 @@ describe('commitPendingOperation: create_recurring_schedule', () => {
   it('rolls back the schedule row when the items insert fails', async () => {
     const { supabase, enqueue } = createQueuedMockSupabase()
     enqueue({ data: { id: 'op-recurring-1' } }) // claim
-    enqueue({ data: { id: CUSTOMER_ID, email: null } }) // customer
+    enqueue({ data: { id: CUSTOMER_ID } }) // customer
     enqueue({ data: { id: SCHEDULE_ID } }) // schedule insert
     enqueue({ error: { message: 'items insert failed' } }) // items insert
     enqueue({ data: null }) // rollback delete
@@ -155,28 +154,10 @@ describe('commitPendingOperation: create_recurring_schedule', () => {
     expect(result.http_status).toBe(404)
   })
 
-  it('rejects auto_send at commit when the customer has no email', async () => {
-    const { supabase, enqueue } = createQueuedMockSupabase()
-    enqueue({ data: { id: 'op-recurring-1' } }) // claim
-    enqueue({ data: { id: CUSTOMER_ID, email: null } }) // customer
-    enqueue({ data: null }) // status update
-
-    const result = await commitPendingOperation(
-      supabase as never,
-      'user-1',
-      'company-1',
-      makePendingOp('create_recurring_schedule', { ...createParams, auto_send: true }),
-    )
-
-    expect(result.status).toBe('failed')
-    expect(result.http_status).toBe(400)
-    expect(result.error).toMatch(/email/i)
-  })
-
   it('rejects a start_date off the day_of_month grid at commit', async () => {
     const { supabase, enqueue } = createQueuedMockSupabase()
     enqueue({ data: { id: 'op-recurring-1' } }) // claim
-    enqueue({ data: { id: CUSTOMER_ID, email: null } }) // customer
+    enqueue({ data: { id: CUSTOMER_ID } }) // customer
     enqueue({ data: null }) // status update
 
     const result = await commitPendingOperation(
@@ -214,7 +195,6 @@ describe('commitPendingOperation: update_recurring_schedule', () => {
   const existingRow = {
     id: SCHEDULE_ID,
     status: 'active',
-    auto_send: false,
     customer_id: CUSTOMER_ID,
     day_of_month: 25,
     next_run_date: '2999-01-25',
@@ -436,11 +416,11 @@ describe('commitPendingOperation: update_recurring_schedule', () => {
     expect(result.error).toMatch(/day_of_month/)
   })
 
-  it('rejects enabling auto_send at commit when the customer has no email', async () => {
+  it('auto-rejects moving the schedule to a customer outside the company', async () => {
     const { supabase, enqueue } = createQueuedMockSupabase()
     enqueue({ data: { id: 'op-recurring-1' } }) // claim
     enqueue({ data: existingRow }) // existing schedule
-    enqueue({ data: { id: CUSTOMER_ID, email: null } }) // customer check
+    enqueue({ data: null }) // customer check: not in this company
     enqueue({ data: null }) // status update
 
     const result = await commitPendingOperation(
@@ -449,13 +429,12 @@ describe('commitPendingOperation: update_recurring_schedule', () => {
       'company-1',
       makePendingOp('update_recurring_schedule', {
         schedule_id: SCHEDULE_ID,
-        changes: { auto_send: true },
+        changes: { customer_id: OTHER_CUSTOMER_ID },
       }),
     )
 
-    expect(result.status).toBe('failed')
-    expect(result.http_status).toBe(400)
-    expect(result.error).toMatch(/email/i)
+    expect(result.status).toBe('rejected')
+    expect(result.http_status).toBe(404)
   })
 
   it('auto-rejects when the schedule no longer exists', async () => {

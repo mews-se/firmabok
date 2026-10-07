@@ -25,9 +25,8 @@ function currentSchedule(overrides: Record<string, unknown> = {}) {
     your_reference: null,
     our_reference: null,
     notes: null,
-    auto_send: false,
     next_run_date: '2999-01-25',
-    customer: { name: 'Test Customer AB', email: 'billing@example.test' },
+    customer: { name: 'Test Customer AB' },
     items: [
       { description: 'Support', quantity: 1, unit: 'st', unit_price: 5000, vat_rate: null, sort_order: 0 },
     ],
@@ -89,7 +88,6 @@ describe('gnubok_list_recurring_schedules', () => {
           send_hour: 8,
           payment_terms_days: 30,
           currency: 'SEK',
-          auto_send: false,
           next_run_date: '2026-08-31',
           last_run_at: null,
           last_invoice_id: null,
@@ -175,23 +173,9 @@ describe('gnubok_create_recurring_schedule: validation and staging', () => {
     ).rejects.toThrow(/not found/i)
   })
 
-  it('rejects auto_send when the customer has no email', async () => {
+  it('previews the schedule in a dry run without staging anything', async () => {
     const { supabase, enqueue } = createQueuedMockSupabase()
-    enqueue({ data: { id: CUSTOMER_ID, name: 'Test Customer AB', email: null } })
-
-    await expect(
-      createTool().execute(
-        { ...validArgs, auto_send: true, dry_run: true },
-        'company-1',
-        'user-1',
-        supabase as never,
-      ),
-    ).rejects.toThrow(/email/i)
-  })
-
-  it('defaults auto_send to false and surfaces it explicitly in the dry-run preview', async () => {
-    const { supabase, enqueue } = createQueuedMockSupabase()
-    enqueue({ data: { id: CUSTOMER_ID, name: 'Test Customer AB', email: 'billing@example.test' } })
+    enqueue({ data: { id: CUSTOMER_ID, name: 'Test Customer AB' } })
 
     const result = (await createTool().execute(
       { ...validArgs, dry_run: true },
@@ -202,7 +186,6 @@ describe('gnubok_create_recurring_schedule: validation and staging', () => {
 
     expect(result.staged).toBe(false)
     expect(result.dry_run).toBe(true)
-    expect(result.preview.auto_send).toBe(false)
     expect(result.preview.monthly_total_excl_vat).toBe(5000)
     expect(result.preview.projected_first_run_date).toMatch(/^\d{4}-\d{2}-\d{2}$/)
     // Preview only: nothing staged.
@@ -211,7 +194,7 @@ describe('gnubok_create_recurring_schedule: validation and staging', () => {
 
   it('rejects a start_date off the day_of_month grid at staging, before writing anything', async () => {
     const { supabase, enqueue } = createQueuedMockSupabase()
-    enqueue({ data: { id: CUSTOMER_ID, name: 'Test Customer AB', email: 'billing@example.test' } })
+    enqueue({ data: { id: CUSTOMER_ID, name: 'Test Customer AB' } })
 
     await expect(
       createTool().execute(
@@ -227,7 +210,7 @@ describe('gnubok_create_recurring_schedule: validation and staging', () => {
 
   it('rejects a start_date in the past at staging', async () => {
     const { supabase, enqueue } = createQueuedMockSupabase()
-    enqueue({ data: { id: CUSTOMER_ID, name: 'Test Customer AB', email: 'billing@example.test' } })
+    enqueue({ data: { id: CUSTOMER_ID, name: 'Test Customer AB' } })
 
     await expect(
       createTool().execute(
@@ -242,7 +225,7 @@ describe('gnubok_create_recurring_schedule: validation and staging', () => {
 
   it('stages the schedule for approval at medium risk', async () => {
     const { supabase, enqueue } = createQueuedMockSupabase()
-    enqueue({ data: { id: CUSTOMER_ID, name: 'Test Customer AB', email: 'billing@example.test' } })
+    enqueue({ data: { id: CUSTOMER_ID, name: 'Test Customer AB' } })
     enqueue({ data: { id: 'op-recurring-1' } })
 
     const result = (await createTool().execute(validArgs, 'company-1', 'user-1', supabase as never)) as {
@@ -257,32 +240,9 @@ describe('gnubok_create_recurring_schedule: validation and staging', () => {
       operation_id: 'op-recurring-1',
       risk_level: 'medium',
     })
-    expect(result.preview.auto_send).toBe(false)
     expect(supabase.from).toHaveBeenNthCalledWith(2, 'pending_operations')
   })
 
-  it('stages an explicit auto_send=true at HIGH risk with the flag visible in the preview', async () => {
-    const { supabase, enqueue } = createQueuedMockSupabase()
-    enqueue({ data: { id: CUSTOMER_ID, name: 'Test Customer AB', email: 'billing@example.test' } })
-    enqueue({ data: { id: 'op-recurring-2' } })
-
-    const result = (await createTool().execute(
-      { ...validArgs, auto_send: true },
-      'company-1',
-      'user-1',
-      supabase as never,
-    )) as { staged: boolean; risk_level: string; preview: Record<string, unknown> }
-
-    expect(result.staged).toBe(true)
-    expect(result.preview.auto_send).toBe(true)
-    // Param escalation (risk-tiers paramEscalatedRisk): an auto-sending
-    // schedule is a standing order for outbound customer email with no
-    // per-send approval, the same external side-effect that puts one-off
-    // send_invoice at 'high'. The static tier stays 'medium' (asserted
-    // above); the staged operation must carry the escalated level so
-    // auto-commit can never touch it and approval requires confirmed=true.
-    expect(result.risk_level).toBe('high')
-  })
 })
 
 describe('gnubok_update_recurring_schedule: validation and staging', () => {
@@ -323,36 +283,19 @@ describe('gnubok_update_recurring_schedule: validation and staging', () => {
     ).rejects.toThrow(/not found/i)
   })
 
-  it('rejects enabling auto_send when the current customer has no email', async () => {
+  it('fails when the new customer is outside the selected company', async () => {
     const { supabase, enqueue } = createQueuedMockSupabase()
-    enqueue({ data: currentSchedule({ customer: { name: 'Test Customer AB', email: null } }) })
+    enqueue({ data: currentSchedule() })
+    enqueue({ data: null })
 
     await expect(
       updateTool().execute(
-        { schedule_id: SCHEDULE_ID, auto_send: true, dry_run: true },
+        { schedule_id: SCHEDULE_ID, customer_id: CUSTOMER_ID, dry_run: true },
         'company-1',
         'user-1',
         supabase as never,
       ),
-    ).rejects.toThrow(/email/i)
-  })
-
-  it('stages an update that enables auto_send at HIGH risk', async () => {
-    const { supabase, enqueue } = createQueuedMockSupabase()
-    enqueue({ data: currentSchedule() }) // current has auto_send: false + customer email
-    enqueue({ data: { id: 'op-recurring-4' } })
-
-    const result = (await updateTool().execute(
-      { schedule_id: SCHEDULE_ID, auto_send: true },
-      'company-1',
-      'user-1',
-      supabase as never,
-    )) as { staged: boolean; risk_level: string }
-
-    expect(result.staged).toBe(true)
-    // Same escalation as the create tool: turning auto_send on converts the
-    // schedule into recurring outbound email, so the staged op is 'high'.
-    expect(result.risk_level).toBe('high')
+    ).rejects.toThrow(/customer not found/i)
   })
 
   it('stages a pause via the status field', async () => {
@@ -552,7 +495,7 @@ describe('recurring schedule tools: dimension bags', () => {
     const { supabase, enqueue } = createQueuedMockSupabase()
     const inserted = captureInserts(supabase)
     enqueue({ data: { dimensions_enabled: false } }) // company_settings (resolver)
-    enqueue({ data: { id: CUSTOMER_ID, name: 'Test Customer AB', email: 'billing@example.test' } })
+    enqueue({ data: { id: CUSTOMER_ID, name: 'Test Customer AB' } })
     enqueue({ data: { id: 'op-dims-1' } }) // pending_operations insert
 
     const result = (await createTool().execute(
@@ -589,7 +532,7 @@ describe('recurring schedule tools: dimension bags', () => {
     enqueue({ data: null }) // ensure_company_dimensions rpc
     enqueue({ data: [PROJEKT_DIM] }) // dimensions
     enqueue({ data: [PROJEKT_VALUE] }) // dimension_values
-    enqueue({ data: { id: CUSTOMER_ID, name: 'Test Customer AB', email: 'billing@example.test' } })
+    enqueue({ data: { id: CUSTOMER_ID, name: 'Test Customer AB' } })
     enqueue({ data: { id: 'op-dims-2' } })
 
     const result = (await createTool().execute(

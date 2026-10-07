@@ -605,19 +605,7 @@ async function stagePendingOperation(
   assertNoPlaintextPersonnummer(params, 'params')
   assertNoPlaintextPersonnummer(previewData, 'preview_data')
 
-  // params-aware: create/update_recurring_schedule escalate to 'high' when
-  // params.auto_send === true (standing outbound email with no per-send
-  // approval, same side-effect that puts one-off send_invoice at 'high').
-  // Ops whose persisted params nest the effective fields under `changes`
-  // (update_recurring_schedule: { schedule_id, changes }) are flattened for
-  // the risk check ONLY, so paramEscalatedRisk sees auto_send; the stored
-  // params row is untouched (the commit executor's schema owns that shape).
-  const changesBag = params.changes
-  const riskParams =
-    changesBag && typeof changesBag === 'object' && !Array.isArray(changesBag)
-      ? { ...params, ...(changesBag as Record<string, unknown>) }
-      : params
-  const riskLevel = getRiskLevel(operationType, riskParams)
+  const riskLevel = getRiskLevel(operationType)
   const branding = APP_NAME.toLowerCase()
 
   // Resolve period_status once. The caller can pass `dateForPeriodCheck`
@@ -11354,7 +11342,7 @@ export const tools: McpTool[] = [
   {
     name: 'gnubok_list_recurring_schedules',
     title: 'List Recurring Invoice Schedules',
-    description: "List the company's recurring invoice schedules: auto-create customer invoices on day_of_month (clamps to the last day in shorter months) every interval_months months (any 1-12; presets 1/3/6/12) at send_hour, Europe/Stockholm. Shows status, auto_send and next_run_date.",
+    description: "List the company's recurring invoice schedules: auto-create customer invoices on day_of_month (clamps to the last day in shorter months) every interval_months months (any 1-12; presets 1/3/6/12) at send_hour, Europe/Stockholm. Shows status and next_run_date.",
     inputSchema: {
       type: 'object',
       additionalProperties: false,
@@ -11381,7 +11369,6 @@ export const tools: McpTool[] = [
         send_hour: { type: 'number', description: 'Whole hour 0-23 in Europe/Stockholm time' },
         payment_terms_days: { type: 'number' },
         currency: { type: 'string' },
-        auto_send: { type: 'boolean' },
         next_run_date: { type: 'string' },
         last_run_at: { type: ['string', 'null'] },
         last_invoice_id: { type: ['string', 'null'], description: 'Most recently generated invoice' },
@@ -11422,7 +11409,7 @@ export const tools: McpTool[] = [
       let query = supabase
         .from('recurring_invoice_schedules')
         .select(
-          'id, name, status, customer_id, day_of_month, interval_months, send_hour, payment_terms_days, currency, auto_send, default_dimensions, next_run_date, last_run_at, last_invoice_id, last_run_warning, generated_count, customer:customers(name), items:recurring_invoice_schedule_items(description, quantity, unit, unit_price, vat_rate, dimensions, sort_order)',
+          'id, name, status, customer_id, day_of_month, interval_months, send_hour, payment_terms_days, currency, default_dimensions, next_run_date, last_run_at, last_invoice_id, last_run_warning, generated_count, customer:customers(name), items:recurring_invoice_schedule_items(description, quantity, unit, unit_price, vat_rate, dimensions, sort_order)',
           { count: 'exact' },
         )
         .eq('company_id', companyId)
@@ -11464,7 +11451,6 @@ export const tools: McpTool[] = [
           send_hour: row.send_hour,
           payment_terms_days: row.payment_terms_days,
           currency: row.currency,
-          auto_send: row.auto_send,
           next_run_date: row.next_run_date,
           last_run_at: row.last_run_at ?? null,
           last_invoice_id: row.last_invoice_id ?? null,
@@ -11494,7 +11480,7 @@ export const tools: McpTool[] = [
   {
     name: 'gnubok_create_recurring_schedule',
     title: 'Create Recurring Invoice Schedule',
-    description: 'Stage a new recurring invoice schedule: creates a customer invoice on day_of_month (clamps to the last day in shorter months) every interval_months months (default 1) at send_hour, Europe/Stockholm. auto_send defaults false; true emails each invoice without new approval.',
+    description: 'Stage a new recurring invoice schedule: creates a customer invoice on day_of_month (clamps to the last day in shorter months) every interval_months months (default 1) at send_hour, Europe/Stockholm. Invoices are created as drafts for manual review.',
     outputSchema: STAGED_OPERATION_SCHEMA,
     inputSchema: {
       type: 'object',
@@ -11525,10 +11511,6 @@ export const tools: McpTool[] = [
         your_reference: { type: 'string' },
         our_reference: { type: 'string' },
         notes: { type: 'string' },
-        auto_send: {
-          type: 'boolean',
-          description: 'Default false: invoices are created as drafts for manual review. true emails every generated invoice to the customer with no further approval; requires the customer to have an email address.',
-        },
         start_date: {
           type: 'string',
           description: 'YYYY-MM-DD first run date; fixes the month phase of a quarterly/yearly schedule (e.g. 2027-02-15 with interval_months 12 = every February). Must fall on day_of_month (clamped in shorter months) and not be in the past. Omit to run on the next occurrence of day_of_month.',
@@ -11608,7 +11590,6 @@ export const tools: McpTool[] = [
         'your_reference',
         'our_reference',
         'notes',
-        'auto_send',
         'start_date',
       ]) {
         if (args[key] !== undefined) candidate[key] = args[key]
@@ -11631,16 +11612,13 @@ export const tools: McpTool[] = [
 
       const { data: customer, error } = await supabase
         .from('customers')
-        .select('id, name, email')
+        .select('id, name')
         .eq('id', params.customer_id)
         .eq('company_id', companyId)
         .maybeSingle()
 
       if (error) throw new Error(`Database error: ${error.message}`)
       if (!customer) throw new Error('Customer not found. Use gnubok_list_customers to find IDs.')
-      if (params.auto_send && !customer.email) {
-        throw new Error('Customer has no email address: auto_send requires one. Stage with auto_send=false or add an email first.')
-      }
 
       // Same rules the create route enforces, applied at staging so the
       // preview the human approves is what the commit executor will write:
@@ -11660,9 +11638,6 @@ export const tools: McpTool[] = [
       const monthlyTotalExclVat =
         Math.round(params.items.reduce((sum, it) => sum + it.quantity * it.unit_price, 0) * 100) / 100
 
-      // auto_send appears explicitly in the preview: an auto-sending schedule
-      // is recurring outbound customer email that never sees approval again,
-      // so the human must see exactly that flag when approving.
       const preview = {
         name: params.name,
         customer_id: customer.id,
@@ -11672,7 +11647,6 @@ export const tools: McpTool[] = [
         send_hour: params.send_hour,
         payment_terms_days: params.payment_terms_days,
         currency: params.currency,
-        auto_send: params.auto_send,
         projected_first_run_date: computeInitialRunDate(new Date(), params.day_of_month, params.start_date),
         monthly_total_excl_vat: monthlyTotalExclVat,
         items: params.items,
@@ -11731,10 +11705,6 @@ export const tools: McpTool[] = [
         your_reference: { type: ['string', 'null'], description: 'Null clears the field.' },
         our_reference: { type: ['string', 'null'], description: 'Null clears the field.' },
         notes: { type: ['string', 'null'], description: 'Null clears the field.' },
-        auto_send: {
-          type: 'boolean',
-          description: 'true emails every generated invoice with no further approval (requires customer email). false returns to draft-only.',
-        },
         status: {
           type: 'string',
           enum: ['active', 'paused'],
@@ -11816,7 +11786,6 @@ export const tools: McpTool[] = [
         'your_reference',
         'our_reference',
         'notes',
-        'auto_send',
         'status',
         'next_run_date',
       ]) {
@@ -11844,7 +11813,7 @@ export const tools: McpTool[] = [
       const { data: current, error } = await supabase
         .from('recurring_invoice_schedules')
         .select(
-          'id, name, status, customer_id, day_of_month, interval_months, send_hour, payment_terms_days, currency, your_reference, our_reference, notes, auto_send, default_dimensions, next_run_date, customer:customers(name, email), items:recurring_invoice_schedule_items(description, quantity, unit, unit_price, vat_rate, dimensions, sort_order)',
+          'id, name, status, customer_id, day_of_month, interval_months, send_hour, payment_terms_days, currency, your_reference, our_reference, notes, default_dimensions, next_run_date, customer:customers(name), items:recurring_invoice_schedule_items(description, quantity, unit, unit_price, vat_rate, dimensions, sort_order)',
         )
         .eq('id', parsed.data.schedule_id)
         .eq('company_id', companyId)
@@ -11853,28 +11822,15 @@ export const tools: McpTool[] = [
       if (error) throw new Error(`Database error: ${error.message}`)
       if (!current) throw new Error('Recurring schedule not found. Use gnubok_list_recurring_schedules to find IDs.')
 
-      // Turning auto_send on, or moving the schedule to another customer,
-      // requires the (target) customer to have an email when auto_send is
-      // effectively on; otherwise every cron run degrades to a draft +
-      // warning. Mirrors the cookie-session PATCH route's guard.
-      const effectiveAutoSend = parsedChanges.auto_send ?? (current.auto_send as boolean)
       if (parsedChanges.customer_id !== undefined) {
         const { data: target, error: targetError } = await supabase
           .from('customers')
-          .select('id, email')
+          .select('id')
           .eq('id', parsedChanges.customer_id)
           .eq('company_id', companyId)
           .maybeSingle()
         if (targetError) throw new Error(`Database error: ${targetError.message}`)
         if (!target) throw new Error('Customer not found. Use gnubok_list_customers to find IDs.')
-        if (effectiveAutoSend && !target.email) {
-          throw new Error('Customer has no email address: auto_send requires one.')
-        }
-      } else if (parsedChanges.auto_send === true) {
-        const currentCustomer = current.customer as { name?: string; email?: string | null } | null
-        if (!currentCustomer?.email) {
-          throw new Error('Customer has no email address: auto_send requires one. Add an email to the customer first.')
-        }
       }
 
       // Same rules the PATCH route enforces, applied at staging so the
@@ -11920,7 +11876,6 @@ export const tools: McpTool[] = [
         your_reference: current.your_reference ?? null,
         our_reference: current.our_reference ?? null,
         notes: current.notes ?? null,
-        auto_send: current.auto_send,
         default_dimensions: current.default_dimensions ?? {},
         next_run_date: current.next_run_date,
         items: currentItems,

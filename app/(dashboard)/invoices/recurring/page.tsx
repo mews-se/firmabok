@@ -80,17 +80,6 @@ export default function RecurringInvoicesPage() {
     // so a second click would fire a duplicate request.
     if (togglingId) return
     const next = s.status === 'active' ? 'paused' : 'active'
-    // Reactivating an auto-send schedule resumes automatic emails to the
-    // customer, so make the user consciously confirm they mean to turn it on.
-    if (next === 'active' && s.auto_send) {
-      const ok = await confirmAction({
-        title: t('resume_autosend_confirm_title'),
-        description: t('resume_autosend_confirm', { name: s.name }),
-        confirmLabel: t('resume'),
-        variant: 'warning',
-      })
-      if (!ok) return
-    }
     setTogglingId(s.id)
     try {
       const res = await fetch(`/api/invoices/recurring/${s.id}`, {

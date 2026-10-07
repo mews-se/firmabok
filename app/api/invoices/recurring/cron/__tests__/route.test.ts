@@ -44,12 +44,6 @@ vi.mock('@/lib/invoices/recurring-schedule-service', async (importActual) => {
   }
 })
 
-// Route-level sandbox resolution (defence in depth, ASVS V2.3).
-const isSandboxCompany = vi.fn()
-vi.mock('@/lib/sandbox/guard', () => ({
-  isSandboxCompany: (...args: unknown[]) => isSandboxCompany(...args),
-}))
-
 import { GET } from '../route'
 
 type ResultRow = {
@@ -88,7 +82,7 @@ describe('GET /api/invoices/recurring/cron', () => {
     vi.useRealTimers()
   })
 
-  it('sends a schedule due today once the Stockholm send hour has arrived', async () => {
+  it('creates the invoice for a schedule due today once the Stockholm hour has arrived', async () => {
     // 08:30 UTC = 10:30 Stockholm (CEST) -> hour 10 >= send_hour 8
     vi.setSystemTime(new Date('2026-07-06T08:30:00Z'))
     enqueue({ data: [makeSchedule({ send_hour: 8 })], error: null })
@@ -97,8 +91,6 @@ describe('GET /api/invoices/recurring/cron', () => {
     executeRecurringSchedule.mockResolvedValue({
       invoiceId: 'inv-1',
       invoiceNumber: 'F-1',
-      autoSent: true,
-      warning: null,
     })
 
     const { status, body } = await parseJsonResponse<CronBody>(await GET(req()))
@@ -106,31 +98,6 @@ describe('GET /api/invoices/recurring/cron', () => {
     expect(executeRecurringSchedule).toHaveBeenCalledTimes(1)
     expect(body.succeeded).toBe(1)
     expect(body.results[0].invoiceId).toBe('inv-1')
-    // No auto_send on the schedule -> no sandbox lookup, no suppression.
-    expect(isSandboxCompany).not.toHaveBeenCalled()
-    expect(executeRecurringSchedule.mock.calls[0][3]).toEqual({ suppressAutoSend: false })
-  })
-
-  it('resolves the sandbox flag at the route level and suppresses auto-send for sandbox companies', async () => {
-    vi.setSystemTime(new Date('2026-07-06T08:30:00Z'))
-    enqueue({ data: [makeSchedule({ send_hour: 8, auto_send: true })], error: null })
-    // Atomic claim wins.
-    enqueue({ data: [{ id: 's-1' }], error: null })
-    isSandboxCompany.mockResolvedValue(true)
-    executeRecurringSchedule.mockResolvedValue({
-      invoiceId: 'inv-1',
-      invoiceNumber: 'F-1',
-      autoSent: false,
-      warning: 'Auto-utskick misslyckades: fakturan finns som utkast och kan skickas manuellt.',
-    })
-
-    const { status } = await parseJsonResponse<CronBody>(await GET(req()))
-    expect(status).toBe(200)
-    // Defence in depth: the route resolved the sandbox state itself and told
-    // the service explicitly, instead of relying only on the chokepoint
-    // inside sendInvoiceFromSchedule.
-    expect(isSandboxCompany).toHaveBeenCalledWith(expect.anything(), 'c-1')
-    expect(executeRecurringSchedule.mock.calls[0][3]).toEqual({ suppressAutoSend: true })
   })
 
   it('skips when a concurrent cron run already claimed the schedule', async () => {
@@ -212,8 +179,6 @@ describe('GET /api/invoices/recurring/cron', () => {
     executeRecurringSchedule.mockResolvedValue({
       invoiceId: 'inv-1',
       invoiceNumber: 'F-1',
-      autoSent: true,
-      warning: null,
     })
 
     const { body } = await parseJsonResponse<CronBody>(await GET(req()))

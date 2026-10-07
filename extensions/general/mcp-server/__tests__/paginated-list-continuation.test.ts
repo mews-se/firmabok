@@ -26,7 +26,6 @@ const scheduleRow = (id: string) => ({
   send_hour: 9,
   payment_terms_days: 30,
   currency: 'SEK',
-  auto_send: false,
   default_dimensions: null,
   next_run_date: '2026-08-25',
   last_run_at: null,

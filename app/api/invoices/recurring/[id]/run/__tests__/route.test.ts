@@ -61,8 +61,6 @@ describe('POST /api/invoices/recurring/[id]/run', () => {
     executeRecurringSchedule.mockResolvedValue({
       invoiceId: 'inv-9',
       invoiceNumber: 'F-9',
-      autoSent: false,
-      warning: null,
     })
 
     const { status, body } = await parseJsonResponse<{ data: { invoiceId: string } }>(
@@ -100,8 +98,6 @@ describe('POST /api/invoices/recurring/[id]/run', () => {
     executeRecurringSchedule.mockResolvedValue({
       invoiceId: 'inv-1',
       invoiceNumber: 'F-1',
-      autoSent: false,
-      warning: null,
     })
 
     const { status } = await parseJsonResponse(await POST(req(), params))

@@ -3,23 +3,20 @@ import { ensureInitialized } from '@/lib/init'
 import { withRouteContext } from '@/lib/api/with-route-context'
 import { errorResponse } from '@/lib/errors/get-structured-error'
 import { executeRecurringSchedule } from '@/lib/invoices/recurring-schedule-service'
-import { isSandboxCompany } from '@/lib/sandbox/guard'
 import type { RecurringInvoiceSchedule, RecurringInvoiceScheduleItem } from '@/types'
 
 ensureInitialized()
 
 /**
- * POST /api/invoices/recurring/[id]/run: manually generate (and, when the
- * schedule has auto_send, email) an invoice from a recurring schedule right
- * now, on demand.
+ * POST /api/invoices/recurring/[id]/run: manually generate a draft invoice
+ * from a recurring schedule right now, on demand.
  *
- * Why this exists: the cron never sends for a past date, and all schedules
- * were paused on the send-time rollout, so a user who wants this month's
- * invoice sent now needs an explicit, conscious action. This is that action.
- * It runs regardless of status (active or paused): the user is clicking the
- * button themselves, so awareness is not in question.
+ * The cron never creates an invoice for a past date, so a user who wants this
+ * month's invoice now needs an explicit, conscious action. This is that
+ * action. It runs regardless of status (active or paused): the user is
+ * clicking the button themselves, so awareness is not in question.
  *
- * It deliberately does NOT touch next_run_date: a manual send is out-of-band
+ * It deliberately does NOT touch next_run_date: a manual run is out-of-band
  * and must not disturb the monthly cadence.
  */
 export const POST = withRouteContext(
@@ -47,26 +44,18 @@ export const POST = withRouteContext(
       items: RecurringInvoiceScheduleItem[]
     }
 
-    // Defence in depth (ASVS V2.3): mirror the cron route. The sandbox rule
-    // is enforced inside the service's email chokepoint too; resolving it at
-    // the route level as well means the invariant survives refactors of the
-    // service internals. Invoice creation is unaffected (freeze-and-retain).
-    const suppressAutoSend = typed.auto_send
-      ? await isSandboxCompany(supabase, companyId)
-      : false
-
     try {
-      const result = await executeRecurringSchedule(supabase, typed, new Date(), { suppressAutoSend })
+      const result = await executeRecurringSchedule(supabase, typed)
 
       // Record the run for the list view (generated count, last invoice,
       // warning) but leave next_run_date untouched: the monthly cadence runs
-      // independently of this manual send.
+      // independently of this manual run.
       const { error: updateError } = await supabase
         .from('recurring_invoice_schedules')
         .update({
           last_run_at: new Date().toISOString(),
           last_invoice_id: result.invoiceId,
-          last_run_warning: result.warning,
+          last_run_warning: null,
           generated_count: typed.generated_count + 1,
         })
         .eq('id', id)
@@ -86,8 +75,6 @@ export const POST = withRouteContext(
         data: {
           invoiceId: result.invoiceId,
           invoiceNumber: result.invoiceNumber,
-          autoSent: result.autoSent,
-          warning: result.warning,
         },
       })
     } catch (err) {

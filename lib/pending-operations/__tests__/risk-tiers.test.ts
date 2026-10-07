@@ -59,29 +59,8 @@ describe('risk-tiers', () => {
     expect(isHighRisk('correct_entry')).toBe(true)
   })
 
-  // Recurring schedules are medium (the commit only writes a template), but
-  // auto_send=true turns the schedule into indefinite outbound email with no
-  // per-send approval: the same external side-effect that makes one-off
-  // send_invoice high.
-  it('escalates recurring schedules to high when params carry auto_send: true', () => {
+  it('keeps recurring schedules at medium', () => {
     expect(getRiskLevel('create_recurring_schedule')).toBe('medium')
     expect(getRiskLevel('update_recurring_schedule')).toBe('medium')
-
-    expect(getRiskLevel('create_recurring_schedule', { auto_send: true })).toBe('high')
-    expect(getRiskLevel('update_recurring_schedule', { auto_send: true })).toBe('high')
-    expect(isHighRisk('create_recurring_schedule', { auto_send: true })).toBe(true)
-    expect(isHighRisk('update_recurring_schedule', { auto_send: true })).toBe(true)
-  })
-
-  it('only a literal auto_send === true escalates, and only for schedule ops', () => {
-    expect(getRiskLevel('create_recurring_schedule', { auto_send: false })).toBe('medium')
-    expect(getRiskLevel('create_recurring_schedule', {})).toBe('medium')
-    // Truthy-but-not-true values (a 'true' string from a sloppy caller) do
-    // not escalate: the staged param is a boolean by schema, and anything
-    // else must fail closed at validation, not silently change tiers here.
-    expect(getRiskLevel('update_recurring_schedule', { auto_send: 'true' })).toBe('medium')
-    // auto_send on an unrelated op neither raises nor lowers its tier.
-    expect(getRiskLevel('create_customer', { auto_send: true })).toBe('low')
-    expect(getRiskLevel('send_invoice', { auto_send: false })).toBe('high')
   })
 })

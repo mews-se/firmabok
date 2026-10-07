@@ -39,13 +39,10 @@ export type CoreEvent =
   | { type: 'invoice.paid'; payload: { invoice: Invoice; paymentAmount: number; paymentDate: string; userId: string; companyId: string } }
   | { type: 'credit_note.created'; payload: { creditNote: CreditNote; userId: string; companyId: string } }
   // Recurring invoices: emitted by the daily cron after a schedule spawns
-  // an invoice. `autoSent` tells observers whether the email also went out
-  // (false means it was created as draft for manual review).
+  // a draft invoice.
   | { type: 'recurring_invoice.executed'; payload: {
       scheduleId: string
       invoice: Invoice
-      autoSent: boolean
-      warning: string | null
       userId: string
       companyId: string
     } }

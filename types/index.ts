@@ -1277,7 +1277,6 @@ export interface RecurringInvoiceSchedule {
   // default_dimensions at spawn time.
   default_dimensions?: Record<string, string>
 
-  auto_send: boolean
   status: RecurringInvoiceScheduleStatus
 
   next_run_date: string

@@ -2,9 +2,8 @@
  * Recurring invoice schedule service.
  *
  * Two public functions:
- *  - executeRecurringSchedule: spawn one invoice from a schedule, optionally
- *    sending it. Used by the daily cron and by a manual "run now" admin
- *    action.
+ *  - executeRecurringSchedule: spawn one draft invoice from a schedule. Used
+ *    by the daily cron and by a manual "run now" admin action.
  *  - computeNextRunDate: pure date helper. Given a reference date,
  *    day_of_month and interval_months, return the next date the schedule
  *    should run. Day-of-month values >28 are clamped to the last day of
@@ -20,36 +19,6 @@ import { eventBus } from '@/lib/events'
 import { getVatRules, getPermittedVatRates } from '@/lib/invoices/vat-rules'
 import { fetchExchangeRate, convertToSEK } from '@/lib/currency/riksbanken'
 import { ensureInvoiceNumber } from '@/lib/invoices/ensure-invoice-number'
-import { invoicePdfFilename } from '@/lib/invoices/pdf-filename'
-import { createInvoiceJournalEntry } from '@/lib/bookkeeping/invoice-entries'
-import { renderToBuffer } from '@react-pdf/renderer'
-import { InvoicePDF } from '@/lib/invoices/pdf-template'
-import {
-  prepareInvoicePdfRender,
-  buildSwishQrDataUrl,
-  buildPaymentLinkQrDataUrl,
-} from '@/lib/invoices/pdf-render-helpers'
-import { getEmailService } from '@/lib/email/service'
-import { isSandboxCompany } from '@/lib/sandbox/guard'
-import {
-  generateInvoiceEmailHtml,
-  generateInvoiceEmailText,
-  generateInvoiceEmailSubject,
-} from '@/lib/email/invoice-templates'
-import { linkToJournalEntry } from '@/lib/core/documents/document-service'
-import {
-  reserveInvoiceDelivery,
-  sendTrackedInvoiceEmail,
-} from '@/lib/invoices/invoice-deliveries'
-import {
-  exceedsInvoiceEmailRecipientLimit,
-  invoiceEmailRecipientCount,
-  resolveInvoiceEmailRecipients,
-} from '@/lib/invoices/email-recipients'
-import {
-  hasRequiredInvoicePaymentAccount,
-} from '@/lib/invoices/payment-accounts'
-import { createLogger } from '@/lib/logger'
 import { lastDayOfMonth, isoFromParts } from '@/lib/invoices/recurring-run-date'
 
 // Lives in the client-safe module now (the dialog needs Stockholm's calendar
@@ -58,20 +27,14 @@ import { lastDayOfMonth, isoFromParts } from '@/lib/invoices/recurring-run-date'
 export { getStockholmDateHour } from '@/lib/invoices/recurring-run-date'
 import type {
   Invoice,
-  InvoiceItem,
   Customer,
-  CompanySettings,
   RecurringInvoiceSchedule,
   RecurringInvoiceScheduleItem,
 } from '@/types'
 
-const log = createLogger('invoices/recurring-schedule-service')
-
 export interface ExecuteResult {
   invoiceId: string
   invoiceNumber: string | null
-  autoSent: boolean
-  warning: string | null
 }
 
 function assertValidCadence(dayOfMonth: number, intervalMonths: number): void {
@@ -188,20 +151,9 @@ export function computeInitialRunDate(
   return computeNextRunDate(today, dayOfMonth)
 }
 
-export interface ExecuteScheduleOptions {
-  /**
-   * Defence-in-depth sandbox suppression (ASVS V2.3): callers that resolved
-   * `isSandboxCompany` at the route level pass true to skip the auto-send
-   * path outright, so the sandbox invariant does not hinge solely on the
-   * chokepoint inside sendInvoiceFromSchedule. Freeze-and-retain semantics
-   * are unchanged: the invoice is still created as a numbered draft.
-   */
-  suppressAutoSend?: boolean
-}
-
 /**
- * Spawn one invoice from a schedule. Always creates the invoice; auto_send
- * additionally renders + emails + flips status + creates JE + archives PDF.
+ * Spawn one draft invoice from a schedule: header, items and an F-series
+ * number. Sending and booking stay manual (mark as sent on the invoice page).
  *
  * Idempotency: caller must check schedule.last_run_at >= today before calling
  * to prevent double-spawn on cron retries within the same UTC day.
@@ -210,10 +162,7 @@ export async function executeRecurringSchedule(
   supabase: SupabaseClient,
   schedule: RecurringInvoiceSchedule & { items: RecurringInvoiceScheduleItem[] },
   today: Date = new Date(),
-  options: ExecuteScheduleOptions = {},
 ): Promise<ExecuteResult> {
-  const opLog = log.child({ scheduleId: schedule.id, companyId: schedule.company_id })
-
   // 1. Load customer to resolve VAT rules.
   const { data: customer, error: customerErr } = await supabase
     .from('customers')
@@ -406,7 +355,7 @@ export async function executeRecurringSchedule(
     )
   }
 
-  // 8. Re-fetch with relations so downstream PDF/email/event have full data.
+  // 8. Re-fetch with relations so the event has full data.
   const { data: completeInvoice } = await supabase
     .from('invoices')
     .select('*, customer:customers(*), items:invoice_items(*)')
@@ -427,46 +376,11 @@ export async function executeRecurringSchedule(
     },
   })
 
-  let autoSent = false
-  let warning: string | null = null
-
-  // 9. Auto-send path. If anything below fails, we keep the invoice (now a
-  //    numbered draft) and surface a Swedish warning on the schedule: the
-  //    user can manually send from /invoices/[id].
-  if (schedule.auto_send && options.suppressAutoSend) {
-    // Route-level sandbox suppression: same outcome as the internal sandbox
-    // chokepoint below (no email, invoice retained as draft, manual-send
-    // warning), reached without entering the send path at all.
-    opLog.warn('auto-send suppressed by route-level sandbox guard', {
-      invoiceId: invoice.id,
-    })
-    warning = 'Auto-utskick misslyckades: fakturan finns som utkast och kan skickas manuellt.'
-  } else if (schedule.auto_send) {
-    try {
-      autoSent = await sendInvoiceFromSchedule(
-        supabase,
-        schedule.company_id,
-        schedule.user_id,
-        completeInvoice as Invoice & { customer: Customer; items: InvoiceItem[] },
-      )
-      if (!autoSent) {
-        warning = 'Auto-utskick misslyckades: fakturan finns som utkast och kan skickas manuellt.'
-      }
-    } catch (err) {
-      opLog.error('auto-send failed for recurring schedule', err as Error, {
-        invoiceId: invoice.id,
-      })
-      warning = `Auto-utskick misslyckades: ${err instanceof Error ? err.message : 'okänt fel'}`
-    }
-  }
-
   await eventBus.emit({
     type: 'recurring_invoice.executed',
     payload: {
       scheduleId: schedule.id,
       invoice: completeInvoice as Invoice,
-      autoSent,
-      warning,
       companyId: schedule.company_id,
       userId: schedule.user_id,
     },
@@ -475,223 +389,5 @@ export async function executeRecurringSchedule(
   return {
     invoiceId: invoice.id,
     invoiceNumber: (completeInvoice as Invoice).invoice_number,
-    autoSent,
-    warning,
   }
-}
-
-/**
- * Render PDF + send email + flip status + create JE + archive PDF.
- * Mirrors /api/invoices/[id]/send/route.ts but inline so we don't depend on
- * the route's auth chain. Returns true if email was sent successfully.
- */
-async function sendInvoiceFromSchedule(
-  supabase: SupabaseClient,
-  companyId: string,
-  userId: string,
-  invoice: Invoice & { customer: Customer; items: InvoiceItem[] },
-): Promise<boolean> {
-  const emailService = getEmailService()
-  if (!emailService.isConfigured()) {
-    log.warn('email service not configured; recurring schedule cannot auto-send', {
-      invoiceId: invoice.id,
-    })
-    return false
-  }
-  // The sandbox must never deliver a real email to a real address. The
-  // interactive send routes enforce this with guardSandbox, but cron and
-  // run-now reach this function without any route-level guard, so the
-  // invariant is enforced here at the email chokepoint. The invoice is still
-  // generated as a draft.
-  if (await isSandboxCompany(supabase, companyId)) {
-    log.warn('sandbox company; recurring schedule cannot auto-send', {
-      invoiceId: invoice.id,
-      companyId,
-    })
-    return false
-  }
-  if (!invoice.customer.email?.trim()) {
-    log.warn('customer has no email; recurring schedule cannot auto-send', {
-      invoiceId: invoice.id,
-      customerId: invoice.customer.id,
-    })
-    return false
-  }
-
-  const { data: company } = await supabase
-    .from('company_settings')
-    .select('*')
-    .eq('company_id', companyId)
-    .single<CompanySettings>()
-
-  if (!company) {
-    throw new Error('company settings missing: cannot send invoice')
-  }
-  if (!hasRequiredInvoicePaymentAccount(company, invoice)) {
-    log.warn('invoice currency has no usable payment account; recurring schedule cannot auto-send', {
-      invoiceId: invoice.id,
-      currency: invoice.currency,
-    })
-    return false
-  }
-  const recipients = resolveInvoiceEmailRecipients({
-    to: invoice.customer.email,
-    configuredCc: company.invoice_email_cc_addresses,
-    configuredBcc: company.invoice_email_bcc_addresses,
-    customerCc: invoice.customer.invoice_email_cc_addresses,
-    customerBcc: invoice.customer.invoice_email_bcc_addresses,
-    legacyCc: company.email,
-  })
-  if (exceedsInvoiceEmailRecipientLimit(recipients)) {
-    log.warn('invoice has too many email recipients; recurring schedule cannot auto-send', {
-      invoiceId: invoice.id,
-      recipientCount: invoiceEmailRecipientCount(recipients),
-    })
-    return false
-  }
-  let deliveryId: string
-  try {
-    deliveryId = await reserveInvoiceDelivery({
-      supabase,
-      companyId,
-      userId,
-      invoiceId: invoice.id,
-    })
-  } catch (err) {
-    log.error('failed to reserve recurring invoice delivery', err as Error, {
-      invoiceId: invoice.id,
-      companyId,
-    })
-    return false
-  }
-
-  const items = (invoice.items || []).slice().sort((a, b) => a.sort_order - b.sort_order)
-
-  // Render PDF with status overridden to 'sent' so the customer doesn't
-  // receive a "UTKAST" stamp.
-  const renderableInvoice = { ...invoice, status: 'sent' as const }
-  const { branding, company: renderCompany } = await prepareInvoicePdfRender(
-    company,
-    renderableInvoice.currency,
-  )
-  const swishQrDataUrl = await buildSwishQrDataUrl(renderCompany, renderableInvoice)
-  const paymentLinkQrDataUrl = await buildPaymentLinkQrDataUrl(renderableInvoice)
-  const pdfBuffer = await renderToBuffer(
-    InvoicePDF({
-      invoice: renderableInvoice,
-      customer: invoice.customer,
-      items,
-      company: renderCompany,
-      branding,
-      swishQrDataUrl,
-      paymentLinkQrDataUrl,
-    }),
-  )
-
-  const emailData = { invoice: renderableInvoice, customer: invoice.customer, company }
-  const filename = invoicePdfFilename({
-    companyName: company.company_name,
-    customerName: invoice.customer.name,
-    invoiceNumber: invoice.invoice_number,
-    invoiceId: invoice.id,
-    invoiceDate: invoice.invoice_date,
-    documentType: invoice.document_type,
-  })
-  const subject = generateInvoiceEmailSubject(emailData)
-  const html = generateInvoiceEmailHtml(emailData)
-  const text = generateInvoiceEmailText(emailData)
-  let result
-  try {
-    result = await sendTrackedInvoiceEmail({
-      supabase,
-      emailService,
-      companyId,
-      userId,
-      invoiceId: invoice.id,
-      deliveryId,
-      to: recipients.to,
-      cc: recipients.cc,
-      bcc: recipients.bcc,
-      subject,
-      html,
-      text,
-      replyTo: company.email || undefined,
-      fromName: company.company_name ?? undefined,
-      filename,
-      pdfBuffer,
-    })
-  } catch (err) {
-    log.error('failed to persist recurring invoice delivery before send', err as Error, {
-      invoiceId: invoice.id,
-    })
-    return false
-  }
-
-  if (result.trackingWarning) {
-    log.error(
-      'recurring invoice delivery snapshot requires reconciliation',
-      new Error(result.trackingWarning),
-      { invoiceId: invoice.id, deliveryId: result.deliveryId },
-    )
-  }
-
-  if (!result.success) {
-    log.error(
-      'email provider failed in recurring schedule auto-send',
-      new Error(result.error || 'unknown'),
-      { invoiceId: invoice.id },
-    )
-    return false
-  }
-
-  // Email delivered: flip status, create JE, archive PDF. Treat downstream
-  // failures as warnings (don't unsend the email).
-  await supabase
-    .from('invoices')
-    .update({ status: 'sent' })
-    .eq('id', invoice.id)
-    .eq('company_id', companyId)
-
-  const accountingMethod = (company as { accounting_method?: string }).accounting_method
-  let journalEntryId: string | undefined
-  if (!accountingMethod || accountingMethod === 'accrual') {
-    try {
-      const journalEntry = await createInvoiceJournalEntry(
-        supabase,
-        companyId,
-        userId,
-        invoice,
-        company.entity_type,
-      )
-      if (journalEntry) {
-        journalEntryId = journalEntry.id
-        await supabase
-          .from('invoices')
-          .update({ journal_entry_id: journalEntry.id })
-          .eq('id', invoice.id)
-      }
-    } catch (err) {
-      log.error('failed to create journal entry for recurring invoice', err as Error, {
-        invoiceId: invoice.id,
-      })
-    }
-  }
-
-  if (journalEntryId) {
-    try {
-      await linkToJournalEntry(supabase, companyId, result.documentId, journalEntryId)
-    } catch (err) {
-      log.error('failed to link recurring invoice PDF to journal entry', err as Error, {
-        invoiceId: invoice.id,
-        documentId: result.documentId,
-      })
-    }
-  }
-
-  await eventBus.emit({
-    type: 'invoice.sent',
-    payload: { invoice, companyId, userId },
-  })
-
-  return true
 }

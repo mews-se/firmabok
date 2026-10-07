@@ -66,10 +66,7 @@ export const OPERATION_RISK_TIERS: Record<string, RiskLevel> = {
   // template (nothing is booked or sent at commit time), and the schedule is
   // pausable/deletable before the next cron run. Not 'low' because an
   // approved schedule keeps generating numbered invoices without any further
-  // approval. With params.auto_send === true the schedule also keeps EMAILING
-  // the customer every cycle: a standing order for the same external
-  // side-effect that puts one-off send_invoice at 'high', so getRiskLevel
-  // escalates these two to 'high' when it can see that param.
+  // approval.
   create_recurring_schedule: 'medium',
   update_recurring_schedule: 'medium',
   // Supplier master data carries payment-routing fields (IBAN, BIC, bankgiro,
@@ -131,35 +128,7 @@ export const OPERATION_RISK_TIERS: Record<string, RiskLevel> = {
   reverse_entry: 'high',
 }
 
-/**
- * Op types whose tier depends on the staged params, not just the type.
- * Checked inside getRiskLevel so every caller that can pass params gets the
- * escalation for free; callers without params in scope fall back to the
- * static (never lower) tier.
- */
-function paramEscalatedRisk(
-  operationType: string,
-  params: Record<string, unknown> | undefined,
-): RiskLevel | null {
-  // A recurring schedule with auto_send=true is indefinite outbound email
-  // with no further approval per send: the exact external side-effect that
-  // makes one-off send_invoice 'high'.
-  if (
-    (operationType === 'create_recurring_schedule' ||
-      operationType === 'update_recurring_schedule') &&
-    params?.auto_send === true
-  ) {
-    return 'high'
-  }
-  return null
-}
-
-export function getRiskLevel(
-  operationType: string,
-  params?: Record<string, unknown>,
-): RiskLevel {
-  const escalated = paramEscalatedRisk(operationType, params)
-  if (escalated) return escalated
+export function getRiskLevel(operationType: string): RiskLevel {
   // Default to 'high' for unknown ops, fail-safe: unknown means human review.
   return OPERATION_RISK_TIERS[operationType] ?? 'high'
 }
@@ -168,6 +137,6 @@ export function getRiskLevel(
  * High-risk operations are NEVER auto-committed, regardless of company opt-in
  * or actor trust. Encoded here (not in DB config) so it can't be bypassed.
  */
-export function isHighRisk(operationType: string, params?: Record<string, unknown>): boolean {
-  return getRiskLevel(operationType, params) === 'high'
+export function isHighRisk(operationType: string): boolean {
+  return getRiskLevel(operationType) === 'high'
 }

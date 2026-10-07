@@ -475,22 +475,13 @@ async function commitCreateRecurringSchedule(
 
   const { data: customer, error: customerError } = await supabase
     .from('customers')
-    .select('id, email')
+    .select('id')
     .eq('id', validated.customer_id)
     .eq('company_id', companyId)
     .maybeSingle()
 
   if (customerError) return { error: customerError.message, status: 500 }
   if (!customer) return { error: 'Customer not found', status: 404 }
-
-  // auto_send without a customer email would silently degrade to a monthly
-  // draft + warning at cron time. Reject at commit exactly like the route.
-  if (validated.auto_send && !customer.email) {
-    return {
-      error: 'Customer has no email address: automatic sending requires one',
-      status: 400,
-    }
-  }
 
   // Same grid rule as the create route. A start_date that turned stale
   // between staging and approval is NOT rejected: the cron rolls a missed
@@ -526,7 +517,6 @@ async function commitCreateRecurringSchedule(
       your_reference: validated.your_reference ?? null,
       our_reference: validated.our_reference ?? null,
       notes: validated.notes ?? null,
-      auto_send: validated.auto_send,
       default_dimensions: validated.default_dimensions ?? {},
       next_run_date: nextRunDate,
       status: 'active',
@@ -574,7 +564,6 @@ async function commitCreateRecurringSchedule(
       interval_months: validated.interval_months,
       send_hour: validated.send_hour,
       currency: validated.currency,
-      auto_send: validated.auto_send,
       status: 'active',
       next_run_date: nextRunDate,
       item_count: itemRows.length,
@@ -606,7 +595,7 @@ async function commitUpdateRecurringSchedule(
 
   const { data: existing, error: existingError } = await supabase
     .from('recurring_invoice_schedules')
-    .select('id, status, auto_send, customer_id, day_of_month, interval_months, next_run_date')
+    .select('id, status, day_of_month, interval_months, next_run_date')
     .eq('id', scheduleId)
     .eq('company_id', companyId)
     .maybeSingle()
@@ -614,28 +603,19 @@ async function commitUpdateRecurringSchedule(
   if (existingError) return { error: existingError.message, status: 500 }
   if (!existing) return { error: 'Recurring schedule not found', status: 404 }
 
-  // Turning auto_send on (or moving the schedule to another customer) needs
-  // the target customer checked: email when auto_send is effectively on
-  // (mirrors the PATCH route), and company membership always (this executor
-  // runs on a service-role client with no RLS, so a cross-tenant customer_id
-  // would otherwise pass the FK).
-  if (changes.customer_id !== undefined || changes.auto_send === true) {
-    const effectiveAutoSend = changes.auto_send ?? existing.auto_send
+  // Moving the schedule to another customer needs the target checked for
+  // company membership: this executor runs on a service-role client with no
+  // RLS, so a cross-tenant customer_id would otherwise pass the FK.
+  if (changes.customer_id !== undefined) {
     const { data: customer, error: customerError } = await supabase
       .from('customers')
-      .select('id, email')
-      .eq('id', changes.customer_id ?? existing.customer_id)
+      .select('id')
+      .eq('id', changes.customer_id)
       .eq('company_id', companyId)
       .maybeSingle()
 
     if (customerError) return { error: customerError.message, status: 500 }
     if (!customer) return { error: 'Customer not found', status: 404 }
-    if (effectiveAutoSend && !customer.email) {
-      return {
-        error: 'Customer has no email address: automatic sending requires one',
-        status: 400,
-      }
-    }
   }
 
   const updateRow: Record<string, unknown> = {}

@@ -155,7 +155,6 @@ function NewRecurringScheduleForm({
         send_hour: z.number().int().min(0).max(23),
         payment_terms_days: z.number().int().min(0).max(90),
         currency: z.enum(['SEK', 'EUR', 'USD', 'GBP', 'NOK', 'DKK']),
-        auto_send: z.boolean(),
         your_reference: z.string().optional(),
         our_reference: z.string().optional(),
         notes: z.string().optional(),
@@ -220,7 +219,6 @@ function NewRecurringScheduleForm({
           send_hour: schedule.send_hour ?? 8,
           payment_terms_days: schedule.payment_terms_days,
           currency: schedule.currency,
-          auto_send: schedule.auto_send,
           your_reference: schedule.your_reference ?? undefined,
           our_reference: schedule.our_reference ?? undefined,
           notes: schedule.notes ?? undefined,
@@ -246,7 +244,6 @@ function NewRecurringScheduleForm({
           send_hour: 8,
           payment_terms_days: 30,
           currency: 'SEK',
-          auto_send: false,
           items: [{ description: '', quantity: 1, unit: 'st', unit_price: 0, vat_rate: 25 }],
         },
   })
@@ -327,21 +324,6 @@ function NewRecurringScheduleForm({
     Number.isInteger(watchDay) && watchInterval >= 1
       ? projectRunDates(watchRunDate, watchDay, watchInterval, 4).slice(1)
       : []
-  // Automatic sending requires a customer email; without one the cron would
-  // just produce a monthly draft + warning. Block it at the source.
-  const watchCustomerId = watch('customer_id')
-  const selectedCustomer = customers.find((c) => c.id === watchCustomerId)
-  const customerMissingEmail = !!selectedCustomer && !selectedCustomer.email
-  const autoSendBlocked = customerMissingEmail
-
-  // The onValueChange guard on the customer select only fires on a manual
-  // change. In edit mode a schedule can load with auto_send=true against a
-  // customer who has since lost their email (customers load async, after the
-  // form's defaultValues). Force auto_send off whenever the effective customer
-  // has no email so a disabled-but-checked box can't PATCH auto_send=true.
-  useEffect(() => {
-    if (autoSendBlocked) setValue('auto_send', false)
-  }, [autoSendBlocked, setValue])
   const subtotalRaw = items.reduce(
     (sum, it) => sum + (it.quantity || 0) * (it.unit_price || 0),
     0,
@@ -376,13 +358,7 @@ function NewRecurringScheduleForm({
               render={({ field }) => (
                 <Select
                   value={field.value}
-                  onValueChange={(v) => {
-                    field.onChange(v)
-                    // Switching to a customer without email while auto-send is
-                    // checked would create an unsendable schedule.
-                    const c = customers.find((x) => x.id === v)
-                    if (!c?.email) setValue('auto_send', false)
-                  }}
+                  onValueChange={field.onChange}
                 >
                   <SelectTrigger id="customer_id">
                     <SelectValue placeholder={t('customer_placeholder')} />
@@ -544,38 +520,6 @@ function NewRecurringScheduleForm({
                   </Select>
                 )}
               />
-            </div>
-          </div>
-
-          <div className="rounded-lg border border-border p-4">
-            <div className="flex items-start gap-3">
-              <Controller
-                control={control}
-                name="auto_send"
-                render={({ field }) => (
-                  <input
-                    type="checkbox"
-                    id="auto_send"
-                    checked={field.value}
-                    onChange={(e) => field.onChange(e.target.checked)}
-                    disabled={autoSendBlocked}
-                    className="mt-1 h-4 w-4"
-                  />
-                )}
-              />
-              <div className="flex-1">
-                <Label htmlFor="auto_send" className="font-medium">
-                  {t('auto_send_label')}
-                </Label>
-                <p className="text-sm text-muted-foreground mt-1">
-                  {t('auto_send_description')}
-                </p>
-                {customerMissingEmail && (
-                  <p className="text-sm text-warning-foreground mt-1">
-                    {t('auto_send_missing_email')}
-                  </p>
-                )}
-              </div>
             </div>
           </div>
         </CardContent>

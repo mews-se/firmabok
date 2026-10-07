@@ -44,6 +44,7 @@ vi.mock('@/lib/auth/require-write', () => ({
 import { PATCH } from '../route'
 
 const mockUser = { id: 'user-1', email: 'test@test.se' }
+const OTHER_CUSTOMER_ID = '550e8400-e29b-41d4-a716-446655440001'
 const params = { params: Promise.resolve({ id: 's-1' }) }
 const patchReq = (body: unknown) =>
   createMockRequest('/api/invoices/recurring/s-1', { method: 'PATCH', body })
@@ -231,25 +232,27 @@ describe('PATCH /api/invoices/recurring/[id] reactivation', () => {
     expect(updatePayloads).toHaveLength(0)
   })
 
-  it('rejects enabling auto_send when the customer has no email', async () => {
-    scheduleRow = { auto_send: false, customer_id: 'c-1' }
-    customerRow = { email: null }
+  it('rejects moving the schedule to a customer outside the company', async () => {
+    scheduleRow = { customer_id: 'c-1' }
+    customerRow = null
 
     const { status, body } = await parseJsonResponse<{ type: string }>(
-      await PATCH(patchReq({ auto_send: true }), params),
+      await PATCH(patchReq({ customer_id: OTHER_CUSTOMER_ID }), params),
     )
-    expect(status).toBe(400)
-    expect(body.type).toBe('validation_error')
+    expect(status).toBe(404)
+    expect(body.type).toBe('not_found')
     expect(updatePayloads).toHaveLength(0)
   })
 
-  it('allows enabling auto_send when the customer has an email', async () => {
-    scheduleRow = { auto_send: false, customer_id: 'c-1' }
-    customerRow = { email: 'kund@test.se' }
+  it('allows moving the schedule to a customer in the company', async () => {
+    scheduleRow = { customer_id: 'c-1' }
+    customerRow = { id: OTHER_CUSTOMER_ID }
 
-    const { status } = await parseJsonResponse(await PATCH(patchReq({ auto_send: true }), params))
+    const { status } = await parseJsonResponse(
+      await PATCH(patchReq({ customer_id: OTHER_CUSTOMER_ID }), params),
+    )
     expect(status).toBe(200)
-    expect(updatePayloads[0]).toEqual({ auto_send: true })
+    expect(updatePayloads[0]).toEqual({ customer_id: OTHER_CUSTOMER_ID })
   })
 })
 

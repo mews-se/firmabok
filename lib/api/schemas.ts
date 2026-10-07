@@ -714,14 +714,13 @@ export const CreateRecurringScheduleSchema = z.object({
   // Months between runs: 1 = monthly (default), 3 = quarterly, 6 = half-
   // yearly, 12 = yearly. Any 1-12 is accepted (e.g. every 2 months).
   interval_months: z.number().int().min(1).max(12).default(1),
-  // Whole hour (0-23) in Europe/Stockholm at which the invoice is sent.
+  // Whole hour (0-23) in Europe/Stockholm at which the invoice is created.
   send_hour: z.number().int().min(0).max(23).default(8),
   payment_terms_days: z.number().int().min(0).max(90).default(30),
   currency: CurrencySchema.default('SEK'),
   your_reference: z.string().optional(),
   our_reference: z.string().optional(),
   notes: z.string().optional(),
-  auto_send: z.boolean().default(false),
   // Copied onto invoices.default_dimensions for every generated invoice.
   default_dimensions: DimensionsBagSchema.optional(),
   // Optional: when to first run. Defaults to next occurrence of day_of_month
@@ -745,7 +744,6 @@ export const UpdateRecurringScheduleSchema = z.object({
   your_reference: z.string().nullable().optional(),
   our_reference: z.string().nullable().optional(),
   notes: z.string().nullable().optional(),
-  auto_send: z.boolean().optional(),
   status: z.enum(['active', 'paused']).optional(),
   // Explicit next run date: re-phases the schedule (e.g. move a yearly
   // schedule from January to February). Must be on the schedule grid for

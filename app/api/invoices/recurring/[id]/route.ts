@@ -77,43 +77,20 @@ export const PATCH = withRouteContext(
       if (v !== undefined) updateRow[k] = v
     }
 
-    // Turning auto_send on (or moving the schedule to another customer while
-    // it is on) requires the customer to have an email address; otherwise
-    // every cron run degrades to a draft + warning. Mirrors the create
-    // route's guard.
-    if (input.auto_send === true || input.customer_id !== undefined) {
-      const { data: current } = await supabase
-        .from('recurring_invoice_schedules')
-        .select('auto_send, customer_id')
-        .eq('id', id)
+    // Moving the schedule to another customer: it must belong to this company.
+    if (input.customer_id !== undefined) {
+      const { data: customer } = await supabase
+        .from('customers')
+        .select('id')
+        .eq('id', input.customer_id)
         .eq('company_id', companyId)
-        .single()
+        .maybeSingle()
 
-      if (!current) {
+      if (!customer) {
         return NextResponse.json(
-          { error: 'Schedule not found', type: 'not_found' },
+          { error: 'Customer not found', type: 'not_found' },
           { status: 404 },
         )
-      }
-
-      const effectiveAutoSend = input.auto_send ?? current.auto_send
-      if (effectiveAutoSend) {
-        const { data: customer } = await supabase
-          .from('customers')
-          .select('email')
-          .eq('id', input.customer_id ?? current.customer_id)
-          .eq('company_id', companyId)
-          .maybeSingle()
-
-        if (!customer?.email) {
-          return NextResponse.json(
-            {
-              error: 'Customer has no email address: automatic sending requires one',
-              type: 'validation_error',
-            },
-            { status: 400 },
-          )
-        }
       }
     }
 

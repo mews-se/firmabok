@@ -8,7 +8,6 @@ import {
   rollNextRunDateForward,
   getStockholmDateHour,
 } from '@/lib/invoices/recurring-schedule-service'
-import { isSandboxCompany } from '@/lib/sandbox/guard'
 import type {
   RecurringInvoiceSchedule,
   RecurringInvoiceScheduleItem,
@@ -22,20 +21,21 @@ type DueSchedule = RecurringInvoiceSchedule & { items: RecurringInvoiceScheduleI
 /**
  * GET /api/invoices/recurring/cron: hourly (top of every hour, UTC).
  *
- * Users pick a send hour in Swedish local time (send_hour, 0-23,
+ * Users pick a run hour in Swedish local time (send_hour, 0-23,
  * Europe/Stockholm). This cron runs every hour and, for each active schedule
- * due today, sends only once the chosen Stockholm hour has arrived.
+ * due today, creates the draft invoice once the chosen Stockholm hour has
+ * arrived.
  *
  * Safety rules (see DECISIONS.md):
- *  - Never send for a date in the past. A schedule whose next_run_date is
+ *  - Never create an invoice for a date in the past. A schedule whose next_run_date is
  *    before today (a missed prior day, e.g. after an outage or on a schedule
  *    the user just reactivated) is rolled forward to its next future
  *    occurrence WITHOUT generating anything.
  *  - Paused schedules are ignored (status filter). Existing schedules were
- *    paused on deploy so nothing resumes sending behind the user's back.
+ *    paused on deploy so nothing resumes behind the user's back.
  *
  * Each schedule runs in isolated try/catch so a failure on one doesn't block
- * the rest. On a successful send: bump next_run_date one interval_months
+ * the rest. On success: bump next_run_date one interval_months
  * step forward (1 = monthly, 3 = quarterly, 6 = half-yearly, 12 = yearly), set
  * last_run_at/last_invoice_id/generated_count. On failure: leave next_run_date
  * alone so a later run retries.
@@ -76,8 +76,6 @@ export const GET = withCronContext('cron.recurring_invoices', async (_request, c
     scheduleId: string
     invoiceId?: string
     invoiceNumber?: string | null
-    autoSent?: boolean
-    warning?: string | null
     skipped?: boolean
     skipReason?: string
     error?: string
@@ -85,7 +83,7 @@ export const GET = withCronContext('cron.recurring_invoices', async (_request, c
   const results: RunResult[] = []
 
   const summary = await ctx.forEach('schedule', schedules, async (schedule, itemCtx) => {
-    // 1. Missed a prior day: never send for the past. Roll forward to the next
+    // 1. Missed a prior day: never create an invoice for the past. Roll forward to the next
     //    future occurrence (this month if the day hasn't passed, else next
     //    month) without generating an invoice. This also protects the
     //    reactivation path: turning a long-paused schedule back on rolls it to
@@ -193,18 +191,9 @@ export const GET = withCronContext('cron.recurring_invoices', async (_request, c
     //    items) fails every hourly retry and would otherwise skip the month
     //    silently via the stale roll-forward above. A later successful run
     //    overwrites the warning.
-    // Defence in depth (ASVS V2.3): the email chokepoint inside the schedule
-    // service enforces the sandbox rule on its own; the route additionally
-    // resolves it here and passes an explicit suppress flag, so the invariant
-    // does not hinge on a single check buried in a library function. The
-    // invoice is still generated as a draft (freeze-and-retain).
-    const suppressAutoSend = schedule.auto_send
-      ? await isSandboxCompany(supabase, schedule.company_id)
-      : false
-
     let result: Awaited<ReturnType<typeof executeRecurringSchedule>>
     try {
-      result = await executeRecurringSchedule(supabase, schedule, now, { suppressAutoSend })
+      result = await executeRecurringSchedule(supabase, schedule, now)
     } catch (err) {
       const reason = (err instanceof Error ? err.message : String(err)).slice(0, 300)
       await supabase
@@ -230,7 +219,7 @@ export const GET = withCronContext('cron.recurring_invoices', async (_request, c
         next_run_date: nextRunDate,
         last_run_at: now.toISOString(),
         last_invoice_id: result.invoiceId,
-        last_run_warning: result.warning,
+        last_run_warning: null,
         generated_count: schedule.generated_count + 1,
       })
       .eq('id', schedule.id)
@@ -253,8 +242,6 @@ export const GET = withCronContext('cron.recurring_invoices', async (_request, c
       scheduleId: schedule.id,
       invoiceId: result.invoiceId,
       invoiceNumber: result.invoiceNumber,
-      autoSent: result.autoSent,
-      warning: result.warning,
     })
   })
 

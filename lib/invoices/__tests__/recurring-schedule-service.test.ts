@@ -7,16 +7,10 @@ import {
   getStockholmDateHour,
   executeRecurringSchedule,
 } from '@/lib/invoices/recurring-schedule-service'
-import { createQueuedMockSupabase, makeCustomer, makeCompanySettings } from '@/tests/helpers'
+import { createQueuedMockSupabase, makeCustomer } from '@/tests/helpers'
 import { eventBus } from '@/lib/events'
 
-// ── Mocks for the executeRecurringSchedule auto-send path ─────────────
 // The pure date-helper tests below don't touch any of these modules.
-
-const mockRenderToBuffer = vi.fn()
-vi.mock('@react-pdf/renderer', () => ({
-  renderToBuffer: (...args: unknown[]) => mockRenderToBuffer(...args),
-}))
 
 const mockFetchExchangeRate = vi.fn()
 vi.mock('@/lib/currency/riksbanken', async () => {
@@ -25,92 +19,9 @@ vi.mock('@/lib/currency/riksbanken', async () => {
   return { ...actual, fetchExchangeRate: (...args: unknown[]) => mockFetchExchangeRate(...args) }
 })
 
-const mockInvoicePDF = vi.fn()
-vi.mock('@/lib/invoices/pdf-template', () => ({
-  InvoicePDF: (...args: unknown[]) => mockInvoicePDF(...args),
-}))
-
-const mockPrepareRender = vi.fn()
-const mockSwishQr = vi.fn()
-const mockPaymentLinkQr = vi.fn()
-vi.mock('@/lib/invoices/pdf-render-helpers', () => ({
-  prepareInvoicePdfRender: (...args: unknown[]) => mockPrepareRender(...args),
-  buildSwishQrDataUrl: (...args: unknown[]) => mockSwishQr(...args),
-  buildPaymentLinkQrDataUrl: (...args: unknown[]) => mockPaymentLinkQr(...args),
-}))
-
-const mockSendEmail = vi.fn()
-const mockIsConfigured = vi.fn()
-vi.mock('@/lib/email/service', () => ({
-  getEmailService: () => ({
-    sendEmail: (...args: unknown[]) => mockSendEmail(...args),
-    isConfigured: () => mockIsConfigured(),
-  }),
-}))
-
-const mockSendTrackedInvoiceEmail = vi.fn(async (input: {
-  emailService: { sendEmail: (options: unknown) => Promise<Record<string, unknown>> }
-  to: string | string[]
-  cc?: string | string[]
-  bcc?: string | string[]
-  subject: string
-  html: string
-  text: string
-  replyTo?: string
-  fromName?: string
-  filename: string
-  pdfBuffer: Buffer
-}) => ({
-  ...(await input.emailService.sendEmail({
-    to: input.to,
-    cc: input.cc,
-    bcc: input.bcc,
-    subject: input.subject,
-    html: input.html,
-    text: input.text,
-    replyTo: input.replyTo,
-    fromName: input.fromName,
-    attachments: [{
-      filename: input.filename,
-      content: input.pdfBuffer,
-      contentType: 'application/pdf',
-    }],
-  })),
-  deliveryId: 'delivery-1',
-  documentId: 'document-1',
-}))
-const mockReserveInvoiceDelivery = vi.fn().mockResolvedValue('delivery-1')
-vi.mock('@/lib/invoices/invoice-deliveries', () => ({
-  InvoiceDeliverySnapshotError: class InvoiceDeliverySnapshotError extends Error {},
-  reserveInvoiceDelivery: (...args: unknown[]) => mockReserveInvoiceDelivery(...args),
-  sendTrackedInvoiceEmail: (...args: unknown[]) => mockSendTrackedInvoiceEmail(...args as [never]),
-}))
-
-vi.mock('@/lib/email/invoice-templates', () => ({
-  generateInvoiceEmailHtml: vi.fn().mockReturnValue('<html>Invoice</html>'),
-  generateInvoiceEmailText: vi.fn().mockReturnValue('Invoice text'),
-  generateInvoiceEmailSubject: vi.fn().mockReturnValue('Faktura F-1'),
-}))
-
-const mockIsSandbox = vi.fn()
-vi.mock('@/lib/sandbox/guard', () => ({
-  isSandboxCompany: (...args: unknown[]) => mockIsSandbox(...args),
-}))
-
 const mockEnsureNumber = vi.fn()
 vi.mock('@/lib/invoices/ensure-invoice-number', () => ({
   ensureInvoiceNumber: (...args: unknown[]) => mockEnsureNumber(...args),
-}))
-
-const mockCreateJE = vi.fn()
-vi.mock('@/lib/bookkeeping/invoice-entries', () => ({
-  createInvoiceJournalEntry: (...args: unknown[]) => mockCreateJE(...args),
-}))
-
-const mockUploadDocument = vi.fn()
-vi.mock('@/lib/core/documents/document-service', () => ({
-  uploadDocument: (...args: unknown[]) => mockUploadDocument(...args),
-  linkToJournalEntry: vi.fn().mockResolvedValue(undefined),
 }))
 
 describe('computeNextRunDate', () => {
@@ -305,7 +216,7 @@ describe('getStockholmDateHour', () => {
   })
 })
 
-describe('executeRecurringSchedule auto-send', () => {
+describe('executeRecurringSchedule draft creation', () => {
   const { supabase, enqueue, reset } = createQueuedMockSupabase()
   const client = supabase as unknown as SupabaseClient
   const today = new Date('2026-07-06T06:30:00Z')
@@ -314,13 +225,6 @@ describe('executeRecurringSchedule auto-send', () => {
     id: 'cust-1',
     name: 'Kund ÅÄÖ AB',
     email: 'kund@test.se',
-  })
-  const company = makeCompanySettings({
-    company_name: 'Oppy Sverige',
-    accounting_method: 'accrual',
-    bankgiro: '123-4567',
-    invoice_email_cc_addresses: ['fixed-copy@test.se'],
-    invoice_email_bcc_addresses: ['fixed-archive@test.se'],
   })
 
   function makeSchedule() {
@@ -337,7 +241,6 @@ describe('executeRecurringSchedule auto-send', () => {
       your_reference: null,
       our_reference: null,
       notes: null,
-      auto_send: true,
       status: 'active',
       next_run_date: '2026-07-06',
       last_run_at: null,
@@ -374,173 +277,49 @@ describe('executeRecurringSchedule auto-send', () => {
       currency: 'SEK',
       total: 12500,
       credited_invoice_id: null,
-      payment_link_url: null,
       customer,
       items: [{ id: 'item-1', sort_order: 0 }],
     }
-  }
-
-  /** Queue for the full happy path (see call order in the service). */
-  function enqueueHappyPath() {
-    enqueue({ data: customer, error: null }) // customers select
-    enqueue({ data: { vat_registered: true }, error: null }) // company_settings VAT gate
-    enqueue({ data: makeInsertedInvoice(), error: null }) // invoices insert
-    enqueue({ data: null, error: null }) // invoice_items insert
-    enqueue({ data: makeCompleteInvoice(), error: null }) // re-fetch with relations
-    enqueue({ data: company, error: null }) // company_settings (auto-send)
-    enqueue({ data: null, error: null }) // status flip to sent
-    enqueue({ data: null, error: null }) // journal_entry_id write-back
   }
 
   beforeEach(() => {
     vi.clearAllMocks()
     reset()
     eventBus.clear()
-    mockIsConfigured.mockReturnValue(true)
-    mockIsSandbox.mockResolvedValue(false)
     mockEnsureNumber.mockImplementation(
       async (_supabase: unknown, _companyId: unknown, inv: { invoice_number: string | null }) => {
         inv.invoice_number = 'F-1'
         return 'F-1'
       },
     )
-    mockPrepareRender.mockResolvedValue({ branding: {}, company })
-    mockSwishQr.mockResolvedValue(null)
-    mockPaymentLinkQr.mockResolvedValue(null)
-    mockRenderToBuffer.mockResolvedValue(Buffer.from('fake-pdf'))
-    mockInvoicePDF.mockReturnValue('pdf-element')
-    mockSendEmail.mockResolvedValue({ success: true, messageId: 'm-1' })
-    mockCreateJE.mockResolvedValue({ id: 'je-1' })
-    mockUploadDocument.mockResolvedValue({})
   })
 
-  it('passes the invoice payment link QR to the PDF', async () => {
+  it('creates a numbered draft and leaves it unsent', async () => {
     enqueue({ data: customer, error: null }) // customers select
     enqueue({ data: { vat_registered: true }, error: null }) // company_settings VAT gate
     enqueue({ data: makeInsertedInvoice(), error: null }) // invoices insert
     enqueue({ data: null, error: null }) // invoice_items insert
-    enqueue({
-      data: { ...makeCompleteInvoice(), payment_link_url: 'https://pay.example/x' },
-      error: null,
-    }) // re-fetch with relations
-    enqueue({ data: company, error: null }) // company_settings (auto-send)
-    enqueue({ data: null, error: null }) // status flip to sent
-    enqueue({ data: null, error: null }) // journal_entry_id write-back
-    mockPaymentLinkQr.mockResolvedValue('data:image/png;base64,QR')
+    enqueue({ data: makeCompleteInvoice(), error: null }) // re-fetch with relations
 
     const result = await executeRecurringSchedule(client, makeSchedule(), today)
 
-    expect(result.autoSent).toBe(true)
-    expect(result.warning).toBeNull()
-    expect(mockSendTrackedInvoiceEmail).toHaveBeenCalledWith(
-      expect.objectContaining({
-        companyId: 'company-1',
-        invoiceId: 'inv-1',
-        cc: ['fixed-copy@test.se'],
-        bcc: ['fixed-archive@test.se'],
-      }),
-    )
-    // QR built from the renderable copy (status overridden to 'sent').
-    expect(mockPaymentLinkQr).toHaveBeenCalledWith(
-      expect.objectContaining({ payment_link_url: 'https://pay.example/x', status: 'sent' }),
-    )
-    expect(mockInvoicePDF).toHaveBeenCalledWith(
-      expect.objectContaining({ paymentLinkQrDataUrl: 'data:image/png;base64,QR' }),
-    )
-    expect(mockSendEmail).toHaveBeenCalledWith(expect.objectContaining({
-      attachments: [expect.objectContaining({
-        filename: 'Oppy Sverige x Kund ÅÄÖ AB Faktura nr F-1 20260706.pdf',
-      })],
-    }))
+    expect(result).toEqual({ invoiceId: 'inv-1', invoiceNumber: 'F-1' })
+    expect(mockEnsureNumber).toHaveBeenCalledTimes(1)
   })
 
-  it('does not reserve a delivery when the customer email is blank', async () => {
-    const customerWithoutEmail = { ...customer, email: '   ' }
-    enqueue({ data: customerWithoutEmail, error: null })
-    enqueue({ data: { vat_registered: true }, error: null }) // company_settings VAT gate
-    enqueue({ data: makeInsertedInvoice(), error: null })
-    enqueue({ data: null, error: null })
-    enqueue({
-      data: { ...makeCompleteInvoice(), customer: customerWithoutEmail },
-      error: null,
-    })
-
-    const result = await executeRecurringSchedule(client, makeSchedule(), today)
-
-    expect(result.autoSent).toBe(false)
-    expect(result.warning).toContain('Auto-utskick misslyckades')
-    expect(mockReserveInvoiceDelivery).not.toHaveBeenCalled()
-    expect(mockSendEmail).not.toHaveBeenCalled()
-  })
-
-  it('does not reserve an auto-send delivery when configured recipients exceed the limit', async () => {
+  it('emits invoice.created and recurring_invoice.executed', async () => {
+    const seen: string[] = []
+    eventBus.on('invoice.created', async () => { seen.push('invoice.created') })
+    eventBus.on('recurring_invoice.executed', async () => { seen.push('recurring_invoice.executed') })
     enqueue({ data: customer, error: null })
-    enqueue({ data: { vat_registered: true }, error: null }) // company_settings VAT gate
-    enqueue({ data: makeInsertedInvoice(), error: null })
-    enqueue({ data: null, error: null })
-    enqueue({ data: makeCompleteInvoice(), error: null })
-    enqueue({
-      data: {
-        ...company,
-        invoice_email_cc_addresses: Array.from(
-          { length: 20 },
-          (_, index) => `fixed-${index}@example.test`,
-        ),
-        invoice_email_bcc_addresses: [],
-      },
-      error: null,
-    })
-
-    const result = await executeRecurringSchedule(client, makeSchedule(), today)
-
-    expect(result.autoSent).toBe(false)
-    expect(result.warning).not.toBeNull()
-    expect(mockReserveInvoiceDelivery).not.toHaveBeenCalled()
-    expect(mockRenderToBuffer).not.toHaveBeenCalled()
-    expect(mockSendEmail).not.toHaveBeenCalled()
-  })
-
-  it('never auto-sends from a sandbox company; invoice stays a numbered draft', async () => {
-    mockIsSandbox.mockResolvedValue(true)
-    // Sandbox bails before the send path's company_settings/payment-link/
-    // render/email, so the queue only covers invoice creation.
-    enqueue({ data: customer, error: null })
-    enqueue({ data: { vat_registered: true }, error: null }) // company_settings VAT gate
+    enqueue({ data: { vat_registered: true }, error: null })
     enqueue({ data: makeInsertedInvoice(), error: null })
     enqueue({ data: null, error: null })
     enqueue({ data: makeCompleteInvoice(), error: null })
 
-    const result = await executeRecurringSchedule(client, makeSchedule(), today)
+    await executeRecurringSchedule(client, makeSchedule(), today)
 
-    expect(result.invoiceId).toBe('inv-1')
-    expect(result.autoSent).toBe(false)
-    expect(result.warning).toContain('Auto-utskick misslyckades')
-    expect(mockSendEmail).not.toHaveBeenCalled()
-    expect(mockRenderToBuffer).not.toHaveBeenCalled()
-    expect(mockCreateJE).not.toHaveBeenCalled()
-  })
-
-  it('route-level suppressAutoSend skips the send path without relying on the internal chokepoint', async () => {
-    // Defence in depth (ASVS V2.3): the flag comes from the route's own
-    // isSandboxCompany resolution, so sending is suppressed even before the
-    // service-internal sandbox check runs. Invoice creation is unaffected.
-    enqueue({ data: customer, error: null })
-    enqueue({ data: { vat_registered: true }, error: null }) // company_settings VAT gate
-    enqueue({ data: makeInsertedInvoice(), error: null })
-    enqueue({ data: null, error: null })
-    enqueue({ data: makeCompleteInvoice(), error: null })
-
-    const result = await executeRecurringSchedule(client, makeSchedule(), today, {
-      suppressAutoSend: true,
-    })
-
-    expect(result.invoiceId).toBe('inv-1')
-    expect(result.autoSent).toBe(false)
-    expect(result.warning).toContain('Auto-utskick misslyckades')
-    expect(mockSendEmail).not.toHaveBeenCalled()
-    // The suppress branch bails before the email chokepoint entirely.
-    expect(mockIsSandbox).not.toHaveBeenCalled()
-    expect(mockCreateJE).not.toHaveBeenCalled()
+    expect(seen).toEqual(['invoice.created', 'recurring_invoice.executed'])
   })
 })
 
@@ -573,7 +352,6 @@ describe('executeRecurringSchedule VAT rate gate', () => {
       your_reference: null,
       our_reference: null,
       notes: null,
-      auto_send: false,
       status: 'active',
       next_run_date: '2026-07-06',
       last_run_at: null,
@@ -612,9 +390,7 @@ describe('executeRecurringSchedule VAT rate gate', () => {
       error: null,
     })                                                                            // re-fetch
 
-    const result = await executeRecurringSchedule(client, makeScheduleWithRate(12), today, {
-      suppressAutoSend: true,
-    })
+    const result = await executeRecurringSchedule(client, makeScheduleWithRate(12), today)
 
     expect(result.invoiceId).toBe('inv-1')
   })
@@ -624,7 +400,7 @@ describe('executeRecurringSchedule VAT rate gate', () => {
     enqueue({ data: { vat_registered: true }, error: null }) // company_settings VAT gate; throws before any insert
 
     await expect(
-      executeRecurringSchedule(client, makeScheduleWithRate(10), today, { suppressAutoSend: true }),
+      executeRecurringSchedule(client, makeScheduleWithRate(10), today),
     ).rejects.toThrow(/VAT rate 10% not allowed/)
   })
 })
@@ -650,7 +426,6 @@ describe('executeRecurringSchedule foreign-currency rate fetch', () => {
       your_reference: null,
       our_reference: null,
       notes: null,
-      auto_send: false,
       status: 'active',
       next_run_date: '2026-07-06',
       last_run_at: null,
@@ -699,9 +474,7 @@ describe('executeRecurringSchedule foreign-currency rate fetch', () => {
     mockFetchExchangeRate.mockResolvedValue({ currency: 'EUR', rate: 11.5, date: '2026-07-04' })
     enqueueCreateOnlyPath()
 
-    const result = await executeRecurringSchedule(client, makeEurSchedule(), today, {
-      suppressAutoSend: true,
-    })
+    const result = await executeRecurringSchedule(client, makeEurSchedule(), today)
 
     expect(result.invoiceId).toBe('inv-1')
     expect(mockFetchExchangeRate).toHaveBeenCalledTimes(1)
@@ -715,9 +488,7 @@ describe('executeRecurringSchedule foreign-currency rate fetch', () => {
     mockFetchExchangeRate.mockResolvedValue(null)
     enqueueCreateOnlyPath()
 
-    const result = await executeRecurringSchedule(client, makeEurSchedule(), today, {
-      suppressAutoSend: true,
-    })
+    const result = await executeRecurringSchedule(client, makeEurSchedule(), today)
 
     expect(result.invoiceId).toBe('inv-1')
   })
@@ -771,7 +542,6 @@ describe('executeRecurringSchedule dimension propagation', () => {
       your_reference: null,
       our_reference: null,
       notes: null,
-      auto_send: false,
       status: 'active',
       next_run_date: '2026-07-06',
       last_run_at: null,
@@ -819,9 +589,7 @@ describe('executeRecurringSchedule dimension propagation', () => {
   it('copies the schedule bag onto the invoice and per-item bags onto items', async () => {
     enqueueCreatePath()
 
-    await executeRecurringSchedule(client, makeTaggedSchedule(), today, {
-      suppressAutoSend: true,
-    })
+    await executeRecurringSchedule(client, makeTaggedSchedule(), today)
 
     expect(inserted['invoices']).toHaveLength(1)
     expect(inserted['invoices'][0]).toMatchObject({
@@ -848,7 +616,6 @@ describe('executeRecurringSchedule dimension propagation', () => {
       client,
       schedule as unknown as Parameters<typeof executeRecurringSchedule>[1],
       today,
-      { suppressAutoSend: true },
     )
 
     expect(inserted['invoices'][0]).toMatchObject({ default_dimensions: {} })
@@ -905,7 +672,6 @@ describe('executeRecurringSchedule VAT registration gate', () => {
       your_reference: null,
       our_reference: null,
       notes: null,
-      auto_send: false,
       status: 'active',
       next_run_date: '2026-07-06',
       last_run_at: null,
@@ -960,7 +726,7 @@ describe('executeRecurringSchedule VAT registration gate', () => {
     // rate and from the customer-default fallback for null-rate lines.
     enqueueCreatePath(false)
 
-    await executeRecurringSchedule(client, makeSchedule(), today, { suppressAutoSend: true })
+    await executeRecurringSchedule(client, makeSchedule(), today)
 
     expect(inserted['invoices']).toHaveLength(1)
     expect(inserted['invoices'][0]).toMatchObject({
@@ -984,7 +750,7 @@ describe('executeRecurringSchedule VAT registration gate', () => {
   it('keeps VAT for a registered company', async () => {
     enqueueCreatePath(true)
 
-    await executeRecurringSchedule(client, makeSchedule(), today, { suppressAutoSend: true })
+    await executeRecurringSchedule(client, makeSchedule(), today)
 
     expect(inserted['invoices'][0]).toMatchObject({
       subtotal: 10500,
@@ -999,7 +765,7 @@ describe('executeRecurringSchedule VAT registration gate', () => {
   it('treats a missing company_settings row as registered (no behavior change)', async () => {
     enqueueCreatePath(null)
 
-    await executeRecurringSchedule(client, makeSchedule(), today, { suppressAutoSend: true })
+    await executeRecurringSchedule(client, makeSchedule(), today)
 
     expect(inserted['invoices'][0]).toMatchObject({
       vat_amount: 2625,

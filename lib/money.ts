@@ -60,22 +60,6 @@ export const ORE_TOLERANCE = 0.005
 export const ORE_ROUNDING_SETTLEMENT_MAX = 1.0
 
 /**
- * True when two amounts are equal to the öre (within `ORE_TOLERANCE`). Prefer
- * this over `a === b` for money: direct equality on floats fails on drift.
- */
-export function equalOre(a: number, b: number): boolean {
-  return Math.abs(a - b) <= ORE_TOLERANCE
-}
-
-/**
- * True when `n` is zero to the öre. Useful for "fully settled / balances"
- * checks where accumulated float drift would defeat `n === 0`.
- */
-export function isZeroOre(n: number): boolean {
-  return Math.abs(n) <= ORE_TOLERANCE
-}
-
-/**
  * Sum a list of SEK amounts with a single öre-round applied to the total.
  *
  * Rounding once at the end (rather than per addend) matches how a verifikat is

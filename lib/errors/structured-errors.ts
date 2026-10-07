@@ -2656,11 +2656,3 @@ export function getErrorEntry(code: string): StructuredErrorEntry | undefined {
 export function hasErrorEntry(code: string): boolean {
   return code in REGISTRY
 }
-
-/**
- * Test-only: returns all registered codes. Used by the unit test that asserts
- * the matrix in the plan file stays in sync with this registry.
- */
-export function listErrorCodes(): string[] {
-  return Object.keys(REGISTRY)
-}

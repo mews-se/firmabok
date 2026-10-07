@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { roundOre, ORE_TOLERANCE, equalOre, isZeroOre, sumOre } from '@/lib/money'
+import { roundOre, ORE_TOLERANCE, sumOre } from '@/lib/money'
 
 describe('roundOre', () => {
   it('rounds exact-half öre values up where naive Math.round fails', () => {
@@ -32,23 +32,9 @@ describe('roundOre', () => {
   })
 })
 
-describe('ORE_TOLERANCE / equalOre / isZeroOre', () => {
+describe('ORE_TOLERANCE', () => {
   it('is half an öre', () => {
     expect(ORE_TOLERANCE).toBe(0.005)
-  })
-
-  it('treats sub-öre float drift as equal', () => {
-    expect(equalOre(0.1 + 0.2, 0.3)).toBe(true) // classic 0.30000000000000004
-    expect(equalOre(100.001, 100.0)).toBe(true)
-  })
-
-  it('flags a real one-öre discrepancy as not equal', () => {
-    expect(equalOre(100.01, 100.0)).toBe(false)
-  })
-
-  it('isZeroOre absorbs drift around zero', () => {
-    expect(isZeroOre(0.1 + 0.2 - 0.3)).toBe(true)
-    expect(isZeroOre(0.01)).toBe(false)
   })
 })
 

@@ -69,16 +69,6 @@ export function validatePlusgiroNumber(input: string): boolean {
   return luhnValidate(digits)
 }
 
-/**
- * Format a Plusgiro number with the standard hyphen before the check digit.
- * e.g. "45674" → "4567-4". Returns input unchanged for invalid lengths.
- */
-export function formatPlusgiroNumber(input: string): string {
-  const digits = input.replace(/[-\s]/g, '')
-  if (digits.length < 2 || digits.length > 8) return input
-  return digits.slice(0, -1) + '-' + digits.slice(-1)
-}
-
 // -- OCR reference --
 
 /**
@@ -91,13 +81,4 @@ export function generateOcrReference(invoiceNumber: string): string {
   if (digits.length === 0 || digits.length > 24) return invoiceNumber
   const checkDigit = luhnCheckDigit(digits)
   return digits + checkDigit.toString()
-}
-
-/**
- * Validate a Swedish OCR reference number (2-25 digits, Luhn check digit).
- */
-export function validateOcrReference(ocr: string): boolean {
-  if (!/^\d+$/.test(ocr)) return false
-  if (ocr.length < 2 || ocr.length > 25) return false
-  return luhnValidate(ocr)
 }

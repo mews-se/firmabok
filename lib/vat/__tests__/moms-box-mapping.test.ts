@@ -1,21 +1,8 @@
 import { describe, it, expect } from 'vitest'
-import {
-  ACCOUNT_TO_BOX,
-  BOX_LABELS,
-  getBoxForAccount,
-  getBoxLabel,
-  type MomsBox,
-} from '../moms-box-mapping'
+import { ACCOUNT_TO_BOX, type MomsBox } from '../moms-box-mapping'
 import { ACCOUNT_RUTA } from '@/lib/reports/vat-declaration'
 
 describe('ACCOUNT_TO_BOX', () => {
-  it('has a label for every box ID used in the map', () => {
-    const usedBoxes = new Set(Object.values(ACCOUNT_TO_BOX))
-    for (const box of usedBoxes) {
-      expect(BOX_LABELS[box]).toBeTruthy()
-    }
-  })
-
   it('maps all known revenue accounts to a sales box', () => {
     expect(ACCOUNT_TO_BOX['3001']).toBe('05')
     expect(ACCOUNT_TO_BOX['3002']).toBe('05')
@@ -90,27 +77,6 @@ describe('ACCOUNT_TO_BOX', () => {
     expect(ACCOUNT_TO_BOX['3401']).toBe('06')
     expect(ACCOUNT_TO_BOX['3402']).toBe('06')
     expect(ACCOUNT_TO_BOX['3403']).toBe('06')
-  })
-})
-
-describe('getBoxForAccount', () => {
-  it('returns the box for known accounts', () => {
-    expect(getBoxForAccount('2611')).toBe('10')
-    expect(getBoxForAccount('4535')).toBe('21')
-  })
-
-  it('returns undefined for unknown accounts', () => {
-    expect(getBoxForAccount('9999')).toBeUndefined()
-    expect(getBoxForAccount('1930')).toBeUndefined() // bank account, not VAT-related
-  })
-})
-
-describe('getBoxLabel', () => {
-  it('returns Swedish labels for every box', () => {
-    expect(getBoxLabel('10')).toMatch(/Utgående moms 25%/)
-    expect(getBoxLabel('30')).toMatch(/inköp 25%/)
-    expect(getBoxLabel('48')).toMatch(/Ingående moms/)
-    expect(getBoxLabel('49')).toMatch(/Moms att betala/)
   })
 })
 

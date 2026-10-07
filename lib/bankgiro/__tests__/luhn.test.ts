@@ -4,9 +4,7 @@ import {
   validateBankgiroNumber,
   formatBankgiroNumber,
   validatePlusgiroNumber,
-  formatPlusgiroNumber,
   generateOcrReference,
-  validateOcrReference,
 } from '../luhn'
 
 // -- Luhn core --
@@ -137,25 +135,6 @@ describe('validatePlusgiroNumber', () => {
   })
 })
 
-describe('formatPlusgiroNumber', () => {
-  it('places hyphen before the check digit', () => {
-    expect(formatPlusgiroNumber('45674')).toBe('4567-4')
-  })
-
-  it('formats 8-digit as XXXXXXX-X', () => {
-    expect(formatPlusgiroNumber('55555551')).toBe('5555555-1')
-  })
-
-  it('handles already-formatted input', () => {
-    expect(formatPlusgiroNumber('4567-4')).toBe('4567-4')
-  })
-
-  it('returns input unchanged for invalid lengths', () => {
-    expect(formatPlusgiroNumber('5')).toBe('5')
-    expect(formatPlusgiroNumber('123456789')).toBe('123456789')
-  })
-})
-
 // -- OCR reference --
 
 describe('generateOcrReference', () => {
@@ -163,19 +142,19 @@ describe('generateOcrReference', () => {
     const ocr = generateOcrReference('12345')
     // 12345 → check digit 5 → '123455'
     expect(ocr).toBe('123455')
-    expect(validateOcrReference(ocr)).toBe(true)
+    expect(luhnValidate(ocr)).toBe(true)
   })
 
   it('strips non-numeric characters from invoice number', () => {
     const ocr = generateOcrReference('INV-2024-001')
     // digits: 2024001
     expect(ocr).toBe(generateOcrReference('2024001'))
-    expect(validateOcrReference(ocr)).toBe(true)
+    expect(luhnValidate(ocr)).toBe(true)
   })
 
   it('handles pure-numeric invoice numbers', () => {
     const ocr = generateOcrReference('20240001')
-    expect(validateOcrReference(ocr)).toBe(true)
+    expect(luhnValidate(ocr)).toBe(true)
     expect(ocr.length).toBe(9)
   })
 
@@ -191,28 +170,6 @@ describe('generateOcrReference', () => {
   it('generates valid OCR for single-digit invoice number', () => {
     const ocr = generateOcrReference('7')
     expect(ocr.length).toBe(2)
-    expect(validateOcrReference(ocr)).toBe(true)
-  })
-})
-
-describe('validateOcrReference', () => {
-  it('validates correct OCR', () => {
-    expect(validateOcrReference('123455')).toBe(true)
-  })
-
-  it('rejects non-numeric', () => {
-    expect(validateOcrReference('12345a')).toBe(false)
-  })
-
-  it('rejects too short', () => {
-    expect(validateOcrReference('5')).toBe(false)
-  })
-
-  it('rejects too long (>25 digits)', () => {
-    expect(validateOcrReference('1'.repeat(26))).toBe(false)
-  })
-
-  it('rejects incorrect check digit', () => {
-    expect(validateOcrReference('123459')).toBe(false)
+    expect(luhnValidate(ocr)).toBe(true)
   })
 })

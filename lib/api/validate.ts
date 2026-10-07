@@ -134,7 +134,7 @@ export async function validateBody<T>(
  *
  * Usage:
  * ```ts
- * const params = validateQuery(request, VatDeclarationQuerySchema)
+ * const params = validateQuery(request, AccountBalancesQuerySchema)
  * if (!params.success) return params.response
  * const { data } = params
  * ```

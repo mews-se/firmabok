@@ -5,7 +5,7 @@ import * as XLSX from 'xlsx'
  *
  * The helper is intentionally declarative: callers describe one or more sheets
  * via `SheetSpec`, each with a header row and a row mapper. Column-level number
- * formatting hints (currency, date, integer, percent) are applied per-cell via
+ * formatting hints (currency, date, integer) are applied per-cell via
  * the `z` (number format) field on the cell object.
  *
  * Currency format follows the Swedish accounting convention used in formatCurrency
@@ -23,7 +23,7 @@ import * as XLSX from 'xlsx'
  */
 
 export type CellValue = string | number | Date | null | undefined
-export type ColumnFormat = 'text' | 'currency' | 'decimal' | 'date' | 'integer' | 'percent'
+export type ColumnFormat = 'text' | 'currency' | 'decimal' | 'date' | 'integer'
 
 export interface ColumnSpec {
   /** Human-readable header label rendered in row 1. */
@@ -52,7 +52,6 @@ const CURRENCY_FORMAT = '#,##0.00 " kr"'
 const DECIMAL_FORMAT = '#,##0.00'
 const DATE_FORMAT = 'yyyy-mm-dd'
 const INTEGER_FORMAT = '#,##0'
-const PERCENT_FORMAT = '0.00%'
 
 function formatToZ(format: ColumnFormat): string | undefined {
   switch (format) {
@@ -64,8 +63,6 @@ function formatToZ(format: ColumnFormat): string | undefined {
       return DATE_FORMAT
     case 'integer':
       return INTEGER_FORMAT
-    case 'percent':
-      return PERCENT_FORMAT
     default:
       return undefined
   }
@@ -99,8 +96,6 @@ function displayLength(value: CellValue, format: ColumnFormat): number {
         const formatted = Math.round(value).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ')
         return formatted.length + (value < 0 ? 1 : 0)
       }
-      case 'percent':
-        return (value * 100).toFixed(2).length + 1
       default:
         return value.toString().length
     }
@@ -221,10 +216,6 @@ export function dateColumn(header: string): ColumnSpec {
 
 export function integerColumn(header: string): ColumnSpec {
   return { header, format: 'integer' }
-}
-
-export function percentColumn(header: string): ColumnSpec {
-  return { header, format: 'percent' }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

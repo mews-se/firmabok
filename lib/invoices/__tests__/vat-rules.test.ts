@@ -6,11 +6,7 @@ import {
   getVatTreatmentForRate,
   getVatRules,
   calculateVat,
-  calculateTotal,
-  formatVatRate,
   getVatTreatmentLabel,
-  getVatSummaryFromItems,
-  getMomsRutaDescription,
 } from '../vat-rules'
 
 // ============================================================
@@ -267,29 +263,9 @@ describe('calculateVat', () => {
 // calculateTotal
 // ============================================================
 
-describe('calculateTotal', () => {
-  it('returns subtotal + VAT rounded: 10000 at 25% → 12500', () => {
-    expect(calculateTotal(10000, 25)).toBe(12500)
-  })
-
-  it('handles 0% VAT: total equals subtotal', () => {
-    expect(calculateTotal(5000, 0)).toBe(5000)
-  })
-})
-
 // ============================================================
 // formatVatRate
 // ============================================================
-
-describe('formatVatRate', () => {
-  it('formats 25 as "25%"', () => {
-    expect(formatVatRate(25)).toBe('25%')
-  })
-
-  it('formats 0 as "0%"', () => {
-    expect(formatVatRate(0)).toBe('0%')
-  })
-})
 
 // ============================================================
 // getVatTreatmentLabel
@@ -310,52 +286,9 @@ describe('getVatTreatmentLabel', () => {
 // getVatSummaryFromItems
 // ============================================================
 
-describe('getVatSummaryFromItems', () => {
-  it('returns single rate info when all items have same rate', () => {
-    const result = getVatSummaryFromItems([{ vat_rate: 25 }, { vat_rate: 25 }])
-    expect(result.isMixed).toBe(false)
-    expect(result.rate).toBe(25)
-    expect(result.treatment).toBe('standard_25')
-    expect(result.label).toBe('25% moms')
-  })
-
-  it('returns isMixed=true when items have different rates', () => {
-    const result = getVatSummaryFromItems([{ vat_rate: 25 }, { vat_rate: 12 }])
-    expect(result.isMixed).toBe(true)
-    expect(result.rate).toBeNull()
-    expect(result.treatment).toBeNull()
-    expect(result.label).toBe('Blandade momssatser')
-  })
-
-  it('treats null vat_rate as 0', () => {
-    const result = getVatSummaryFromItems([{ vat_rate: null }, { vat_rate: null }])
-    expect(result.isMixed).toBe(false)
-    expect(result.rate).toBe(0)
-    expect(result.treatment).toBe('exempt')
-  })
-})
-
 // ============================================================
 // getMomsRutaDescription
 // ============================================================
-
-describe('getMomsRutaDescription', () => {
-  it('maps ruta 05 → "Utgående moms 25%"', () => {
-    expect(getMomsRutaDescription('05')).toBe('Utgående moms 25%')
-  })
-
-  it('maps ruta 39 → "Försäljning av tjänster till annat EU-land"', () => {
-    expect(getMomsRutaDescription('39')).toBe('Försäljning av tjänster till annat EU-land')
-  })
-
-  it('maps ruta 40 → "Export utanför EU"', () => {
-    expect(getMomsRutaDescription('40')).toBe('Export utanför EU')
-  })
-
-  it('returns the ruta string itself for unknown rutor', () => {
-    expect(getMomsRutaDescription('99')).toBe('99')
-  })
-})
 
 // ============================================================
 // getArticleVatRateAdoptionSet

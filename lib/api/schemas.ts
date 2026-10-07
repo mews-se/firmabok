@@ -199,29 +199,6 @@ export const AccountingMethodSchema = z.enum(['accrual', 'cash'])
 
 export const CurrencySchema = z.enum(['SEK', 'EUR', 'USD', 'GBP', 'NOK', 'DKK'])
 
-export const TransactionCategorySchema = z.enum([
-  'income_services',
-  'income_products',
-  'income_other',
-  'expense_equipment',
-  'expense_software',
-  'expense_travel',
-  'expense_office',
-  'expense_marketing',
-  'expense_professional_services',
-  'expense_education',
-  'expense_representation',
-  'expense_consumables',
-  'expense_vehicle',
-  'expense_telecom',
-  'expense_bank_fees',
-  'expense_card_fees',
-  'expense_currency_exchange',
-  'expense_other',
-  'private',
-  'uncategorized',
-])
-
 export const JournalEntrySourceTypeSchema = z.enum([
   'manual',
   'bank_transaction',
@@ -335,10 +312,6 @@ export const MomsPeriodSchema = z.enum(['monthly', 'quarterly', 'yearly'])
 
 export const PsPeriodTypeSchema = z.enum(['monthly', 'quarterly'])
 export const TaxFilingMethodSchema = z.enum(['electronic', 'paper'])
-
-export const DocumentUploadSourceSchema = z.enum([
-  'camera', 'file_upload', 'email', 'e_invoice', 'scan', 'api', 'system',
-])
 
 // ============================================================
 // Invoice schemas
@@ -1543,12 +1516,6 @@ export const PruneAccountsSchema = z
 // Report query schemas
 // ============================================================
 
-export const VatDeclarationQuerySchema = z.object({
-  periodType: z.enum(['monthly', 'quarterly', 'yearly']),
-  year: z.coerce.number().int().min(2000).max(2100),
-  period: z.coerce.number().int().min(1).max(12),
-})
-
 export const AccountBalancesQuerySchema = z.object({
   accounts: z
     .string()
@@ -1572,15 +1539,6 @@ export const AccountBalancesQuerySchema = z.object({
 export const ValidateVatNumberSchema = z.object({
   vat_number: z.string().min(4, 'VAT number must be at least 4 characters'),
   customer_id: uuid.optional(),
-})
-
-// ============================================================
-// Pagination schemas
-// ============================================================
-
-export const PaginationQuerySchema = z.object({
-  limit: z.coerce.number().int().min(1).max(100).default(50),
-  offset: z.coerce.number().int().nonnegative().default(0),
 })
 
 // ============================================================
@@ -1716,27 +1674,8 @@ export const SupplierImportExecuteSchema = z.object({
 })
 
 // ============================================================
-// AI agent flow schemas
+// Document and inbox schemas
 // ============================================================
-
-const BookingProposalLineSchema = z.object({
-  account_number: accountNumber,
-  debit_amount: nonNegativeAmount,
-  credit_amount: nonNegativeAmount,
-  description: z.string().min(1).max(500),
-})
-
-const BookingProposalCounterpartyTemplateSchema = z.object({
-  counterparty_name: z.string().min(1).max(200),
-  debit_account: accountNumber,
-  credit_account: accountNumber,
-  vat_treatment: VatTreatmentSchema.nullable(),
-  category: TransactionCategorySchema.nullable(),
-})
-
-export const AttachDocumentSchema = z.object({
-  document_id: uuid,
-})
 
 export const LinkDocumentSchema = z.object({
   journal_entry_id: uuid,

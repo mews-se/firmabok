@@ -7,7 +7,6 @@ import {
   decimalColumn,
   dateColumn,
   integerColumn,
-  percentColumn,
   slugifyCompanyName,
   xlsxFilename,
   type SheetSpec,
@@ -106,22 +105,20 @@ describe('reportToWorkbook', () => {
     expect(sheet['A2'].t).toBe('d')
   })
 
-  it('applies integer and percent formats', () => {
+  it('applies the integer format', () => {
     const buffer = reportToWorkbook([
       {
         name: 'Numeric',
-        columns: [integerColumn('Antal'), percentColumn('Andel')],
-        rows: [{ count: 42, share: 0.255 }],
-        mapRow: (r) => [r.count, r.share],
+        columns: [integerColumn('Antal')],
+        rows: [{ count: 42 }],
+        mapRow: (r) => [r.count],
       },
     ])
 
     const wb = parseBuffer(buffer)
     const sheet = wb.Sheets['Numeric']
     expect(sheet['A2'].z).toBe('#,##0')
-    expect(sheet['B2'].z).toBe('0.00%')
     expect(sheet['A2'].v).toBe(42)
-    expect(sheet['B2'].v).toBe(0.255)
   })
 
   it('produces multiple sheets with independent column shapes', () => {

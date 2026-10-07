@@ -8,7 +8,6 @@ import {
   VatTreatmentSchema,
   AccountingMethodSchema,
   CurrencySchema,
-  TransactionCategorySchema,
   JournalEntrySourceTypeSchema,
   AccountTypeSchema,
   NormalBalanceSchema,
@@ -18,7 +17,6 @@ import {
   DeadlinePrioritySchema,
   TaxDeadlineTypeSchema,
   MomsPeriodSchema,
-  DocumentUploadSourceSchema,
   // Invoice schemas
   CreateInvoiceItemSchema,
   CreateInvoiceSchema,
@@ -56,9 +54,6 @@ import {
   UpdateSupplierInvoiceSchema,
   // Correct/evaluate schemas
   CorrectJournalEntrySchema,
-  // Report query schemas
-  VatDeclarationQuerySchema,
-  PaginationQuerySchema,
 } from '../schemas'
 
 // ============================================================
@@ -166,21 +161,6 @@ describe('Enum schemas', () => {
     expect(CurrencySchema.safeParse('JPY').success).toBe(false)
   })
 
-  it('TransactionCategorySchema accepts all 16 categories', () => {
-    const categories = [
-      'income_services', 'income_products', 'income_other',
-      'expense_equipment', 'expense_software', 'expense_travel',
-      'expense_office', 'expense_marketing', 'expense_professional_services',
-      'expense_education', 'expense_bank_fees', 'expense_card_fees',
-      'expense_currency_exchange', 'expense_other',
-      'private', 'uncategorized',
-    ]
-    for (const c of categories) {
-      expect(TransactionCategorySchema.safeParse(c).success).toBe(true)
-    }
-    expect(TransactionCategorySchema.safeParse('unknown').success).toBe(false)
-  })
-
   it('JournalEntrySourceTypeSchema accepts all source types', () => {
     const sources = [
       'manual', 'bank_transaction', 'invoice_created', 'invoice_paid',
@@ -252,12 +232,6 @@ describe('Enum schemas', () => {
     }
     for (const t of ['mcc_code', 'merchant_name', 'description_pattern', 'amount_threshold', 'combined']) {
       expect(MappingRuleTypeSchema.safeParse(t).success).toBe(true)
-    }
-  })
-
-  it('DocumentUploadSourceSchema accepts all sources', () => {
-    for (const s of ['camera', 'file_upload', 'email', 'e_invoice', 'scan', 'api', 'system']) {
-      expect(DocumentUploadSourceSchema.safeParse(s).success).toBe(true)
     }
   })
 })
@@ -1704,123 +1678,6 @@ describe('CreateAccountSchema', () => {
 // ============================================================
 // Report query schemas
 // ============================================================
-
-describe('VatDeclarationQuerySchema', () => {
-  it('accepts valid monthly query', () => {
-    const result = VatDeclarationQuerySchema.safeParse({
-      periodType: 'monthly',
-      year: '2025',
-      period: '3',
-    })
-    expect(result.success).toBe(true)
-    if (result.success) {
-      expect(result.data.year).toBe(2025)
-      expect(result.data.period).toBe(3)
-    }
-  })
-
-  it('accepts valid quarterly query', () => {
-    const result = VatDeclarationQuerySchema.safeParse({
-      periodType: 'quarterly',
-      year: '2025',
-      period: '2',
-    })
-    expect(result.success).toBe(true)
-  })
-
-  it('coerces string numbers to numbers', () => {
-    const result = VatDeclarationQuerySchema.safeParse({
-      periodType: 'yearly',
-      year: '2025',
-      period: '1',
-    })
-    expect(result.success).toBe(true)
-    if (result.success) {
-      expect(typeof result.data.year).toBe('number')
-      expect(typeof result.data.period).toBe('number')
-    }
-  })
-
-  it('rejects year below 2000', () => {
-    const result = VatDeclarationQuerySchema.safeParse({
-      periodType: 'monthly',
-      year: '1999',
-      period: '1',
-    })
-    expect(result.success).toBe(false)
-  })
-
-  it('rejects year above 2100', () => {
-    const result = VatDeclarationQuerySchema.safeParse({
-      periodType: 'monthly',
-      year: '2101',
-      period: '1',
-    })
-    expect(result.success).toBe(false)
-  })
-
-  it('rejects period below 1', () => {
-    const result = VatDeclarationQuerySchema.safeParse({
-      periodType: 'monthly',
-      year: '2025',
-      period: '0',
-    })
-    expect(result.success).toBe(false)
-  })
-
-  it('rejects period above 12', () => {
-    const result = VatDeclarationQuerySchema.safeParse({
-      periodType: 'monthly',
-      year: '2025',
-      period: '13',
-    })
-    expect(result.success).toBe(false)
-  })
-
-  it('rejects invalid periodType', () => {
-    const result = VatDeclarationQuerySchema.safeParse({
-      periodType: 'biweekly',
-      year: '2025',
-      period: '1',
-    })
-    expect(result.success).toBe(false)
-  })
-})
-
-describe('PaginationQuerySchema', () => {
-  it('accepts valid pagination', () => {
-    const result = PaginationQuerySchema.safeParse({ limit: '25', offset: '50' })
-    expect(result.success).toBe(true)
-    if (result.success) {
-      expect(result.data.limit).toBe(25)
-      expect(result.data.offset).toBe(50)
-    }
-  })
-
-  it('applies defaults when empty', () => {
-    const result = PaginationQuerySchema.safeParse({})
-    expect(result.success).toBe(true)
-    if (result.success) {
-      expect(result.data.limit).toBe(50)
-      expect(result.data.offset).toBe(0)
-    }
-  })
-
-  it('rejects limit above 100', () => {
-    const result = PaginationQuerySchema.safeParse({ limit: '101' })
-    expect(result.success).toBe(false)
-  })
-
-  it('rejects limit below 1', () => {
-    const result = PaginationQuerySchema.safeParse({ limit: '0' })
-    expect(result.success).toBe(false)
-  })
-
-  it('rejects negative offset', () => {
-    const result = PaginationQuerySchema.safeParse({ offset: '-1' })
-    expect(result.success).toBe(false)
-  })
-})
 
 // ============================================================
 // Update schemas (partial variants)

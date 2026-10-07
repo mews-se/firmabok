@@ -24,7 +24,7 @@ Tool definitions (name, description, inputSchema, outputSchema, annotations) are
 ## Where things live
 
 - `server.ts`: the tools array + JSON-RPC dispatcher
-- `tool-result.ts`: `withNext()`, `toToolError()` response helpers
+- `tool-result.ts`: the `toToolError()` response helper and the `next` hint type
 - `resources/`: read-only `Accounted://` URIs (active company, period, recent activity, capabilities, attention items, voucher gaps, chart of accounts, VAT treatments)
 - `widgets/`: inline HTML widgets (receipt-matcher, vat-review)
 - `prompts/`: slash-command-style prompts

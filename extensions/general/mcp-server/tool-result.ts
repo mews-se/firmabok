@@ -21,22 +21,8 @@ export interface NextActionHint {
   resource?: string
 }
 
-export interface AgentToolResult<T = unknown> {
-  data: T
-  next?: NextActionHint
-}
-
 export interface AgentToolError {
   error: StructuredError
-}
-
-/**
- * Wrap a successful tool payload with an optional `next` hint. Returns the
- * payload as-is if the input is already wrapped (idempotent), or a plain object
- * if no hint is supplied.
- */
-export function withNext<T>(data: T, next?: NextActionHint): AgentToolResult<T> {
-  return next ? { data, next } : { data }
 }
 
 /**

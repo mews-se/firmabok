@@ -36,7 +36,6 @@ vi.mock('@/lib/invoices/vat-rules', () => ({
   // The builder gates on the permitted set (taxed-where-performed exceptions);
   // these route tests only care that the gate reads the stubbed rates.
   getPermittedVatRates: (...args: unknown[]) => mockGetAvailableVatRates(...args),
-  calculateTotal: vi.fn(),
 }))
 
 vi.mock('@/lib/currency/riksbanken', () => ({

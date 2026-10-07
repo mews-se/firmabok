@@ -5,7 +5,7 @@ import {
   errorResponseFromCode,
   type ErrorEnvelope,
 } from '../get-structured-error'
-import { getErrorEntry, listErrorCodes } from '../structured-errors'
+import { getErrorEntry } from '../structured-errors'
 import {
   AccountsNotInChartError,
   EntryDateOutsideFiscalPeriodError,
@@ -39,15 +39,17 @@ describe('structured-errors registry', () => {
     }
   })
 
-  it('listErrorCodes returns at least the bookkeeping + generic + provider codes', () => {
-    const codes = listErrorCodes()
-    expect(codes.length).toBeGreaterThan(20)
-    expect(codes).toContain('JOURNAL_ENTRY_NOT_BALANCED')
-    expect(codes).toContain('PROVIDER_AUTH_EXPIRED')
-    expect(codes).toContain('CANNOT_EDIT_NON_DRAFT')
-    expect(codes).toContain('MANDATORY_DIMENSION_MISSING')
-    // Node network system codes registered as retryable transients (#337).
-    expect(codes).toContain('ECONNREFUSED')
+  it('registers the bookkeeping, provider and transient network codes', () => {
+    for (const code of [
+      'JOURNAL_ENTRY_NOT_BALANCED',
+      'PROVIDER_AUTH_EXPIRED',
+      'CANNOT_EDIT_NON_DRAFT',
+      'MANDATORY_DIMENSION_MISSING',
+      'ECONNREFUSED',
+    ]) {
+      expect(getErrorEntry(code), `missing entry for ${code}`).toBeDefined()
+    }
+    // Node network system codes are registered as retryable transients (#337).
     expect(getErrorEntry('ECONNREFUSED')?.retryable).toBe(true)
   })
 })

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { useLocale, useTranslations } from 'next-intl'
+import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import { Sun, Moon, Monitor, LogOut } from 'lucide-react'
 import { useTheme } from 'next-themes'
@@ -17,7 +17,6 @@ import {
   SettingsSeg,
 } from '@/components/settings/SettingsRows'
 import { useToast } from '@/components/ui/use-toast'
-import { SUPPORTED_LOCALES, type Locale } from '@/i18n/config'
 import { PalettePicker } from '@/components/settings/PalettePicker'
 import { usePalette } from '@/components/providers/PaletteProvider'
 import type { Palette } from '@/lib/theme/palettes'
@@ -29,12 +28,10 @@ export function AccountSettingsContent() {
   const { palette, setPalette } = usePalette()
   const [mounted, setMounted] = useState(false)
   const { toast } = useToast()
-  const activeLocale = useLocale() as Locale
   const tCommon = useTranslations('common')
   const tSettings = useTranslations('settings')
   const tNav = useTranslations('settings_nav')
   const tIntro = useTranslations('settings_intro')
-  const [savingLocale, setSavingLocale] = useState(false)
   const [fullName, setFullName] = useState('')
   const [initialName, setInitialName] = useState('')
   const [nameLoading, setNameLoading] = useState(true)
@@ -90,33 +87,6 @@ export function AccountSettingsContent() {
     router.push('/login')
   }
 
-  async function handleLocaleChange(next: Locale) {
-    if (next === activeLocale || savingLocale) return
-    setSavingLocale(true)
-    try {
-      const res = await fetch('/api/user/locale', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ locale: next }),
-      })
-      if (!res.ok) throw new Error('Could not save')
-      toast({ title: tSettings('language_saved') })
-      router.refresh()
-    } catch {
-      toast({
-        title: tSettings('language_save_failed'),
-        variant: 'destructive',
-      })
-    } finally {
-      setSavingLocale(false)
-    }
-  }
-
-  const localeLabels: Record<Locale, string> = {
-    sv: tCommon('language_swedish'),
-    en: tCommon('language_english'),
-  }
-
   const paletteLabels: Record<Palette, string> = {
     neutral: tSettings('palette_neutral'),
     indigo: tSettings('palette_indigo'),
@@ -130,7 +100,7 @@ export function AccountSettingsContent() {
     <div>
       <SettingsSectionHeader title={tNav('account')} intro={tIntro('account')} />
 
-      {/* Profile: name, appearance, language, install-as-app */}
+      {/* Profile: name, appearance */}
       <SettingsGroup label={tSettings('group_profile')}>
         <SettingsRow
           label={tSettings('name_label')}
@@ -209,22 +179,6 @@ export function AccountSettingsContent() {
               aria-label={tSettings('palette_label')}
             />
           )}
-        </SettingsRow>
-
-        <SettingsRow
-          label={tSettings('section_language')}
-          help={tSettings('language_description')}
-        >
-          <SettingsSeg
-            value={activeLocale}
-            onChange={(next) => void handleLocaleChange(next)}
-            disabled={savingLocale}
-            aria-label={tSettings('section_language')}
-            options={SUPPORTED_LOCALES.map((value) => ({
-              value,
-              label: localeLabels[value],
-            }))}
-          />
         </SettingsRow>
       </SettingsGroup>
 

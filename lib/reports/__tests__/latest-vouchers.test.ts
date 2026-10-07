@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { getLatestPostedVouchers } from '../latest-vouchers'
 import { formatLatestVouchers, LATEST_VOUCHERS_LABEL } from '../latest-vouchers-format'
 import { createQueuedMockSupabase } from '@/tests/helpers'
-import enMessages from '../../../messages/en.json'
 import svMessages from '../../../messages/sv.json'
 
 beforeEach(() => {
@@ -187,8 +186,7 @@ describe('formatLatestVouchers', () => {
     expect(LATEST_VOUCHERS_LABEL).toBe('Senaste bokförda verifikat')
   })
 
-  it('keeps the web label explicit in both supported locales', () => {
+  it('keeps the web label identical to the export label', () => {
     expect(svMessages.reports.latest_posted_vouchers).toBe(LATEST_VOUCHERS_LABEL)
-    expect(enMessages.reports.latest_posted_vouchers).toBe('Latest posted vouchers')
   })
 })

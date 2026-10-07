@@ -88,8 +88,7 @@ General prohibitions:
    validation 400, 404, happy path; mock `@/lib/supabase/server`.
 3. Any change to a trigger, RPC, RLS policy, or DEFERRABLE constraint ships
    with a `*.pg.test.ts` (`npm run test:pg`).
-4. New UI strings exist in **both** `messages/sv.json` and
-   `messages/en.json`.
+4. New UI strings exist in `messages/sv.json`.
 5. If you edited an atom `SKILL.md`, `npm run skills:generate` was run (CI's
    `skills:check` fails otherwise).
 6. `npm run check:guards` passes if you touched API routes.
@@ -172,7 +171,7 @@ Don't duplicate these here; they auto-load when you touch matching paths:
 
 - `.claude/rules/design.md`: design system, locked tokens (`app/**`,
   `components/**`)
-- `.claude/rules/i18n.md`: sv/en conventions, "stays Swedish" surfaces
+- `.claude/rules/i18n.md`: Swedish-only UI strings, invoice PDF language
 - `.claude/rules/api-routes.md`: `withRouteContext` route pattern
   (`app/api/**`)
 - `.claude/rules/database.md`: migration rules, key tables/RPCs/triggers,

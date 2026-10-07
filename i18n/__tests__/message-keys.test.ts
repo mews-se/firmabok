@@ -9,8 +9,8 @@ import path from 'path'
  * no build-time check for that, it silently renders "namespace.key", so every
  * label in the feature turned into debug output for real users.
  *
- * This resolves every literal translation key against both locales, so a
- * misplaced namespace fails the suite instead of the UI.
+ * This resolves every literal translation key against messages/sv.json, so
+ * a misplaced namespace fails the suite instead of the UI.
  */
 
 const ROOT = path.resolve(__dirname, '../..')
@@ -86,17 +86,13 @@ describe('message keys', () => {
     expect(references.length).toBeGreaterThan(500)
   })
 
-  for (const locale of ['sv', 'en'] as const) {
-    it(`resolves every referenced key in messages/${locale}.json`, () => {
-      const messages = JSON.parse(
-        fs.readFileSync(path.join(ROOT, 'messages', `${locale}.json`), 'utf8'),
-      )
+  it('resolves every referenced key in messages/sv.json', () => {
+    const messages = JSON.parse(fs.readFileSync(path.join(ROOT, 'messages', 'sv.json'), 'utf8'))
 
-      const missing = references
-        .filter(({ namespace, key }) => resolveKey(messages, `${namespace}.${key}`) === undefined)
-        .map(({ file, namespace, key }) => `${file}: ${namespace}.${key}`)
+    const missing = references
+      .filter(({ namespace, key }) => resolveKey(messages, `${namespace}.${key}`) === undefined)
+      .map(({ file, namespace, key }) => `${file}: ${namespace}.${key}`)
 
-      expect([...new Set(missing)]).toEqual([])
-    })
-  }
+    expect([...new Set(missing)]).toEqual([])
+  })
 })

@@ -51,10 +51,8 @@ export default function CreatePeriodDialog({ open, onOpenChange, entryDate, peri
   const { toast } = useToast()
   // The form copy below is pre-existing hardcoded Swedish and is left as it
   // stands (out of scope here). Every string added for the created-state is
-  // keyed in both messages/sv.json and messages/en.json. The advisory itself is
-  // not keyed: the route emits one Swedish sentence and no English twin, and
-  // bokslut/räkenskapsår domain copy stays Swedish in both locales anyway
-  // (.claude/rules/i18n.md).
+  // keyed in messages/sv.json. The advisory itself is not keyed: the route
+  // emits it as one Swedish sentence.
   const t = useTranslations('bookkeeping')
   const tCommon = useTranslations('common')
   const suggested = useMemo(() => computeSuggestedPeriod(entryDate, periods), [entryDate, periods])
@@ -149,8 +147,7 @@ export default function CreatePeriodDialog({ open, onOpenChange, entryDate, peri
             </DialogHeader>
 
             {/* Attention is one ochre sentence, not a banner (UI-migration
-                convention 6). The text is the route's own Swedish domain copy,
-                which stays Swedish in both locales. */}
+                convention 6). The text is the route's own Swedish domain copy. */}
             <AttnLine>{created.advisory}</AttnLine>
 
             <DialogFooter>

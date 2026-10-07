@@ -1,13 +1,9 @@
-import { cookies } from 'next/headers'
 import { getRequestConfig } from 'next-intl/server'
-import { APP_TIME_ZONE, DEFAULT_LOCALE, LOCALE_COOKIE, isLocale, type Locale } from './config'
+import { APP_TIME_ZONE } from './config'
 
+// the UI is Swedish only; no cookie or preference picks another locale
 export default getRequestConfig(async () => {
-  const cookieStore = await cookies()
-  const fromCookie = cookieStore.get(LOCALE_COOKIE)?.value
-  const locale: Locale = isLocale(fromCookie) ? fromCookie : DEFAULT_LOCALE
+  const messages = (await import('../messages/sv.json')).default
 
-  const messages = (await import(`../messages/${locale}.json`)).default
-
-  return { locale, messages, timeZone: APP_TIME_ZONE }
+  return { locale: 'sv', messages, timeZone: APP_TIME_ZONE }
 })

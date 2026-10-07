@@ -39,9 +39,6 @@
     "hide": "Dölj",
     "actions": "Åtgärder",
     "settings": "Inställningar",
-    "language": "Språk",
-    "language_swedish": "Svenska",
-    "language_english": "Engelska",
     "appearance": "Utseende",
     "theme_light": "Ljust",
     "theme_dark": "Mörkt",
@@ -206,11 +203,7 @@
     "palette_neutral": "Neutral",
     "palette_indigo": "Indigo",
     "palette_forest": "Skog",
-    "palette_sand": "Sand",
-    "section_language": "Språk",
-    "language_description": "Välj språket för gränssnittet. Fakturor och rapporter förblir alltid på svenska.",
-    "language_saved": "Språket har uppdaterats",
-    "language_save_failed": "Kunde inte spara språkinställningen"
+    "palette_sand": "Sand"
   },
   "help": {
     "title": "Hjälp & Ordlista",

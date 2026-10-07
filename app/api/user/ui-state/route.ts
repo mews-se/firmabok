@@ -20,7 +20,7 @@ const BodySchema = z
   .strict()
 
 // User-scoped preference endpoint: no company context exists or is needed,
-// so requireAuth() directly (same opt-out as /api/user/locale). RLS scopes
+// so requireAuth() directly (same opt-out as /api/user/profile). RLS scopes
 // user_preferences to the caller's own row.
 export async function POST(request: Request) {
   const { user, supabase, error } = await requireAuth()

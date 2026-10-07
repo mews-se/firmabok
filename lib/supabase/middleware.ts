@@ -1,7 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import { cookieSecure } from '@/lib/auth/cookie-secure'
-import { DEFAULT_LOCALE, LOCALE_COOKIE, isLocale } from '@/i18n/config'
 import { safeReturnTo } from '@/lib/auth/safe-return-to'
 import {
   apiRequestSkipsSessionTimeout,
@@ -177,7 +176,7 @@ export async function updateSession(request: NextRequest) {
 
   // Company context resolution
   const cookieCompanyId = request.cookies.get('gnubok-company-id')?.value
-  const { companyId, locale: dbLocale, degraded } =
+  const { companyId, degraded } =
     await resolveCompanyForMiddleware(supabase, user.id, request)
 
   // If the cookie pointed at a company we can no longer resolve (e.g.
@@ -185,20 +184,6 @@ export async function updateSession(request: NextRequest) {
   // resolution: a transient query failure must not wipe a valid cookie.
   if (!degraded && cookieCompanyId && cookieCompanyId !== companyId) {
     supabaseResponse.cookies.set('gnubok-company-id', '', { path: '/', maxAge: 0 })
-  }
-
-  // Sync the locale cookie from user_preferences. This keeps next-intl's
-  // request config (which reads the cookie) consistent with the DB value
-  // without forcing every RSC render to query the database itself.
-  const cookieLocale = request.cookies.get(LOCALE_COOKIE)?.value
-  const effectiveLocale = isLocale(dbLocale) ? dbLocale : DEFAULT_LOCALE
-  if (!degraded && cookieLocale !== effectiveLocale) {
-    supabaseResponse.cookies.set(LOCALE_COOKIE, effectiveLocale, {
-      path: '/',
-      sameSite: 'lax',
-      secure: cookieSecure(),
-      maxAge: 60 * 60 * 24 * 365,
-    })
   }
 
   // Routes that stay accessible when the user has no active company.
@@ -429,7 +414,7 @@ async function resolveCompanyForMiddleware(
   supabase: ReturnType<typeof createServerClient>,
   userId: string,
   _request: NextRequest
-): Promise<{ companyId: string | null; locale: string | null; degraded: boolean }> {
+): Promise<{ companyId: string | null; degraded: boolean }> {
   const { data, error } = await supabase.rpc('resolve_active_company')
 
   if (error) {
@@ -438,10 +423,9 @@ async function resolveCompanyForMiddleware(
       return resolveCompanyForMiddlewareViaQueries(supabase, userId, _request)
     }
     // Issue #1053: a FAILED call degrades (fail open), never reads as "no
-    // companies". locale null is fine because the degraded flag already
-    // suppresses the locale-cookie sync at the call site.
+    // companies".
     console.error('[middleware] resolve_active_company rpc failed', error)
-    return { companyId: null, locale: null, degraded: true }
+    return { companyId: null, degraded: true }
   }
 
   const row = Array.isArray(data) ? data[0] : data
@@ -449,7 +433,7 @@ async function resolveCompanyForMiddleware(
     // Zero rows = NULL auth.uid(); impossible for the cookie-auth middleware
     // client, so treat as degraded rather than redirecting to onboarding.
     console.error('[middleware] resolve_active_company returned no row for authenticated user')
-    return { companyId: null, locale: null, degraded: true }
+    return { companyId: null, degraded: true }
   }
 
   if (row.company_id && row.used_fallback) {
@@ -470,7 +454,6 @@ async function resolveCompanyForMiddleware(
 
   return {
     companyId: row.company_id ?? null,
-    locale: row.locale ?? null,
     degraded: false,
   }
 }
@@ -484,7 +467,7 @@ async function resolveCompanyForMiddlewareViaQueries(
   supabase: ReturnType<typeof createServerClient>,
   userId: string,
   _request: NextRequest
-): Promise<{ companyId: string | null; locale: string | null; degraded: boolean }> {
+): Promise<{ companyId: string | null; degraded: boolean }> {
   // 1. user_preferences (authoritative) + first membership, fetched in
   // parallel: the fallback query result doubles as validation when the
   // preferred company happens to be the first membership, which is the
@@ -493,7 +476,7 @@ async function resolveCompanyForMiddlewareViaQueries(
   const [prefsRes, firstRes] = await Promise.all([
     supabase
       .from('user_preferences')
-      .select('active_company_id, locale')
+      .select('active_company_id')
       .eq('user_id', userId)
       .maybeSingle(),
     supabase
@@ -508,7 +491,6 @@ async function resolveCompanyForMiddlewareViaQueries(
 
   const prefs = prefsRes.data
   const firstCompany = firstRes.data
-  const locale = (prefs?.locale as string | undefined) ?? null
 
   // A FAILED query (as opposed to one returning no rows) means the user's
   // companies are unknown right now, not absent: flag it so the caller
@@ -519,12 +501,12 @@ async function resolveCompanyForMiddlewareViaQueries(
       '[middleware] company resolution query failed',
       prefsRes.error ?? firstRes.error
     )
-    return { companyId: null, locale, degraded: true }
+    return { companyId: null, degraded: true }
   }
 
   if (prefs?.active_company_id) {
     if (prefs.active_company_id === firstCompany?.company_id) {
-      return { companyId: firstCompany.company_id, locale, degraded: false }
+      return { companyId: firstCompany.company_id, degraded: false }
     }
 
     const { data: membership, error: membershipError } = await supabase
@@ -539,14 +521,14 @@ async function resolveCompanyForMiddlewareViaQueries(
     // first membership (wrong company for consultants): degrade instead.
     if (membershipError) {
       console.error('[middleware] company preference validation failed', membershipError)
-      return { companyId: null, locale, degraded: true }
+      return { companyId: null, degraded: true }
     }
 
-    if (membership) return { companyId: membership.company_id, locale, degraded: false }
+    if (membership) return { companyId: membership.company_id, degraded: false }
   }
 
   // 2. Fallback: first non-archived membership (already fetched above)
-  if (!firstCompany) return { companyId: null, locale, degraded: false }
+  if (!firstCompany) return { companyId: null, degraded: false }
 
   // Write the fallback back to user_preferences so future RLS lookups
   // see the same active company without needing this fallback scan.
@@ -564,5 +546,5 @@ async function resolveCompanyForMiddlewareViaQueries(
     console.error('[middleware] active company write-back failed', writeBackError)
   }
 
-  return { companyId: firstCompany.company_id, locale, degraded: false }
+  return { companyId: firstCompany.company_id, degraded: false }
 }

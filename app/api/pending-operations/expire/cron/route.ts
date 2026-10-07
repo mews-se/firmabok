@@ -30,7 +30,7 @@ import { recoverStuckCommittingOperations } from '@/lib/pending-operations/recov
  *
  * If you change EXPIRY_DAYS, update the user-facing copy that states the
  * window: pending.auto_expiry_note + pending.auto_expired_detail in
- * messages/{sv,en}.json.
+ * messages/sv.json.
  */
 const EXPIRY_DAYS = 30
 

@@ -13,8 +13,8 @@ parts are deliberately rigid.
   [docs/SELF-HOSTING.md](docs/SELF-HOSTING.md).
 - **Deployment**: Docker behind nginx on a single plain-HTTP origin,
   built for a private LAN (see [docs/SELF-HOSTING.md](docs/SELF-HOSTING.md)).
-- **UI**: Tailwind CSS with shadcn/ui components. UI strings live in
-  `messages/sv.json` and `messages/en.json`.
+- **UI**: Tailwind CSS with shadcn/ui components. The UI is Swedish only;
+  its strings live in `messages/sv.json`.
 
 ## The bookkeeping engine
 
@@ -125,7 +125,7 @@ exception. See [LICENSE](LICENSE).
 | `packages/gnubok-mcp` | stdio→HTTP MCP bridge (npm) |
 | `supabase/migrations/` | Database schema, RLS policies, enforcement triggers |
 | `packs/` | Konteringspaket (booking templates) as validated YAML |
-| `messages/` | Swedish and English UI strings |
+| `messages/` | Swedish UI strings |
 | `docs/` | Self-hosting guide |
 
 ## Testing

@@ -10,8 +10,8 @@
  * "weak password" round trip cannot happen.
  *
  * Every check lives here so the password call sites cannot drift apart
- * again. The translated strings in messages/*.json spell the number out in
- * prose, so they have to be updated alongside it.
+ * again. The strings in messages/sv.json spell the number out in prose, so
+ * they have to be updated alongside it.
  */
 export const PASSWORD_MIN_LENGTH = 6
 

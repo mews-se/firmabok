@@ -16,9 +16,6 @@ const SETTINGS: CompanySettingsForDeadlines = {
   f_skatt: true,
   preliminary_tax_monthly: 5000,
   vat_registered: true,
-  pays_salaries: true,
-  employer_registered: null,
-  employer_seasonal: false,
   fiscal_year_start_month: 1,
   vat_taxable_base_over_40m: false,
   vat_has_eu_trade: false,
@@ -182,8 +179,7 @@ describe('generateTaxDeadlinesForUser', () => {
       Math.round((new Date(`${dueDate}T00:00:00`).getTime() - today.getTime()) / 86_400_000)
 
     const recurring = new Set([
-      'moms_monthly', 'moms_quarterly', 'f_skatt',
-      'arbetsgivardeklaration', 'skatteinbetalning', 'periodisk_sammanstallning',
+      'moms_monthly', 'moms_quarterly', 'f_skatt', 'periodisk_sammanstallning',
     ])
     for (const row of rows!) {
       const limit = recurring.has(row.tax_deadline_type as string)
@@ -499,16 +495,24 @@ describe('generateTaxDeadlinesForUser: what survives regeneration', () => {
 })
 
 describe('getExpectedUpcomingDeadlineKeys: banking-day handling', () => {
-  it('keeps EU-law deadlines (IOSS) on the raw date even when it is a Sunday', () => {
-    // 2030-03-31 (IOSS for February 2030) is a Sunday; the banking-day
-    // adjustment would move it to 2030-04-01, but EU deadlines stand.
+  it('keeps a date Skatteverket decided (kvarskatt) on the raw date even when it is a Sunday', () => {
+    // 2030-03-31 is a Sunday; the banking-day adjustment would move it to
+    // 2030-04-01, but a decided payment date stands.
     const keys = getExpectedUpcomingDeadlineKeys(
-      { ...SETTINGS, ioss_enabled: true },
+      {
+        ...SETTINGS,
+        tax_assessment_notices: [{
+          id: 'notice-1',
+          fiscalPeriodName: '2028',
+          decisionType: 'final',
+          paymentDueDate: '2030-03-31',
+        }],
+      },
       [2030],
       new Date(2030, 0, 1),
     )
-    expect(keys.has('ioss_monthly:2030-02:2030-03-31')).toBe(true)
-    expect(keys.has('ioss_monthly:2030-02:2030-04-01')).toBe(false)
+    expect(keys.has('kvarskatt:notice:notice-1:2030-03-31')).toBe(true)
+    expect(keys.has('kvarskatt:notice:notice-1:2030-04-01')).toBe(false)
   })
 
   it('still shifts ordinary Skatteverket deadlines to the next banking day', () => {

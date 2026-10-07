@@ -2157,19 +2157,10 @@ export type TaxDeadlineType =
   | 'moms_quarterly'
   | 'moms_yearly'
   | 'f_skatt'
-  | 'arbetsgivardeklaration'
   | 'skatteinbetalning'
   | 'inkomstdeklaration_ef'
-  | 'inkomstdeklaration_ab'
-  | 'arsredovisning'
-  | 'arsstamma'
   | 'periodisk_sammanstallning'
-  | 'kontrolluppgifter'
   | 'rot_rut_begaran'
-  | 'oss_quarterly'
-  | 'ioss_monthly'
-  | 'intrastat_monthly'
-  | 'punktskatt_monthly'
   | 'fyllnadsinbetalning'
   | 'kvarskatt'
 
@@ -2337,19 +2328,10 @@ export const TAX_DEADLINE_TYPE_LABELS: Record<TaxDeadlineType, string> = {
   moms_quarterly: 'Momsdeklaration (kvartal)',
   moms_yearly: 'Momsdeklaration (år)',
   f_skatt: 'Preliminärskatt (F-skatt)',
-  arbetsgivardeklaration: 'Arbetsgivardeklaration',
   skatteinbetalning: 'Skatteinbetalning (storföretag)',
   inkomstdeklaration_ef: 'Inkomstdeklaration EF',
-  inkomstdeklaration_ab: 'Inkomstdeklaration AB',
-  arsredovisning: 'Årsredovisning',
-  arsstamma: 'Årsstämma',
   periodisk_sammanstallning: 'Periodisk sammanställning',
-  kontrolluppgifter: 'Kontrolluppgifter (KU)',
   rot_rut_begaran: 'ROT/RUT-begäran om utbetalning',
-  oss_quarterly: 'OSS-deklaration',
-  ioss_monthly: 'IOSS-deklaration',
-  intrastat_monthly: 'Intrastat',
-  punktskatt_monthly: 'Punktskattedeklaration',
   fyllnadsinbetalning: 'Fyllnadsinbetalning',
   kvarskatt: 'Kvarskatt'
 }

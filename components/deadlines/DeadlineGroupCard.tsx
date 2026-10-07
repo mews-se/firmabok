@@ -10,16 +10,15 @@ import { Pencil } from 'lucide-react'
 
 /**
  * System tax deadlines that legally share the skattekonto date ("den 12:e"):
- * for a small monthly-moms employer, moms + AGI (+ debiterad preliminärskatt)
- * all fall due the same day. Rendering them as one grouped row instead of
- * 2-3 identical-date rows keeps the list scannable.
+ * for a small monthly-moms filer, moms and debiterad preliminärskatt fall due
+ * the same day. Rendering them as one grouped row instead of identical-date
+ * rows keeps the list scannable.
  */
 export const SKATTEKONTO_GROUP_TYPES = new Set([
   'moms_monthly',
   'moms_quarterly',
   'moms_yearly',
   'f_skatt',
-  'arbetsgivardeklaration',
   'skatteinbetalning',
 ])
 

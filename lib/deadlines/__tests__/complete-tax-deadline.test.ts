@@ -67,7 +67,7 @@ describe('completeTaxDeadline', () => {
   it('is a no-op returning 0 when nothing matches', async () => {
     const { supabase } = makeSupabase({ data: [] })
     const result = await completeTaxDeadline(
-      supabase, 'company-1', ['arbetsgivardeklaration'], '2026-01', 'submitted',
+      supabase, 'company-1', ['f_skatt'], '2026-01', 'submitted',
     )
     expect(result).toEqual({ completed: 0 })
   })

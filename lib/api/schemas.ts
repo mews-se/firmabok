@@ -282,12 +282,8 @@ export const TaxDeadlineTypeSchema = z.enum([
   'moms_quarterly',
   'moms_yearly',
   'f_skatt',
-  'arbetsgivardeklaration',
   'skatteinbetalning',
   'inkomstdeklaration_ef',
-  'inkomstdeklaration_ab',
-  'arsredovisning',
-  'arsstamma',
   'periodisk_sammanstallning',
   'kvarskatt',
 ])

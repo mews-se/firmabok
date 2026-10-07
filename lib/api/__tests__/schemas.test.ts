@@ -237,14 +237,13 @@ describe('Enum schemas', () => {
   it('TaxDeadlineTypeSchema accepts all Swedish tax deadlines', () => {
     const types = [
       'moms_monthly', 'moms_quarterly', 'moms_yearly', 'f_skatt',
-      'arbetsgivardeklaration', 'inkomstdeklaration_ef', 'inkomstdeklaration_ab',
-      'arsredovisning', 'arsstamma', 'periodisk_sammanstallning',
+      'inkomstdeklaration_ef', 'periodisk_sammanstallning', 'kvarskatt',
     ]
     for (const t of types) {
       expect(TaxDeadlineTypeSchema.safeParse(t).success).toBe(true)
     }
-    // Retired: replaced by the statutory arsstamma deadline (ABL 7:10).
     expect(TaxDeadlineTypeSchema.safeParse('bokslut').success).toBe(false)
+    expect(TaxDeadlineTypeSchema.safeParse('arbetsgivardeklaration').success).toBe(false)
   })
 
   it('NormalBalanceSchema and MappingRuleTypeSchema', () => {

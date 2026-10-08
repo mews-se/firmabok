@@ -1,436 +1,453 @@
-# Changelog
+# Ändringslogg
 
-All notable changes to Firmabok, newest first. Versions follow the
-tags in this repository; each one is published as a container image at
+Alla märkbara ändringar i Firmabok, nyaste först. Versionerna följer
+taggarna i det här repot; varje version publiceras som containerimage på
 `ghcr.io/mews-se/firmabok`.
 
 ## 4.3.0 — 2026-10-01
 
-Dependabot's monthly batch; the image rebuilds on the current
-node:26-alpine with the updated runtime packages. No code change.
+Dependabots månadsomgång; imagen byggs om på aktuell node:26-alpine med
+de uppdaterade paketen. Ingen kodändring.
 
-- react and react-dom move from 19.2.8 to 19.3.0, zod from 4.4.3 to
-  4.6.5, next-intl from 4.13.7 to 4.14.7, @supabase/ssr from 0.12.5 to
-  0.12.7, @react-pdf/renderer from 4.8.1 to 4.9.0, framer-motion from
-  13.1.1 to 13.4.3, lucide-react from 1.34.0 to 1.48.0, react-hook-form
-  from 7.86.0 to 7.88.0, tailwind-merge from 3.6.0 to 3.7.0, js-yaml from
-  5.4.1 to 5.4.2, jszip from 3.10.1 to 3.10.2, posthog-js and posthog-node
-  to 1.434.12 and 5.53.0, @upstash/ratelimit and @upstash/redis to 2.2.0
-  and 1.39.0. eslint-config-next moves from 16.3.2 to 16.3.6 (development).
-- The node:26-alpine base image moves to the current digest.
-- vitest moves from 4.1.11 to 5.0.1 and dotenv from 17.4.2 to 18.0.3,
-  both development only. Vitest 5 requires Node 22, so the workflows that
-  pin a Node version move from 20 to 22.
-- github/codeql-action moves to 4.38.2, docker/setup-buildx-action to
-  4.4.1 and docker/build-push-action to 7.4.0 in the workflows.
-- eslint stays on 9 for now: the eslint-plugin-react bundled with
-  eslint-config-next does not run on ESLint 10 yet.
+- react och react-dom uppdateras från 19.2.8 till 19.3.0, zod från 4.4.3
+  till 4.6.5, next-intl från 4.13.7 till 4.14.7, @supabase/ssr från
+  0.12.5 till 0.12.7, @react-pdf/renderer från 4.8.1 till 4.9.0,
+  framer-motion från 13.1.1 till 13.4.3, lucide-react från 1.34.0 till
+  1.48.0, react-hook-form från 7.86.0 till 7.88.0, tailwind-merge från
+  3.6.0 till 3.7.0, js-yaml från 5.4.1 till 5.4.2, jszip från 3.10.1 till
+  3.10.2, posthog-js och posthog-node till 1.434.12 och 5.53.0,
+  @upstash/ratelimit och @upstash/redis till 2.2.0 och 1.39.0.
+  eslint-config-next uppdateras från 16.3.2 till 16.3.6 (utveckling).
+- Basimagen node:26-alpine flyttas till aktuell digest.
+- vitest uppdateras från 4.1.11 till 5.0.1 och dotenv från 17.4.2 till
+  18.0.3, båda bara för utveckling. Vitest 5 kräver Node 22, så de
+  workflows som låser en Node-version går från 20 till 22.
+- github/codeql-action uppdateras till 4.38.2, docker/setup-buildx-action
+  till 4.4.1 och docker/build-push-action till 7.4.0 i workflowsen.
+- eslint stannar på 9 tills vidare: det eslint-plugin-react som följer med
+  eslint-config-next fungerar inte med ESLint 10 än.
 
 
 ## 4.2.3 — 2026-09-30
 
-Security update from dependabot; the image rebuilds with the patched
-packages.
+Säkerhetsuppdatering från Dependabot; imagen byggs om med de lagade
+paketen.
 
-- next moves from 16.3.4 to 16.3.8 to clear GHSA-vcvr-r3jv-pc5j, remote
-  code execution in next/og ImageResponse, fixed in 16.3.6. A LAN
-  installation is not exposed to the internet, but the fix is a plain
-  patch bump.
-- dompurify moves from 3.4.13 to 3.4.16 to clear GHSA-p98j-92pf-mc4p,
-  where a node-removing afterSanitize hook could leave event handlers
-  armed on the detached subtree.
-- The two brace-expansion copies under the build tooling move to 1.1.21
-  and 2.1.7 to clear GHSA-q2hr-2g5m-vwhr, a quadratic-time expansion of
-  the `{a},b}` rewrite. Development only.
+- next uppdateras från 16.3.4 till 16.3.8 och åtgärdar
+  GHSA-vcvr-r3jv-pc5j, fjärrkörning av kod i next/og ImageResponse,
+  rättad i 16.3.6. En LAN-installation är inte exponerad mot internet,
+  men rättelsen är en vanlig patchuppdatering.
+- dompurify uppdateras från 3.4.13 till 3.4.16 och åtgärdar
+  GHSA-p98j-92pf-mc4p, där en afterSanitize-hook som tar bort noder kunde
+  lämna händelsehanterare aktiva i det frikopplade delträdet.
+- De två kopiorna av brace-expansion under byggverktygen uppdateras till
+  1.1.21 och 2.1.7 och åtgärdar GHSA-q2hr-2g5m-vwhr, en expansion i
+  kvadratisk tid av omskrivningen `{a},b}`. Bara för utveckling.
 
 
 ## 4.2.2 — 2026-09-30
 
-Security update from dependabot; the image rebuilds with the patched
+Säkerhetsuppdatering från Dependabot; imagen byggs om med det lagade
 js-yaml.
 
-- js-yaml moves from 5.4.0 to 5.4.1 to clear GHSA-r3ph-w7gj-g6xm, where
-  maxTotalMergeKeys did not count empty merge sources, so a crafted
-  document could keep the loader busy far past the configured limit.
-  js-yaml reads the template packs.
-- @babel/core moves from 7.28.6 to 7.29.7 to clear GHSA-4x5r-pxfx-6jf8,
-  an arbitrary file read through a sourceMappingURL comment. The package
-  is only reachable via eslint-plugin-react-hooks and is only ever
-  installed for development; the rest of the babel chain and
-  browserslist's data packages move with it.
+- js-yaml uppdateras från 5.4.0 till 5.4.1 och åtgärdar
+  GHSA-r3ph-w7gj-g6xm, där maxTotalMergeKeys inte räknade tomma
+  merge-källor, så att ett preparerat dokument kunde hålla inläsaren
+  sysselsatt långt över den inställda gränsen. js-yaml läser mallpaketen.
+- @babel/core uppdateras från 7.28.6 till 7.29.7 och åtgärdar
+  GHSA-4x5r-pxfx-6jf8, godtycklig filläsning via en
+  sourceMappingURL-kommentar. Paketet nås bara via
+  eslint-plugin-react-hooks och installeras aldrig annat än för
+  utveckling; resten av babel-kedjan och browserslists datapaket följer
+  med.
 
 
 ## 4.2.1 — 2026-09-11
 
-Security update; the image rebuilds with the patched packages.
+Säkerhetsuppdatering; imagen byggs om med de lagade paketen.
 
-- next moves from 16.3.2 to 16.3.4 to clear GHSA-2xp9-vwfh-vxw4 and
-  GHSA-p293-qw3h-jr36, unauthenticated remote code execution in the image
-  optimization API. A LAN installation is not exposed to the internet, but
-  the fix is a plain patch bump.
-- sharp moves from 0.35.3 to 0.35.4 (libvips 1.3.3) to clear
-  GHSA-rgj7-g3m4-5g8c in libheif. sharp renders invoice logos for the
-  PDF.
-- The js-yaml 4.x copy under the eslint chain moves to 4.3.2 to clear
-  GHSA-2883-xcg3-v3hh. Development only.
+- next uppdateras från 16.3.2 till 16.3.4 och åtgärdar
+  GHSA-2xp9-vwfh-vxw4 och GHSA-p293-qw3h-jr36, fjärrkörning av kod utan
+  inloggning i bildoptimeringens API. En LAN-installation är inte
+  exponerad mot internet, men rättelsen är en vanlig patchuppdatering.
+- sharp uppdateras från 0.35.3 till 0.35.4 (libvips 1.3.3) och åtgärdar
+  GHSA-rgj7-g3m4-5g8c i libheif. sharp konverterar logotypen till
+  faktura-PDF:en.
+- Kopian av js-yaml 4.x under eslint-kedjan uppdateras till 4.3.2 och
+  åtgärdar GHSA-2883-xcg3-v3hh. Bara för utveckling.
 
 
 ## 4.2.0 — 2026-09-11
 
-Thirty changes ported from upstream Accounted, limited to what a LAN
-installation can use. Six new migrations run at the next start.
+Trettio ändringar portade från uppströms Accounted, begränsade till det
+en LAN-installation har nytta av. Sex nya migrationer körs vid nästa
+start.
 
-Fixes:
+Rättat:
 
-- Booking templates computed reverse-charge VAT as rate/(1+rate) of the
-  total, so 25 % became 20 % on the 2614/2645 pair; the self-assessed VAT
-  now goes on top of the base. Account 2012 is not in official BAS: the
-  reference drops it and the EF F-skatt template books on 2013, with
-  existing template rows moved. Dance admission is 6 % VAT from
-  2026-07-01. A company's own account name wins over the BAS reference
-  name, and 1580 loses its hardcoded tax-receivable label.
-- The KPI monthly breakdown counts reversed originals like the year total
-  does, so the months sum to Nettoresultat again, and bar labels no
-  longer clip.
-- SIE: the upload works in Safari and rejects the wrong file type
-  visibly, the preview names the IB debit sum correctly, account creation
-  is chunked and the import row closes on every exit, and pre-decoded
-  text with CP437 mojibake is caught. A first räkenskapsår may start
-  mid-month; opening balances and the period chain only trust
-  date-adjacent periods.
-- The momsdeklaration seeds its cadence from the configured
-  redovisningsperiod on every visit, and a company without tax settings
-  is sent to set them up instead of getting a guessed quarterly
-  declaration.
-- Recurring invoices force 0 % VAT when the company is not VAT
-  registered.
-- Supplier invoice rows with a negative amount (öresavrundning, rabatt)
-  book on the opposite side instead of as negative amounts, and an
-  invoice that nets below zero anchors on the debit side. Every write now
-  refuses negative-side lines.
-- An unpaid invoice can no longer be inserted with remaining_amount 0.
-- Every invoice write refuses an article id that belongs to another
-  company.
-- Archive integrity checks are recorded in their own ledger, so the
-  nightly control advances again.
-- Customers and suppliers accept 0-day payment terms, and the field says
-  why a value is invalid.
-- Statutory notices on the invoice PDF follow the document language.
-- The verifikat search finds a voucher by its label ("A209", "a 209"),
-  with a spinner while searching.
-- ContextPicker dropdowns work inside dialogs, and the supplier invoice
-  detail tables get a column gutter.
-- MCP: query_journal accepts a single account or a number instead of
-  silently dropping the filter, and the list tools page past PostgREST's
-  1000-row cap.
+- Bokföringsmallarna räknade momsen vid omvänd skattskyldighet som
+  sats/(1+sats) av totalen, så 25 % blev 20 % på paret 2614/2645; den
+  självberäknade momsen läggs nu ovanpå underlaget. Konto 2012 finns inte
+  i officiella BAS: referensen tar bort det och EF-mallen för F-skatt
+  bokför på 2013, med befintliga mallrader flyttade. Entré till dans har
+  6 % moms från 2026-07-01. Företagets eget kontonamn går före
+  BAS-referensens namn, och 1580 förlorar sin hårdkodade benämning som
+  skattefordran.
+- Nyckeltalens månadsuppdelning räknar makulerade original på samma sätt
+  som årstotalen, så att månaderna åter summerar till Nettoresultat, och
+  stapeletiketterna klipps inte längre.
+- SIE: uppladdningen fungerar i Safari och nekar fel filtyp synligt,
+  förhandsvisningen benämner IB-debetsumman rätt, konton skapas i
+  omgångar och importraden stängs vid varje utgång, och redan avkodad
+  text med CP437-mojibake fångas. Ett första räkenskapsår får börja mitt
+  i en månad; ingående balanser och periodkedjan litar bara på perioder
+  som ligger direkt intill varandra i datum.
+- Momsdeklarationen hämtar sin rytm från den inställda
+  redovisningsperioden vid varje besök, och ett företag utan
+  skatteinställningar skickas vidare för att ställa in dem i stället för
+  att få en gissad kvartalsdeklaration.
+- Återkommande fakturor tvingar 0 % moms när företaget inte är
+  momsregistrerat.
+- Rader på leverantörsfakturor med negativt belopp (öresavrundning,
+  rabatt) bokförs på motsatt sida i stället för som negativa belopp, och
+  en faktura som summerar under noll förankras på debetsidan. Alla
+  skrivvägar nekar nu negativa debet- och kreditbelopp.
+- En obetald faktura kan inte längre sparas med remaining_amount 0.
+- Alla skrivningar av fakturor nekar ett artikel-id som tillhör ett annat
+  företag.
+- Arkivets integritetskontroller registreras i en egen logg, så att den
+  nattliga kontrollen går framåt igen.
+- Kunder och leverantörer accepterar betalningsvillkor på 0 dagar, och
+  fältet säger varför ett värde är ogiltigt.
+- Lagstadgade upplysningar på faktura-PDF:en följer dokumentets språk.
+- Verifikatsökningen hittar en verifikation på dess beteckning ("A209",
+  "a 209"), med en spinner medan den söker.
+- ContextPicker-listorna fungerar i dialoger, och tabellerna på
+  leverantörsfakturans detaljsida får luft mellan kolumnerna.
+- MCP: query_journal accepterar ett enskilt konto eller ett nummer i
+  stället för att tyst släppa filtret, och listverktygen bläddrar förbi
+  PostgREST:s tak på 1000 rader.
 
-Features:
+Nytt:
 
-- The complete archive (SIE per räkenskapsår, reports, behandlingshistorik
-  and every document) can be downloaded from the Exportera tab. It was
-  only reachable through the MCP tool before.
-- Mina konton: the Verifikat column is a filter, and unused accounts can
-  be inactivated in bulk.
-- The momsdeklaration shows a banner when the period is already booked.
-- The automatic reminder switch is exposed under Fakturering, and the
-  invoice page says when reminders are off.
-- Recurring schedules take a first invoice date, so a yearly schedule
-  bills in the month you choose.
-- Nyckeltal lists every month's result and a month-by-month table, with
-  a switch in Anpassa.
-- MCP create_invoice lines accept an article id, prefilled like the web
-  line picker.
-- A booked 8999 is listed in Resultatrapport instead of hidden.
-- The import tab shows the SIE import history with undo.
-- 22 new booking templates: goods and materials, tax and VAT settlements,
-  year-end postings.
-- Dimension pickers show the value's name after picking, and an unused
-  custom dimension can be deleted.
-- The verifikat page shows who committed it.
+- Hela arkivet (SIE per räkenskapsår, rapporter, behandlingshistorik och
+  alla dokument) kan laddas ner från fliken Exportera. Tidigare nåddes
+  det bara via MCP-verktyget.
+- Mina konton: kolumnen Verifikat är ett filter, och oanvända konton kan
+  inaktiveras flera åt gången.
+- Momsdeklarationen visar en banner när perioden redan är bokförd.
+- Reglaget för automatiska påminnelser finns under Fakturering, och
+  fakturasidan säger när påminnelserna är avstängda.
+- Återkommande scheman tar ett datum för första fakturan, så att ett
+  årligt schema fakturerar i den månad du väljer.
+- Nyckeltal listar varje månads resultat och en tabell månad för månad,
+  med ett reglage i Anpassa.
+- Raderna i MCP:s create_invoice accepterar ett artikel-id, förifyllt som
+  i webbens radväljare.
+- Ett bokfört 8999 visas i Resultatrapport i stället för att döljas.
+- Importfliken visar historiken över SIE-importer, med ångra.
+- 22 nya bokföringsmallar: varor och material, skatte- och
+  momsavräkningar, bokslutsposter.
+- Dimensionsväljarna visar värdets namn efter valet, och en oanvänd egen
+  dimension kan tas bort.
+- Verifikatsidan visar vem som bokförde verifikationen.
 
 
 ## 4.1.4 — 2026-09-04
 
-Security update from dependabot; nothing in the image changes.
+Säkerhetsuppdatering från Dependabot; inget i imagen ändras.
 
-- browserslist moves from 4.28.1 to 4.28.8 to clear GHSA-73wf-gq98-2v4g,
-  where a crafted browserslist-stats.json could crash the process or
-  write to the prototype. Its data packages (caniuse-lite,
-  electron-to-chromium, node-releases) refresh with it. The package is
-  build tooling and is only ever installed for development.
+- browserslist uppdateras från 4.28.1 till 4.28.8 och åtgärdar
+  GHSA-73wf-gq98-2v4g, där en preparerad browserslist-stats.json kunde
+  krascha processen eller skriva till prototypen. Dess datapaket
+  (caniuse-lite, electron-to-chromium, node-releases) uppdateras
+  samtidigt. Paketet är ett byggverktyg och installeras aldrig annat än
+  för utveckling.
 
 ## 4.1.3 — 2026-09-04
 
-Security update from dependabot; nothing in the image changes.
+Säkerhetsuppdatering från Dependabot; inget i imagen ändras.
 
-- @humanfs/node moves to 0.16.8 to clear GHSA-p498-v437-472g, where the
-  recursive copy followed symlinked files outside the source tree. The
-  package sits under the eslint chain and is only ever installed for
-  development.
-- From this release on, every dependabot patch gets a release of its own,
-  so that a change that lands is also visible as a version.
+- @humanfs/node uppdateras till 0.16.8 och åtgärdar GHSA-p498-v437-472g,
+  där den rekursiva kopieringen följde symlänkade filer utanför
+  källträdet. Paketet ligger under eslint-kedjan och installeras aldrig
+  annat än för utveckling.
+- Från och med den här versionen får varje patch från Dependabot en egen
+  release, så att en ändring som landar också syns som en version.
 
 ## 4.1.2 — 2026-09-01
 
-Dependency refresh from dependabot's monthly sweep; no functional changes.
+Beroendeuppdatering från Dependabots månadssvep; inga funktionella
+ändringar.
 
-- Seventeen minor and patch npm updates, among them next and
-  eslint-config-next at 16.3.2.
-- The pinned node base image digest and the CodeQL actions move along
-  with their groups.
-- ESLint 10 was proposed and declined again: eslint-plugin-react 7.37.5
-  still breaks on it, tracked in jsx-eslint/eslint-plugin-react#3977.
+- Sjutton minor- och patchuppdateringar av npm-paket, bland dem next och
+  eslint-config-next på 16.3.2.
+- Den låsta digesten för node-basimagen och CodeQL-actions följer med
+  sina grupper.
+- ESLint 10 föreslogs och avböjdes igen: eslint-plugin-react 7.37.5 går
+  fortfarande sönder på den, vilket följs i
+  jsx-eslint/eslint-plugin-react#3977.
 
 ## 4.1.1 — 2026-08-22
 
-Nothing in the image changes; this release only covers the workflows that
-build it.
+Inget i imagen ändras; den här releasen gäller bara de workflows som
+bygger den.
 
-- Every pinned action now comments the exact release its commit belongs to
-  rather than the major. A major tag moves, so `# v4` stopped being true the
-  moment upstream retagged it, and the workflow audit raised eight
-  mismatches for pins nobody had touched.
-- Dependabot waits a week before proposing an update. A release that is
-  yanked or found compromised is usually pulled well inside that window.
-- `docker/setup-buildx-action` moves to v4.3.0, the release the private
-  variant already ran: the two repositories share a dependabot config but
-  happened to run it a day apart.
+- Varje låst action kommenterar nu den exakta release som dess commit hör
+  till i stället för major-versionen. En major-tagg flyttas, så `# v4`
+  slutade stämma i samma stund som uppströms taggade om den, och
+  granskningen av workflows hittade åtta avvikelser i låsningar som ingen
+  hade rört.
+- Dependabot väntar en vecka innan den föreslår en uppdatering. En release
+  som dras tillbaka eller visar sig vara komprometterad plockas oftast
+  bort långt inom det fönstret.
+- `docker/setup-buildx-action` uppdateras till v4.3.0, den release som den
+  privata varianten redan körde: de två repona delar Dependabot-konfiguration
+  men råkade köra den med en dags mellanrum.
 
 ## 4.1.0 — 2026-08-21
 
-- Every MCP tool is listed in `tools/list`. Eight tools (update customer,
-  update invoice, company settings, invoice deliveries, recurring
-  schedules) were marked search-only and left out of the list; Claude
-  Desktop only calls tools it received there, so they answered "Tool not
-  found" even though the server accepted the call. The full catalog fits
-  the context budget with room to spare.
-- The user menu shows the running version as its last row. Release images
-  carry their tag (`4.1.0`); `:latest` builds from main carry
-  `main-<sha>`, so a server can always say which commit it runs.
-- The Discord link and the "Kontakta support" dialog are gone from the
-  user menu, the mobile nav, the help page, the account danger zone, the
-  empty states and the error screens. The dialog mailed upstream's support
-  address through an email service a LAN installation never configures.
-  The `/api/support/contact` route goes with it.
-- The legacy-host redirect in `next.config.ts` is gone; it only ever armed
-  on an https host other than app.gnubok.se.
+- Alla MCP-verktyg listas i `tools/list`. Åtta verktyg (uppdatera kund,
+  uppdatera faktura, företagsinställningar, fakturaleveranser,
+  återkommande scheman) var markerade som bara sökbara och utelämnades ur
+  listan; Claude Desktop anropar bara verktyg som den fått där, så de
+  svarade "Tool not found" trots att servern tog emot anropet. Hela
+  katalogen ryms i kontextbudgeten med god marginal.
+- Användarmenyn visar den version som körs på sista raden.
+  Release-imagerna bär sin tagg (`4.1.0`); `:latest`-byggen från main bär
+  `main-<sha>`, så en server kan alltid säga vilken commit den kör.
+- Discord-länken och dialogen "Kontakta support" är borta från
+  användarmenyn, mobilmenyn, hjälpsidan, kontots raderingsavsnitt, de
+  tomma vyerna och felsidorna. Dialogen mejlade uppströms supportadress
+  via en e-posttjänst som en LAN-installation aldrig konfigurerar. Routen
+  `/api/support/contact` försvinner med den.
+- Omdirigeringen från den gamla värden i `next.config.ts` är borta; den
+  aktiverades bara på en https-värd som inte var app.gnubok.se.
 
 ## 4.0.0 — 2026-08-20
 
-The auth and sharing layer is cut down to what a LAN installation with one
-operator actually uses: email plus password, nothing else. About 9 800 lines
-leave the tree.
+Inloggnings- och delningslagret skärs ned till det en LAN-installation
+med en enda användare faktiskt använder: e-post och lösenord, inget mer.
+Omkring 9 800 rader försvinner ur koden.
 
-- The Google sign-in option is gone. Self-hosted installations never had
-  the provider configured, so the button was already dark; now the code
-  behind it is gone too.
-- The email password-reset flow is gone. The stack ships without SMTP and
-  GoTrue autoconfirms signups, so no email ever left the system: the
-  reset page, the auth callback that consumed recovery and confirmation
-  links, and the check-your-email screens were all unreachable. A
-  forgotten password is instead reset through GoTrue's admin API; the
-  recipe is under Troubleshooting in SELF-HOSTING.
-- The MFA machinery is gone. It could never be switched on self-hosted
-  (the flag is baked into the image), yet the enroll and verify pages and
-  the assurance-level gates ran on every request path.
-- Invitations, teams and multi-company support are gone. Without email
-  the invitation flow could only hand out links by hand, and a single
-  operator has no one to invite and no second company to switch to. The
-  company switcher, the member management panel and the team settings go
-  with it.
-- BREAKING: the migration drops the `company_invitations`, `teams`,
-  `team_members` and `team_invitations` tables permanently, together with
-  every `team_id` column and the team-scoped booking templates. An
-  installation that somehow used invitations or teams loses that data on
-  upgrade; single-operator installations lose nothing. `company_members`
-  stays, it is the backbone every row-level security policy resolves
-  through.
+- Inloggning med Google är borta. Självhostade installationer har aldrig
+  haft leverantören konfigurerad, så knappen var redan släckt; nu är
+  koden bakom den också borta.
+- Återställning av lösenord via e-post är borta. Stacken levereras utan
+  SMTP och GoTrue bekräftar registreringar automatiskt, så inget mejl
+  lämnade någonsin systemet: återställningssidan, auth-callbacken som tog
+  emot återställnings- och bekräftelselänkar och skärmarna som bad dig
+  kolla e-posten gick inte att nå. Ett glömt lösenord återställs i stället
+  via GoTrues admin-API; receptet står under Felsökning i SELF-HOSTING.
+- MFA-maskineriet är borta. Det gick aldrig att slå på självhostat
+  (flaggan är inbakad i imagen), men sidorna för registrering och
+  verifiering och kontrollerna av säkerhetsnivå kördes på varje
+  anropsväg.
+- Inbjudningar, team och stöd för flera företag är borta. Utan e-post
+  kunde inbjudningsflödet bara dela ut länkar för hand, och en ensam
+  användare har ingen att bjuda in och inget andra företag att byta
+  till. Företagsväxlaren, panelen för medlemmar och teaminställningarna
+  försvinner med dem.
+- BRYTANDE: migrationen tar permanent bort tabellerna
+  `company_invitations`, `teams`, `team_members` och `team_invitations`,
+  tillsammans med alla `team_id`-kolumner och de teambundna
+  bokföringsmallarna. En installation som ändå använde inbjudningar eller
+  team förlorar de uppgifterna vid uppgraderingen; installationer med en
+  enda användare förlorar inget. `company_members` blir kvar, eftersom
+  varje policy för radnivåsäkerhet slås upp genom den.
 
 ## 3.2.0 — 2026-08-20
 
-- The password policy is a length rule again: at least six characters, and
-  no demand for mixed case, a digit or a special character. Six matches
-  GoTrue's own floor, so the form and the auth service can no longer
-  disagree and the "weak password" round trip is gone. Firmabok serves one
-  operator over plain HTTP on the local network, where a long list of
-  composition rules buys little and mostly pushes people towards writing
-  the password on a note.
-- That rule lived in five copies: register, reset-password, set-password,
-  the security settings panel and the account password route. It now lives
-  in `lib/auth/password-policy.ts`, which the form `minLength` attributes
-  and both message catalogues read from, so the copies cannot drift apart
-  again.
+- Lösenordspolicyn är en längdregel igen: minst sex tecken, och inga krav
+  på blandade versaler och gemener, en siffra eller ett specialtecken.
+  Sex motsvarar GoTrues egen undre gräns, så formuläret och auth-tjänsten
+  kan inte längre vara oense, och vändan med "svagt lösenord" är borta.
+  Firmabok betjänar en användare över ren HTTP på det lokala nätet, där
+  en lång lista med sammansättningsregler ger lite och mest får folk att
+  skriva lösenordet på en lapp.
+- Regeln fanns i fem kopior: registrering, återställning av lösenord, val
+  av lösenord, säkerhetspanelen i inställningarna och kontots route för
+  lösenord. Nu finns den i `lib/auth/password-policy.ts`, som formulärens
+  `minLength`-attribut och båda meddelandekatalogerna läser från, så att
+  kopiorna inte kan glida isär igen.
 
 ## 3.1.1 — 2026-08-20
 
-- The installer says something when the kernel has no memory cgroup.
-  Raspberry Pi firmware boots with `cgroup_disable=memory`, and Compose
-  then drops every `mem_limit` in the stack while `docker stats` reports
-  nothing at all, with one terse warning per service to go on.
-  SELF-HOSTING carries the fix: `cgroup_enable=memory` on the single line
-  in `/boot/firmware/cmdline.txt`, a reboot, and then `docker compose up
-  -d --force-recreate`, because containers keep their old host config
-  across the reboot and the limits do not apply until they are recreated.
-- The README spells out the update commands instead of pointing back at
-  the install section. Both paths are there now: the standalone wget, and
-  `git pull` from an existing checkout.
+- Installationsskriptet säger till när kärnan saknar memory cgroup.
+  Raspberry Pis firmware startar med `cgroup_disable=memory`, och Compose
+  struntar då i varje `mem_limit` i stacken medan `docker stats` inte
+  visar något alls; det enda tecknet är en kortfattad varning per tjänst.
+  SELF-HOSTING har lösningen: `cgroup_enable=memory` på den enda raden i
+  `/boot/firmware/cmdline.txt`, en omstart och sedan `docker compose up
+  -d --force-recreate`, eftersom containrarna behåller sin gamla
+  värdkonfiguration över omstarten och gränserna inte gäller förrän de
+  skapas om.
+- README:n skriver ut uppdateringskommandona i stället för att hänvisa
+  tillbaka till installationsavsnittet. Båda vägarna finns nu: fristående
+  wget och `git pull` från en befintlig utcheckning.
 
 ## 3.1.0 — 2026-08-20
 
-- Dependabot now watches the npm tree, the pinned GitHub Actions and the
-  Docker base image. Pinning to SHAs and digests is deliberate, but those
-  lines never move on their own, and one grouped pull request per
-  ecosystem each month is what keeps them from going quietly stale.
-- The container base image moves from node 22 to node 26, both the build
-  stage and the runtime stage.
-- The first month of updates lands: 34 minor and patch bumps across the
-  npm tree (next 16.2.12 to 16.3.1, react and react-dom 19.2.7 to 19.2.8,
-  the Radix set, pg, recharts, react-hook-form and the rest), five pinned
-  actions lifted to fresh SHAs, and @types/node and framer-motion to
-  their next majors. Nothing in the application's behaviour changes.
-- js-yaml moves to 5.3, which drops the default export. The pack loader
-  imports the namespace instead, and @types/js-yaml goes with it: the
-  package ships its own types now, and the old ones still declared the
-  default export the runtime no longer has.
+- Dependabot bevakar nu npm-trädet, de låsta GitHub Actions och
+  Docker-basimagen. Låsningen till SHA:er och digester är avsiktlig, men
+  de raderna flyttar sig aldrig av sig själva, och en grupperad pull
+  request per ekosystem och månad är det som hindrar dem från att tyst
+  bli inaktuella.
+- Containerns basimage går från node 22 till node 26, både i byggsteget
+  och i körsteget.
+- Den första månadens uppdateringar landar: 34 minor- och
+  patchuppdateringar i npm-trädet (next 16.2.12 till 16.3.1, react och
+  react-dom 19.2.7 till 19.2.8, Radix-paketen, pg, recharts,
+  react-hook-form och resten), fem låsta actions lyfta till nya SHA:er
+  och @types/node och framer-motion till sina nästa major-versioner.
+  Inget i applikationens beteende ändras.
+- js-yaml uppdateras till 5.3, som tar bort standardexporten. Inläsaren av
+  mallpaketen importerar i stället namnrymden, och @types/js-yaml
+  försvinner: paketet levererar nu sina egna typer, och de gamla
+  deklarerade fortfarande den standardexport som körmiljön inte längre
+  har.
 
 ## 3.0.4 — 2026-08-18
 
-- js-yaml and nanoid are lifted out of two advisories the daily scan
-  flags as fixable: js-yaml 4.1.1 to 4.3.1 (CVE-2026-59869 and
-  GHSA-5p4m-2wfm-xmqj) and nanoid 3.3.16 to 3.3.18 (CVE-2026-67213).
-  Nothing in the application's behaviour changes.
-- The foreign key test accepts Postgres 18's wording. It matched the
-  error text, and 18 says "violates RESTRICT setting of foreign key
-  constraint" where earlier versions said "violates foreign key
+- js-yaml och nanoid lyfts ur två sårbarhetsrapporter som den dagliga
+  skanningen flaggar som åtgärdbara: js-yaml 4.1.1 till 4.3.1
+  (CVE-2026-59869 och GHSA-5p4m-2wfm-xmqj) och nanoid 3.3.16 till 3.3.18
+  (CVE-2026-67213). Inget i applikationens beteende ändras.
+- Testet av främmande nycklar godtar Postgres 18:s formulering. Det
+  matchade feltexten, och 18 säger "violates RESTRICT setting of foreign
+  key constraint" där tidigare versioner sa "violates foreign key
   constraint".
 
 ## 3.0.3 — 2026-08-17
 
-- Each migration and the row recording it now run in one transaction.
-  They were two separate `psql` calls, so a run interrupted between
-  them left the migration applied but unrecorded, and since the SQL is
-  not idempotent every later start failed on objects that already
-  existed, with no way out. A migration that fails midway is rolled
-  back completely instead.
-- The database, migration, auth and REST services get the same
-  `no-new-privileges` guard the rest of the stack already had.
+- Varje migration och raden som registrerar den körs nu i en och samma
+  transaktion. De var två separata `psql`-anrop, så en körning som
+  avbröts mellan dem lämnade migrationen genomförd men oregistrerad, och
+  eftersom SQL:en inte är idempotent misslyckades varje senare start på
+  objekt som redan fanns, utan någon väg ut. En migration som misslyckas
+  halvvägs rullas i stället tillbaka helt.
+- Databas-, migrations-, auth- och REST-tjänsterna får samma
+  `no-new-privileges`-skydd som resten av stacken redan hade.
 
 ## 3.0.2 — 2026-08-17
 
-- Documentation: the MCP stdio bridge is `npx gnubok-mcp`. The README
-  pointed at `accounted-mcp`, which was never published; the
-  architecture notes and the bridge package's own README said the same
-  thing and are corrected too.
-- Updates rebuild the cron sidecar: `docker compose pull` skips
-  build-only services, so changes to it never reached existing
-  installs. The install script also refuses `lock` without a `.env`,
-  points out when the update address differs from `DOMAIN`, and the
-  from-source recipe works on a fresh machine.
-- The Docker Hub mirror carries `latest` and the semver tags only, and
-  each mirrored tag's index is rebuilt from the platform images, so the
-  attestation manifests no longer render as an unknown/unknown platform
-  on Hub. GHCR keeps the fully attested index.
-- Housekeeping: the pre-nginx Caddyfile and other leftovers are gone,
-  compose pins the project name and fails fast on missing generated
-  secrets, and the docs describe the http-only stack as it is.
+- Dokumentation: stdio-bryggan för MCP är `npx gnubok-mcp`. README:n
+  pekade på `accounted-mcp`, som aldrig publicerades; arkitekturanteckningarna
+  och bryggpaketets egen README sa samma sak och är också rättade.
+- Uppdateringar bygger om cron-sidovagnen: `docker compose pull` hoppar
+  över tjänster som bara byggs, så ändringar i den nådde aldrig befintliga
+  installationer. Installationsskriptet vägrar också `lock` utan `.env`,
+  påpekar när uppdateringsadressen skiljer sig från `DOMAIN`, och
+  receptet för bygge från källa fungerar på en ny maskin.
+- Docker Hub-spegeln bär bara `latest` och semver-taggarna, och varje
+  speglad taggs index byggs om från plattformsimagerna, så att
+  attesteringsmanifesten inte längre visas som en unknown/unknown-plattform
+  på Hub. GHCR behåller det fullt attesterade indexet.
+- Städning: Caddyfile från tiden före nginx och andra rester är borta,
+  compose låser projektnamnet och avbryter direkt om genererade
+  hemligheter saknas, och dokumentationen beskriver http-stacken som den
+  är.
 
 ## 3.0.0 — 2026-08-14
 
-- The database is now the official `postgres` image (18.2, alpine)
-  instead of Supabase's. A three-file bootstrap creates the roles, the
-  auth schema GoTrue builds on and the API grants; everything else the
-  stack needs ships with plain postgres. The image layer for a full
-  install shrinks from over three gigabytes to under one, and the
-  database idles around 45 MB.
-- **Breaking:** an existing installation cannot carry its database
-  volume across this upgrade. Take a `pg_dump` on the old version,
-  install fresh, and restore. The install commands themselves are
-  unchanged.
-- New databases are created with Swedish collation (ICU sv-SE), so
-  text sorts z, å, ä, ö the way Swedish expects.
-- The two daily database jobs (overdue supplier invoices, invoice
-  delivery PII redaction) run from the cron container like every other
-  scheduled job; the database needs no cron extension.
-- Security: the overdue sweep function could be called by any signed-in
-  user through the API. It now requires the service role.
-- A large sweep removed the dormant extension browsing surface (the
-  MCP server, the only extension, is untouched), dead schema families
-  for integrations this fork does not ship (Stripe, WooCommerce,
-  WhatsApp and inbound-mail inboxes, provider migration), the AI chat
-  leftovers and sixty-odd unused translation namespaces - about 16,000
-  lines in total. The stack rests around 300 MB of memory.
+- Databasen är nu den officiella `postgres`-imagen (18.2, alpine) i
+  stället för Supabases. En bootstrap i tre filer skapar rollerna,
+  auth-schemat som GoTrue bygger på och API-behörigheterna; allt annat
+  stacken behöver följer med vanlig postgres. Imagelagren för en full
+  installation krymper från över tre gigabyte till under en, och
+  databasen ligger runt 45 MB i vila.
+- **Brytande:** en befintlig installation kan inte ta med sig sin
+  databasvolym över den här uppgraderingen. Ta en `pg_dump` på den gamla
+  versionen, installera på nytt och återställ. Själva
+  installationskommandona är oförändrade.
+- Nya databaser skapas med svensk sortering (ICU sv-SE), så att text
+  sorteras z, å, ä, ö som man väntar sig på svenska.
+- De två dagliga databasjobben (förfallna leverantörsfakturor, rensning
+  av personuppgifter i fakturaleveranser) körs från cron-containern som
+  alla andra schemalagda jobb; databasen behöver ingen cron-extension.
+- Säkerhet: funktionen som går igenom förfallna fakturor kunde anropas av
+  vilken inloggad användare som helst via API:t. Nu kräver den
+  service-rollen.
+- Ett stort svep tog bort den vilande ytan för att bläddra bland
+  extensions (MCP-servern, den enda extensionen, är orörd), döda
+  schemafamiljer för integrationer som den här forken inte levererar
+  (Stripe, WooCommerce, inkorgar för WhatsApp och inkommande e-post,
+  migrering från andra leverantörer), rester av AI-chatten och ett
+  sextiotal oanvända namnrymder för översättningar – omkring 16 000
+  rader totalt. Stacken vilar runt 300 MB minne.
 
 ## 2.5.2 — 2026-08-13
 
-- Deleted files nothing referenced: leftovers from features removed
-  earlier, one-off repair and backfill scripts for migrations long
-  since run, and image assets whose code is gone. Four npm packages
-  went with them, about 24 MB of installed dependencies.
-- Fixed two silent problems found along the way: two tests mocked a
-  module that no longer exists, so they were quietly testing nothing,
-  and a scheduled-job file was generated for a setup this project does
-  not have.
-- No functional changes.
+- Raderade filer som inget refererade till: rester av funktioner som
+  tagits bort tidigare, engångsskript för reparation och efterfyllnad
+  till migrationer som körts för länge sedan, och bildfiler vars kod är
+  borta. Fyra npm-paket följde med, omkring 24 MB installerade beroenden.
+- Rättade två tysta problem som hittades på vägen: två tester mockade en
+  modul som inte längre finns, så de testade i tysthet ingenting, och en
+  fil för schemalagda jobb genererades för en uppsättning som projektet
+  inte har.
+- Inga funktionella ändringar.
 
 ## 2.5.1 — 2026-08-13
 
-- Nine database migrations each seeded the same skill library from
-  scratch, so a fresh install worked through about eight megabytes of
-  SQL to reach the state the newest one describes on its own. Only that
-  one is kept: installs are quicker and the repository is smaller.
-  Existing installs are unaffected.
-- Added this changelog.
+- Nio databasmigrationer fyllde var och en på samma skill-bibliotek från
+  början, så en ny installation fick arbeta sig igenom omkring åtta
+  megabyte SQL för att nå det läge som den nyaste beskriver på egen hand.
+  Bara den behålls: installationer går fortare och repot blir mindre.
+  Befintliga installationer påverkas inte.
+- Lade till den här ändringsloggen.
 
 ## 2.5.0 — 2026-08-13
 
-- The storage service is gone. The app now reads and writes documents,
-  logos and SIE files directly on the same Docker volume as before.
-  Download links are still signed and expire the same way.
-- Removed an unused webhook module from the database setup.
-- Deleted dead code: an old file-naming scheme with its one-off
-  scripts, an orphaned component, and storage rules nothing enforced.
-- The stack is down to six services and about 450 MB at rest, which
-  fits comfortably on a 2 GB machine.
+- Lagringstjänsten är borta. Appen läser och skriver nu dokument,
+  logotyper och SIE-filer direkt på samma Docker-volym som förut.
+  Nedladdningslänkarna är fortfarande signerade och går ut på samma sätt.
+- Tog bort en oanvänd webhook-modul ur databasuppsättningen.
+- Raderade död kod: ett gammalt namngivningsschema för filer med sina
+  engångsskript, en föräldralös komponent och lagringsregler som inget
+  upprätthöll.
+- Stacken är nere i sex tjänster och omkring 450 MB i vila, vilket ryms
+  gott på en maskin med 2 GB.
 
 ## 2.1.0 — 2026-08-13
 
-- Removed the realtime service. The app now asks the server for
-  changes in the background instead of holding a websocket open. Your
-  own changes still appear immediately; changes made elsewhere (another
-  tab, the MCP bridge) show up within a minute or when the tab regains
-  focus.
-- Health checks run once a minute instead of every five seconds.
-  Startup is just as fast as before.
-- Frees roughly 200 MB of memory and nearly all idle processor use.
+- Tog bort realtime-tjänsten. Appen frågar nu servern efter ändringar i
+  bakgrunden i stället för att hålla en websocket öppen. Dina egna
+  ändringar syns fortfarande direkt; ändringar som görs någon annanstans
+  (en annan flik, MCP-bryggan) syns inom en minut eller när fliken får
+  fokus igen.
+- Health checks körs en gång i minuten i stället för var femte sekund.
+  Starten går lika fort som förut.
+- Frigör ungefär 200 MB minne och nästan all processoranvändning i vila.
 
 ## 2.0.1 — 2026-08-11
 
-- The compose file is now named `docker-compose.yml`, so plain
-  `docker compose stop`, `logs` and `ps` work in the install directory
-  without extra flags.
-- The README explains how to stop and uninstall.
+- Compose-filen heter nu `docker-compose.yml`, så att vanliga
+  `docker compose stop`, `logs` och `ps` fungerar i
+  installationskatalogen utan extra flaggor.
+- README:n förklarar hur man stoppar och avinstallerar.
 
 ## 2.0.0 — 2026-08-11
 
-- Firmabok now runs entirely on your own hardware. One compose file
-  holds the app and the Supabase services it needs behind a small
-  nginx, and installing on a prepared Debian server takes two commands.
-  Plain HTTP on your own network.
-- Updating uses the same two commands; database migrations apply
-  themselves.
-- Onboarding assumes a sole trader (enskild firma).
-- Removed the cloud deployment path, the BankID machinery and a number
-  of unused dependencies. README rewritten around what actually ships.
-- The old compose setup is gone, hence the version jump.
+- Firmabok körs nu helt på din egen hårdvara. En compose-fil rymmer appen
+  och de Supabase-tjänster den behöver bakom en liten nginx, och
+  installationen på en förberedd Debian-server tar två kommandon. Ren
+  HTTP på ditt eget nätverk.
+- Uppdatering görs med samma två kommandon; databasmigrationerna körs av
+  sig själva.
+- Onboardingen utgår från enskild firma.
+- Tog bort molndriftsvägen, BankID-maskineriet och ett antal oanvända
+  beroenden. README:n omskriven kring det som faktiskt levereras.
+- Den gamla compose-uppsättningen är borta, därav versionshoppet.
 
 ## 1.0.1 — 2026-08-09
 
-- Made the license machine-readable: the copyright block moved to
-  `NOTICE` and `LICENSE` is now plain AGPL text, so GitHub identifies
-  it correctly. No code changes.
+- Gjorde licensen maskinläsbar: copyrightblocket flyttades till `NOTICE`
+  och `LICENSE` är nu ren AGPL-text, så att GitHub identifierar den rätt.
+  Inga kodändringar.
 
 ## 1.0.0 — 2026-08-09
 
-- First stable release. Bookkeeping engine, VAT, invoicing, year-end
-  closing and SIE import/export, with self-hosted deployment tested
-  from scratch.
+- Första stabila versionen. Bokföringsmotor, moms, fakturering,
+  årsbokslut och SIE-import/-export, med självhostad drift testad från
+  grunden.

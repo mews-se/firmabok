@@ -395,6 +395,30 @@ describe('commitPendingOperation: create_supplier_invoice_from_inbox', () => {
     expect(result.error).toMatch(/finite numbers/)
   })
 
+  it('refuses an item without a four-digit account before drawing an ankomstnummer', async () => {
+    for (const account_number of [undefined, '', '65400']) {
+      const { supabase, enqueue } = createQueuedMockSupabase()
+      enqueue({ data: { id: 'op-1' }, error: null })
+      enqueue({ data: null, error: null }) // dispatcher's reject update
+
+      const op = makePendingOp()
+      const items = (op.params as { items: Array<Record<string, unknown>> }).items
+      const result = await commitPendingOperation(
+        supabase as never,
+        'user-1',
+        'company-1',
+        makePendingOp({
+          params: { ...op.params, items: [{ ...items[0], account_number }] },
+        }),
+      )
+
+      expect(result.status).toBe('failed')
+      expect(result.http_status).toBe(400)
+      expect(result.error).toMatch(/saknar konto/)
+      expect(supabase.rpc).not.toHaveBeenCalled()
+    }
+  })
+
   it('zeroes per-line VAT when vat_treatment is reverse_charge (RC invariant)', async () => {
     vi.mocked(createSupplierInvoiceRegistrationEntry).mockResolvedValueOnce(
       makeJournalEntry({ id: 'je-rc', voucher_number: 9 })

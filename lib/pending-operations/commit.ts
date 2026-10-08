@@ -60,6 +60,7 @@ import { linkSupplierInvoiceToVoucher } from '@/lib/invoices/supplier-voucher-ma
 import { paidAtFromDate } from '@/lib/invoices/paid-at'
 import { creditNoteNeedsJournalEntry, getOriginalVoucherRef } from '@/lib/invoices/issue-credit-note'
 import { getErrorEntry } from '@/lib/errors/structured-errors'
+import { isAccountNumber } from '@/lib/invariants/account-number'
 import { parseSIEFile } from '@/lib/import/sie-parser'
 import { executeSIEImport, undoSIEImport } from '@/lib/import/sie-import'
 import type { AccountMapping } from '@/lib/import/types'
@@ -2384,6 +2385,18 @@ async function commitCreateSupplierInvoiceFromInbox(
     return { error: 'exchange_rate must be a finite number when provided', status: 400 }
   }
 
+  // Staging resolves every item's account and holds it to four digits, so a
+  // miss here is a stale or tampered op: refuse it before an ankomstnummer
+  // is drawn instead of guessing one.
+  if (rawItems.some((item) => typeof item.account_number !== 'string' || !isAccountNumber(item.account_number))) {
+    const entry = getErrorEntry('SI_CREATE_ITEM_ACCOUNT_MISSING')
+    return {
+      error: entry?.message_sv ?? 'En eller flera fakturarader saknar konto.',
+      errorCode: 'SI_CREATE_ITEM_ACCOUNT_MISSING',
+      status: entry?.httpStatus ?? 400,
+    }
+  }
+
   // Idempotency: a re-fired commit (e.g. retry, double-click on the approval
   // UI, racy MCP call) must not create a second leverantörsfaktura for the
   // same inbox row. The DB FK on invoice_inbox_items.created_supplier_invoice_id
@@ -2558,7 +2571,7 @@ async function commitCreateSupplierInvoiceFromInbox(
       unit: (item.unit as string | undefined) ?? 'st',
       unit_price: typeof item.unit_price === 'number' && Number.isFinite(item.unit_price) ? item.unit_price : 0,
       line_total: typeof item.line_total === 'number' && Number.isFinite(item.line_total) ? item.line_total : 0,
-      account_number: String(item.account_number ?? '4000'),
+      account_number: item.account_number as string,
       vat_code: null,
       vat_rate: vatRate,
       vat_amount: vatAmt,

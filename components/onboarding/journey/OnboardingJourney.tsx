@@ -18,7 +18,6 @@ import {
   type JourneyState,
 } from '@/lib/onboarding-journey/reducer'
 import {
-  abFirstYearEndOptions,
   efFirstYearEndOptions,
   type FirstYearEndOption,
 } from '@/lib/onboarding-journey/fiscal-options'
@@ -72,13 +71,7 @@ export default function OnboardingJourney({
   const [dupElsewhere, setDupElsewhere] = useState(false)
 
   const station = stationOfStep(state.step)
-  const entity = state.settings.entity_type
-  const isEf = entity === 'enskild_firma'
 
-  const monthLong = useMemo(() => {
-    const fmt = new Intl.DateTimeFormat('sv', { month: 'long' })
-    return Array.from({ length: 12 }, (_, i) => fmt.format(new Date(2026, i, 1)))
-  }, [])
   const monthShort = useMemo(() => {
     const fmt = new Intl.DateTimeFormat('sv', { month: 'short' })
     return Array.from({ length: 12 }, (_, i) => fmt.format(new Date(2026, i, 1)).replace('.', ''))
@@ -290,13 +283,13 @@ export default function OnboardingJourney({
         const suggested = s.company_name ?? ''
         return (
           <Question
-            title={isEf ? t('journey_name_ef_title') : t('journey_name_ab_title')}
-            sub={isEf ? t('journey_name_ef_sub') : t('journey_name_ab_sub')}
+            title={t('journey_name_ef_title')}
+            sub={t('journey_name_ef_sub')}
           >
             <NameInput
               key={state.step + suggested}
               initial={suggested}
-              placeholder={isEf ? t('journey_name_ef_placeholder') : t('journey_name_ab_placeholder')}
+              placeholder={t('journey_name_ef_placeholder')}
               hint={
                 <>
                   {t('journey_press')} <b>Enter</b>
@@ -310,7 +303,7 @@ export default function OnboardingJourney({
 
       case 'address':
         return (
-          <Question title={isEf ? t('journey_addr_ef_title') : t('journey_addr_ab_title')}>
+          <Question title={t('journey_addr_ef_title')}>
             <AddressFields
               placeholders={{
                 street: t('step2_street_address'),
@@ -331,7 +324,7 @@ export default function OnboardingJourney({
       case 'fskatt':
         return (
           <Question
-            title={isEf ? t('journey_fskatt_ef_title') : t('journey_fskatt_ab_title')}
+            title={t('journey_fskatt_ef_title')}
             info={t('journey_fskatt_info')}
           >
             <ChipRow
@@ -345,73 +338,32 @@ export default function OnboardingJourney({
           </Question>
         )
 
-      case 'fy': {
-        if (isEf) {
-          return (
-            <Question
-              title={t('journey_fy_ef_title')}
-              sub={t('journey_fy_ef_sub')}
-              info={t('journey_fy_ef_info')}
-              attn={state.serverError === 'period_invalid' ? t('journey_err_period') : undefined}
-            >
-              <ChipRow
-                options={[
-                  { key: 'ongoing', label: t('journey_fy_ef_ongoing') },
-                  { key: 'first', label: t('journey_fy_ef_new') },
-                ]}
-                onPick={(k) =>
-                  dispatch({ type: k === 'ongoing' ? 'FY_CALENDAR_CONFIRMED' : 'FY_FIRST_SELECTED' })
-                }
-                {...flyProps}
-              />
-            </Question>
-          )
-        }
-        const title = t('journey_fy_ask_title')
-        const sub = t('journey_fy_ask_sub')
+      case 'fy':
         return (
           <Question
-            title={title}
-            sub={sub}
-            info={t('journey_fy_info')}
+            title={t('journey_fy_ef_title')}
+            sub={t('journey_fy_ef_sub')}
+            info={t('journey_fy_ef_info')}
             attn={state.serverError === 'period_invalid' ? t('journey_err_period') : undefined}
           >
             <ChipRow
               options={[
-                { key: 'confirm', label: t('journey_fy_calendar') },
-                { key: 'other', label: t('journey_fy_other') },
-                { key: 'first', label: t('journey_fy_first') },
+                { key: 'ongoing', label: t('journey_fy_ef_ongoing') },
+                { key: 'first', label: t('journey_fy_ef_new') },
               ]}
-              onPick={(k) => {
-                if (k === 'other') dispatch({ type: 'FY_OTHER_SELECTED' })
-                else if (k === 'first') dispatch({ type: 'FY_FIRST_SELECTED' })
-                else dispatch({ type: 'FY_CALENDAR_CONFIRMED' })
-              }}
+              onPick={(k) =>
+                dispatch({ type: k === 'ongoing' ? 'FY_CALENDAR_CONFIRMED' : 'FY_FIRST_SELECTED' })
+              }
               {...flyProps}
             />
           </Question>
-        )
-      }
-
-      case 'fymonth':
-        return (
-          <FyMonthStep
-            t={t}
-            monthShort={monthShort}
-            monthLong={monthLong}
-            onUse={(m) => dispatch({ type: 'FY_END_MONTH_PICKED', endMonth: m })}
-          />
         )
 
       case 'fystart': {
         return (
           <Question
-            title={isEf ? t('journey_fystart_ef_title') : t('journey_fystart_ab_title')}
-            sub={
-              isEf
-                  ? t('journey_fystart_ef_sub')
-                  : t('journey_fystart_ab_sub')
-            }
+            title={t('journey_fystart_ef_title')}
+            sub={t('journey_fystart_ef_sub')}
           >
             <JourneyDatePicker
               years={[new Date().getFullYear() - 1, new Date().getFullYear()]}
@@ -425,9 +377,7 @@ export default function OnboardingJourney({
         return (
           <FyEndStep
             t={t}
-            isEf={isEf}
             startDate={s.first_year_start ?? ''}
-            monthShort={monthShort}
             formatDate={formatDayMonthYear}
             onPick={(o) => dispatch({ type: 'FY_END_PICKED', date: o.date })}
             flyProps={flyProps}
@@ -437,7 +387,7 @@ export default function OnboardingJourney({
       case 'momsyn':
         return (
           <Question
-            title={isEf ? t('journey_momsyn_ef_title') : t('journey_momsyn_ab_title')}
+            title={t('journey_momsyn_ef_title')}
             info={t('journey_momsyn_info')}
           >
             <ChipRow
@@ -456,7 +406,7 @@ export default function OnboardingJourney({
         if (s.vat_number) info += ' ' + t('journey_moms_info_vatnr', { vatNumber: s.vat_number })
         return (
           <Question
-            title={isEf ? t('journey_moms_ef_title') : t('journey_moms_ab_title')}
+            title={t('journey_moms_ef_title')}
             info={info}
           >
             <ChipRow
@@ -477,7 +427,7 @@ export default function OnboardingJourney({
       case 'method':
         return (
           <Question
-            title={isEf ? t('journey_method_ef_title') : t('journey_method_ab_title')}
+            title={t('journey_method_ef_title')}
             info={t('journey_method_info')}
             attn={state.serverError === 'generic' ? t('journey_err_generic') : undefined}
           >
@@ -625,85 +575,22 @@ function NameInput({
   )
 }
 
-function FyMonthStep({
-  t,
-  monthShort,
-  monthLong,
-  onUse,
-}: {
-  t: TFn
-  monthShort: string[]
-  monthLong: string[]
-  onUse: (endMonth: number) => void
-}) {
-  const [sel, setSel] = useState(0)
-  const [hover, setHover] = useState(0)
-  const m = hover || sel
-  const year0 = new Date().getFullYear()
-  const span: [number, number] | null = m ? (m === 12 ? [0, 11] : [m, m + 11]) : null
-  const label = m
-    ? m === 12
-      ? `1 ${monthLong[0]} – 31 ${monthLong[11]}`
-      : `1 ${monthLong[m % 12]} – ${monthLong[m - 1]}`
-    : ''
-  return (
-    <Question title={t('journey_fymonth_title')} sub={t('journey_fymonth_sub')} info={t('journey_fymonth_info')}>
-      <YearBand
-        cells={24}
-        year0={year0}
-        span={span}
-        label={label}
-        note={m ? (m === 12 ? t('journey_band_calendar_note') : t('journey_band_broken_note')) : undefined}
-      />
-      <div className="jny-mchips">
-        {monthShort.map((name, i) => (
-          <button
-            key={name}
-            type="button"
-            className={`jny-mchip${sel === i + 1 ? ' is-sel' : ''}`}
-            onMouseEnter={() => setHover(i + 1)}
-            onMouseLeave={() => setHover(0)}
-            onClick={() => setSel(i + 1)}
-          >
-            {name}
-          </button>
-        ))}
-      </div>
-      {sel ? (
-        <div className="jny-qactions">
-          <button type="button" className="jny-btn" onClick={() => onUse(sel)}>
-            {t('journey_fymonth_use')}
-          </button>
-        </div>
-      ) : null}
-    </Question>
-  )
-}
-
 function FyEndStep({
   t,
-  isEf,
   startDate,
-  monthShort,
   formatDate,
   onPick,
   flyProps,
 }: {
   t: TFn
-  isEf: boolean
   startDate: string
-  monthShort: string[]
   formatDate: (iso: string) => string
   onPick: (o: FirstYearEndOption) => void
   flyProps: { flyTargetRef: React.RefObject<HTMLDivElement | null>; flyTargetFrac: number }
 }) {
-  const [endMonth, setEndMonth] = useState(12)
-  const [showMonths, setShowMonths] = useState(false)
   const [preview, setPreview] = useState<FirstYearEndOption | null>(null)
   const [sy, sm] = startDate.split('-').map(Number)
-  const options = isEf
-    ? efFirstYearEndOptions(sy, sm)
-    : abFirstYearEndOptions(sy, sm, endMonth)
+  const options = efFirstYearEndOptions(sy, sm)
   const cells: 24 | 36 = sm - 1 + 19 > 24 ? 36 : 24
   const span: [number, number] | null = preview
     ? [sm - 1, (preview.year - sy) * 12 + preview.month - 1]
@@ -712,7 +599,7 @@ function FyEndStep({
     <Question
       title={t('journey_fyend_title')}
       sub={t('journey_fyend_sub')}
-      info={isEf ? t('journey_fyend_ef_info') : t('journey_fyend_ab_info')}
+      info={t('journey_fyend_ef_info')}
     >
       <YearBand
         cells={cells}
@@ -750,29 +637,7 @@ function FyEndStep({
             <span className="jny-rec">{t('journey_fyend_months', { count: o.months })}</span>
           </button>
         ))}
-        {!isEf ? (
-          <button type="button" className="jny-pick" onClick={() => setShowMonths(true)}>
-            {t('journey_fyend_other_month')}
-          </button>
-        ) : null}
       </div>
-      {showMonths ? (
-        <div className="jny-mchips">
-          {monthShort.map((name, i) => (
-            <button
-              key={name}
-              type="button"
-              className={`jny-mchip${endMonth === i + 1 ? ' is-sel' : ''}`}
-              onClick={() => {
-                setEndMonth(i + 1)
-                setPreview(null)
-              }}
-            >
-              {name}
-            </button>
-          ))}
-        </div>
-      ) : null}
       <span style={{ display: 'none' }}>{flyProps.flyTargetFrac}</span>
     </Question>
   )
@@ -796,14 +661,9 @@ function DoneStep({
   const s = state.settings
   const shortName = (s.company_name ?? '').split(' ')[0] || ''
   const rows: [string, string][] = [
-    [t('journey_card_form'), s.entity_type === 'aktiebolag' ? t('journey_form_ab') : t('journey_form_ef')],
+    [t('journey_card_form'), t('journey_form_ef')],
   ]
-  if (s.org_number) {
-    rows.push([
-      s.entity_type === 'enskild_firma' ? t('journey_card_persnr') : t('journey_card_orgnr'),
-      s.org_number,
-    ])
-  }
+  if (s.org_number) rows.push([t('journey_card_persnr'), s.org_number])
   if (s.city) rows.push([t('journey_card_seat'), s.city])
   if (fyAnswer) rows.push([t('journey_card_fy'), fyAnswer])
   if (s.f_skatt !== undefined) {

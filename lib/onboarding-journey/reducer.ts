@@ -23,7 +23,6 @@ export type JourneyStep =
   | 'address'
   | 'fskatt'
   | 'fy'
-  | 'fymonth'
   | 'fystart'
   | 'fyend'
   | 'momsyn'
@@ -39,7 +38,6 @@ const STATION_OF: Record<JourneyStep, JourneyStation> = {
   address: 0,
   fskatt: 0,
   fy: 1,
-  fymonth: 1,
   fystart: 1,
   fyend: 1,
   momsyn: 2,
@@ -86,9 +84,7 @@ export type JourneyAction =
   | { type: 'ADDRESS_SUBMITTED'; addressLine1?: string; postalCode?: string; city?: string }
   | { type: 'FSKATT_ANSWERED'; fskatt: boolean }
   | { type: 'FY_CALENDAR_CONFIRMED' }
-  | { type: 'FY_OTHER_SELECTED' }
   | { type: 'FY_FIRST_SELECTED' }
-  | { type: 'FY_END_MONTH_PICKED'; endMonth: number }
   | { type: 'FY_START_PICKED'; date: string }
   | { type: 'FY_END_PICKED'; date: string }
   | { type: 'VAT_ANSWERED'; registered: boolean }
@@ -216,26 +212,8 @@ export function journeyReducer(state: JourneyState, action: JourneyAction): Jour
       return go(patched, 'momsyn')
     }
 
-    case 'FY_OTHER_SELECTED':
-      return go(state, 'fymonth')
-
     case 'FY_FIRST_SELECTED':
       return go(state, 'fystart')
-
-    case 'FY_END_MONTH_PICKED': {
-      const m = action.endMonth
-      if (!Number.isInteger(m) || m < 1 || m > 12) return state
-      const patched = stay(state, {
-        settings: {
-          ...state.settings,
-          fiscal_year_start_month: m === 12 ? 1 : m + 1,
-          is_first_fiscal_year: false,
-          first_year_start: undefined,
-          first_year_end: undefined,
-        },
-      })
-      return go(patched, 'momsyn')
-    }
 
     case 'FY_START_PICKED': {
       const patched = stay(state, {

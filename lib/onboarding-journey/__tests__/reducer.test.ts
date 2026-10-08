@@ -99,17 +99,6 @@ describe('journeyReducer: fiscal-year branches', () => {
     )
     expect(s.settings.fiscal_year_start_month).toBe(7)
   })
-
-  it('brutet år: end month picks the following start month', () => {
-    const s = run(manualEfAtFy(), { type: 'FY_OTHER_SELECTED' }, { type: 'FY_END_MONTH_PICKED', endMonth: 6 })
-    expect(s.settings.fiscal_year_start_month).toBe(7)
-    expect(s.settings.is_first_fiscal_year).toBe(false)
-  })
-
-  it('brutet år resolving to December is a plain calendar year', () => {
-    const s = run(manualEfAtFy(), { type: 'FY_OTHER_SELECTED' }, { type: 'FY_END_MONTH_PICKED', endMonth: 12 })
-    expect(s.settings.fiscal_year_start_month).toBe(1)
-  })
 })
 
 describe('journeyReducer: the moms station', () => {

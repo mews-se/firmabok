@@ -587,6 +587,7 @@ describe('commitPendingOperation: credit_invoice', () => {
     enqueue({ data: null, error: null })
     enqueue({ data: completeCreditNote, error: null })
     enqueue({ data: { entity_type: 'enskild_firma', accounting_method: 'cash' }, error: null })
+    enqueue({ data: [{ voucher_series: 'A', voucher_number: 7 }], error: null }) // the cash payment verifikat
     enqueue({ data: null, error: null }) // update credit note with journal_entry_id
     enqueue({ data: null, error: null }) // dispatcher update
 
@@ -608,7 +609,7 @@ describe('commitPendingOperation: credit_invoice', () => {
       completeCreditNote,
       'enskild_firma',
       'Kund AB',
-      undefined,
+      'A-7',
     )
     expect(findCalls('invoices', 'update')).toContainEqual([{ journal_entry_id: 'je-cn' }])
   })

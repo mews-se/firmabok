@@ -58,7 +58,7 @@ import { linkInvoiceToVoucher } from '@/lib/invoices/voucher-matching'
 import { planInvoicePayment } from '@/lib/invoices/apply-invoice-payment'
 import { linkSupplierInvoiceToVoucher } from '@/lib/invoices/supplier-voucher-matching'
 import { paidAtFromDate } from '@/lib/invoices/paid-at'
-import { creditNoteNeedsJournalEntry } from '@/lib/invoices/issue-credit-note'
+import { creditNoteNeedsJournalEntry, getOriginalVoucherRef } from '@/lib/invoices/issue-credit-note'
 import { getErrorEntry } from '@/lib/errors/structured-errors'
 import { parseSIEFile } from '@/lib/import/sie-parser'
 import { executeSIEImport, undoSIEImport } from '@/lib/import/sie-import'
@@ -2975,28 +2975,14 @@ async function commitCreditInvoice(
   const entityType = (settings?.entity_type as EntityType) || 'enskild_firma'
   const accountingMethod = (settings?.accounting_method as AccountingMethod) || 'accrual'
 
-  // Resolve the original verifikation reference so the credit-note JE can
-  // point back to the corrected entry per BFL 5 kap. 5 §. We tolerate
-  // missing-JE on the original (legacy data): the description simply omits
-  // the voucher reference and keeps the invoice-number reference.
-  let originalVoucherRef: string | undefined
-  if (original.journal_entry_id) {
-    const { data: origJe } = await supabase
-      .from('journal_entries')
-      .select('voucher_series, voucher_number')
-      .eq('id', original.journal_entry_id)
-      .eq('company_id', companyId)
-      .maybeSingle()
-    if (origJe?.voucher_series && origJe?.voucher_number != null) {
-      originalVoucherRef = `${origJe.voucher_series}-${origJe.voucher_number}`
-    }
-  }
-
   let journalEntryId: string | null = null
   // Same rule as the dashboard: kontantmetoden books the reversal once the
   // original reached the ledger (its payment booked revenue + utgående moms).
   // `original` still carries the pre-credit status the decision needs.
   if (completeCreditNote && creditNoteNeedsJournalEntry(accountingMethod, original)) {
+    // Without a resolvable verifikat (legacy data) the description keeps
+    // only the invoice-number reference.
+    const originalVoucherRef = await getOriginalVoucherRef(supabase, companyId, original, log)
     try {
       const journalEntry = await createCreditNoteJournalEntry(
         supabase,

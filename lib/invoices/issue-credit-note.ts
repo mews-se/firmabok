@@ -69,28 +69,61 @@ export function creditNoteNeedsJournalEntry(
   )
 }
 
-async function getOriginalVoucherRef(
+/**
+ * The verifikat a credit note reverses, as "A-42" for the "avser verifikation"
+ * reference (BFL 5 kap. 5 §): the invoice's own entry when it was booked at
+ * issue, else the kontantmetod payment entry that booked the sale. Several
+ * posted payment entries name no single verifikat, so none is referenced.
+ */
+export async function getOriginalVoucherRef(
   supabase: SupabaseClient,
   companyId: string,
-  journalEntryId: string | null | undefined,
+  originalInvoice: CreditNoteOriginalInvoice,
   log: Logger,
 ): Promise<string | undefined> {
-  if (!journalEntryId) return undefined
+  if (originalInvoice.journal_entry_id) {
+    const { data, error } = await supabase
+      .from('journal_entries')
+      .select('voucher_series, voucher_number')
+      .eq('id', originalInvoice.journal_entry_id)
+      .eq('company_id', companyId)
+      .maybeSingle()
+
+    if (error) {
+      log.warn('failed to load original voucher reference for credit note', error)
+      return undefined
+    }
+    return formatVoucherRef(data)
+  }
+
+  const paid =
+    originalInvoice.status === 'paid' ||
+    !!originalInvoice.paid_at ||
+    Math.abs(originalInvoice.paid_amount ?? 0) > 0
+  if (!paid) return undefined
 
   const { data, error } = await supabase
     .from('journal_entries')
     .select('voucher_series, voucher_number')
-    .eq('id', journalEntryId)
     .eq('company_id', companyId)
-    .maybeSingle()
+    .eq('source_type', 'invoice_cash_payment')
+    .eq('source_id', originalInvoice.id)
+    .eq('status', 'posted')
+    .limit(2)
 
   if (error) {
-    log.warn('failed to load original voucher reference for credit note', error)
+    log.warn('failed to load cash payment voucher reference for credit note', error)
     return undefined
   }
+  if (!data || data.length !== 1) return undefined
+  return formatVoucherRef(data[0])
+}
 
-  if (!data?.voucher_series || data.voucher_number == null) return undefined
-  return `${data.voucher_series}-${data.voucher_number}`
+function formatVoucherRef(
+  entry: { voucher_series?: string | null; voucher_number?: number | null } | null,
+): string | undefined {
+  if (!entry?.voucher_series || entry.voucher_number == null) return undefined
+  return `${entry.voucher_series}-${entry.voucher_number}`
 }
 
 async function findExistingCreditJournalEntry(
@@ -147,7 +180,7 @@ export async function issueCreditNote(input: IssueCreditNoteInput): Promise<Issu
         const originalVoucherRef = await getOriginalVoucherRef(
           supabase,
           companyId,
-          originalInvoice.journal_entry_id,
+          originalInvoice,
           log,
         )
         const journalEntry = await createCreditNoteJournalEntry(

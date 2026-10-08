@@ -21,7 +21,7 @@ import {
   issueCreditNote,
 } from '@/lib/invoices/issue-credit-note'
 
-const { supabase, enqueue, reset } = createQueuedMockSupabase()
+const { supabase, enqueue, reset, findCalls } = createQueuedMockSupabase()
 const log: Logger = {
   info: vi.fn(),
   warn: vi.fn(),
@@ -160,6 +160,7 @@ describe('issueCreditNote', () => {
 
   it('books a paid cash-method original before marking it credited', async () => {
     enqueue({ data: null, error: null })
+    enqueue({ data: [{ voucher_series: 'A', voucher_number: 7 }], error: null })
     mockCreateCreditNoteJournalEntry.mockResolvedValue({ id: 'journal-cash' })
     enqueue({ data: [{ id: 'credit-1' }], error: null })
     enqueue({ data: [{ id: 'invoice-1' }], error: null })
@@ -182,8 +183,46 @@ describe('issueCreditNote', () => {
 
     expect(result.complete).toBe(true)
     expect(result.journalEntryId).toBe('journal-cash')
-    expect(mockCreateCreditNoteJournalEntry).toHaveBeenCalledOnce()
+    // the payment verifikat booked the sale, so the credit refers to it
+    expect(mockCreateCreditNoteJournalEntry).toHaveBeenCalledWith(
+      expect.anything(),
+      'company-1',
+      'user-1',
+      expect.objectContaining({ id: 'credit-1' }),
+      'enskild_firma',
+      'Testkund',
+      'A-7',
+    )
+    expect(findCalls('journal_entries', 'eq')).toContainEqual(['source_type', 'invoice_cash_payment'])
+    expect(findCalls('journal_entries', 'eq')).toContainEqual(['source_id', 'invoice-1'])
     expect(mockCancelSchedulesForSource).not.toHaveBeenCalled()
+  })
+
+  it('names no payment verifikat when the paid original has several', async () => {
+    enqueue({ data: null, error: null })
+    enqueue({
+      data: [
+        { voucher_series: 'A', voucher_number: 7 },
+        { voucher_series: 'A', voucher_number: 9 },
+      ],
+      error: null,
+    })
+    mockCreateCreditNoteJournalEntry.mockResolvedValue({ id: 'journal-cash' })
+    enqueue({ data: [{ id: 'credit-1' }], error: null })
+    enqueue({ data: [{ id: 'invoice-1' }], error: null })
+
+    await issueCreditNote({
+      supabase: supabase as never,
+      companyId: 'company-1',
+      userId: 'user-1',
+      creditNote: makeCreditNote(),
+      originalInvoice: { id: 'invoice-1', invoice_number: 'F-100', status: 'paid' },
+      entityType: 'enskild_firma',
+      accountingMethod: 'cash',
+      log,
+    })
+
+    expect(mockCreateCreditNoteJournalEntry.mock.calls[0][6]).toBeUndefined()
   })
 
   it('detects when cash-method credit notes need a reversal voucher', () => {

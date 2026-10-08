@@ -3,7 +3,7 @@ import { ensureInitialized } from '@/lib/init'
 import { eventBus } from '@/lib/events/bus'
 import { getErrorMessage } from '@/lib/errors/get-error-message'
 import { createLogger } from '@/lib/logger'
-import { syncInvoiceStatusFromPaymentEntry } from '@/lib/bookkeeping/payment-sync'
+import { loadPaymentRows, syncInvoiceStatusFromPaymentEntry } from '@/lib/bookkeeping/payment-sync'
 import { withRouteContext } from '@/lib/api/with-route-context'
 import { validateBody } from '@/lib/api/validate'
 import { CreateJournalEntrySchema } from '@/lib/api/schemas'
@@ -56,6 +56,8 @@ export const DELETE = withRouteContext<{ params: Promise<{ id: string }> }>(
     .eq('id', id)
     .eq('company_id', companyId)
     .single()
+  // the payment rows too: the delete nulls their journal_entry_id
+  const paymentRows = entryBefore ? await loadPaymentRows(supabase, companyId, entryBefore) : undefined
 
   // delete_last_voucher clears journal_entry_id on every document hanging on
   // the voucher (the FK is ON DELETE RESTRICT, so it has no choice). Capture
@@ -85,7 +87,7 @@ export const DELETE = withRouteContext<{ params: Promise<{ id: string }> }>(
 
   if (entryBefore) {
     try {
-      await syncInvoiceStatusFromPaymentEntry(supabase, companyId, entryBefore)
+      await syncInvoiceStatusFromPaymentEntry(supabase, companyId, entryBefore, paymentRows)
     } catch (syncError) {
       logger.warn('payment status sync failed after delete', { entryId: id, error: syncError })
     }

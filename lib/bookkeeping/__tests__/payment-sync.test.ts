@@ -1,5 +1,9 @@
 import { describe, expect, it, beforeEach, vi } from 'vitest'
-import { isPaymentSourceType, syncInvoiceStatusFromPaymentEntry } from '@/lib/bookkeeping/payment-sync'
+import {
+  isPaymentSourceType,
+  loadPaymentRows,
+  syncInvoiceStatusFromPaymentEntry,
+} from '@/lib/bookkeeping/payment-sync'
 import { createQueuedMockSupabase } from '@/tests/helpers'
 import type { JournalEntry } from '@/types'
 
@@ -385,5 +389,155 @@ describe('syncInvoiceStatusFromPaymentEntry', () => {
 
     expect(tablesUpdated('supplier_invoices').length).toBe(0)
     expect(wasDeleted('supplier_invoice_payments')).toBe(true)
+  })
+})
+
+// The DELETE voucher route reads the payment rows before delete_last_voucher,
+// whose ON DELETE SET NULL leaves nothing to find by entry id afterwards.
+describe('syncInvoiceStatusFromPaymentEntry with pre-read payment rows', () => {
+  const customerEntry = { id: 'entry-1', source_type: 'invoice_paid', source_id: 'invoice-1' } as Pick<
+    JournalEntry,
+    'id' | 'source_type' | 'source_id'
+  >
+  const supplierEntry = {
+    id: 'entry-1',
+    source_type: 'supplier_invoice_paid',
+    source_id: 'supplier-invoice-1',
+  } as Pick<JournalEntry, 'id' | 'source_type' | 'source_id'>
+
+  it('reverts a customer invoice by the row amount and deletes the row by id', async () => {
+    const { supabase, calls, updatePayload } = createRecordingSupabase([
+      { data: { paid_amount: 1250, total: 1250, due_date: '2099-12-31' } }, // invoices select
+      { data: null }, // invoices update
+      { data: null }, // invoice_payments delete
+    ])
+
+    await syncInvoiceStatusFromPaymentEntry(supabase, 'co-1', customerEntry, [{ id: 'ip-1', amount: 750 }])
+
+    expect(calls.map((c) => c.table)).toEqual(['invoices', 'invoices', 'invoice_payments'])
+    expect(updatePayload('invoices')).toEqual({
+      status: 'partially_paid',
+      paid_at: null,
+      paid_amount: 500,
+      remaining_amount: 750,
+    })
+    expect(calls[2].ops).toEqual([
+      { method: 'delete', args: [] },
+      { method: 'in', args: ['id', ['ip-1']] },
+      { method: 'eq', args: ['company_id', 'co-1'] },
+    ])
+  })
+
+  it('reverts a supplier invoice by the row amount and deletes the row by id', async () => {
+    const { supabase, calls, updatePayload } = createRecordingSupabase([
+      { data: { paid_amount: 1000, total: 1000, due_date: '2099-12-31' } }, // supplier_invoices select
+      { data: null }, // supplier_invoices update
+      { data: null }, // supplier_invoice_payments delete
+    ])
+
+    await syncInvoiceStatusFromPaymentEntry(supabase, 'co-1', supplierEntry, [{ id: 'sp-1', amount: 1000 }])
+
+    expect(calls.map((c) => c.table)).toEqual([
+      'supplier_invoices',
+      'supplier_invoices',
+      'supplier_invoice_payments',
+    ])
+    expect(updatePayload('supplier_invoices')).toMatchObject({ status: 'approved', paid_amount: 0 })
+    expect(calls[2].ops).toEqual([
+      { method: 'delete', args: [] },
+      { method: 'in', args: ['id', ['sp-1']] },
+      { method: 'eq', args: ['company_id', 'co-1'] },
+    ])
+  })
+
+  it('falls back to the full paid_amount and deletes nothing when the entry had no row', async () => {
+    const { supabase, calls, updatePayload, wasDeleted } = createRecordingSupabase([
+      { data: { paid_amount: 1250, total: 1250, due_date: '2099-12-31' } }, // invoices select
+      { data: null }, // invoices update
+    ])
+
+    await syncInvoiceStatusFromPaymentEntry(supabase, 'co-1', customerEntry, [])
+
+    expect(calls.map((c) => c.table)).toEqual(['invoices', 'invoices'])
+    expect(updatePayload('invoices')).toMatchObject({ status: 'sent', paid_amount: 0, remaining_amount: 1250 })
+    expect(wasDeleted('invoice_payments')).toBe(false)
+  })
+
+  it('still looks the row up by entry id when none is passed (storno)', async () => {
+    const { supabase, calls } = createRecordingSupabase([
+      { data: { amount: 750 } }, // invoice_payments select amount
+      { data: { paid_amount: 1250, total: 1250, due_date: '2099-12-31' } }, // invoices select
+      { data: null }, // invoices update
+      { data: null }, // invoice_payments delete
+    ])
+
+    await syncInvoiceStatusFromPaymentEntry(supabase, 'co-1', customerEntry)
+
+    expect(calls.map((c) => c.table)).toEqual(['invoice_payments', 'invoices', 'invoices', 'invoice_payments'])
+    expect(calls[3].ops).toEqual([
+      { method: 'delete', args: [] },
+      { method: 'eq', args: ['journal_entry_id', 'entry-1'] },
+      { method: 'eq', args: ['invoice_id', 'invoice-1'] },
+      { method: 'eq', args: ['company_id', 'co-1'] },
+    ])
+  })
+})
+
+describe('loadPaymentRows', () => {
+  it('reads the source invoice\'s rows on the entry', async () => {
+    const { supabase, calls } = createRecordingSupabase([{ data: [{ id: 'ip-1', amount: 750 }] }])
+
+    const rows = await loadPaymentRows(supabase, 'co-1', {
+      id: 'entry-1',
+      source_type: 'invoice_cash_payment',
+      source_id: 'invoice-1',
+    } as Pick<JournalEntry, 'id' | 'source_type' | 'source_id'>)
+
+    expect(rows).toEqual([{ id: 'ip-1', amount: 750 }])
+    expect(calls[0].table).toBe('invoice_payments')
+    expect(calls[0].ops).toEqual([
+      { method: 'select', args: ['id, amount'] },
+      { method: 'eq', args: ['journal_entry_id', 'entry-1'] },
+      { method: 'eq', args: ['invoice_id', 'invoice-1'] },
+      { method: 'eq', args: ['company_id', 'co-1'] },
+    ])
+  })
+
+  it('reads supplier_invoice_payments for a supplier payment', async () => {
+    const { supabase, calls } = createRecordingSupabase([{ data: [] }])
+
+    await loadPaymentRows(supabase, 'co-1', {
+      id: 'entry-1',
+      source_type: 'supplier_invoice_cash_payment',
+      source_id: 'supplier-invoice-1',
+    } as Pick<JournalEntry, 'id' | 'source_type' | 'source_id'>)
+
+    expect(calls[0].table).toBe('supplier_invoice_payments')
+    expect(calls[0].ops).toContainEqual({ method: 'eq', args: ['supplier_invoice_id', 'supplier-invoice-1'] })
+  })
+
+  it('reads nothing for an entry that is not a payment', async () => {
+    const { supabase, calls } = createRecordingSupabase([])
+
+    const rows = await loadPaymentRows(supabase, 'co-1', {
+      id: 'entry-1',
+      source_type: 'manual',
+      source_id: null,
+    } as Pick<JournalEntry, 'id' | 'source_type' | 'source_id'>)
+
+    expect(rows).toEqual([])
+    expect(calls).toEqual([])
+  })
+
+  it('throws on a read error', async () => {
+    const { supabase } = createRecordingSupabase([{ error: { message: 'timeout' } }])
+
+    await expect(
+      loadPaymentRows(supabase, 'co-1', {
+        id: 'entry-1',
+        source_type: 'invoice_paid',
+        source_id: 'invoice-1',
+      } as Pick<JournalEntry, 'id' | 'source_type' | 'source_id'>),
+    ).rejects.toEqual({ message: 'timeout' })
   })
 })

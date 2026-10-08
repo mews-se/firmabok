@@ -17,6 +17,37 @@ export function isPaymentSourceType(sourceType: string | null | undefined): bool
   return (PAYMENT_SOURCE_TYPES as readonly string[]).includes(sourceType)
 }
 
+export interface PaymentRowRef {
+  id: string
+  amount: number
+}
+
+/**
+ * The source invoice's payment rows on a payment entry, read while the entry
+ * still exists. The DELETE journal entry route reads them before
+ * delete_last_voucher: the rows' journal_entry_id is ON DELETE SET NULL, so a
+ * lookup by entry id afterwards finds nothing, the whole paid_amount is
+ * reverted and the row stays behind as a payment. Throws on a read error so
+ * the route refuses the delete instead of deleting blind.
+ */
+export async function loadPaymentRows(
+  supabase: SupabaseClient,
+  companyId: string,
+  entry: Pick<JournalEntry, 'id' | 'source_type' | 'source_id'>
+): Promise<PaymentRowRef[]> {
+  if (!isPaymentSourceType(entry.source_type) || !entry.source_id) return []
+
+  const isSupplier = entry.source_type.startsWith('supplier_invoice')
+  const { data, error } = await supabase
+    .from(isSupplier ? 'supplier_invoice_payments' : 'invoice_payments')
+    .select('id, amount')
+    .eq('journal_entry_id', entry.id)
+    .eq(isSupplier ? 'supplier_invoice_id' : 'invoice_id', entry.source_id)
+    .eq('company_id', companyId)
+  if (error) throw error
+  return (data ?? []) as PaymentRowRef[]
+}
+
 /**
  * Revert the business-level paid status on the invoice or supplier invoice
  * that a payment journal entry was attached to. Used by both reverseEntry()
@@ -24,28 +55,41 @@ export function isPaymentSourceType(sourceType: string | null | undefined): bool
  * consistent state but the invoice's status/paid_amount/paid_at would otherwise
  * stay stuck on "paid".
  *
+ * `paymentRows` are the rows loadPaymentRows read before the entry was
+ * deleted; they are reverted by their amount and deleted by id. Without them
+ * the rows are looked up by entry id, which only works while the entry exists.
+ *
  * Safe to call with any entry: returns early if source_type is not a payment.
  */
 export async function syncInvoiceStatusFromPaymentEntry(
   supabase: SupabaseClient,
   companyId: string,
-  entry: Pick<JournalEntry, 'id' | 'source_type' | 'source_id'>
+  entry: Pick<JournalEntry, 'id' | 'source_type' | 'source_id'>,
+  paymentRows?: PaymentRowRef[]
 ): Promise<void> {
   if (!isPaymentSourceType(entry.source_type) || !entry.source_id) return
 
   const entryId = entry.id
+  // amount null: the entry has no payment row (cash entries book none)
+  const preRead = paymentRows
+    ? {
+        amount: paymentRows.length > 0
+          ? roundOre(paymentRows.reduce((sum, r) => sum + Number(r.amount), 0))
+          : null,
+      }
+    : null
 
   if (entry.source_type.startsWith('supplier_invoice')) {
     // Scope to THIS invoice's payment row: a batch voucher (match_batch_allocate)
     // carries one payment row per invoice under the same journal_entry_id, so an
     // unfiltered .single() errors out on multi-row and silently yields null.
-    const { data: payment } = await supabase
+    const payment = preRead ?? (await supabase
       .from('supplier_invoice_payments')
       .select('amount')
       .eq('journal_entry_id', entryId)
       .eq('supplier_invoice_id', entry.source_id)
       .eq('company_id', companyId)
-      .single()
+      .single()).data
 
     // Column is `total`, not `total_amount` (supplier_invoices has never had a
     // total_amount column). Selecting the wrong name made PostgREST reject the
@@ -116,22 +160,17 @@ export async function syncInvoiceStatusFromPaymentEntry(
     // carries sibling rows for other invoices whose status this call does not
     // restore, so deleting them here would desync paid_amount from the payment
     // rows (PR #666 review, SOC 2 CC6.3).
-    await supabase
-      .from('supplier_invoice_payments')
-      .delete()
-      .eq('journal_entry_id', entryId)
-      .eq('supplier_invoice_id', entry.source_id)
-      .eq('company_id', companyId)
+    await deletePaymentRows(supabase, companyId, 'supplier_invoice_payments', entry, paymentRows)
   } else {
     // Scoped like the supplier branch: filter by invoice_id + company_id so a
     // batch voucher's sibling payment rows don't break the .single().
-    const { data: payment } = await supabase
+    const payment = preRead ?? (await supabase
       .from('invoice_payments')
       .select('amount')
       .eq('journal_entry_id', entryId)
       .eq('invoice_id', entry.source_id)
       .eq('company_id', companyId)
-      .single()
+      .single()).data
 
     const { data: customerInvoice } = await supabase
       .from('invoices')
@@ -179,11 +218,32 @@ export async function syncInvoiceStatusFromPaymentEntry(
     // later payment doesn't trip the (journal_entry_id, invoice_id) unique
     // index on invoice_payments. Scoped to the source invoice: see the
     // supplier branch comment for the batch-voucher rationale.
-    await supabase
-      .from('invoice_payments')
-      .delete()
-      .eq('journal_entry_id', entryId)
-      .eq('invoice_id', entry.source_id)
-      .eq('company_id', companyId)
+    await deletePaymentRows(supabase, companyId, 'invoice_payments', entry, paymentRows)
   }
+}
+
+async function deletePaymentRows(
+  supabase: SupabaseClient,
+  companyId: string,
+  table: 'invoice_payments' | 'supplier_invoice_payments',
+  entry: Pick<JournalEntry, 'id' | 'source_id'>,
+  paymentRows: PaymentRowRef[] | undefined
+): Promise<void> {
+  // pre-read rows go by id: a deleted entry has already nulled their
+  // journal_entry_id
+  if (paymentRows) {
+    if (paymentRows.length === 0) return
+    await supabase
+      .from(table)
+      .delete()
+      .in('id', paymentRows.map((r) => r.id))
+      .eq('company_id', companyId)
+    return
+  }
+  await supabase
+    .from(table)
+    .delete()
+    .eq('journal_entry_id', entry.id)
+    .eq(table === 'invoice_payments' ? 'invoice_id' : 'supplier_invoice_id', entry.source_id)
+    .eq('company_id', companyId)
 }

@@ -54,7 +54,7 @@ async function createCompanyFromOnboardingImpl(params: {
   }
 
   const entityType = params.settings.entity_type as string | undefined
-  if (entityType !== 'enskild_firma' && entityType !== 'aktiebolag') {
+  if (entityType !== 'enskild_firma') {
     return { error: 'Ogiltig företagsform.' }
   }
 

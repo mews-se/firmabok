@@ -103,8 +103,8 @@ describe('createCompanyFromOnboarding: org_number validation', () => {
 
     const result = await createCompanyFromOnboarding({
       settings: {
-        entity_type: 'aktiebolag',
-        company_name: 'Broken AB',
+        entity_type: 'enskild_firma',
+        company_name: 'Broken Firma',
         org_number: 'abc123', // not a 10- or 12-digit number
       },
       fiscalPeriod: {
@@ -130,8 +130,8 @@ describe('createCompanyFromOnboarding: org_number validation', () => {
 
     const result = await createCompanyFromOnboarding({
       settings: {
-        entity_type: 'aktiebolag',
-        company_name: 'Fake AB',
+        entity_type: 'enskild_firma',
+        company_name: 'Fake Firma',
         // 10 digits but Luhn check digit is wrong (real Volvo is 5560125790;
         // the trailing 1 is an intentional off-by-one). Skatteverket SRU
         // validators and receiving SIE4 consumers would reject this, so we
@@ -151,3 +151,28 @@ describe('createCompanyFromOnboarding: org_number validation', () => {
   })
 })
 
+describe('createCompanyFromOnboarding: entity type', () => {
+  it('refuses aktiebolag', async () => {
+    const { supabase } = buildSupabase({
+      user: { id: 'user-1' },
+      rpcResults: { create_company_with_owner: { data: 'x' } },
+    })
+    mockCreateClient.mockResolvedValue(supabase as never)
+
+    const result = await createCompanyFromOnboarding({
+      settings: {
+        entity_type: 'aktiebolag',
+        company_name: 'Testbolaget AB',
+      },
+      fiscalPeriod: {
+        startDate: '2026-01-01',
+        endDate: '2026-12-31',
+        name: 'Räkenskapsår 2026',
+      },
+    })
+
+    expect(result.error).toBe('Ogiltig företagsform.')
+    const rpcCreate = supabase.rpc.mock.calls.find(([name]) => name === 'create_company_with_owner')
+    expect(rpcCreate).toBeUndefined()
+  })
+})

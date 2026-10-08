@@ -579,6 +579,52 @@ describe('POST /api/supplier-invoices/[id]/mark-paid', () => {
     expect(body.status).toBe('partially_paid')
   })
 
+  it.each(['accrual', 'cash'])(
+    'keeps the clearing of a booked invoice on the amount paid (%s company)',
+    async (accountingMethod) => {
+      const supplier = makeSupplier()
+      const invoice = makeSupplierInvoice({
+        id: 'si-1',
+        status: 'partially_paid',
+        total: 10000,
+        remaining_amount: 6000,
+        paid_amount: 4000,
+        registration_journal_entry_id: 'je-reg',
+        supplier,
+        items: [],
+      })
+
+      enqueue({ data: invoice, error: null })
+      enqueue({ data: { accounting_method: accountingMethod }, error: null })
+      mockCreateSupplierInvoicePaymentEntry.mockResolvedValue({ id: 'je-clear' })
+      enqueue({ data: [{ id: 'si-1' }], error: null })
+      enqueue({ data: null, error: null })
+
+      const request = createMockRequest('/api/supplier-invoices/si-1/mark-paid', {
+        method: 'POST',
+        body: { amount: 6000.4, payment_date: '2027-04-25' },
+      })
+      const response = await POST(request, createMockRouteParams({ id: 'si-1' }))
+      const { status, body } = await parseJsonResponse<{ status: string; paid_amount: number; remaining_amount: number }>(response)
+
+      expect(status).toBe(200)
+      expect(body).toMatchObject({ status: 'paid', paid_amount: 10000.4, remaining_amount: 0 })
+      expect(mockCreateSupplierInvoicePaymentEntry).toHaveBeenCalledWith(
+        expect.anything(),
+        'company-1',
+        'user-1',
+        expect.objectContaining({ id: 'si-1' }),
+        6000.4,
+        '2027-04-25',
+        undefined,
+        'Leverantör AB',
+        undefined,
+      )
+      expect(findCalls('supplier_invoice_payments', 'insert')[0]?.[0]).toMatchObject({ amount: 6000.4 })
+      expect(mockCreateSupplierInvoiceCashInstalmentEntry).not.toHaveBeenCalled()
+    },
+  )
+
   it('emits supplier_invoice.paid event', async () => {
     const supplier = makeSupplier()
     const invoice = makeSupplierInvoice({

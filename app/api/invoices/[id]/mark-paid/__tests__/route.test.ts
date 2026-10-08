@@ -9,7 +9,7 @@ import {
 } from '@/tests/helpers'
 import { eventBus } from '@/lib/events'
 
-const { supabase: mockSupabase, enqueue, reset } = createQueuedMockSupabase()
+const { supabase: mockSupabase, enqueue, reset, findCall } = createQueuedMockSupabase()
 vi.mock('@/lib/supabase/server', () => ({
   createClient: () => Promise.resolve(mockSupabase),
 }))
@@ -163,6 +163,7 @@ describe('POST /api/invoices/[id]/mark-paid', () => {
     enqueue({ data: invoice, error: null })
     // Fetch company settings (now before update due to journal-first ordering)
     enqueue({ data: { accounting_method: 'accrual', entity_type: 'enskild_firma' }, error: null })
+    enqueue({ data: { id: 'ip-1' }, error: null }) // payment row
     // Update invoice status (CAS guard: returns matched row)
     enqueue({ data: [{ id: 'inv-1' }], error: null })
 
@@ -244,6 +245,27 @@ describe('POST /api/invoices/[id]/mark-paid', () => {
     expect(body.error.code).toBe('INVOICE_PAID_BOOK_FAILED')
   })
 
+  it('returns INVOICE_PAID_BOOK_FAILED without the driver text when the payment row cannot be saved', async () => {
+    const customer = makeCustomer()
+    const invoice = makeInvoice({ id: 'inv-1', status: 'sent', total: 12500, customer })
+
+    enqueue({ data: invoice, error: null })
+    enqueue({ data: { accounting_method: 'cash', entity_type: 'enskild_firma' }, error: null })
+    enqueue({ data: null, error: { message: 'new row violates row-level security policy', code: '42501' } })
+
+    mockCreateInvoiceCashEntry.mockResolvedValue({ id: 'je-2' })
+
+    const request = createMockRequest('/api/invoices/inv-1/mark-paid', { method: 'POST' })
+    const response = await POST(request, createMockRouteParams({ id: 'inv-1' }))
+    const { status, body } = await parseJsonResponse(response)
+
+    expect(status).toBe(500)
+    expect(body.error.code).toBe('INVOICE_PAID_BOOK_FAILED')
+    expect(body.error.details).toEqual({ reason: 'payment_row_insert_failed' })
+    expect(JSON.stringify(body)).not.toContain('row-level security')
+    expect(findCall('invoices', 'update')).toBeUndefined()
+  })
+
   it('marks overdue invoice as paid with cash method', async () => {
     const customer = makeCustomer()
     const invoice = makeInvoice({
@@ -255,6 +277,7 @@ describe('POST /api/invoices/[id]/mark-paid', () => {
 
     enqueue({ data: invoice, error: null })
     enqueue({ data: { accounting_method: 'cash', entity_type: 'enskild_firma' }, error: null })
+    enqueue({ data: { id: 'ip-1' }, error: null }) // payment row
     // Update invoice status (CAS guard: returns matched row)
     enqueue({ data: [{ id: 'inv-1' }], error: null })
 
@@ -304,6 +327,7 @@ describe('POST /api/invoices/[id]/mark-paid', () => {
     enqueue({ data: invoice, error: null })
     // Fetch company settings (before update, journal-first ordering)
     enqueue({ data: { accounting_method: 'accrual', entity_type: 'enskild_firma' }, error: null })
+    enqueue({ data: { id: 'ip-1' }, error: null }) // payment row
     // Update invoice status (CAS guard: returns matched row)
     enqueue({ data: [{ id: 'inv-1' }], error: null })
 
@@ -405,6 +429,7 @@ describe('POST /api/invoices/[id]/mark-paid', () => {
 
     enqueue({ data: invoice, error: null })
     enqueue({ data: { accounting_method: 'accrual', entity_type: 'enskild_firma' }, error: null })
+    enqueue({ data: { id: 'ip-1' }, error: null }) // payment row
     enqueue({ data: [{ id: 'inv-1' }], error: null })
 
     mockFindFiscalPeriod.mockResolvedValue('fp-1')
@@ -451,6 +476,7 @@ describe('POST /api/invoices/[id]/mark-paid', () => {
 
     enqueue({ data: invoice, error: null })
     enqueue({ data: { accounting_method: 'accrual', entity_type: 'enskild_firma' }, error: null })
+    enqueue({ data: { id: 'ip-1' }, error: null }) // payment row
     enqueue({ data: [{ id: 'inv-1' }], error: null }) // CAS update matched
 
     mockFindFiscalPeriod.mockResolvedValue('fp-1')
@@ -519,6 +545,7 @@ describe('POST /api/invoices/[id]/mark-paid', () => {
 
     enqueue({ data: invoice, error: null })
     enqueue({ data: { accounting_method: 'accrual', entity_type: 'enskild_firma' }, error: null })
+    enqueue({ data: { id: 'ip-1' }, error: null }) // payment row
     // Update invoice status (CAS guard: returns matched row)
     enqueue({ data: [{ id: 'inv-1' }], error: null })
 
@@ -564,6 +591,7 @@ describe('POST /api/invoices/[id]/mark-paid', () => {
 
     enqueue({ data: invoice, error: null })
     enqueue({ data: { accounting_method: 'accrual', entity_type: 'enskild_firma' }, error: null })
+    enqueue({ data: { id: 'ip-1' }, error: null }) // payment row
     enqueue({ data: [{ id: 'inv-1' }], error: null })
 
     mockFindFiscalPeriod.mockResolvedValue('fp-1')
@@ -599,6 +627,13 @@ describe('POST /api/invoices/[id]/mark-paid', () => {
     expect(paidHandler).toHaveBeenCalledWith(
       expect.objectContaining({ paymentAmount: 500 }),
     )
+    // So does the payment row.
+    expect(findCall('invoice_payments', 'insert')?.[0]).toMatchObject({
+      amount: 500,
+      currency: 'EUR',
+      exchange_rate: 11.4967,
+      journal_entry_id: 'je-eur-partial',
+    })
   })
 
   it('returns 400 MATCH_INVOICE_BOOKING_RATE_MISSING when a EUR invoice carries no exchange rate', async () => {
@@ -680,6 +715,7 @@ describe('POST /api/invoices/[id]/mark-paid', () => {
 
     enqueue({ data: invoice, error: null })
     enqueue({ data: { accounting_method: 'accrual', entity_type: 'enskild_firma' }, error: null })
+    enqueue({ data: { id: 'ip-1' }, error: null }) // payment row
     enqueue({ data: [{ id: 'inv-1' }], error: null })
 
     mockCreateInvoicePaymentJournalEntry.mockResolvedValue({ id: 'je-eur-full' })

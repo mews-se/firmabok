@@ -1924,7 +1924,12 @@
     "mark_paid_failed": "Kunde inte markera som betald",
     "booking_failed_title": "Bokföring misslyckades",
     "tab_new_payment": "Bokför ny betalning",
-    "tab_existing_voucher": "Befintlig verifikation"
+    "tab_existing_voucher": "Befintlig verifikation",
+    "payment_amount_label": "Inbetalt belopp",
+    "remaining_to_pay": "Kvar att betala: {amount}",
+    "remaining_after_payment": "kvar efter betalningen: {amount}",
+    "settles_in_full": "fakturan blir fullt betald",
+    "overpayment_refused": "Beloppet är {excess} högre än det som återstår. Registrera högst det återstående beloppet."
   },
   "invoice_link_voucher": {
     "intro": "Välj en befintlig verifikation som krediterar kundfordran (1510). Ingen ny verifikation skapas: du länkar bara den befintliga som betalning.",

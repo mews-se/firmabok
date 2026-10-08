@@ -10,8 +10,10 @@ import {
   getOutputVatAccount,
   InvoiceFxRateMissingError,
 } from './invoice-entries'
+import { instalmentLines, largestLineIndex, planCashInstalment } from './cash-instalment'
 import { getVatTreatmentForRate } from '@/lib/invoices/vat-rules'
 import { getDisplayTotal } from '@/lib/invoices/rounding'
+import { roundOre } from '@/lib/money'
 import type { FormLine } from '@/components/bookkeeping/JournalEntryForm'
 import type { EntityType, InvoiceItem, VatTreatment } from '@/types'
 
@@ -50,6 +52,17 @@ export interface ProposePaymentLinesInput {
    * the bank leg is the rounded amount and 3740 carries the residual.
    */
   companyOreRounding?: boolean
+  /**
+   * SEK invoices: what the customer paid this time. Omitted, or the default
+   * for an unpaid invoice (the total plus any öresavrundning), proposes the
+   * whole invoice. Any other amount proposes this payment alone: under
+   * kontantmetoden its share of revenue and moms (cash-instalment.ts), under
+   * faktureringsmetoden the 1510 clearing of the amount applied. Within 1 kr
+   * of the remaining amount the invoice settles and 3740 takes the difference.
+   */
+  paymentAmount?: number
+  /** paid_amount before this payment; read together with paymentAmount. */
+  priorPaidAmount?: number
 }
 
 function toFormAmount(n: number): string {
@@ -97,9 +110,17 @@ export function proposePaymentLines(input: ProposePaymentLinesInput): FormLine[]
     input.companyOreRounding === undefined ? undefined : { ore_rounding: input.companyOreRounding },
   ).roundingDelta
 
-  const lines = accountingMethod === 'accrual'
-    ? proposeAccrualLines(invoice, paymentAccount, desc, exchangeRateDifference, roundingDelta)
-    : proposeCashLines(invoice, paymentAccount, desc, entityType, roundingDelta)
+  const priorPaid = roundOre(input.priorPaidAmount ?? 0)
+  const paymentAmount = invoice.currency === 'SEK' ? input.paymentAmount : undefined
+  const isDefaultAmount =
+    paymentAmount === undefined ||
+    (priorPaid === 0 && roundOre(paymentAmount) === roundOre(invoice.total + roundingDelta))
+
+  const lines = !isDefaultAmount
+    ? proposeSinglePaymentLines(invoice, accountingMethod, paymentAccount, desc, entityType, paymentAmount, priorPaid)
+    : accountingMethod === 'accrual'
+      ? proposeAccrualLines(invoice, paymentAccount, desc, exchangeRateDifference, roundingDelta)
+      : proposeCashLines(invoice, paymentAccount, desc, entityType, roundingDelta)
 
   // Dimensions PR7: re-propagate the invoice default onto every proposed leg
   // (matches createInvoicePaymentJournalEntry/createInvoiceCashEntry).
@@ -122,6 +143,66 @@ function oreRoundingLine(roundingDelta: number): FormLine {
     credit_amount: roundingDelta > 0 ? toFormAmount(roundingDelta) : '',
     line_description: 'Öresavrundning',
   }
+}
+
+/**
+ * One payment of a SEK invoice: a part payment, the rest after an earlier
+ * one, or a settlement within the öre band. The bank leg is the amount paid;
+ * the other lines carry the amount applied to the invoice.
+ */
+function proposeSinglePaymentLines(
+  invoice: ProposePaymentLinesInput['invoice'],
+  accountingMethod: 'accrual' | 'cash',
+  paymentAccount: string,
+  desc: string,
+  entityType: EntityType,
+  paymentAmount: number,
+  priorPaid: number
+): FormLine[] {
+  const plan = planCashInstalment({ total: invoice.total, paid_amount: priorPaid }, paymentAmount)
+  const lines: FormLine[] = [{
+    account_number: paymentAccount,
+    debit_amount: toFormAmount(paymentAmount),
+    credit_amount: '',
+    line_description: desc,
+  }]
+
+  if (accountingMethod === 'accrual') {
+    lines.push({
+      account_number: '1510',
+      debit_amount: '',
+      credit_amount: toFormAmount(plan.applied),
+      line_description: desc,
+    })
+  } else {
+    // The whole-invoice revenue and moms lines, without the bank leg.
+    const whole = proposeCashLines(invoice, paymentAccount, desc, entityType).slice(1)
+    const amounts = whole.map((line) => ({
+      account_number: line.account_number,
+      debit_amount: parseFloat(line.debit_amount) || 0,
+      credit_amount: parseFloat(line.credit_amount) || 0,
+    }))
+    const shares = instalmentLines(amounts, {
+      total: invoice.total,
+      priorPaid,
+      newPaid: plan.newPaid,
+      side: 'credit',
+      foldIndex: largestLineIndex(amounts, (line) => line.account_number.startsWith('3')),
+    })
+    shares.forEach((share, i) => {
+      if (share.debit_amount === 0 && share.credit_amount === 0) return
+      lines.push({
+        ...whole[i],
+        debit_amount: toFormAmount(share.debit_amount),
+        credit_amount: toFormAmount(share.credit_amount),
+      })
+    })
+  }
+
+  if (plan.kind === 'settle' && plan.difference !== 0) {
+    lines.push(oreRoundingLine(plan.difference))
+  }
+  return lines
 }
 
 function proposeAccrualLines(

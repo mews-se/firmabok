@@ -195,6 +195,20 @@ export function computeInvoiceDeductionTotal(items: ItemForDeduction[]): number 
 }
 
 /**
+ * Whether an invoice carries a ROT/RUT deduction, read off the stored total
+ * or, when that is missing, off the items.
+ */
+export function hasRotRutDeduction(invoice: {
+  deduction_total?: number | null
+  items?: ReadonlyArray<{ deduction_type?: DeductionType | null }> | null
+}): boolean {
+  return (
+    (invoice.deduction_total ?? 0) > 0 ||
+    (invoice.items ?? []).some((item) => !!item.deduction_type)
+  )
+}
+
+/**
  * Sum per deduction kind. Used to surface separate cap warnings.
  */
 export function computeDeductionTotalsByKind(items: ItemForDeduction[]): {

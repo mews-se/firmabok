@@ -722,7 +722,7 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
               {t('mark_as_sent')}
             </Button>
           )}
-          {(invoice.status === 'sent' || invoice.status === 'overdue') && isRealInvoice && !isCreditNote && (
+          {['sent', 'overdue', 'partially_paid'].includes(invoice.status) && isRealInvoice && !isCreditNote && (
             <Button
               onClick={() => setShowPaymentDialog(true)}
               disabled={isUpdating || !canWrite}

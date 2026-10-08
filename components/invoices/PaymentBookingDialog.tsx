@@ -19,7 +19,11 @@ import { useToast } from '@/components/ui/use-toast'
 import AccountCombobox from '@/components/bookkeeping/AccountCombobox'
 import LinkVoucherPicker from '@/components/invoices/LinkVoucherPicker'
 import { proposePaymentLines, resolveInvoicePaymentSourceType } from '@/lib/bookkeeping/propose-payment-lines'
+import { planCashInstalment } from '@/lib/bookkeeping/cash-instalment'
 import { getErrorMessage } from '@/lib/errors/get-error-message'
+import { getDisplayTotal } from '@/lib/invoices/rounding'
+import { hasRotRutDeduction } from '@/lib/invoices/rot-rut-rules'
+import { roundOre } from '@/lib/money'
 import { formatCurrency } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { useCompany } from '@/contexts/CompanyContext'
@@ -44,6 +48,11 @@ interface PaymentBookingDialogProps {
 }
 
 const BLANK_LINE: FormLine = { account_number: '', debit_amount: '', credit_amount: '', line_description: '' }
+
+interface ProposalSettings {
+  entityType: EntityType
+  companyOreRounding?: boolean
+}
 
 export default function PaymentBookingDialog({
   open,
@@ -76,6 +85,42 @@ export default function PaymentBookingDialog({
   const [sourceType, setSourceType] =
     useState<'invoice_cash_payment' | 'invoice_paid' | null>(null)
   const [nextVoucher, setNextVoucher] = useState<{ series: string; next: number | null } | null>(null)
+  // The amount actually paid drives the proposed lines. Foreign-currency and
+  // ROT/RUT invoices have no share rule, so they keep the whole-invoice lines.
+  const [amountInput, setAmountInput] = useState('')
+  const [proposalSettings, setProposalSettings] = useState<ProposalSettings | null>(null)
+
+  const takesAmount = invoice.currency === 'SEK' && !hasRotRutDeduction(invoice)
+  const priorPaid = roundOre(invoice.paid_amount ?? 0)
+  const remaining = roundOre(invoice.remaining_amount ?? invoice.total - priorPaid)
+
+  const proposeLines = (
+    method: 'accrual' | 'cash',
+    settings: ProposalSettings,
+    paymentAmount: number | undefined,
+  ) =>
+    proposePaymentLines({
+      invoice: {
+        invoice_number: invoice.invoice_number,
+        total: invoice.total,
+        total_sek: invoice.total_sek,
+        subtotal: invoice.subtotal,
+        subtotal_sek: invoice.subtotal_sek,
+        vat_amount: invoice.vat_amount,
+        vat_amount_sek: invoice.vat_amount_sek,
+        currency: invoice.currency,
+        exchange_rate: invoice.exchange_rate,
+        vat_treatment: invoice.vat_treatment,
+        items: invoice.items,
+        default_dimensions: invoice.default_dimensions,
+        ore_rounding: invoice.ore_rounding,
+      },
+      accountingMethod: method,
+      entityType: settings.entityType,
+      companyOreRounding: settings.companyOreRounding,
+      paymentAmount,
+      priorPaidAmount: priorPaid,
+    })
 
   // Load accounts and settings when dialog opens
   useEffect(() => {
@@ -127,28 +172,27 @@ export default function PaymentBookingDialog({
           }),
         )
 
-        const proposed = proposePaymentLines({
-          invoice: {
-            invoice_number: invoice.invoice_number,
-            total: invoice.total,
-            total_sek: invoice.total_sek,
-            subtotal: invoice.subtotal,
-            subtotal_sek: invoice.subtotal_sek,
-            vat_amount: invoice.vat_amount,
-            vat_amount_sek: invoice.vat_amount_sek,
-            currency: invoice.currency,
-            exchange_rate: invoice.exchange_rate,
-            vat_treatment: invoice.vat_treatment,
-            items: invoice.items,
-            default_dimensions: invoice.default_dimensions,
-            ore_rounding: invoice.ore_rounding,
-          },
-          accountingMethod,
+        const loadedSettings: ProposalSettings = {
           entityType,
           companyOreRounding:
             typeof settings?.ore_rounding === 'boolean' ? settings.ore_rounding : undefined,
-        })
+        }
+        // Default: what is left to pay, and while nothing is paid the PDF's
+        // rounded "Att betala", so the default proposal stays the whole invoice.
+        const roundingDelta =
+          priorPaid === 0
+            ? getDisplayTotal(
+                invoice,
+                loadedSettings.companyOreRounding === undefined
+                  ? undefined
+                  : { ore_rounding: loadedSettings.companyOreRounding },
+              ).roundingDelta
+            : 0
+        const defaultAmount = takesAmount ? roundOre(remaining + roundingDelta) : undefined
+        const proposed = proposeLines(accountingMethod, loadedSettings, defaultAmount)
 
+        setProposalSettings(loadedSettings)
+        setAmountInput(defaultAmount === undefined ? '' : String(defaultAmount))
         setLines(proposed)
         setPaymentDate(new Date().toISOString().split('T')[0])
         setIsInitialized(true)
@@ -198,6 +242,23 @@ export default function PaymentBookingDialog({
     return { totalDebit, totalCredit, isBalanced }
   }, [lines])
 
+  const amountPlan = useMemo(() => {
+    const amount = parseFloat(amountInput)
+    if (!takesAmount || !Number.isFinite(amount) || amount <= 0) return null
+    return planCashInstalment(
+      { total: invoice.total, paid_amount: priorPaid, remaining_amount: remaining },
+      amount,
+    )
+  }, [amountInput, takesAmount, invoice.total, priorPaid, remaining])
+  const amountBlocked = takesAmount && (amountPlan === null || amountPlan.kind === 'overpayment')
+
+  const changeAmount = (value: string) => {
+    setAmountInput(value)
+    const amount = parseFloat(value)
+    if (!proposalSettings || !Number.isFinite(amount) || amount <= 0) return
+    setLines(proposeLines(accountingMethod, proposalSettings, amount))
+  }
+
   const updateLine = (index: number, field: keyof FormLine, value: string) => {
     setLines((prev) => {
       const next = [...prev]
@@ -225,7 +286,7 @@ export default function PaymentBookingDialog({
   }
 
   const handleSubmit = async () => {
-    if (!isBalanced) return
+    if (!isBalanced || amountBlocked) return
 
     setIsSubmitting(true)
 
@@ -331,6 +392,34 @@ export default function PaymentBookingDialog({
               className="w-full sm:w-48"
             />
           </div>
+
+          {takesAmount && (
+            <div className="space-y-1.5">
+              <Label htmlFor="payment-amount">{t('payment_amount_label')}</Label>
+              <Input
+                id="payment-amount"
+                type="number"
+                step="0.01"
+                min="0"
+                value={amountInput}
+                onChange={(e) => changeAmount(e.target.value)}
+                className="w-full sm:w-48 tabular-nums"
+                inputMode="decimal"
+              />
+              <p className="text-xs text-muted-foreground">
+                {t('remaining_to_pay', { amount: formatCurrency(remaining, invoice.currency) })}
+                {amountPlan?.kind === 'partial' && (
+                  <> · {t('remaining_after_payment', { amount: formatCurrency(amountPlan.newRemaining, invoice.currency) })}</>
+                )}
+                {amountPlan?.kind === 'settle' && <> · {t('settles_in_full')}</>}
+              </p>
+              {amountPlan?.kind === 'overpayment' && (
+                <p className="text-xs text-destructive">
+                  {t('overpayment_refused', { excess: formatCurrency(amountPlan.difference, invoice.currency) })}
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Journal entry lines */}
           {/* Mobile card layout */}
@@ -486,7 +575,7 @@ export default function PaymentBookingDialog({
             </Button>
             <Button
               onClick={handleSubmit}
-              disabled={!isBalanced || isSubmitting || !isInitialized}
+              disabled={!isBalanced || amountBlocked || isSubmitting || !isInitialized}
               className="w-full sm:w-auto min-h-11"
             >
               {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

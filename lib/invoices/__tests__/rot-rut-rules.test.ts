@@ -10,6 +10,7 @@ import {
   validateInvoice,
   deductionSekConverter,
   deductionToSek,
+  hasRotRutDeduction,
   type ItemForDeduction,
   type ValidateInvoiceItem,
 } from '../rot-rut-rules'
@@ -358,5 +359,14 @@ describe('validateInvoice: foreign currency vs the kronor ceilings', () => {
     expect(result.warnings).toHaveLength(2)
     expect(result.warnings[0]).toContain('ROT-avdraget')
     expect(result.warnings[1]).toContain('RUT-avdraget')
+  })
+})
+
+describe('hasRotRutDeduction', () => {
+  it('reads the stored deduction total or the items', () => {
+    expect(hasRotRutDeduction({ deduction_total: 3750 })).toBe(true)
+    expect(hasRotRutDeduction({ deduction_total: 0, items: [{ deduction_type: 'rut' }] })).toBe(true)
+    expect(hasRotRutDeduction({ deduction_total: 0, items: [{ deduction_type: null }] })).toBe(false)
+    expect(hasRotRutDeduction({})).toBe(false)
   })
 })

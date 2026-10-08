@@ -491,3 +491,114 @@ describe('proposePaymentLines: foreign currency without an exchange rate', () =>
     expect(lines.find((l) => l.account_number === '1930')?.debit_amount).toBe('14375')
   })
 })
+
+describe('proposePaymentLines: one payment of the invoice', () => {
+  const amounts = (lines: ReturnType<typeof proposePaymentLines>) =>
+    lines.map((l) => [l.account_number, l.debit_amount, l.credit_amount])
+  const oreInvoice = makeInvoiceInput({
+    total: 1234.56,
+    subtotal: 987.65,
+    vat_amount: 246.91,
+    items: [makeItem({ line_total: 987.65, vat_amount: 246.91, unit_price: 987.65 })],
+  })
+
+  describe.each(['accrual', 'cash'] as const)('%s: the default amount for an unpaid invoice', (accountingMethod) => {
+    it.each([
+      ['öresavrundning on', true, oreInvoice, 1235],
+      ['öresavrundning off', false, oreInvoice, 1234.56],
+      ['a whole-krona total', true, makeInvoiceInput(), 12500],
+    ])('proposes exactly what it did without an amount (%s)', (_label, companyOreRounding, invoice, paymentAmount) => {
+      const base = { invoice, accountingMethod, entityType: 'enskild_firma' as const, companyOreRounding }
+
+      expect(proposePaymentLines({ ...base, paymentAmount, priorPaidAmount: 0 })).toEqual(proposePaymentLines(base))
+      expect(proposePaymentLines({ ...base, paymentAmount })).toEqual(proposePaymentLines(base))
+    })
+  })
+
+  it('cash: 10 000 + 25 % moms paid with 9 999 and then 2 501', () => {
+    const base = { invoice: makeInvoiceInput(), accountingMethod: 'cash' as const, entityType: 'enskild_firma' as const }
+
+    expect(amounts(proposePaymentLines({ ...base, paymentAmount: 9999, priorPaidAmount: 0 }))).toEqual([
+      ['1930', '9999', ''],
+      ['3001', '', '7999.2'],
+      ['2611', '', '1999.8'],
+    ])
+    expect(amounts(proposePaymentLines({ ...base, paymentAmount: 2501, priorPaidAmount: 9999 }))).toEqual([
+      ['1930', '2501', ''],
+      ['3001', '', '2000.8'],
+      ['2611', '', '500.2'],
+    ])
+  })
+
+  it('cash: settles inside the öre band with the difference on 3740', () => {
+    const base = { invoice: oreInvoice, accountingMethod: 'cash' as const, entityType: 'enskild_firma' as const }
+
+    expect(amounts(proposePaymentLines({ ...base, paymentAmount: 1000, priorPaidAmount: 0 }))).toEqual([
+      ['1930', '1000', ''],
+      ['3001', '', '800'],
+      ['2611', '', '200'],
+    ])
+    expect(amounts(proposePaymentLines({ ...base, paymentAmount: 235, priorPaidAmount: 1000 }))).toEqual([
+      ['1930', '235', ''],
+      ['3001', '', '187.65'],
+      ['2611', '', '46.91'],
+      ['3740', '', '0.44'],
+    ])
+    expect(amounts(proposePaymentLines({ ...base, paymentAmount: 234, priorPaidAmount: 1000 })).at(-1)).toEqual(['3740', '0.56', ''])
+  })
+
+  it('cash: a shortfall of 1 kr or more stays a partial without 3740', () => {
+    const lines = proposePaymentLines({
+      invoice: makeInvoiceInput(),
+      accountingMethod: 'cash',
+      entityType: 'enskild_firma',
+      paymentAmount: 12499,
+      priorPaidAmount: 0,
+    })
+
+    expect(lines.some((l) => l.account_number === '3740')).toBe(false)
+    expect(lines[0].debit_amount).toBe('12499')
+  })
+
+  it('accrual: clears 1510 with the amount applied', () => {
+    const base = { invoice: makeInvoiceInput(), accountingMethod: 'accrual' as const, entityType: 'enskild_firma' as const }
+
+    expect(amounts(proposePaymentLines({ ...base, paymentAmount: 5000, priorPaidAmount: 0 }))).toEqual([
+      ['1930', '5000', ''],
+      ['1510', '', '5000'],
+    ])
+    expect(amounts(proposePaymentLines({ ...base, paymentAmount: 7500, priorPaidAmount: 5000 }))).toEqual([
+      ['1930', '7500', ''],
+      ['1510', '', '7500'],
+    ])
+    expect(
+      amounts(proposePaymentLines({ ...base, invoice: oreInvoice, paymentAmount: 235, priorPaidAmount: 1000 })),
+    ).toEqual([
+      ['1930', '235', ''],
+      ['1510', '', '234.56'],
+      ['3740', '', '0.44'],
+    ])
+  })
+
+  it('stamps the default dimensions on a single payment too', () => {
+    const lines = proposePaymentLines({
+      invoice: { ...makeInvoiceInput(), default_dimensions: { '6': 'P001' } },
+      accountingMethod: 'cash',
+      entityType: 'enskild_firma',
+      paymentAmount: 5000,
+      priorPaidAmount: 0,
+    })
+
+    expect(lines.every((l) => l.dimensions?.['6'] === 'P001')).toBe(true)
+  })
+
+  it('ignores the amount on a foreign-currency invoice', () => {
+    const base = {
+      invoice: makeInvoiceInput({ currency: 'EUR', exchange_rate: 11, total: 1250, total_sek: 13750 }),
+      accountingMethod: 'cash' as const,
+      entityType: 'enskild_firma' as const,
+    }
+
+    expect(proposePaymentLines({ ...base, paymentAmount: 500, priorPaidAmount: 0 })).toEqual(proposePaymentLines(base))
+  })
+})

@@ -11,6 +11,7 @@ import { cancelOrphanedPaymentEntry } from '@/lib/bookkeeping/cancel-orphaned-en
 import { planInvoicePaymentForLines } from '@/lib/invoices/apply-invoice-payment'
 import { recordInvoicePaymentRow, removeInvoicePaymentRow } from '@/lib/invoices/invoice-payment-row'
 import { paidAtFromDate } from '@/lib/invoices/paid-at'
+import { hasRotRutDeduction } from '@/lib/invoices/rot-rut-rules'
 import { eventBus } from '@/lib/events'
 import type { CreateJournalEntryInput, Customer, EntityType, Invoice } from '@/types'
 
@@ -90,13 +91,6 @@ export type SettleInvoicePaymentResult =
   | { ok: false; code: 'INVOICE_PAID_RACE' }
   | { ok: false; code: 'BOOKKEEPING_ERROR'; error: unknown }
   | { ok: false; code: 'UPDATE_FAILED'; error: unknown }
-
-function hasRotRutDeduction(invoice: InvoiceWithCustomerName): boolean {
-  return (
-    (invoice.deduction_total ?? 0) > 0 ||
-    (invoice.items ?? []).some((item) => !!item.deduction_type)
-  )
-}
 
 export async function settleInvoicePayment(
   supabase: SupabaseClient,

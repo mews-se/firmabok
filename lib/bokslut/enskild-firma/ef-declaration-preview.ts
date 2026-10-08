@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { generateIncomeStatement } from '@/lib/reports/income-statement'
+import { generateNEDeclaration } from '@/lib/reports/ne-bilaga/ne-engine'
 import { calculateEgenavgifter, type EgenavgiftCategory } from './egenavgifter-calculator'
 import { calculateRantefordelning } from './rantefordelning-calculator'
 import { proposeEfPfondAvsattning } from './periodiseringsfond-ef'
@@ -23,6 +23,7 @@ export interface EfDeclarationPreview {
     period_start: string
     period_end: string
   }
+  /** NE R11 (bokfört resultat), whole kronor. */
   bookedSurplus: number
   items: EfDeclarationItem[]
 }
@@ -47,8 +48,10 @@ export async function computeEfDeclarationPreview(
     .single()
   if (error || !period) throw new Error('Fiscal period not found')
 
-  const incomeStatement = await generateIncomeStatement(supabase, companyId, fiscalPeriodId)
-  const bookedSurplus = incomeStatement.net_result
+  // the base is NE R11, the figure the declaration starts from: the income
+  // statement leaves out every year-end entry, booked avskrivningar included
+  const neDeclaration = await generateNEDeclaration(supabase, companyId, fiscalPeriodId)
+  const bookedSurplus = neDeclaration.rutor.R11
   const fiscalYear = parseInt(period.period_end.slice(0, 4), 10)
 
   const items: EfDeclarationItem[] = []

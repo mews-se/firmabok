@@ -58,7 +58,7 @@ export const POST = withRouteContext(
       })
     }
 
-    if (invoice.status !== 'sent' && invoice.status !== 'overdue') {
+    if (!['sent', 'overdue', 'partially_paid'].includes(invoice.status)) {
       return errorResponseFromCode('INVOICE_PAID_NOT_PAYABLE', opLog, {
         requestId,
         details: { currentStatus: invoice.status },

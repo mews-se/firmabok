@@ -389,9 +389,9 @@ const MATCH_SI: Record<string, StructuredErrorEntry> = {
   INVOICE_PAID_CASH_PARTIAL_UNSUPPORTED: {
     httpStatus: 400,
     message_sv:
-      'Kontantmetoden kan inte bokföra delbetalningar av en obokförd faktura automatiskt: hela fakturan bokförs vid betalning. Ta emot hela beloppet i en betalning, byt till faktureringsmetoden eller bokför betalningen manuellt som verifikation.',
+      'Under kontantmetoden registreras delbetalningar i betalningsdialogen (Markera som betald), där varje inbetalning bokför sin andel av intäkt och moms. Fakturor i utländsk valuta och fakturor med ROT/RUT-avdrag går inte att delbetala: ta emot hela beloppet i en betalning eller bokför betalningen manuellt som verifikation.',
     message_en:
-      'The cash method cannot auto-book partial payments of an unbooked invoice: the generated entry always books the full invoice. Receive the full amount in one payment, switch to the accrual method, or book the payment manually as a journal entry.',
+      'Under the cash method partial payments are registered in the payment dialog (Mark as paid), where each payment books its share of revenue and VAT. Foreign-currency invoices and invoices with a ROT/RUT deduction cannot be paid in parts: receive the full amount in one payment or book the payment manually as a journal entry.',
   },
   SI_CASH_PARTIAL_UNSUPPORTED: {
     httpStatus: 400,

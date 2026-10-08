@@ -91,6 +91,13 @@ export type SettleInvoicePaymentResult =
   | { ok: false; code: 'BOOKKEEPING_ERROR'; error: unknown }
   | { ok: false; code: 'UPDATE_FAILED'; error: unknown }
 
+function hasRotRutDeduction(invoice: InvoiceWithCustomerName): boolean {
+  return (
+    (invoice.deduction_total ?? 0) > 0 ||
+    (invoice.items ?? []).some((item) => !!item.deduction_type)
+  )
+}
+
 export async function settleInvoicePayment(
   supabase: SupabaseClient,
   companyId: string,
@@ -154,19 +161,24 @@ export async function settleInvoicePayment(
   const isRealInvoice = !invoice.document_type || invoice.document_type === 'invoice'
 
   // The generated cash entry (createInvoiceCashEntry) books the FULL invoice
-  // and takes no payment amount, so a never-booked kontantmetoden invoice can
-  // only be settled in full from a fully unpaid state. Partials used to book
-  // the entire revenue + moms against a smaller bank movement (bokslutsmetoden
-  // reports moms at payment, per installment), and completing a
-  // prior partial would book the full total a second time. Custom lines are
-  // NOT exempt: the dialog pre-fills the same full-invoice shape, so lines
-  // would book the identical error under a user-shaped label.
-  const cashBlock = cashPartialBlockReason({
-    invoiceAlreadyBooked,
-    accountingMethod,
-    priorPaidAmount: invoice.paid_amount,
-    paysRemainingInFull: newStatus === 'paid',
-  })
+  // and takes no payment amount, so it can only settle a never-booked
+  // kontantmetoden invoice in full from a fully unpaid state: a partial would
+  // book all revenue + moms against a smaller bank movement, and completing a
+  // prior partial would book the full total a second time. Lines from the
+  // payment dialog book each payment's own share instead (cash-instalment.ts),
+  // so they are trusted for SEK invoices. Foreign-currency and ROT/RUT
+  // invoices stay whole: there is no share rule for their exchange rate or
+  // for the 1513 split towards Skatteverket.
+  const cashInstalmentLines =
+    !!customLines && (invoice.currency || 'SEK') === 'SEK' && !hasRotRutDeduction(invoice)
+  const cashBlock = cashInstalmentLines
+    ? null
+    : cashPartialBlockReason({
+        invoiceAlreadyBooked,
+        accountingMethod,
+        priorPaidAmount: invoice.paid_amount,
+        paysRemainingInFull: newStatus === 'paid',
+      })
   if (isRealInvoice && cashBlock) {
     return {
       ok: false,

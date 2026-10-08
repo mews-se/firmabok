@@ -154,6 +154,156 @@ describe('settleInvoicePayment', () => {
     expect(vi.mocked(createInvoicePaymentJournalEntry)).not.toHaveBeenCalled()
   })
 
+  describe('kontantmetoden payments in parts from the dialog lines', () => {
+    const shareLines = (bank: number, revenue: number, vat: number) => [
+      { account_number: '1930', debit_amount: bank, credit_amount: 0 },
+      { account_number: '3001', debit_amount: 0, credit_amount: revenue },
+      { account_number: '2611', debit_amount: 0, credit_amount: vat },
+    ]
+
+    beforeEach(() => {
+      vi.mocked(findFiscalPeriod).mockResolvedValue('fp-1')
+      vi.mocked(createJournalEntry).mockResolvedValue({ id: 'je-part' } as never)
+    })
+
+    it('books a partial payment of a never-booked SEK invoice from its share lines', async () => {
+      const { supabase, enqueue, findCall } = createQueuedMockSupabase()
+      enqueue({ data: { id: 'ip-1' } }) // payment row
+      enqueue({ data: [{ id: 'inv-1' }] }) // CAS update matched
+
+      const invoice = payableInvoice({ total: 12500, remaining_amount: 12500, journal_entry_id: null } as Partial<Invoice>)
+      const lines = shareLines(9999, 7999.2, 1999.8)
+      const result = await settleInvoicePayment(
+        supabase as unknown as SupabaseClient,
+        'company-1',
+        'user-1',
+        { ...BASE_PARAMS, invoice, accountingMethod: 'cash', paymentAmountInInvoiceCurrency: 9999, customLines: lines },
+      )
+
+      expect(result).toMatchObject({
+        ok: true,
+        newStatus: 'partially_paid',
+        newPaidAmount: 9999,
+        newRemaining: 2501,
+        journalEntryId: 'je-part',
+      })
+      expect(findCall('invoice_payments', 'insert')?.[0]).toMatchObject({ amount: 9999 })
+      expect(vi.mocked(createJournalEntry).mock.calls[0][3]).toMatchObject({
+        source_type: 'invoice_cash_payment',
+        lines,
+      })
+      expect(vi.mocked(createInvoiceCashEntry)).not.toHaveBeenCalled()
+    })
+
+    it('completes a part-paid never-booked SEK invoice from the remaining share', async () => {
+      const { supabase, enqueue, findCall } = createQueuedMockSupabase()
+      enqueue({ data: { id: 'ip-2' } }) // payment row
+      enqueue({ data: [{ id: 'inv-1' }] }) // CAS update matched
+
+      const invoice = payableInvoice({
+        status: 'partially_paid',
+        total: 12500,
+        paid_amount: 9999,
+        remaining_amount: 2501,
+        journal_entry_id: null,
+      } as Partial<Invoice>)
+      const result = await settleInvoicePayment(
+        supabase as unknown as SupabaseClient,
+        'company-1',
+        'user-1',
+        {
+          ...BASE_PARAMS,
+          invoice,
+          accountingMethod: 'cash',
+          paymentAmountInInvoiceCurrency: 2501,
+          customLines: shareLines(2501, 2000.8, 500.2),
+        },
+      )
+
+      expect(result).toMatchObject({ ok: true, newStatus: 'paid', newPaidAmount: 12500, newRemaining: 0 })
+      expect(findCall('invoice_payments', 'insert')?.[0]).toMatchObject({ amount: 2501 })
+    })
+
+    it('still refuses a partial of a foreign-currency invoice', async () => {
+      const { supabase } = createQueuedMockSupabase()
+      const invoice = payableInvoice({
+        total: 1000,
+        remaining_amount: 1000,
+        currency: 'EUR',
+        exchange_rate: 11,
+        journal_entry_id: null,
+      } as Partial<Invoice>)
+      const result = await settleInvoicePayment(
+        supabase as unknown as SupabaseClient,
+        'company-1',
+        'user-1',
+        {
+          ...BASE_PARAMS,
+          invoice,
+          accountingMethod: 'cash',
+          paymentAmountInInvoiceCurrency: 400,
+          customLines: shareLines(4400, 3520, 880),
+        },
+      )
+
+      expect(result).toMatchObject({
+        ok: false,
+        code: 'INVOICE_PAID_CASH_PARTIAL_UNSUPPORTED',
+        details: { reason: 'partial_payment' },
+      })
+      expect(vi.mocked(createJournalEntry)).not.toHaveBeenCalled()
+    })
+
+    it('still refuses a partial of an invoice with a ROT/RUT deduction', async () => {
+      const { supabase } = createQueuedMockSupabase()
+      const invoice = payableInvoice({
+        total: 12500,
+        remaining_amount: 12500,
+        deduction_total: 3750,
+        journal_entry_id: null,
+      } as Partial<Invoice>)
+      const result = await settleInvoicePayment(
+        supabase as unknown as SupabaseClient,
+        'company-1',
+        'user-1',
+        {
+          ...BASE_PARAMS,
+          invoice,
+          accountingMethod: 'cash',
+          paymentAmountInInvoiceCurrency: 5000,
+          customLines: shareLines(5000, 4000, 1000),
+        },
+      )
+
+      expect(result).toMatchObject({ ok: false, code: 'INVOICE_PAID_CASH_PARTIAL_UNSUPPORTED' })
+      expect(vi.mocked(createJournalEntry)).not.toHaveBeenCalled()
+    })
+
+    it('reads a ROT/RUT deduction off the items too', async () => {
+      const { supabase } = createQueuedMockSupabase()
+      const invoice = payableInvoice({
+        total: 12500,
+        remaining_amount: 12500,
+        journal_entry_id: null,
+        items: [{ id: 'item-1', line_total: 10000, vat_rate: 25, vat_amount: 2500, deduction_type: 'rut' }],
+      } as unknown as Partial<Invoice>)
+      const result = await settleInvoicePayment(
+        supabase as unknown as SupabaseClient,
+        'company-1',
+        'user-1',
+        {
+          ...BASE_PARAMS,
+          invoice,
+          accountingMethod: 'cash',
+          paymentAmountInInvoiceCurrency: 5000,
+          customLines: shareLines(5000, 4000, 1000),
+        },
+      )
+
+      expect(result).toMatchObject({ ok: false, code: 'INVOICE_PAID_CASH_PARTIAL_UNSUPPORTED' })
+    })
+  })
+
   it('uses the cash entry for unbooked kontantmetoden invoices', async () => {
     const { supabase, enqueue } = createQueuedMockSupabase()
     enqueue({ data: { id: 'ip-1' } }) // payment row

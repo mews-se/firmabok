@@ -464,6 +464,105 @@ describe('POST /api/invoices/[id]/mark-paid', () => {
     expect(body.paid_at).toBeNull()
   })
 
+  it('books the rest of a partially_paid kontantmetoden invoice from custom lines', async () => {
+    const invoice = makeInvoice({
+      id: 'inv-1',
+      status: 'partially_paid',
+      total: 12500,
+      paid_amount: 9999,
+      remaining_amount: 2501,
+    })
+
+    enqueue({ data: invoice, error: null })
+    enqueue({ data: { accounting_method: 'cash', entity_type: 'enskild_firma' }, error: null })
+    enqueue({ data: { id: 'ip-1' }, error: null }) // payment row
+    enqueue({ data: [{ id: 'inv-1' }], error: null })
+
+    mockFindFiscalPeriod.mockResolvedValue('fp-1')
+    mockCreateJournalEntry.mockResolvedValue({ id: 'je-last' })
+
+    const request = createMockRequest('/api/invoices/inv-1/mark-paid', {
+      method: 'POST',
+      body: {
+        lines: [
+          { account_number: '1930', debit_amount: 2501, credit_amount: 0 },
+          { account_number: '3001', debit_amount: 0, credit_amount: 2000.8 },
+          { account_number: '2611', debit_amount: 0, credit_amount: 500.2 },
+        ],
+      },
+    })
+    const response = await POST(request, createMockRouteParams({ id: 'inv-1' }))
+    const { status, body } = await parseJsonResponse<{
+      status: string
+      paid_amount: number
+      remaining_amount: number
+    }>(response)
+
+    expect(status).toBe(200)
+    expect(body).toMatchObject({ status: 'paid', paid_amount: 12500, remaining_amount: 0 })
+    expect(findCall('invoice_payments', 'insert')?.[0]).toMatchObject({ amount: 2501 })
+    expect(mockCreateInvoiceCashEntry).not.toHaveBeenCalled()
+  })
+
+  it('clears the rest of a partially_paid invoice under faktureringsmetoden', async () => {
+    const invoice = {
+      ...makeInvoice({
+        id: 'inv-1',
+        status: 'partially_paid',
+        total: 12500,
+        paid_amount: 5000,
+        remaining_amount: 7500,
+      }),
+      journal_entry_id: 'je-issue',
+    }
+
+    enqueue({ data: invoice, error: null })
+    enqueue({ data: { accounting_method: 'accrual', entity_type: 'enskild_firma' }, error: null })
+    enqueue({ data: { id: 'ip-1' }, error: null }) // payment row
+    enqueue({ data: [{ id: 'inv-1' }], error: null })
+
+    mockFindFiscalPeriod.mockResolvedValue('fp-1')
+    mockCreateJournalEntry.mockResolvedValue({ id: 'je-clear' })
+
+    const request = createMockRequest('/api/invoices/inv-1/mark-paid', {
+      method: 'POST',
+      body: {
+        lines: [
+          { account_number: '1930', debit_amount: 7500, credit_amount: 0 },
+          { account_number: '1510', debit_amount: 0, credit_amount: 7500 },
+        ],
+      },
+    })
+    const response = await POST(request, createMockRouteParams({ id: 'inv-1' }))
+    const { status, body } = await parseJsonResponse<{ status: string; paid_amount: number }>(response)
+
+    expect(status).toBe(200)
+    expect(body).toMatchObject({ status: 'paid', paid_amount: 12500 })
+    expect(mockCreateJournalEntry.mock.calls[0][3]).toMatchObject({ source_type: 'invoice_paid' })
+  })
+
+  it('refuses the generated cash entry for a partially_paid never-booked invoice', async () => {
+    const invoice = makeInvoice({
+      id: 'inv-1',
+      status: 'partially_paid',
+      total: 12500,
+      paid_amount: 9999,
+      remaining_amount: 2501,
+    })
+
+    enqueue({ data: invoice, error: null })
+    enqueue({ data: { accounting_method: 'cash', entity_type: 'enskild_firma' }, error: null })
+
+    const request = createMockRequest('/api/invoices/inv-1/mark-paid', { method: 'POST' })
+    const response = await POST(request, createMockRouteParams({ id: 'inv-1' }))
+    const { status, body } = await parseJsonResponse(response)
+
+    expect(status).toBe(400)
+    expect(body.error.code).toBe('INVOICE_PAID_CASH_PARTIAL_UNSUPPORTED')
+    expect(body.error.details).toMatchObject({ reason: 'previously_partially_paid' })
+    expect(mockCreateInvoiceCashEntry).not.toHaveBeenCalled()
+  })
+
   it('accepts an öresavrundning overshoot: rounded "Att betala" settles the invoice in full', async () => {
     // Invoice stored with öre (1234.75), PDF shows the rounded 1235.00 and the
     // customer pays that: the 3740 line carries the 0.25 residual.

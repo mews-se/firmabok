@@ -39,8 +39,10 @@ export function booksInvoicesOnIssue(
  *   second time on the settlement account.
  *
  * Callers reject with INVOICE_PAID_CASH_PARTIAL_UNSUPPORTED (customer) or
- * SI_CASH_PARTIAL_UNSUPPORTED (supplier). SEK supplier invoices never get
- * here: each of their payments books its own share (cash-instalment.ts).
+ * SI_CASH_PARTIAL_UNSUPPORTED (supplier). SEK supplier invoices and SEK
+ * customer invoices paid through the payment dialog's lines (without ROT/RUT)
+ * never get here: each of their payments books its own share
+ * (cash-instalment.ts).
  * Invoices already booked at issue are never affected: their payment
  * is a plain clearing entry against 1510/2440, which handles partials fine.
  */

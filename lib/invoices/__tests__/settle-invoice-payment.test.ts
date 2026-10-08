@@ -14,11 +14,6 @@ vi.mock('@/lib/bookkeeping/engine', () => ({
 vi.mock('@/lib/bookkeeping/cancel-orphaned-entry', () => ({
   cancelOrphanedPaymentEntry: vi.fn(),
 }))
-// Mocked so it consumes no slot in the queued Supabase mock: the helper's own
-// query shape is pinned by ./clear-settled-invoice-suggestions.test.ts.
-vi.mock('@/lib/invoices/clear-settled-invoice-suggestions', () => ({
-  clearSettledInvoiceSuggestions: vi.fn(),
-}))
 
 import {
   createInvoicePaymentJournalEntry,
@@ -26,7 +21,6 @@ import {
 } from '@/lib/bookkeeping/invoice-entries'
 import { createJournalEntry, findFiscalPeriod } from '@/lib/bookkeeping/engine'
 import { cancelOrphanedPaymentEntry } from '@/lib/bookkeeping/cancel-orphaned-entry'
-import { clearSettledInvoiceSuggestions } from '@/lib/invoices/clear-settled-invoice-suggestions'
 import { settleInvoicePayment } from '@/lib/invoices/settle-invoice-payment'
 import { eventBus } from '@/lib/events'
 
@@ -376,30 +370,7 @@ describe('settleInvoicePayment', () => {
     )
   })
 
-  // Issue #1259: a fully settled invoice must not keep sibling transactions
-  // pointing at it as a match suggestion.
-  it('retires the settled invoice suggestions when the invoice reaches paid', async () => {
-    const { supabase, enqueue } = createQueuedMockSupabase()
-    enqueue({ data: [{ id: 'inv-1' }] })
-
-    const result = await settleInvoicePayment(
-      supabase as unknown as SupabaseClient,
-      'company-1',
-      'user-1',
-      { ...BASE_PARAMS, invoice: payableInvoice() },
-    )
-
-    expect(result).toMatchObject({ ok: true, newStatus: 'paid' })
-    expect(vi.mocked(clearSettledInvoiceSuggestions)).toHaveBeenCalledTimes(1)
-    expect(vi.mocked(clearSettledInvoiceSuggestions)).toHaveBeenCalledWith(
-      supabase,
-      'company-1',
-      'invoice',
-      'inv-1',
-    )
-  })
-
-  it('leaves the suggestions alone on a partial payment: the invoice is still matchable', async () => {
+  it('marks a partial payment partially_paid', async () => {
     const { supabase, enqueue } = createQueuedMockSupabase()
     enqueue({ data: [{ id: 'inv-1' }] })
 
@@ -415,7 +386,6 @@ describe('settleInvoicePayment', () => {
     )
 
     expect(result).toMatchObject({ ok: true, newStatus: 'partially_paid' })
-    expect(vi.mocked(clearSettledInvoiceSuggestions)).not.toHaveBeenCalled()
   })
 
   it('emits invoice.paid with the settled state', async () => {

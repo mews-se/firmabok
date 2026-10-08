@@ -369,36 +369,44 @@ export async function createSupplierInvoicePaymentEntry(
   return createJournalEntry(supabase, companyId, userId, input)
 }
 
+export interface SupplierInvoiceCashLinesOptions {
+  supplierName?: string
+  /** Account credited with the payment; defaults to 1930. */
+  paymentAccount?: string
+  /**
+   * SEK that actually settled the invoice (the amount that left the bank). For
+   * a foreign-currency invoice this pins the whole entry to the PAYMENT-date
+   * rate, see the kontantmetoden note in the builder. Omit for SEK invoices.
+   */
+  settledBankSek?: number
+}
+
+export interface SupplierInvoiceCashLines {
+  /** Verifikat text, also stamped on the expense and payment lines. */
+  description: string
+  lines: CreateJournalEntryLineInput[]
+}
+
 /**
- * Create journal entry for cash method (kontantmetoden)
- * Combined entry at payment time:
+ * The lines of the kontantmetoden payment verifikat. Pure: no DB calls, so
+ * the mark-paid preview can show exactly what createSupplierInvoiceCashEntry
+ * books.
  *
  *   Debit  5xxx/6xxx (per item)      [line_total]
  *   Debit  2641 Ingående moms        [total VAT]
  *   Credit 1930 Företagskonto        [total incl VAT]
+ *
+ * Throws SupplierInvoiceFxRateMissingError for a foreign invoice without a
+ * usable rate.
  */
-export async function createSupplierInvoiceCashEntry(
-  supabase: SupabaseClient,
-  companyId: string,
-  userId: string,
+export function buildSupplierInvoiceCashLines(
   invoice: SupplierInvoice,
   items: SupplierInvoiceItem[],
-  paymentDate: string,
   supplierType: string,
-  supplierName?: string,
-  paymentAccount?: string,
-  // SEK that actually settled the invoice (the amount that left the bank). For
-  // a foreign-currency invoice this pins the whole entry to the PAYMENT-date
-  // rate, see the kontantmetoden note below. Omit for SEK invoices and the
-  // behaviour is byte-identical to before.
-  settledBankSek?: number
-): Promise<JournalEntry | null> {
+  options: SupplierInvoiceCashLinesOptions = {}
+): SupplierInvoiceCashLines {
+  const { supplierName, paymentAccount, settledBankSek } = options
   const creditAccount = paymentAccount || '1930'
-  const fiscalPeriodId = await findFiscalPeriod(supabase, companyId, paymentDate)
-  if (!fiscalPeriodId) {
-    log.warn('No open fiscal period found for payment date:', paymentDate)
-    return null
-  }
 
   // Under kontantmetoden the booked affärshändelse IS the payment (BFL 5 kap:
   // "bokföring vid betalningstillfället"), so the entire verifikat is translated
@@ -523,10 +531,42 @@ export async function createSupplierInvoiceCashEntry(
     dimensions: defaultDimensions,
   })
 
+  return { description: desc, lines }
+}
+
+/**
+ * Create journal entry for cash method (kontantmetoden): the combined entry
+ * at payment time, lines from buildSupplierInvoiceCashLines.
+ */
+export async function createSupplierInvoiceCashEntry(
+  supabase: SupabaseClient,
+  companyId: string,
+  userId: string,
+  invoice: SupplierInvoice,
+  items: SupplierInvoiceItem[],
+  paymentDate: string,
+  supplierType: string,
+  supplierName?: string,
+  paymentAccount?: string,
+  // see SupplierInvoiceCashLinesOptions.settledBankSek
+  settledBankSek?: number
+): Promise<JournalEntry | null> {
+  const fiscalPeriodId = await findFiscalPeriod(supabase, companyId, paymentDate)
+  if (!fiscalPeriodId) {
+    log.warn('No open fiscal period found for payment date:', paymentDate)
+    return null
+  }
+
+  const { description, lines } = buildSupplierInvoiceCashLines(invoice, items, supplierType, {
+    supplierName,
+    paymentAccount,
+    settledBankSek,
+  })
+
   const input: CreateJournalEntryInput = {
     fiscal_period_id: fiscalPeriodId,
     entry_date: paymentDate,
-    description: desc,
+    description,
     source_type: 'supplier_invoice_cash_payment',
     source_id: invoice.id,
     lines,

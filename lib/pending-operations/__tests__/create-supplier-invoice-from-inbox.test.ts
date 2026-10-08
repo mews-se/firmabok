@@ -510,6 +510,101 @@ describe('commitPendingOperation: create_supplier_invoice_from_inbox', () => {
     expect(items[0].vat_amount).toBe(0)
   })
 
+  it('registers the net as payable under reverse charge even when the staged header carries the gross', async () => {
+    // 919,20 + 229,80 = 1 149,00 staged with reverse_charge: every entry for
+    // the invoice carries 919,20, so a payable of 1 149 could never settle
+    const { supabase, enqueue, findCall } = createQueuedMockSupabase()
+    enqueue({ data: { id: 'op-1' }, error: null })
+    enqueue({
+      data: { id: 'inbox-1', created_supplier_invoice_id: null, status: 'ready' },
+      error: null,
+    })
+    enqueue({
+      data: { id: 'supplier-1', name: 'SaaS Inc', supplier_type: 'non_eu_business' },
+      error: null,
+    })
+    enqueue({ data: 51, error: null }) // arrival number
+    enqueue({
+      data: makeSupplierInvoice({ id: 'inv-rc', supplier_invoice_number: 'RC-1', reverse_charge: true }),
+      error: null,
+    })
+    enqueue({ data: null, error: null }) // items insert
+    enqueue({ data: { accounting_method: 'cash' }, error: null })
+    enqueue({ data: null, error: null }) // invoice_inbox_items update
+    enqueue({ data: null, error: null }) // dispatcher's commit update
+
+    const op = makePendingOp()
+    const result = await commitPendingOperation(
+      supabase as never,
+      'user-1',
+      'company-1',
+      makePendingOp({
+        params: {
+          ...op.params,
+          supplier_invoice_number: 'RC-1',
+          vat_treatment: 'reverse_charge',
+          subtotal: 1149,
+          vat_amount: 229.8,
+          total: 1149,
+          items: [
+            {
+              line_number: 1,
+              description: 'API usage',
+              quantity: 1,
+              unit: 'st',
+              unit_price: 919.2,
+              line_total: 919.2,
+              account_number: '6540',
+              vat_rate: 0.25,
+              vat_amount: 229.8,
+            },
+          ],
+        },
+      }),
+    )
+
+    expect(result.status).toBe('committed')
+    const [row] = findCall('supplier_invoices', 'insert') as [Record<string, unknown>]
+    expect(row).toMatchObject({
+      reverse_charge: true,
+      subtotal: 919.2,
+      vat_amount: 0,
+      total: 919.2,
+      remaining_amount: 919.2,
+      subtotal_sek: 919.2,
+      vat_amount_sek: 0,
+      total_sek: 919.2,
+    })
+  })
+
+  it('leaves a domestic invoice header untouched', async () => {
+    const { supabase, enqueue, findCall } = createQueuedMockSupabase()
+    enqueue({ data: { id: 'op-1' }, error: null })
+    enqueue({
+      data: { id: 'inbox-1', created_supplier_invoice_id: null, status: 'ready' },
+      error: null,
+    })
+    enqueue({
+      data: { id: 'supplier-1', name: 'Acme AB', supplier_type: 'swedish_business' },
+      error: null,
+    })
+    enqueue({ data: 52, error: null })
+    enqueue({
+      data: makeSupplierInvoice({ id: 'inv-dom', supplier_invoice_number: 'INV-100' }),
+      error: null,
+    })
+    enqueue({ data: null, error: null })
+    enqueue({ data: { accounting_method: 'cash' }, error: null })
+    enqueue({ data: null, error: null })
+    enqueue({ data: null, error: null })
+
+    const result = await commitPendingOperation(supabase as never, 'user-1', 'company-1', makePendingOp())
+
+    expect(result.status).toBe('committed')
+    const [row] = findCall('supplier_invoices', 'insert') as [Record<string, unknown>]
+    expect(row).toMatchObject({ reverse_charge: false, subtotal: 1000, vat_amount: 250, total: 1250, remaining_amount: 1250 })
+  })
+
   it('normalizes percent-shaped staged vat_rate (25) to the decimal convention on insert (issue #310)', async () => {
     let capturedItems: unknown = null
     const { supabase, enqueue } = createQueuedMockSupabase()

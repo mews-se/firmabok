@@ -7543,6 +7543,12 @@ export const tools: McpTool[] = [
       const vatTreatment = (args.vat_treatment_override as string | undefined)
         ?? (invoiceExt?.vatTreatment as string | undefined)
         ?? 'standard_25'
+      // Omvänd skattskyldighet: the buyer self-assesses the VAT (2614/2645,
+      // a pair that nets to zero), so every entry for the invoice carries the
+      // sum of the line nets as the debt or the payment. That sum is the
+      // payable. VAT the seller charged anyway is not deductible and not part
+      // of the debt: the preview shows it, nothing books it.
+      const reverseCharge = vatTreatment === 'reverse_charge'
 
       // FX: if non-SEK, fetch rate at fakturadatum (best-effort; agent can re-stage on failure)
       let exchangeRate: number | null = null
@@ -7627,7 +7633,7 @@ export const tools: McpTool[] = [
       // Translate extracted line items into the supplier_invoice_items shape.
       // Accounts were resolved above: line_overrides, then accountSuggestion,
       // then supplier.default_expense_account.
-      const lineItems = lineItemsExt.map((li, idx) => {
+      const extractedLineItems = lineItemsExt.map((li, idx) => {
         const lineNumber = idx + 1
         const dimensions = resolvedDimBags[idx + 1]
         const lineTotal = Number(li.line_total ?? li.lineTotal ?? li.amount) || 0
@@ -7659,6 +7665,12 @@ export const tools: McpTool[] = [
         }
       })
 
+      // under reverse charge no line carries seller VAT; the executor zeroes
+      // the item rows too, so the preview shows what will be written
+      const lineItems = reverseCharge
+        ? extractedLineItems.map((li) => ({ ...li, vat_rate: 0, vat_amount: 0 }))
+        : extractedLineItems
+
       // Derive from the actual per-line VAT rather than trusting
       // totalsExt.vat: that header figure comes straight from OCR/agent-
       // supplied extracted_data and is never reconciled against lineItems.
@@ -7668,6 +7680,31 @@ export const tools: McpTool[] = [
       // whole 2641 posting on invoice.vat_amount > 0: a stale header meant
       // the correct per-line VAT was silently never booked.
       const vatAmount = lineItems.reduce((sum, li) => sum + li.vat_amount, 0)
+
+      const extractedVatHeader = roundOre(Number(totalsExt?.vat ?? totalsExt?.vatAmount) || 0)
+      const extractedLineVat = roundOre(extractedLineItems.reduce((sum, li) => sum + li.vat_amount, 0))
+      const sellerChargedVat = extractedVatHeader !== 0 ? extractedVatHeader : extractedLineVat
+      const lineNetSum = roundOre(lineItems.reduce((sum, li) => sum + li.line_total, 0))
+      const payableNet = lineNetSum !== 0
+        ? lineNetSum
+        : subtotal !== 0
+          ? roundOre(subtotal)
+          : roundOre(total - extractedVatHeader)
+      const payableRecomputed =
+        reverseCharge && (sellerChargedVat !== 0 || roundOre(total) !== payableNet)
+          ? {
+              reason: 'reverse_charge' as const,
+              extracted_subtotal: roundOre(subtotal),
+              extracted_vat: sellerChargedVat,
+              extracted_total: roundOre(total),
+              payable_total: payableNet,
+            }
+          : null
+      const payableWarning = !payableRecomputed
+        ? null
+        : sellerChargedVat !== 0
+          ? `Omvänd skattskyldighet: the seller charged VAT ${sellerChargedVat} (document total ${roundOre(total)}), which a reverse-charge supply must not carry. Only the net ${payableNet} is registered as payable: the buyer self-assesses the VAT and VAT the seller charged is not deductible, so it is not booked. Paying it anyway or asking for a corrected invoice is a decision to take against the underlag.`
+          : `Omvänd skattskyldighet: the document total ${roundOre(total)} differs from the sum of the line nets ${payableNet}. The net is registered as payable so the reskontra matches the bookkeeping; verify the lines against the underlag.`
 
       const params = {
         inbox_item_id: inboxItemId,
@@ -7679,9 +7716,9 @@ export const tools: McpTool[] = [
         currency,
         exchange_rate: exchangeRate,
         vat_treatment: vatTreatment,
-        subtotal: Math.round(subtotal * 100) / 100,
-        vat_amount: Math.round(vatAmount * 100) / 100,
-        total: Math.round(total * 100) / 100,
+        subtotal: reverseCharge ? payableNet : Math.round(subtotal * 100) / 100,
+        vat_amount: reverseCharge ? 0 : Math.round(vatAmount * 100) / 100,
+        total: reverseCharge ? payableNet : Math.round(total * 100) / 100,
         notes: (args.notes as string | undefined) ?? null,
         items: lineItems,
         ...(resolvedDefaultDimensions && Object.keys(resolvedDefaultDimensions).length > 0
@@ -7705,6 +7742,7 @@ export const tools: McpTool[] = [
         subtotal: params.subtotal,
         vat_amount: params.vat_amount,
         total: params.total,
+        ...(payableRecomputed ? { payable_recomputed: payableRecomputed, warning: payableWarning } : {}),
         line_count: lineItems.length,
         items_preview: lineItems.slice(0, 5),
         // Echoed for every non-exact dimension resolution (resolve-don't-

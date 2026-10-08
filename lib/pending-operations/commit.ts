@@ -2473,9 +2473,15 @@ async function commitCreateSupplierInvoiceFromInbox(
   }
 
   const reverseCharge = vatTreatment === 'reverse_charge'
-  const subtotalRounded = Math.round(subtotal * 100) / 100
-  const vatAmountRounded = Math.round(vatAmount * 100) / 100
-  const totalRounded = Math.round(total * 100) / 100
+  // Omvänd skattskyldighet: every entry for the invoice carries the sum of
+  // the line nets (the fiktiv 2614/2645 pair nets to zero), so that sum is
+  // the only payable the reskontra can carry. Staging registers the net, but
+  // an op staged before that, or a tampered one, still carries the gross:
+  // never trust a staged header under reverse charge.
+  const itemNetSum = rawItems.reduce((sum, item) => sum + (finite(item.line_total) ?? 0), 0)
+  const subtotalRounded = reverseCharge ? roundOre(itemNetSum) : Math.round(subtotal * 100) / 100
+  const vatAmountRounded = reverseCharge ? 0 : Math.round(vatAmount * 100) / 100
+  const totalRounded = reverseCharge ? subtotalRounded : Math.round(total * 100) / 100
   // Fed the already-rounded figures so a SEK invoice (rate 1) gets
   // total_sek === total to the öre instead of the two roundings disagreeing on
   // an exact-half value. The old `exchangeRate ? … : null` guard left all three

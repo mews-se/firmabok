@@ -763,3 +763,68 @@ describe('gnubok_create_supplier_invoice_from_inbox: a line is never given a gue
     expect(params.items[0].account_number).toBe('5410')
   })
 })
+
+describe('gnubok_create_supplier_invoice_from_inbox: reverse charge registers the net', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  const tool = () => tools.find((t) => t.name === 'gnubok_create_supplier_invoice_from_inbox')!
+  const rcExtracted = {
+    supplier: { name: 'SaaS Inc', organizationNumber: null },
+    invoice: { invoiceNumber: 'RC-1', invoiceDate: '2027-03-01', dueDate: '2027-03-31', currency: 'SEK' },
+    totals: { subtotal: 919.2, vat: 229.8, total: 1149 },
+    lineItems: [
+      { description: 'API usage', quantity: 1, unit_price: 919.2, line_total: 919.2, vat_rate: 25, vat_amount: 229.8 },
+    ],
+  }
+  const inbox = (extracted: Record<string, unknown>) => ({
+    id: 'inbox-rc',
+    status: 'received',
+    extracted_data: extracted,
+    matched_supplier_id: 'supplier-rc',
+    created_supplier_invoice_id: null,
+    document_id: 'doc-rc',
+  })
+
+  it('stages the line nets as subtotal and total with no VAT, and warns about the seller VAT', async () => {
+    const inserts: Array<Record<string, unknown>> = []
+    const supabase = makeMock({ inbox: inbox(rcExtracted), inserts })
+
+    const result = (await tool().execute(
+      { inbox_item_id: 'inbox-rc', vat_treatment_override: 'reverse_charge' },
+      'company-1', 'user-1', supabase,
+    )) as { staged: boolean; preview: Record<string, unknown> }
+
+    expect(result.staged).toBe(true)
+    const params = inserts[0].params as {
+      subtotal: number
+      vat_amount: number
+      total: number
+      items: Array<{ vat_rate: number; vat_amount: number }>
+    }
+    expect(params).toMatchObject({ subtotal: 919.2, vat_amount: 0, total: 919.2 })
+    expect(params.items[0]).toMatchObject({ vat_rate: 0, vat_amount: 0 })
+    expect(result.preview.payable_recomputed).toMatchObject({
+      extracted_vat: 229.8,
+      extracted_total: 1149,
+      payable_total: 919.2,
+    })
+    expect(String(result.preview.warning)).toContain('229.8')
+  })
+
+  it('keeps the extracted header for a domestic invoice', async () => {
+    const inserts: Array<Record<string, unknown>> = []
+    const supabase = makeMock({ inbox: inbox(rcExtracted), inserts })
+
+    const result = (await tool().execute(
+      { inbox_item_id: 'inbox-rc' },
+      'company-1', 'user-1', supabase,
+    )) as { staged: boolean; preview: Record<string, unknown> }
+
+    expect(result.staged).toBe(true)
+    const params = inserts[0].params as { subtotal: number; vat_amount: number; total: number }
+    expect(params).toMatchObject({ subtotal: 919.2, vat_amount: 229.8, total: 1149 })
+    expect(result.preview.payable_recomputed).toBeUndefined()
+  })
+})

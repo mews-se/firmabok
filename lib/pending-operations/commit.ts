@@ -28,19 +28,16 @@ import {
   normalizeVatRateToFraction,
 } from '@/lib/vat/supplier-invoice-line-checks'
 import {
-  createInvoicePaymentJournalEntry,
-  createInvoiceCashEntry,
   createInvoiceJournalEntry,
   createCreditNoteJournalEntry,
 } from '@/lib/bookkeeping/invoice-entries'
-import { cashPartialBlockReason, supplierCreditNoteNeedsJournalEntry } from '@/lib/bookkeeping/booking-mode'
+import { supplierCreditNoteNeedsJournalEntry } from '@/lib/bookkeeping/booking-mode'
 import { createJournalEntry, findFiscalPeriod, getSwedishLocalDate, reverseEntry, validateBalance } from '@/lib/bookkeeping/engine'
 import {
   canApproveSupplierInvoice,
   resolveUnsettledStatus,
 } from '@/lib/supplier-invoices/lifecycle'
 import { coerceDimensionsBag } from '@/lib/bookkeeping/dimension-resolver'
-import { cancelOrphanedPaymentEntry } from '@/lib/bookkeeping/cancel-orphaned-entry'
 import { runWithActor } from '@/lib/bookkeeping/actor-context-node'
 import type { CommitActor } from '@/lib/bookkeeping/actor-context'
 import { correctEntry } from '@/lib/core/bookkeeping/storno-service'
@@ -55,9 +52,8 @@ import {
   createSupplierInvoiceRegistrationEntry,
 } from '@/lib/bookkeeping/supplier-invoice-entries'
 import { linkInvoiceToVoucher } from '@/lib/invoices/voucher-matching'
-import { planInvoicePayment } from '@/lib/invoices/apply-invoice-payment'
+import { settleInvoicePayment } from '@/lib/invoices/settle-invoice-payment'
 import { linkSupplierInvoiceToVoucher } from '@/lib/invoices/supplier-voucher-matching'
-import { paidAtFromDate } from '@/lib/invoices/paid-at'
 import { creditNoteNeedsJournalEntry, getOriginalVoucherRef } from '@/lib/invoices/issue-credit-note'
 import { getErrorEntry } from '@/lib/errors/structured-errors'
 import { isAccountNumber } from '@/lib/invariants/account-number'
@@ -1711,156 +1707,78 @@ async function commitMarkInvoicePaid(
   const { data: settings } = await supabase
     .from('company_settings').select('accounting_method, entity_type').eq('company_id', companyId).single()
 
-  const accountingMethod = settings?.accounting_method || 'accrual'
-  const entityType = (settings?.entity_type as EntityType) || 'enskild_firma'
-  const isRealInvoice = !invoice.document_type || invoice.document_type === 'invoice'
-  let journalEntryId: string | null = null
-
-  // Route on invoice state, not the company's current accounting_method:
-  // an invoice booked at send under accrual must clear 1510 here even if
-  // the company has since switched to kontantmetoden.
-  const invoiceAlreadyBooked = !!(invoice as { journal_entry_id?: string | null }).journal_entry_id
-  const useCashEntry = !invoiceAlreadyBooked && accountingMethod === 'cash'
-
-  // Paid/remaining/status math + overpayment guard via the shared
-  // planInvoicePayment helper: the single source of truth across the three
-  // mark-paid surfaces (this agent path, the dashboard route, and the v1 API).
-  // This path settles the full remaining (no custom lines), so it can never
-  // overpay, but routing through the helper keeps the state identical. Runs
-  // BEFORE the JE below so a rejected payment never burns a voucher number.
   // Settle the full outstanding balance. Prefer remaining_amount; for legacy rows
   // where it was never written, derive it from total − paid_amount rather than
   // falling back to the full total (which would double-count a prior partial
   // payment and trip the overpayment guard).
   const inv = invoice as { remaining_amount?: number | null; paid_amount?: number | null }
   const paymentAmount = inv.remaining_amount ?? (invoice.total - (inv.paid_amount ?? 0))
-  const payment = planInvoicePayment(invoice, paymentAmount)
-  if (!payment.ok) {
-    return {
-      error:
-        getErrorEntry('MATCH_AMOUNT_EXCEEDS_REMAINING')?.message_sv ??
-        'Betalningsbeloppet är större än fakturans återstående belopp.',
-      status: 400,
-    }
-  }
-  const { newPaidAmount, newRemaining, newStatus } = payment.plan
 
-  // The generated cash entry books the FULL invoice: refuse to complete a
-  // previously part-paid, never-booked kontantmetoden invoice (it would book
-  // the full total a second time on the settlement account). A partial cannot
-  // arise here (this path always settles the full remaining), but the shared
-  // predicate covers it for safety.
-  const cashBlock = cashPartialBlockReason({
-    invoiceAlreadyBooked,
-    accountingMethod,
-    priorPaidAmount: inv.paid_amount,
-    paysRemainingInFull: newStatus === 'paid',
-  })
-  if (isRealInvoice && cashBlock) {
-    return {
-      error:
-        getErrorEntry('INVOICE_PAID_CASH_PARTIAL_UNSUPPORTED')?.message_sv ??
-        'Kontantmetoden kan inte bokföra delbetalningar av en obokförd faktura automatiskt.',
-      status: 400,
-    }
-  }
-
-  if (isRealInvoice) {
-    if (useCashEntry) {
-      const je = await createInvoiceCashEntry(
-        supabase, companyId, userId, invoice as Invoice, paymentDate, entityType, invoice.customer?.name
-      )
-      journalEntryId = je?.id ?? null
-    } else {
-      const je = await createInvoicePaymentJournalEntry(
-        supabase, companyId, userId, invoice as Invoice, paymentDate, undefined, invoice.customer?.name
-      )
-      journalEntryId = je?.id ?? null
-    }
-
-    // Fail closed: a real invoice must produce a posted payment voucher.
-    // Marking it paid with no journal entry orphans the receivable and
-    // diverges the GL from the AR sub-ledger. Nothing was posted (the helper
-    // returned null), so there is no voucher to cancel.
-    if (!journalEntryId) {
-      return {
-        error:
-          'Betalningen kunde inte bokföras (ingen verifikation skapades: t.ex. stängd räkenskapsperiod). ' +
-          'Fakturan har inte markerats som betald.',
-        status: 422,
-      }
-    }
-  }
-
-  const paidAt = newStatus === 'paid' ? paidAtFromDate(paymentDate) : null
-  // CAS guard: only flip from a payable status so a concurrently-settled
-  // invoice no-ops here instead of double-booking the payment.
-  const { data: updateResult, error: updateError } = await supabase
-    .from('invoices')
-    .update({
-      status: newStatus,
-      paid_amount: newPaidAmount,
-      remaining_amount: newRemaining,
-      ...(paidAt ? { paid_at: paidAt } : {}),
-    })
-    .eq('id', invoiceId)
-    .eq('company_id', companyId)
-    .in('status', ['sent', 'overdue', 'partially_paid'])
-    .select('id')
-
-  if (updateError) {
-    // The payment voucher already posted but the invoice row did not flip;
-    // cancel the orphan so the GL doesn't diverge from the sub-ledger.
-    if (journalEntryId) {
-      await cancelOrphanedPaymentEntry(
-        supabase, companyId, userId, journalEntryId,
-        'Automatiskt makulerad: fakturauppdatering misslyckades efter bokförd betalning',
-      )
-    }
-    return { error: 'Failed to update invoice status', status: 500 }
-  }
-
-  if (!updateResult || updateResult.length === 0) {
-    // Race lost: the invoice was settled concurrently between our read and
-    // write. Cancel the orphaned payment voucher and document the gap rather
-    // than leaving a double booking.
-    if (journalEntryId) {
-      await cancelOrphanedPaymentEntry(
-        supabase, companyId, userId, journalEntryId,
-        'Automatiskt makulerad: dubblettbokning förhindrad av samtidighetsskydd',
-      )
-    }
-    return {
-      error: 'Invoice can only be marked as paid from a payable status (sent, overdue or partially paid)',
-      status: 409,
-    }
-  }
-
-  // Notify subscribers on the event bus. Best-effort: the payment is already
-  // committed, so an emit failure must not fail the operation. Parity with the
+  // Same booking, payment row, status update and invoice.paid event as the
   // dashboard mark-paid route.
-  try {
-    await eventBus.emit({
-      type: 'invoice.paid',
-      payload: {
-        invoice: {
-          ...(invoice as Invoice),
-          status: newStatus,
-          paid_amount: newPaidAmount,
-          remaining_amount: newRemaining,
-          paid_at: paidAt ?? (invoice as Invoice).paid_at,
-        } as Invoice,
-        companyId,
-        userId,
-        paymentAmount,
-        paymentDate,
-      },
-    })
-  } catch (err) {
-    log.warn('invoice.paid emit failed', err)
+  const result = await settleInvoicePayment(supabase, companyId, userId, {
+    invoice,
+    paymentAmountInInvoiceCurrency: paymentAmount,
+    paymentDate,
+    accountingMethod: settings?.accounting_method || 'accrual',
+    entityType: (settings?.entity_type as EntityType) || 'enskild_firma',
+  })
+
+  if (!result.ok) {
+    switch (result.code) {
+      case 'MATCH_AMOUNT_EXCEEDS_REMAINING':
+        return {
+          error:
+            getErrorEntry('MATCH_AMOUNT_EXCEEDS_REMAINING')?.message_sv ??
+            'Betalningsbeloppet är större än fakturans återstående belopp.',
+          status: 400,
+        }
+      case 'INVOICE_PAID_CASH_PARTIAL_UNSUPPORTED':
+        return {
+          error:
+            getErrorEntry('INVOICE_PAID_CASH_PARTIAL_UNSUPPORTED')?.message_sv ??
+            'Kontantmetoden kan inte bokföra delbetalningar av en obokförd faktura automatiskt.',
+          status: 400,
+        }
+      // thrown, so the dispatcher can release the claim on AccountsNotInChartError
+      case 'BOOKKEEPING_ERROR':
+        throw result.error
+      case 'INVOICE_PAID_BOOK_FAILED':
+        if (result.error !== undefined) throw result.error
+        if (result.details.reason === 'payment_row_insert_failed') {
+          return {
+            error:
+              'Betalningen kunde inte sparas i kundreskontran och verifikationen har makulerats. ' +
+              'Fakturan har inte markerats som betald.',
+            status: 500,
+          }
+        }
+        return {
+          error:
+            'Betalningen kunde inte bokföras (ingen verifikation skapades: t.ex. stängd räkenskapsperiod). ' +
+            'Fakturan har inte markerats som betald.',
+          status: 422,
+        }
+      case 'UPDATE_FAILED':
+        return { error: 'Failed to update invoice status', status: 500 }
+      case 'INVOICE_PAID_RACE':
+        return {
+          error: 'Invoice can only be marked as paid from a payable status (sent, overdue or partially paid)',
+          status: 409,
+        }
+      default:
+        // credit notes are refused above; the rest need custom lines
+        return { error: getErrorEntry(result.code)?.message_sv ?? result.code, status: 400 }
+    }
   }
 
-  return { data: { status: newStatus, remaining_amount: newRemaining, journal_entry_id: journalEntryId } }
+  return {
+    data: {
+      status: result.newStatus,
+      remaining_amount: result.newRemaining,
+      journal_entry_id: result.journalEntryId,
+    },
+  }
 }
 
 async function commitMarkInvoiceSent(

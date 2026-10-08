@@ -85,7 +85,7 @@ export type SettleInvoicePaymentResult =
   | { ok: false; code: 'INVOICE_PAID_CASH_PARTIAL_UNSUPPORTED'; details: Record<string, unknown> }
   | { ok: false; code: 'INVOICE_PAID_LINES_UNBALANCED'; details: Record<string, unknown> }
   | { ok: false; code: 'INVOICE_PAID_NO_FISCAL_PERIOD'; details: Record<string, unknown> }
-  | { ok: false; code: 'INVOICE_PAID_BOOK_FAILED'; details: Record<string, unknown> }
+  | { ok: false; code: 'INVOICE_PAID_BOOK_FAILED'; details: Record<string, unknown>; error?: unknown }
   | { ok: false; code: 'INVOICE_PAID_NOT_PAYABLE'; details: Record<string, unknown> }
   | { ok: false; code: 'INVOICE_PAID_RACE' }
   | { ok: false; code: 'BOOKKEEPING_ERROR'; error: unknown }
@@ -258,6 +258,7 @@ export async function settleInvoicePayment(
         ok: false,
         code: 'INVOICE_PAID_BOOK_FAILED',
         details: { reason: err instanceof Error ? err.message : 'unknown' },
+        error: err,
       }
     }
 

@@ -4,6 +4,24 @@ Alla märkbara ändringar i Firmabok, nyaste först. Versionerna följer
 taggarna i det här repot; varje version publiceras som containerimage på
 `ghcr.io/mews-se/firmabok`.
 
+## 5.0.1 — 2026-10-09
+
+Säkerhetsuppdatering; imagen byggs om med de lagade paketen. Dependabot
+kunde inte ta fram uppdateringarna själv.
+
+- sharp uppdateras från 0.35.4 till 0.35.5 (libvips 1.3.4) och åtgärdar
+  GHSA-wq5f-xc86-pv6w, en sårbarhet i librsvg (CVE-2026-96889). sharp
+  konverterar logotypen till faktura-PDF:en.
+- source-map-js uppdateras från 1.2.1 till 1.2.2 och åtgärdar
+  GHSA-68fv-2mgg-jv7q, där sektionsoffseten i en indexerad source map
+  kunde blockera händelseloopen. Paketet används när CSS:en byggs.
+- postcss-selector-parser lyfts från 6.0.10 till 7.1.6 och åtgärdar
+  GHSA-rj75-hqrm-r3gf, kvadratisk tidsåtgång vid tolkning av platta
+  selektorer. @tailwindcss/typography låser 6.0.10 exakt, så den nya
+  versionen tvingas fram med en override; den byggda CSS:en är
+  oförändrad.
+
+
 ## 5.0.0 — 2026-10-09
 
 Firmabok bantas till det en enskild firma på eget nätverk använder, och

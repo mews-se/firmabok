@@ -150,11 +150,25 @@ async function pickAnchorEntry(
   }
   if (candidates.length === 0) return null
 
-  const { data: entries } = await supabase
+  const { data: entries, error } = await supabase
     .from('journal_entries')
-    .select('id, status, fiscal_period:fiscal_periods(is_closed, locked_at)')
+    // fiscal_periods points back at journal_entries too (closing_entry_id,
+    // opening_balance_entry_id), so the bare embed is ambiguous: name the FK
+    .select(
+      'id, status, fiscal_period:fiscal_periods!journal_entries_fiscal_period_id_fkey(is_closed, locked_at)',
+    )
     .eq('company_id', companyId)
     .in('id', candidates)
+
+  if (error) {
+    // never anchor on a lock state that could not be read
+    log.error('failed to resolve period lock state for supplier invoice anchoring', {
+      companyId,
+      supplierInvoiceId,
+      reason: error.message,
+    })
+    return null
+  }
 
   type EntryRow = {
     id: string

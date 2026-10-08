@@ -227,6 +227,65 @@ describe('anchorSupplierInvoiceDocument', () => {
     expect(supabase.from).toHaveBeenCalledTimes(1)
   })
 
+  it('names the foreign key in the fiscal_periods embed', async () => {
+    // three FKs join journal_entries and fiscal_periods, so PostgREST refuses
+    // the bare embed; a mocked client cannot resolve relationships, so the
+    // select string is what can be pinned here
+    const { supabase, enqueueMany, findCall } = createQueuedMockSupabase()
+    enqueueMany([
+      {
+        data: {
+          id: 'si-1',
+          document_id: 'doc-1',
+          registration_journal_entry_id: null,
+          payment_journal_entry_id: 'je-pay',
+        },
+      },
+      { data: { id: 'doc-1', journal_entry_id: null, is_current_version: true } },
+      { data: [] },
+      { data: [{ id: 'je-pay', status: 'posted', fiscal_period: openPeriod }] },
+      { data: null },
+    ])
+
+    expect(
+      await anchorSupplierInvoiceDocument(
+        supabase as unknown as SupabaseClient,
+        'company-1',
+        'si-1',
+      ),
+    ).toBe('je-pay')
+    expect(findCall('journal_entries', 'select')?.[0]).toContain(
+      'fiscal_periods!journal_entries_fiscal_period_id_fkey(',
+    )
+  })
+
+  it('anchors nothing when the period lock state cannot be read', async () => {
+    const { supabase, enqueueMany } = createQueuedMockSupabase()
+    enqueueMany([
+      {
+        data: {
+          id: 'si-1',
+          document_id: 'doc-1',
+          registration_journal_entry_id: null,
+          payment_journal_entry_id: 'je-pay',
+        },
+      },
+      { data: { id: 'doc-1', journal_entry_id: null, is_current_version: true } },
+      { data: [] },
+      { error: { message: "more than one relationship was found for 'journal_entries' and 'fiscal_periods'" } },
+    ])
+
+    expect(
+      await anchorSupplierInvoiceDocument(
+        supabase as unknown as SupabaseClient,
+        'company-1',
+        'si-1',
+      ),
+    ).toBeNull()
+    // stopped at the failed read: no UPDATE
+    expect(supabase.from).toHaveBeenCalledTimes(4)
+  })
+
   it('reports failure as null instead of throwing at the caller', async () => {
     const { supabase, enqueueMany } = createQueuedMockSupabase()
     enqueueMany([

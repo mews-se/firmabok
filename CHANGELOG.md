@@ -4,6 +4,82 @@ Alla märkbara ändringar i Firmabok, nyaste först. Versionerna följer
 taggarna i det här repot; varje version publiceras som containerimage på
 `ghcr.io/mews-se/firmabok`.
 
+## 5.0.0 — 2026-10-09
+
+Firmabok bantas till det en enskild firma på eget nätverk använder, och
+kontantmetoden klarar nu delbetalningar. Inga databasmigrationer; `.env`
+och volymerna lämnas orörda.
+
+Borttaget:
+
+- Allt kring banktransaktioner: matchningsförslag, bokföringsmallar för
+  transaktioner, dubblettspärrar och kontrollen av obokförda transaktioner
+  vid periodlås och bokslut. Betalningar registreras manuellt eller genom
+  att en befintlig verifikation kopplas till fakturan.
+- E-postutskick av fakturor, påminnelser, automatiskt utskick av
+  återkommande fakturor och leveranshistoriken. En faktura utfärdas genom
+  att markeras som skickad; PDF:en skickas hur du vill.
+- Aktiebolagsstödet: AB-paketen, bolagsskatt, aktiekapital,
+  resultatdisposition, K2/K3-väljaren och MCP-verktyget
+  `gnubok_propose_dispositioner`. Onboardingen skapar bara enskild firma.
+- Lönerester och kvarvarande Skatteverket-delar: routerna för
+  arbetsgivarens skattebetalningar och lönereglagen i
+  skatteinställningarna.
+- KPI-sidan och kassaflödesanalysen. MCP-verktyget `gnubok_get_kpi_report`
+  finns kvar.
+- Det engelska gränssnittet. Fakturor på engelska, valda per kund, finns
+  kvar.
+- Deadlines som inte gäller enskild firma (arbetsgivardeklaration, OSS,
+  Intrastat med flera) och CSV-import och -export av artiklar.
+- MCP:s OAuth-flöde (API-nycklar via stdio-bryggan fungerar som förut),
+  n8n-endpointen för händelser, PostHog, service workern och
+  installationen som app, sandlådan, white label-stödet utom appnamnet,
+  de hostade sidorna om integritet och personuppgiftsbiträdesavtal,
+  startsidans checklista samt radering av konto och företag i
+  inställningarna.
+
+Rättat:
+
+- Nattjobbet för bokföringsmallarna misslyckades eftersom `packs/` saknades
+  i imagen.
+- Årsbokslutets panel för deklarationen (enskild firma) hämtade en route
+  som inte fanns. Underlaget utgår nu från NE-bilagans R11.
+- Förhandsvisningen av en leverantörsbetalning under kontantmetoden visade
+  fel konton och belopp, och Redigera bokförde dem. Nu visas de rader som
+  bokförs.
+- Underlaget till en leverantörsbetalning under kontantmetoden kopplades
+  aldrig till verifikationen.
+- En betald faktura som krediterades via MCP under kontantmetoden fick
+  ingen återföring av intäkt och moms. Kreditfakturan hänvisar nu också
+  till betalningsverifikationen.
+- Förslagen på verifikationer att koppla till en faktura matchade
+  fakturanummer som delsträngar ("1" träffade nästan allt). Nu krävs hela
+  numret och ett belopp som stämmer.
+- MCP bokförde leverantörsfakturor från inkorgen på ett gissat konto 4000
+  när kontot saknades, och registrerade bruttot i stället för nettot som
+  skuld vid omvänd skattskyldighet.
+- Manuellt registrerade kundbetalningar, även via MCP, sparas nu i
+  kundreskontran, och betalningen tas bort därifrån när verifikationen
+  raderas.
+- Exakt halva ören avrundas uppåt oavsett beloppets storlek, och belopp
+  avrundas till ören innan de trunkeras till hela kronor (egenavgifter,
+  NE-bilagan).
+
+Nytt:
+
+- Delbetalningar under kontantmetoden för kund- och leverantörsfakturor i
+  svenska kronor. Varje betalning bokför sin andel av intäkt eller kostnad
+  och moms, den sista tar exakt resten och en skillnad under 1 kr bokförs
+  som öresavrundning på 3740. Kundfakturans betalningsdialog har fältet
+  Inbetalt belopp.
+- En överbetald kundfaktura under kontantmetoden bokför överskottet som
+  förskott från kund på 2420, utan moms. Leverantörsfakturor kan inte
+  överbetalas, och en delbetald leverantörsfaktura kan inte krediteras
+  under kontantmetoden.
+- [docs/mcp-kanda-begransningar.md](docs/mcp-kanda-begransningar.md) listar
+  vad MCP-verktygen inte klarar och hur samma sak görs i webben.
+
+
 ## 4.3.0 — 2026-10-01
 
 Dependabots månadsomgång; imagen byggs om på aktuell node:26-alpine med

@@ -242,6 +242,45 @@ describe('planInvoicePaymentForLines', () => {
     expect(r.ok).toBe(false)
   })
 
+  describe('acceptPrepayment', () => {
+    const invoice = { total: 12500, paid_amount: 0, remaining_amount: 12500 }
+    const lines = (prepayment: number) => [
+      { account_number: '1930', debit_amount: 13000, credit_amount: 0 },
+      { account_number: '3001', debit_amount: 0, credit_amount: 10000 },
+      { account_number: '2611', debit_amount: 0, credit_amount: 2500 },
+      { account_number: '2420', debit_amount: 0, credit_amount: prepayment },
+    ]
+
+    it('settles an overpayment whose excess the lines credit to 2420', () => {
+      const r = planInvoicePaymentForLines(invoice, 13000, lines(500), 'SEK', { acceptPrepayment: true })
+      expect(r).toEqual({
+        ok: true,
+        plan: { newPaidAmount: 12500, newRemaining: 0, isFullyPaid: true, newStatus: 'paid', oreSettled: false },
+      })
+    })
+
+    it('refuses when 2420 does not carry exactly the excess', () => {
+      expect(planInvoicePaymentForLines(invoice, 13000, lines(400), 'SEK', { acceptPrepayment: true }).ok).toBe(false)
+      expect(planInvoicePaymentForLines(invoice, 13000, lines(0), 'SEK', { acceptPrepayment: true }).ok).toBe(false)
+    })
+
+    it('refuses without the opt-in, for a foreign invoice, and without lines', () => {
+      expect(planInvoicePaymentForLines(invoice, 13000, lines(500), 'SEK').ok).toBe(false)
+      expect(planInvoicePaymentForLines(invoice, 13000, lines(500), 'EUR', { acceptPrepayment: true }).ok).toBe(false)
+      expect(planInvoicePaymentForLines(invoice, 13000, undefined, 'SEK', { acceptPrepayment: true }).ok).toBe(false)
+    })
+
+    it('leaves the öre band to 3740', () => {
+      const band = [
+        { account_number: '1930', debit_amount: 12500.5, credit_amount: 0 },
+        { account_number: '3001', debit_amount: 0, credit_amount: 10000 },
+        { account_number: '2611', debit_amount: 0, credit_amount: 2500 },
+        { account_number: '2420', debit_amount: 0, credit_amount: 0.5 },
+      ]
+      expect(planInvoicePaymentForLines(invoice, 12500.5, band, 'SEK', { acceptPrepayment: true }).ok).toBe(false)
+    })
+  })
+
   it('without lines it behaves exactly like the strict plan', () => {
     expect(planInvoicePaymentForLines(INV, 1234.75, undefined, 'SEK').ok).toBe(true)
     expect(planInvoicePaymentForLines(INV, 1235, undefined, 'SEK').ok).toBe(false)

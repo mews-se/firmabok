@@ -58,7 +58,8 @@ export interface ProposePaymentLinesInput {
    * whole invoice. Any other amount proposes this payment alone: under
    * kontantmetoden its share of revenue and moms (cash-instalment.ts), under
    * faktureringsmetoden the 1510 clearing of the amount applied. Within 1 kr
-   * of the remaining amount the invoice settles and 3740 takes the difference.
+   * of the remaining amount the invoice settles and 3740 takes the difference;
+   * 1 kr or more above it, kontantmetoden books the excess on 2420.
    */
   paymentAmount?: number
   /** paid_amount before this payment; read together with paymentAmount. */
@@ -201,6 +202,15 @@ function proposeSinglePaymentLines(
 
   if (plan.kind === 'settle' && plan.difference !== 0) {
     lines.push(oreRoundingLine(plan.difference))
+  }
+  if (plan.kind === 'overpayment' && accountingMethod === 'cash') {
+    // A liability to the customer, without moms; faktureringsmetoden refuses it.
+    lines.push({
+      account_number: '2420',
+      debit_amount: '',
+      credit_amount: toFormAmount(plan.difference),
+      line_description: 'Förskott från kund',
+    })
   }
   return lines
 }

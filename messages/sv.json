@@ -1929,7 +1929,8 @@
     "remaining_to_pay": "Kvar att betala: {amount}",
     "remaining_after_payment": "kvar efter betalningen: {amount}",
     "settles_in_full": "fakturan blir fullt betald",
-    "overpayment_refused": "Beloppet är {excess} högre än det som återstår. Registrera högst det återstående beloppet."
+    "overpayment_refused": "Beloppet är {excess} högre än det som återstår. Registrera högst det återstående beloppet.",
+    "overpayment_prepayment": "Det överskjutande beloppet {excess} bokförs som förskott från kund på konto 2420, utan moms."
   },
   "invoice_link_voucher": {
     "intro": "Välj en befintlig verifikation som krediterar kundfordran (1510). Ingen ny verifikation skapas: du länkar bara den befintliga som betalning.",

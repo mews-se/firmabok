@@ -120,6 +120,9 @@ export function planInvoicePayment(
 /** BAS öres- och kronutjämning: the only account that may carry an absorbed residual. */
 const ORE_ROUNDING_ACCOUNT = '3740'
 
+/** BAS förskott från kunder: where an accepted overpayment is booked. */
+const CUSTOMER_PREPAYMENT_ACCOUNT = '2420'
+
 /**
  * `planInvoicePayment` for caller-supplied booking lines (the mark-paid
  * dialog and the v1 API), where the server does NOT build the verifikat.
@@ -131,6 +134,11 @@ const ORE_ROUNDING_ACCOUNT = '3740'
  * sub-krona overshoot is rejected, exactly as before absorption existed.
  * Without this gate an invoice could flip to paid while the posted lines
  * under-clear 1510, diverging the GL from the AR sub-ledger.
+ *
+ * `acceptPrepayment` (kontantmetoden, never-booked SEK invoice) also settles a
+ * payment 1 kr or more above the remaining amount, but only when the lines
+ * credit exactly the excess to 2420 Förskott från kunder: the invoice is paid
+ * in full and the excess stays a liability to the customer, without moms.
  */
 export function planInvoicePaymentForLines(
   invoice: InvoicePaymentTotals,
@@ -139,15 +147,37 @@ export function planInvoicePaymentForLines(
     | Array<{ account_number: string; debit_amount: number; credit_amount: number }>
     | undefined,
   invoiceCurrency: string,
+  opts?: { acceptPrepayment?: boolean },
 ): PlanInvoicePaymentResult {
   const absorbEligible = !!lines && invoiceCurrency === 'SEK'
   const payment = planInvoicePayment(invoice, paymentAmountInInvoiceCurrency, {
     absorbOreRounding: absorbEligible,
   })
-  if (!absorbEligible || !payment.ok || !payment.plan.oreSettled) return payment
-
   const currentRemaining =
     invoice.remaining_amount ?? invoice.total - (invoice.paid_amount || 0)
+
+  if (!payment.ok && absorbEligible && opts?.acceptPrepayment) {
+    const excess = roundOre(paymentAmountInInvoiceCurrency - currentRemaining)
+    const net2420 = roundOre(
+      lines!
+        .filter((l) => l.account_number === CUSTOMER_PREPAYMENT_ACCOUNT)
+        .reduce((s, l) => s + l.credit_amount - l.debit_amount, 0),
+    )
+    if (excess >= ORE_ROUNDING_SETTLEMENT_MAX && net2420 === excess) {
+      return {
+        ok: true,
+        plan: {
+          newPaidAmount: roundOre((invoice.paid_amount || 0) + currentRemaining),
+          newRemaining: 0,
+          isFullyPaid: true,
+          newStatus: 'paid',
+          oreSettled: false,
+        },
+      }
+    }
+  }
+  if (!absorbEligible || !payment.ok || !payment.plan.oreSettled) return payment
+
   const residual = roundOre(currentRemaining - paymentAmountInInvoiceCurrency)
   const net3740 = roundOre(
     lines!

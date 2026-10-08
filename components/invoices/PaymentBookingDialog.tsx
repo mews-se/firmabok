@@ -250,7 +250,11 @@ export default function PaymentBookingDialog({
       amount,
     )
   }, [amountInput, takesAmount, invoice.total, priorPaid, remaining])
-  const amountBlocked = takesAmount && (amountPlan === null || amountPlan.kind === 'overpayment')
+  // Only a payment booked under kontantmetoden can put an excess on 2420.
+  const prepaymentAllowed = sourceType === 'invoice_cash_payment'
+  const amountBlocked =
+    takesAmount &&
+    (amountPlan === null || (amountPlan.kind === 'overpayment' && !prepaymentAllowed))
 
   const changeAmount = (value: string) => {
     setAmountInput(value)
@@ -411,11 +415,15 @@ export default function PaymentBookingDialog({
                 {amountPlan?.kind === 'partial' && (
                   <> · {t('remaining_after_payment', { amount: formatCurrency(amountPlan.newRemaining, invoice.currency) })}</>
                 )}
-                {amountPlan?.kind === 'settle' && <> · {t('settles_in_full')}</>}
+                {(amountPlan?.kind === 'settle' || (amountPlan?.kind === 'overpayment' && prepaymentAllowed)) && (
+                  <> · {t('settles_in_full')}</>
+                )}
               </p>
               {amountPlan?.kind === 'overpayment' && (
-                <p className="text-xs text-destructive">
-                  {t('overpayment_refused', { excess: formatCurrency(amountPlan.difference, invoice.currency) })}
+                <p className={prepaymentAllowed ? 'text-xs text-muted-foreground' : 'text-xs text-destructive'}>
+                  {t(prepaymentAllowed ? 'overpayment_prepayment' : 'overpayment_refused', {
+                    excess: formatCurrency(amountPlan.difference, invoice.currency),
+                  })}
                 </p>
               )}
             </div>

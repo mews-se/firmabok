@@ -224,6 +224,68 @@ describe('settleInvoicePayment', () => {
       expect(findCall('invoice_payments', 'insert')?.[0]).toMatchObject({ amount: 2501 })
     })
 
+    it('settles an overpayment with the excess on 2420 under kontantmetoden', async () => {
+      const { supabase, enqueue, findCall } = createQueuedMockSupabase()
+      enqueue({ data: { id: 'ip-1' } }) // payment row
+      enqueue({ data: [{ id: 'inv-1' }] }) // CAS update matched
+
+      const invoice = payableInvoice({ total: 12500, remaining_amount: 12500, journal_entry_id: null } as Partial<Invoice>)
+      const lines = [...shareLines(13000, 10000, 2500), { account_number: '2420', debit_amount: 0, credit_amount: 500 }]
+      const result = await settleInvoicePayment(
+        supabase as unknown as SupabaseClient,
+        'company-1',
+        'user-1',
+        { ...BASE_PARAMS, invoice, accountingMethod: 'cash', paymentAmountInInvoiceCurrency: 13000, customLines: lines },
+      )
+
+      expect(result).toMatchObject({ ok: true, newStatus: 'paid', newPaidAmount: 12500, newRemaining: 0 })
+      expect(findCall('invoice_payments', 'insert')?.[0]).toMatchObject({ amount: 12500 })
+      expect(vi.mocked(createJournalEntry).mock.calls[0][3]).toMatchObject({ lines })
+    })
+
+    it('refuses an overpayment without the excess on 2420', async () => {
+      const { supabase } = createQueuedMockSupabase()
+      const invoice = payableInvoice({ total: 12500, remaining_amount: 12500, journal_entry_id: null } as Partial<Invoice>)
+      const result = await settleInvoicePayment(
+        supabase as unknown as SupabaseClient,
+        'company-1',
+        'user-1',
+        {
+          ...BASE_PARAMS,
+          invoice,
+          accountingMethod: 'cash',
+          paymentAmountInInvoiceCurrency: 13000,
+          customLines: shareLines(13000, 10500, 2500),
+        },
+      )
+
+      expect(result).toMatchObject({ ok: false, code: 'MATCH_AMOUNT_EXCEEDS_REMAINING' })
+      expect(vi.mocked(createJournalEntry)).not.toHaveBeenCalled()
+    })
+
+    it('still refuses an overpayment under faktureringsmetoden, 2420 or not', async () => {
+      const { supabase } = createQueuedMockSupabase()
+      const invoice = payableInvoice({ total: 12500, remaining_amount: 12500, journal_entry_id: 'je-issue' } as Partial<Invoice>)
+      const result = await settleInvoicePayment(
+        supabase as unknown as SupabaseClient,
+        'company-1',
+        'user-1',
+        {
+          ...BASE_PARAMS,
+          invoice,
+          paymentAmountInInvoiceCurrency: 13000,
+          customLines: [
+            { account_number: '1930', debit_amount: 13000, credit_amount: 0 },
+            { account_number: '1510', debit_amount: 0, credit_amount: 12500 },
+            { account_number: '2420', debit_amount: 0, credit_amount: 500 },
+          ],
+        },
+      )
+
+      expect(result).toMatchObject({ ok: false, code: 'MATCH_AMOUNT_EXCEEDS_REMAINING' })
+      expect(vi.mocked(createJournalEntry)).not.toHaveBeenCalled()
+    })
+
     it('still refuses a partial of a foreign-currency invoice', async () => {
       const { supabase } = createQueuedMockSupabase()
       const invoice = payableInvoice({

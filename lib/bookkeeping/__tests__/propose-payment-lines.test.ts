@@ -580,6 +580,35 @@ describe('proposePaymentLines: one payment of the invoice', () => {
     ])
   })
 
+  it('cash: books the excess of an overpayment as förskott on 2420', () => {
+    const base = { invoice: makeInvoiceInput(), accountingMethod: 'cash' as const, entityType: 'enskild_firma' as const }
+
+    expect(amounts(proposePaymentLines({ ...base, paymentAmount: 13000, priorPaidAmount: 0 }))).toEqual([
+      ['1930', '13000', ''],
+      ['3001', '', '10000'],
+      ['2611', '', '2500'],
+      ['2420', '', '500'],
+    ])
+    expect(amounts(proposePaymentLines({ ...base, paymentAmount: 3000, priorPaidAmount: 9999 }))).toEqual([
+      ['1930', '3000', ''],
+      ['3001', '', '2000.8'],
+      ['2611', '', '500.2'],
+      ['2420', '', '499'],
+    ])
+  })
+
+  it('accrual: proposes no 2420 for an overpayment', () => {
+    const lines = proposePaymentLines({
+      invoice: makeInvoiceInput(),
+      accountingMethod: 'accrual',
+      entityType: 'enskild_firma',
+      paymentAmount: 13000,
+      priorPaidAmount: 0,
+    })
+
+    expect(lines.some((l) => l.account_number === '2420')).toBe(false)
+  })
+
   it('stamps the default dimensions on a single payment too', () => {
     const lines = proposePaymentLines({
       invoice: { ...makeInvoiceInput(), default_dimensions: { '6': 'P001' } },

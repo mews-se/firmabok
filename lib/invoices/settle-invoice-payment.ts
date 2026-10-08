@@ -126,32 +126,6 @@ export async function settleInvoicePayment(
   const invoiceAlreadyBooked = !!(invoice as { journal_entry_id?: string | null })
     .journal_entry_id
   const useCashEntry = !invoiceAlreadyBooked && accountingMethod === 'cash'
-
-  // Ledger math + overpayment guard. Runs BEFORE any journal entry is
-  // created so a doomed overpayment never burns a voucher number.
-  // Custom-line SEK settlements absorb a sub-krona öresavrundning residual
-  // (customer paid the rounded "Att betala" from the PDF, up to 1 kr off the
-  // stored öre total) ONLY when the lines actually carry the residual on
-  // 3740, mirroring the bank-transaction match flow; lines that don't (e.g.
-  // a deliberate sub-krona partial) get the strict plan instead. The
-  // generated-entry path (no-body mark-paid) always pays the exact
-  // remaining, so absorption is a no-op there.
-  const payment = planInvoicePaymentForLines(
-    invoice,
-    paymentAmountInInvoiceCurrency,
-    customLines,
-    invoice.currency,
-  )
-  if (!payment.ok) {
-    return {
-      ok: false,
-      code: 'MATCH_AMOUNT_EXCEEDS_REMAINING',
-      details: payment.details as Record<string, unknown>,
-    }
-  }
-  const { newPaidAmount, newRemaining, newStatus } = payment.plan
-  const paidAt = newStatus === 'paid' ? paidAtFromDate(paymentDate) : null
-
   const isRealInvoice = !invoice.document_type || invoice.document_type === 'invoice'
 
   // The generated cash entry (createInvoiceCashEntry) books the FULL invoice
@@ -165,6 +139,34 @@ export async function settleInvoicePayment(
   // for the 1513 split towards Skatteverket.
   const cashInstalmentLines =
     !!customLines && (invoice.currency || 'SEK') === 'SEK' && !hasRotRutDeduction(invoice)
+
+  // Ledger math + overpayment guard. Runs BEFORE any journal entry is
+  // created so a doomed overpayment never burns a voucher number.
+  // Custom-line SEK settlements absorb a sub-krona öresavrundning residual
+  // (customer paid the rounded "Att betala" from the PDF, up to 1 kr off the
+  // stored öre total) ONLY when the lines actually carry the residual on
+  // 3740, mirroring the bank-transaction match flow; lines that don't (e.g.
+  // a deliberate sub-krona partial) get the strict plan instead. The
+  // generated-entry path (no-body mark-paid) always pays the exact
+  // remaining, so absorption is a no-op there. Under kontantmetoden the
+  // dialog lines may also settle an overpayment with the excess on 2420.
+  const payment = planInvoicePaymentForLines(
+    invoice,
+    paymentAmountInInvoiceCurrency,
+    customLines,
+    invoice.currency,
+    { acceptPrepayment: isRealInvoice && useCashEntry && cashInstalmentLines },
+  )
+  if (!payment.ok) {
+    return {
+      ok: false,
+      code: 'MATCH_AMOUNT_EXCEEDS_REMAINING',
+      details: payment.details as Record<string, unknown>,
+    }
+  }
+  const { newPaidAmount, newRemaining, newStatus } = payment.plan
+  const paidAt = newStatus === 'paid' ? paidAtFromDate(paymentDate) : null
+
   const cashBlock = cashInstalmentLines
     ? null
     : cashPartialBlockReason({

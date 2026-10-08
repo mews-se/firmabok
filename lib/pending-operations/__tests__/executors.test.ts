@@ -538,8 +538,8 @@ describe('commitPendingOperation: credit_invoice', () => {
     expect(createCreditNoteJournalEntry).toHaveBeenCalled()
   })
 
-  it('skips JE on cash accounting', async () => {
-    const original = makeInvoice({ id: 'inv-1', status: 'paid', document_type: 'invoice' })
+  it('books no JE for an unpaid kontantmetod invoice: nothing reached the ledger', async () => {
+    const original = makeInvoice({ id: 'inv-1', status: 'sent', document_type: 'invoice', paid_amount: 0 })
     const originalWithItems = { ...original, items: [] }
     const creditNoteRow = { ...original, id: 'cn-2', invoice_number: 'KR-F-2024001' }
     const completeCreditNote = { ...creditNoteRow, customer: null, items: [] }
@@ -565,6 +565,52 @@ describe('commitPendingOperation: credit_invoice', () => {
     expect(result.status).toBe('committed')
     expect(result.data).toMatchObject({ credit_note_id: 'cn-2', journal_entry_id: null })
     expect(createCreditNoteJournalEntry).not.toHaveBeenCalled()
+  })
+
+  it('books the reversal for a paid kontantmetod invoice: its payment booked revenue and moms', async () => {
+    const original = makeInvoice({
+      id: 'inv-1',
+      status: 'paid',
+      document_type: 'invoice',
+      paid_amount: 12500,
+      paid_at: '2027-03-20T00:00:00Z',
+    })
+    const originalWithItems = { ...original, items: [] }
+    const creditNoteRow = { ...original, id: 'cn-3', invoice_number: 'KR-F-2024001' }
+    const completeCreditNote = { ...creditNoteRow, customer: { name: 'Kund AB' }, items: [] }
+
+    const { supabase, enqueue, findCalls } = createQueuedMockSupabase()
+    enqueue({ data: { id: 'op-1' }, error: null }) // CAS claim
+    enqueue({ data: originalWithItems, error: null })
+    enqueue({ data: creditNoteRow, error: null })
+    enqueue({ data: null, error: null })
+    enqueue({ data: null, error: null })
+    enqueue({ data: completeCreditNote, error: null })
+    enqueue({ data: { entity_type: 'enskild_firma', accounting_method: 'cash' }, error: null })
+    enqueue({ data: null, error: null }) // update credit note with journal_entry_id
+    enqueue({ data: null, error: null }) // dispatcher update
+
+    vi.mocked(createCreditNoteJournalEntry).mockResolvedValueOnce({ id: 'je-cn' } as never)
+
+    const op = makePendingOp({
+      operation_type: 'credit_invoice',
+      params: { invoice_id: 'inv-1' },
+    })
+
+    const result = await commitPendingOperation(supabase as never, 'user-1', 'company-1', op)
+
+    expect(result.status).toBe('committed')
+    expect(result.data).toMatchObject({ credit_note_id: 'cn-3', journal_entry_id: 'je-cn' })
+    expect(createCreditNoteJournalEntry).toHaveBeenCalledWith(
+      supabase,
+      'company-1',
+      'user-1',
+      completeCreditNote,
+      'enskild_firma',
+      'Kund AB',
+      undefined,
+    )
+    expect(findCalls('invoices', 'update')).toContainEqual([{ journal_entry_id: 'je-cn' }])
   })
 
   it('auto-rejects when invoice is already credited (409)', async () => {

@@ -58,6 +58,7 @@ import { linkInvoiceToVoucher } from '@/lib/invoices/voucher-matching'
 import { planInvoicePayment } from '@/lib/invoices/apply-invoice-payment'
 import { linkSupplierInvoiceToVoucher } from '@/lib/invoices/supplier-voucher-matching'
 import { paidAtFromDate } from '@/lib/invoices/paid-at'
+import { creditNoteNeedsJournalEntry } from '@/lib/invoices/issue-credit-note'
 import { getErrorEntry } from '@/lib/errors/structured-errors'
 import { parseSIEFile } from '@/lib/import/sie-parser'
 import { executeSIEImport, undoSIEImport } from '@/lib/import/sie-import'
@@ -2992,7 +2993,10 @@ async function commitCreditInvoice(
   }
 
   let journalEntryId: string | null = null
-  if (completeCreditNote && accountingMethod === 'accrual') {
+  // Same rule as the dashboard: kontantmetoden books the reversal once the
+  // original reached the ledger (its payment booked revenue + utgående moms).
+  // `original` still carries the pre-credit status the decision needs.
+  if (completeCreditNote && creditNoteNeedsJournalEntry(accountingMethod, original)) {
     try {
       const journalEntry = await createCreditNoteJournalEntry(
         supabase,

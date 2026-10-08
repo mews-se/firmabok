@@ -96,6 +96,7 @@ import { computeInitialRunDate, getStockholmDateHour } from '@/lib/invoices/recu
 import { runDateMatchesDayOfMonth } from '@/lib/invoices/recurring-run-date'
 import { UpdateInvoiceParamsSchema } from '@/lib/pending-operations/schemas/update-invoice'
 import { isEditableInvoiceDraft } from '@/lib/invoices/is-editable-draft'
+import { creditNoteNeedsJournalEntry } from '@/lib/invoices/issue-credit-note'
 import {
   ensureCompanyDimensions,
   fetchDimensionRegistry,
@@ -9117,7 +9118,7 @@ export const tools: McpTool[] = [
   {
     name: 'gnubok_credit_invoice',
     title: 'Credit Customer Invoice (Kreditfaktura)',
-    description: 'Stage credit note (kreditfaktura) for a customer invoice: KR- prefixed mirror invoice + reverses original JE (accrual). Original must be sent/paid/overdue and not already credited.',
+    description: 'Stage credit note (kreditfaktura) for a customer invoice: KR- mirror + reverses the original JE once the sale reached the ledger (kontantmetoden: at payment). Original must be sent/paid/overdue, not credited.',
     inputSchema: {
       type: 'object',
       additionalProperties: false,
@@ -9134,10 +9135,18 @@ export const tools: McpTool[] = [
       const reason = args.reason as string | undefined
       if (!id) throw new Error('invoice_id is required')
 
-      const { data: inv } = await supabase
-        .from('invoices')
-        .select('id, invoice_number, document_type, status, total, currency, customer:customers(name)')
-        .eq('id', id).eq('company_id', companyId).single()
+      // the booked-ness fields decide whether approval posts a verifikat
+      const [{ data: inv }, { data: settings }] = await Promise.all([
+        supabase
+          .from('invoices')
+          .select('id, invoice_number, document_type, status, total, currency, journal_entry_id, paid_at, paid_amount, customer:customers(name)')
+          .eq('id', id).eq('company_id', companyId).single(),
+        supabase
+          .from('company_settings')
+          .select('accounting_method')
+          .eq('company_id', companyId)
+          .maybeSingle(),
+      ])
 
       if (!inv) throw new Error('Invoice not found')
       if (inv.document_type && inv.document_type !== 'invoice') {
@@ -9148,6 +9157,10 @@ export const tools: McpTool[] = [
         throw new Error('Endast skickade, betalda eller förfallna fakturor kan krediteras')
       }
 
+      const accountingMethod =
+        (settings as { accounting_method?: string | null } | null)?.accounting_method === 'cash' ? 'cash' : 'accrual'
+      const postsJournalEntry = creditNoteNeedsJournalEntry(accountingMethod, inv)
+
       return stagePendingOperation(supabase, companyId, userId, 'credit_invoice',
         `Kreditera faktura ${inv.invoice_number}`,
         { invoice_id: id, reason },
@@ -9157,11 +9170,16 @@ export const tools: McpTool[] = [
           total: inv.total,
           currency: inv.currency,
           reason: reason || null,
-          method: 'creates KR- mirror invoice + reverses original JE (accrual)',
+          posts_journal_entry: postsJournalEntry,
+          method: postsJournalEntry
+            ? 'creates KR- mirror invoice + reverses the original JE (debit 30xx + 26xx, credit 1510)'
+            : 'creates KR- mirror invoice only: the kontantmetod original is unpaid and was never booked',
         },
         actor,
         {
-          description: 'After approval the credit note posts and the kundfordring is cleared. If a refund is owed to the customer, book the outbound payment when it leaves the bank.',
+          description: postsJournalEntry
+            ? 'After approval the credit note posts and the kundfordring is cleared. If a refund is owed to the customer, book the outbound payment when it leaves the bank.'
+            : 'After approval the credit note is created without a verifikat: the unpaid kontantmetod original never reached the ledger, so there is nothing to reverse.',
           tool: 'gnubok_get_ar_ledger',
         }
       )

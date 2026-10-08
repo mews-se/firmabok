@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { roundOre, ORE_TOLERANCE, sumOre } from '@/lib/money'
+import { roundOre, ORE_TOLERANCE, sumOre, truncateToWholeKronor } from '@/lib/money'
 
 describe('roundOre', () => {
   it('rounds exact-half öre values up where naive Math.round fails', () => {
@@ -108,6 +108,26 @@ describe('sumOre', () => {
   it('rounds a large total half up like roundOre does', () => {
     expect(sumOre([10000, 0.075])).toBe(10000.08)
     expect(sumOre([8.575])).toBe(8.58)
+  })
+})
+
+describe('truncateToWholeKronor', () => {
+  it('drops the öre: truncation, never rounding', () => {
+    expect(truncateToWholeKronor(16073.84)).toBe(16073)
+    expect(truncateToWholeKronor(16073.99)).toBe(16073)
+    expect(truncateToWholeKronor(0.84)).toBe(0)
+    expect(truncateToWholeKronor(16073)).toBe(16073)
+  })
+
+  it('does not lose a krona to drift just below an integer', () => {
+    expect(truncateToWholeKronor(16073.999999999998)).toBe(16074)
+    expect(truncateToWholeKronor(6.999999999999999)).toBe(7)
+  })
+
+  it('truncates negatives toward zero and normalizes -0', () => {
+    expect(truncateToWholeKronor(-5.99)).toBe(-5)
+    expect(truncateToWholeKronor(-0.84)).toBe(0)
+    expect(Object.is(truncateToWholeKronor(-0.84), -0)).toBe(false)
   })
 })
 

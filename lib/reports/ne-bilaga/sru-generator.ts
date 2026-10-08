@@ -1,4 +1,5 @@
 import { APP_NAME } from '@/lib/brand'
+import { truncateToWholeKronor } from '@/lib/money'
 import type { NEDeclaration, NEDeclarationRutor, SRUSubmission } from '@/lib/reports/ne-bilaga/types'
 
 /**
@@ -109,8 +110,8 @@ function dateStringToSRU(dateStr: string): string {
 }
 
 /** Format an integer amount: hela kronor, no decimals/thousands separators, öre truncated. */
-function formatAmount(amount: number): string {
-  return Math.trunc(amount).toString()
+export function formatAmount(amount: number): string {
+  return truncateToWholeKronor(amount).toString()
 }
 
 /** Sanitize string for SRU: '#' is reserved, strip newlines, cap at 250 chars (STR_250). */

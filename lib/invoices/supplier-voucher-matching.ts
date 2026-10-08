@@ -23,6 +23,7 @@ import {
   amountsMatchExact,
   amountsMatchFuzzy,
   customerNameMatches,
+  descriptionMentionsReference,
 } from './invoice-matching'
 import { documentCurrency, ledgerLineSideAmountIn } from '@/lib/bookkeeping/ledger-line-amount'
 import type { SupplierInvoice, Supplier } from '@/types'
@@ -294,19 +295,35 @@ function scoreCandidate(
   lineCurrency: string | null,
   ctx: CandidateContext,
 ): { confidence: number; match_reason: string } | null {
-  // OCR-style: invoice number or arrival number appears in the entry description.
-  const invoiceNumberHit =
-    ctx.invoice.supplier_invoice_number &&
-    descriptionMentionsToken(entry.description, ctx.invoice.supplier_invoice_number)
-  const arrivalHit =
-    ctx.invoice.arrival_number != null &&
-    descriptionMentionsToken(entry.description, String(ctx.invoice.arrival_number))
-  if (invoiceNumberHit || arrivalHit) {
+  // The supplier's invoice number, or our own ankomstnummer, in the voucher
+  // text as a whole number. Only with an amount that settles the invoice does
+  // it earn 0.99. An invoice number with another amount stays a hint for a
+  // person (0.90); the ankomstnummer is our own short sequence that no bank
+  // text carries, so it counts only when the amount agrees.
+  const invoiceNumberHit = descriptionMentionsReference(
+    entry.description,
+    ctx.invoice.supplier_invoice_number,
+  )
+  const arrivalHit = descriptionMentionsReference(entry.description, ctx.invoice.arrival_number)
+  const settlesInvoice =
+    amountsMatchExact(apDebitTotal, ctx.remainingAmount) ||
+    amountsMatchExact(apDebitTotal, ctx.invoice.total)
+  if (invoiceNumberHit && settlesInvoice) {
     return {
       confidence: CONFIDENCE.OCR_REFERENCE_MATCH,
-      match_reason: invoiceNumberHit
-        ? `Fakturanummer ${ctx.invoice.supplier_invoice_number} omnämnt i verifikatets beskrivning`
-        : `Ankomstnummer ${ctx.invoice.arrival_number} omnämnt i verifikatets beskrivning`,
+      match_reason: `Fakturanummer ${ctx.invoice.supplier_invoice_number} omnämnt i verifikatets beskrivning och beloppet stämmer`,
+    }
+  }
+  if (arrivalHit && settlesInvoice) {
+    return {
+      confidence: CONFIDENCE.OCR_REFERENCE_MATCH,
+      match_reason: `Ankomstnummer ${ctx.invoice.arrival_number} omnämnt i verifikatets beskrivning och beloppet stämmer`,
+    }
+  }
+  if (invoiceNumberHit) {
+    return {
+      confidence: CONFIDENCE.REFERENCE_AMOUNT_MISMATCH,
+      match_reason: `Fakturanummer ${ctx.invoice.supplier_invoice_number} omnämnt i verifikatets beskrivning, men beloppet (${formatNumber(apDebitTotal)} ${ctx.invoice.currency}) avviker från fakturans`,
     }
   }
 
@@ -711,14 +728,6 @@ function isDateWithinDays(a: string, b: string, days: number): boolean {
   const bd = new Date(b).getTime()
   if (Number.isNaN(ad) || Number.isNaN(bd)) return false
   return Math.abs(ad - bd) <= days * 24 * 3600 * 1000
-}
-
-function descriptionMentionsToken(description: string | null, token: string): boolean {
-  if (!description || !token) return false
-  const normalizedDesc = description.replace(/\s+/g, '').toLowerCase()
-  const normalizedTok = token.replace(/\s+/g, '').toLowerCase()
-  if (normalizedTok.length < 2) return false
-  return normalizedDesc.includes(normalizedTok)
 }
 
 function formatNumber(n: number): string {

@@ -721,4 +721,69 @@ describe('findMatchingVouchersForSupplierInvoice', () => {
     const tables = (supabase.from as ReturnType<typeof vi.fn>).mock.calls.map((c) => c[0])
     expect(tables).not.toContain('journal_entry_lines')
   })
+  describe('reference matching', () => {
+    type ApRow = Parameters<typeof enqueueApLines>[1][number]
+    async function search(rows: ApRow[], inv: ReturnType<typeof makeSupplierInvoice>) {
+      const { supabase, enqueue } = createQueuedMockSupabase()
+      enqueueApLines(enqueue, rows)
+      enqueue({ data: [], error: null }) // supplier_invoice_payments links
+      enqueue({ data: [{ id: 'period-1', is_closed: false, locked_at: null }], error: null })
+      return findMatchingVouchersForSupplierInvoice(supabase as never, 'company-1', inv as never)
+    }
+    const apRow = (debit: number, description: string): ApRow => ({
+      id: 'line-1',
+      account_number: '2440',
+      debit_amount: debit,
+      currency: 'SEK',
+      entry: entryFixture({ description }),
+    })
+    const supplierInvoice = (over: Parameters<typeof makeSupplierInvoice>[0] = {}) =>
+      makeSupplierInvoice({
+        id: 'si-ref',
+        total: 1000,
+        paid_amount: 0,
+        remaining_amount: 1000,
+        currency: 'SEK',
+        due_date: '2026-03-12',
+        ...over,
+      })
+
+    it('does not read ankomstnummer 14 inside "(1814)"', async () => {
+      const inv = supplierInvoice({ total: 3156, remaining_amount: 3156, supplier_invoice_number: '1813', arrival_number: 14 })
+      expect(await search([apRow(859, 'Levbet Tele2 Sverige AB (1814)')], inv)).toEqual([])
+    })
+
+    it('counts an ankomstnummer only when the amount settles the invoice', async () => {
+      const inv = supplierInvoice({ supplier_invoice_number: '', arrival_number: 14 })
+      expect(await search([apRow(400, 'Levbet faktura 14')], inv)).toEqual([])
+
+      const full = await search([apRow(1000, 'Levbet faktura 14')], inv)
+      expect(full).toHaveLength(1)
+      expect(full[0].confidence).toBe(0.99)
+      expect(full[0].match_reason).toContain('Ankomstnummer 14')
+    })
+
+    it('keeps an invoice number with another amount as a 0.90 hint', async () => {
+      const result = await search([apRow(400, 'Betalning faktura F-9001')], invoice())
+      expect(result).toHaveLength(1)
+      expect(result[0].confidence).toBe(0.9)
+      expect(result[0].match_reason).toContain('avviker')
+    })
+
+    it('does not read invoice number F-900 inside F-9001', async () => {
+      const result = await search(
+        [apRow(1000, 'Betalning faktura F-9001')],
+        supplierInvoice({ supplier_invoice_number: 'F-900' }),
+      )
+      expect(result).toHaveLength(1)
+      expect(result[0].confidence).toBeLessThan(0.9)
+      expect(result[0].match_reason).not.toContain('Fakturanummer')
+    })
+
+    it('gives 0.99 when the invoice number and the settling amount agree', async () => {
+      const result = await search([apRow(1000, 'Betalning faktura F-9001')], invoice())
+      expect(result[0].confidence).toBe(0.99)
+      expect(result[0].match_reason).toContain('beloppet stämmer')
+    })
+  })
 })

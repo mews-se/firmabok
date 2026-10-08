@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest'
-import { amountsMatchExact, amountsMatchFuzzy, customerNameMatches } from '../invoice-matching'
+import {
+  amountsMatchExact,
+  amountsMatchFuzzy,
+  customerNameMatches,
+  descriptionMentionsReference,
+} from '../invoice-matching'
 
 // ============================================================
 // amountsMatchExact
@@ -71,5 +76,44 @@ describe('customerNameMatches', () => {
 
   it('is case-insensitive', () => {
     expect(customerNameMatches('KONTORSBOLAGET', 'betalning kontorsbolaget', null)).toBe(true)
+  })
+})
+
+// ============================================================
+// descriptionMentionsReference
+// ============================================================
+
+describe('descriptionMentionsReference', () => {
+  it('never matches a single digit: "1" is in almost every text', () => {
+    expect(descriptionMentionsReference('Betalning faktura 1', '1')).toBe(false)
+    expect(descriptionMentionsReference('Betalning faktura 10', '1')).toBe(false)
+    expect(descriptionMentionsReference('Betalning faktura 21', '1')).toBe(false)
+  })
+
+  it('matches a number only where it stands alone', () => {
+    expect(descriptionMentionsReference('Betalning faktura 12, Kund AB', '12')).toBe(true)
+    expect(descriptionMentionsReference('Betalning faktura 112', '12')).toBe(false)
+    expect(descriptionMentionsReference('Betalning faktura 123', '12')).toBe(false)
+    expect(descriptionMentionsReference('Inbetalning 2012-05-01', '12')).toBe(false)
+    expect(descriptionMentionsReference('Levbet Tele2 Sverige AB (1814)', 14)).toBe(false)
+  })
+
+  it('keeps padded invoice numbers apart', () => {
+    expect(descriptionMentionsReference('Kontantbetalning kundfaktura 001, Kund AB', '001')).toBe(true)
+    expect(descriptionMentionsReference('Betalning faktura 1001', '001')).toBe(false)
+  })
+
+  it('matches a number followed by a date', () => {
+    expect(descriptionMentionsReference('Faktura 001 2027-03-20', '001')).toBe(true)
+  })
+
+  it('matches an OCR number typed in groups against the digits run together', () => {
+    expect(descriptionMentionsReference('OCR 12345678', '1234 5678')).toBe(true)
+  })
+
+  it('handles a missing text or reference', () => {
+    expect(descriptionMentionsReference(null, '12')).toBe(false)
+    expect(descriptionMentionsReference('Faktura 12', null)).toBe(false)
+    expect(descriptionMentionsReference('Faktura 12', undefined)).toBe(false)
   })
 })

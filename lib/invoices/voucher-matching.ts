@@ -27,6 +27,7 @@ import {
   amountsMatchExact,
   amountsMatchFuzzy,
   customerNameMatches,
+  descriptionMentionsReference,
 } from './invoice-matching'
 import { documentCurrency, ledgerLineSideAmountIn } from '@/lib/bookkeeping/ledger-line-amount'
 import type { Invoice, Customer } from '@/types'
@@ -411,15 +412,22 @@ function scoreCandidate(
   lineCurrency: string | null,
   ctx: CandidateContext
 ): { confidence: number; match_reason: string } | null {
-  // OCR-style: invoice number appears in entry description.
-  if (
-    ctx.invoice.invoice_number &&
-    descriptionMentionsInvoice(entry.description, ctx.invoice.invoice_number)
-  ) {
-    return {
-      confidence: CONFIDENCE.OCR_REFERENCE_MATCH,
-      match_reason: `Fakturanummer ${ctx.invoice.invoice_number} omnämnt i verifikatets beskrivning`,
-    }
+  // Invoice number in the voucher text as a whole number. It earns 0.99 only
+  // with an amount that settles the invoice; otherwise it is a hint for a
+  // person (0.90), since a text naming the invoice can be a partial payment.
+  if (descriptionMentionsReference(entry.description, ctx.invoice.invoice_number)) {
+    const settlesInvoice =
+      amountsMatchExact(arCreditTotal, ctx.remainingAmount) ||
+      amountsMatchExact(arCreditTotal, ctx.invoice.total)
+    return settlesInvoice
+      ? {
+          confidence: CONFIDENCE.OCR_REFERENCE_MATCH,
+          match_reason: `Fakturanummer ${ctx.invoice.invoice_number} omnämnt i verifikatets beskrivning och beloppet stämmer`,
+        }
+      : {
+          confidence: CONFIDENCE.REFERENCE_AMOUNT_MISMATCH,
+          match_reason: `Fakturanummer ${ctx.invoice.invoice_number} omnämnt i verifikatets beskrivning, men beloppet (${formatNumber(arCreditTotal)} ${ctx.invoice.currency}) avviker från fakturans`,
+        }
   }
 
   // Label guard, unchanged in shape. It is no longer what makes the amounts
@@ -807,13 +815,6 @@ function isDateWithinDays(a: string, b: string, days: number): boolean {
   const bd = new Date(b).getTime()
   if (Number.isNaN(ad) || Number.isNaN(bd)) return false
   return Math.abs(ad - bd) <= days * 24 * 3600 * 1000
-}
-
-function descriptionMentionsInvoice(description: string | null, invoiceNumber: string): boolean {
-  if (!description || !invoiceNumber) return false
-  const normalizedDesc = description.replace(/\s+/g, '').toLowerCase()
-  const normalizedNum = invoiceNumber.replace(/\s+/g, '').toLowerCase()
-  return normalizedDesc.includes(normalizedNum)
 }
 
 function formatNumber(n: number): string {

@@ -67,7 +67,8 @@ RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 -G nodejs nextjs
 
 # /app at runtime is split across the read-only image layer and tmpfs mounts:
-#   /app/server.js, /app/node_modules/, /app/package.json   : image (read-only)
+#   /app/server.js, /app/node_modules/, /app/package.json,
+#   /app/packs/                                              : image (read-only)
 #   /app/.next/                                              : tmpfs (writable)
 #   /app/public/                                             : tmpfs (writable)
 # The entrypoint runs UNPRIVILEGED as nextjs: it copies the templates from
@@ -78,6 +79,7 @@ RUN addgroup --system --gid 1001 nodejs && \
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone/server.js ./server.js
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone/node_modules ./node_modules
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone/package.json ./package.json
+COPY --from=builder --chown=nextjs:nodejs /app/packs ./packs
 
 # Baked-in templates for runtime population of the tmpfs mounts.
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone/.next /opt/gnubok-template/.next

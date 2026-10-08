@@ -155,6 +155,9 @@ Starta om Claude Desktop helt efteråt; bryggan läser inställningarna
 bara vid start. Andra MCP-klienter pekas mot samma adress med nyckeln
 som `Authorization: Bearer`.
 
+Vad MCP-verktygen inte klarar, och hur samma sak görs i webben, står i
+[docs/mcp-kanda-begransningar.md](docs/mcp-kanda-begransningar.md).
+
 Uppströms finns dessutom
 [swedish-accounting-skills](https://github.com/erp-mafia/swedish-accounting-skills)
 – fristående Claude-skills som täcker mer än Firmabok gör (AB-bokslut,

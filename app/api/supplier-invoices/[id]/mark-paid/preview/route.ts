@@ -11,6 +11,7 @@ import { z } from 'zod'
 import { withRouteContext } from '@/lib/api/with-route-context'
 import { errorResponseFromCode } from '@/lib/errors/get-structured-error'
 import { cashPartialBlockReason } from '@/lib/bookkeeping/booking-mode'
+import { planCashInstalment } from '@/lib/bookkeeping/cash-instalment'
 import {
   buildSupplierInvoiceCashLines,
   SupplierInvoiceFxRateMissingError,
@@ -71,17 +72,28 @@ export const GET = withRouteContext(
     const siAlreadyBooked = !!(invoice as { registration_journal_entry_id?: string | null }).registration_journal_entry_id
     const useCashEntry = !siAlreadyBooked && accountingMethod === 'cash'
 
-    // The POST handler rejects cash-method partials and part-paid completions
-    // for never-booked invoices (the cash builder books the full invoice), so
-    // refuse to preview lines it will never book.
+    // Same plan and refusals as the POST handler, so the preview never shows
+    // lines it will not book.
+    const cashPlan =
+      useCashEntry && (invoice.currency || 'SEK') === 'SEK'
+        ? planCashInstalment(invoice, amount)
+        : null
+    if (cashPlan?.kind === 'overpayment') {
+      return errorResponseFromCode('SI_CASH_OVERPAYMENT_UNSUPPORTED', log, {
+        requestId,
+        details: { excess: cashPlan.difference },
+      })
+    }
     const remainingForGuard =
       (invoice as { remaining_amount?: number | null }).remaining_amount ?? invoice.total
-    const cashBlock = cashPartialBlockReason({
-      invoiceAlreadyBooked: siAlreadyBooked,
-      accountingMethod,
-      priorPaidAmount: (invoice as { paid_amount?: number | null }).paid_amount,
-      paysRemainingInFull: amount >= remainingForGuard - 0.005,
-    })
+    const cashBlock = cashPlan
+      ? null
+      : cashPartialBlockReason({
+          invoiceAlreadyBooked: siAlreadyBooked,
+          accountingMethod,
+          priorPaidAmount: (invoice as { paid_amount?: number | null }).paid_amount,
+          paysRemainingInFull: amount >= remainingForGuard - 0.005,
+        })
     if (cashBlock) {
       return errorResponseFromCode('SI_CASH_PARTIAL_UNSUPPORTED', log, {
         requestId,
@@ -103,7 +115,11 @@ export const GET = withRouteContext(
           si,
           si.items ?? [],
           si.supplier?.supplier_type || 'swedish_business',
-          { supplierName: si.supplier?.name ?? undefined, paymentAccount: creditAccount },
+          {
+            supplierName: si.supplier?.name ?? undefined,
+            paymentAccount: creditAccount,
+            ...(cashPlan ? { paymentAmount: amount, priorPaidAmount: cashPlan.priorPaid } : {}),
+          },
         )
         for (const l of built.lines) {
           lines.push({

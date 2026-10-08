@@ -90,6 +90,8 @@ const {
   createSupplierInvoiceRegistrationEntry,
   createSupplierInvoicePaymentEntry,
   createSupplierInvoiceCashEntry,
+  createSupplierInvoiceCashInstalmentEntry,
+  buildSupplierInvoiceCashLines,
   createSupplierCreditNoteEntry,
   createSupplierInvoicePrivatelyPaidEntry,
   SupplierInvoiceFxRateMissingError,
@@ -1511,6 +1513,117 @@ describe('createSupplierInvoiceCashEntry: foreign-currency settlement', () => {
     expect(findByAccount(input.lines, '2641')[0].debit_amount).toBe(2000)
     expect(findByAccount(input.lines, '1930')[0].credit_amount).toBe(10000)
     assertBalanced(input)
+  })
+})
+
+// ============================================================
+// buildSupplierInvoiceCashLines: a SEK invoice paid in parts
+// ============================================================
+
+describe('buildSupplierInvoiceCashLines: a SEK invoice paid in parts', () => {
+  const invoice = makeSupplierInvoice({ subtotal: 8000, vat_amount: 2000, total: 10000 })
+  const items = [makeItem({ line_total: 8000, account_number: '6200', vat_rate: 0.25 })]
+  const amounts = (lines: CreateJournalEntryLineInput[]) =>
+    lines.map((l) => [l.account_number, l.debit_amount, l.credit_amount])
+
+  it('builds the whole invoice unchanged without an amount or for the full total from unpaid', () => {
+    const whole = buildSupplierInvoiceCashLines(invoice, items, 'swedish_business')
+
+    expect(buildSupplierInvoiceCashLines(invoice, items, 'swedish_business', { paymentAmount: 10000, priorPaidAmount: 0 })).toEqual(whole)
+    expect(buildSupplierInvoiceCashLines(invoice, items, 'swedish_business', { paymentAmount: 10000 })).toEqual(whole)
+  })
+
+  it('pays 8 000 + 2 000 moms with 4 000 and then 6 000', () => {
+    const first = buildSupplierInvoiceCashLines(invoice, items, 'swedish_business', { paymentAmount: 4000, priorPaidAmount: 0 })
+    const last = buildSupplierInvoiceCashLines(invoice, items, 'swedish_business', { paymentAmount: 6000, priorPaidAmount: 4000 })
+
+    expect(amounts(first.lines)).toEqual([['6200', 3200, 0], ['2641', 800, 0], ['1930', 0, 4000]])
+    expect(amounts(last.lines)).toEqual([['6200', 4800, 0], ['2641', 1200, 0], ['1930', 0, 6000]])
+    expect(last.description).toBe(first.description)
+  })
+
+  it('credits what left the bank and books the öre difference on 3740', () => {
+    const oreInvoice = makeSupplierInvoice({ subtotal: 987.65, vat_amount: 246.91, total: 1234.56 })
+    const oreItems = [makeItem({ line_total: 987.65, account_number: '6200', vat_rate: 0.25 })]
+    const pay = (paymentAmount: number, priorPaidAmount: number) =>
+      amounts(buildSupplierInvoiceCashLines(oreInvoice, oreItems, 'swedish_business', { paymentAmount, priorPaidAmount }).lines)
+
+    expect(pay(1000, 0)).toEqual([['6200', 800, 0], ['2641', 200, 0], ['1930', 0, 1000]])
+    expect(pay(235, 1000)).toEqual([['6200', 187.65, 0], ['2641', 46.91, 0], ['1930', 0, 235], ['3740', 0.44, 0]])
+    expect(pay(234, 1000)).toEqual([['6200', 187.65, 0], ['2641', 46.91, 0], ['1930', 0, 234], ['3740', 0, 0.56]])
+    expect(pay(1235, 0)).toEqual([['6200', 987.65, 0], ['2641', 246.91, 0], ['1930', 0, 1235], ['3740', 0.44, 0]])
+  })
+
+  it('scales the reverse-charge pairs and basis lines alike', () => {
+    const rcInvoice = makeSupplierInvoice({ subtotal: 10000, vat_amount: 0, total: 10000, reverse_charge: true })
+    const rcItems = [makeItem({ line_total: 10000, account_number: '6540', vat_rate: 0.25 })]
+
+    const { lines } = buildSupplierInvoiceCashLines(rcInvoice, rcItems, 'eu_business', { paymentAmount: 3000, priorPaidAmount: 0 })
+
+    expect(amounts(lines)).toEqual([
+      ['6540', 3000, 0],
+      ['2645', 750, 0],
+      ['2614', 0, 750],
+      ['4535', 3000, 0],
+      ['4598', 0, 3000],
+      ['1930', 0, 3000],
+    ])
+  })
+
+  it('refuses to build an overpayment', () => {
+    expect(() =>
+      buildSupplierInvoiceCashLines(invoice, items, 'swedish_business', { paymentAmount: 11000, priorPaidAmount: 0 }),
+    ).toThrow()
+  })
+
+  it('leaves a foreign invoice whole', () => {
+    const eur = makeSupplierInvoice({ currency: 'EUR', exchange_rate: 11, subtotal: 800, vat_amount: 200, total: 1000 })
+    const eurItems = [makeItem({ line_total: 800, account_number: '6200', vat_rate: 0.25 })]
+
+    expect(buildSupplierInvoiceCashLines(eur, eurItems, 'eu_business', { paymentAmount: 400, priorPaidAmount: 0 })).toEqual(
+      buildSupplierInvoiceCashLines(eur, eurItems, 'eu_business'),
+    )
+  })
+})
+
+describe('createSupplierInvoiceCashInstalmentEntry', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockedFindFiscalPeriod.mockResolvedValue('period-1')
+  })
+
+  it('books the payment share as a supplier_invoice_cash_payment', async () => {
+    const invoice = makeSupplierInvoice({ id: 'si-part', subtotal: 8000, vat_amount: 2000, total: 10000 })
+    const items = [makeItem({ line_total: 8000, account_number: '6200', vat_rate: 0.25 })]
+
+    await createSupplierInvoiceCashInstalmentEntry(
+      null as never, 'company-1', 'user-1', invoice, items, '2027-03-25', 'swedish_business',
+      { paymentAccount: '1930', paymentAmount: 4000, priorPaidAmount: 0 },
+    )
+
+    const input = mockedCreateEntry.mock.calls[0][3]
+    expect(input).toMatchObject({
+      fiscal_period_id: 'period-1',
+      entry_date: '2027-03-25',
+      source_type: 'supplier_invoice_cash_payment',
+      source_id: 'si-part',
+    })
+    expect(input.lines).toEqual(
+      buildSupplierInvoiceCashLines(invoice, items, 'swedish_business', { paymentAccount: '1930', paymentAmount: 4000, priorPaidAmount: 0 }).lines,
+    )
+    assertBalanced(input)
+  })
+
+  it('returns null without a fiscal period', async () => {
+    mockedFindFiscalPeriod.mockResolvedValue(null)
+
+    const result = await createSupplierInvoiceCashInstalmentEntry(
+      null as never, 'company-1', 'user-1', makeSupplierInvoice(), [makeItem()], '2027-03-25', 'swedish_business',
+      { paymentAmount: 4000, priorPaidAmount: 0 },
+    )
+
+    expect(result).toBeNull()
+    expect(mockedCreateEntry).not.toHaveBeenCalled()
   })
 })
 

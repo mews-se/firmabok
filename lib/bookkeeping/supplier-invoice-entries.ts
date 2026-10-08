@@ -17,6 +17,7 @@ import {
 import { createLogger } from '@/lib/logger'
 import { roundOre } from '@/lib/money'
 import { creditNatural, debitNatural } from './line-side'
+import { instalmentLines, largestLineIndex, planCashInstalment } from './cash-instalment'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type {
   CreateJournalEntryInput,
@@ -379,6 +380,15 @@ export interface SupplierInvoiceCashLinesOptions {
    * rate, see the kontantmetoden note in the builder. Omit for SEK invoices.
    */
   settledBankSek?: number
+  /**
+   * SEK invoices only: the amount this payment moved. Unless it is the whole
+   * total of an unpaid invoice, the lines book this payment's share of the
+   * invoice (cash-instalment.ts), the payment account gets the amount itself
+   * and a sub-krona difference to the remaining amount goes to 3740.
+   */
+  paymentAmount?: number
+  /** paid_amount before this payment; read together with paymentAmount. */
+  priorPaidAmount?: number
 }
 
 export interface SupplierInvoiceCashLines {
@@ -405,7 +415,7 @@ export function buildSupplierInvoiceCashLines(
   supplierType: string,
   options: SupplierInvoiceCashLinesOptions = {}
 ): SupplierInvoiceCashLines {
-  const { supplierName, paymentAccount, settledBankSek } = options
+  const { supplierName, paymentAccount, settledBankSek, paymentAmount } = options
   const creditAccount = paymentAccount || '1930'
 
   // Under kontantmetoden the booked affärshändelse IS the payment (BFL 5 kap:
@@ -520,6 +530,41 @@ export function buildSupplierInvoiceCashLines(
     }
   }
 
+  const priorPaid = roundOre(options.priorPaidAmount ?? 0)
+  if (
+    paymentAmount != null &&
+    !isForeign &&
+    !(priorPaid === 0 && roundOre(paymentAmount) === roundOre(invoice.total))
+  ) {
+    const plan = planCashInstalment({ total: invoice.total, paid_amount: priorPaid }, paymentAmount)
+    if (plan.kind === 'overpayment') {
+      throw new Error('A cash payment above the remaining amount is refused before its lines are built')
+    }
+    const instalment = instalmentLines(lines, {
+      total: invoice.total,
+      priorPaid,
+      newPaid: plan.newPaid,
+      side: 'debit',
+      foldIndex: largestLineIndex(lines, (line) => expenseLines.includes(line)),
+    }).filter((line) => line.debit_amount !== 0 || line.credit_amount !== 0)
+    instalment.push({
+      account_number: creditAccount,
+      ...creditNatural(paymentAmount),
+      line_description: desc,
+      dimensions: defaultDimensions,
+    })
+    if (plan.difference !== 0) {
+      // Paid more than was owed: a cost (debit); less: an income (credit).
+      instalment.push({
+        account_number: '3740',
+        ...debitNatural(plan.difference),
+        line_description: 'Öresavrundning',
+        dimensions: defaultDimensions,
+      })
+    }
+    return { description: desc, lines: instalment }
+  }
+
   // Credit: payment account, balance guarantee: ensures sum(debits) === sum(credits)
   // For reverse charge, intermediate credits (2614/2624/2634) already exist, so we subtract them
   const totalDebits = lines.reduce((sum, l) => sum + l.debit_amount, 0)
@@ -562,6 +607,45 @@ export async function createSupplierInvoiceCashEntry(
     paymentAccount,
     settledBankSek,
   })
+
+  const input: CreateJournalEntryInput = {
+    fiscal_period_id: fiscalPeriodId,
+    entry_date: paymentDate,
+    description,
+    source_type: 'supplier_invoice_cash_payment',
+    source_id: invoice.id,
+    lines,
+  }
+
+  return createJournalEntry(supabase, companyId, userId, input)
+}
+
+/**
+ * createSupplierInvoiceCashEntry for one payment of a SEK invoice paid in
+ * parts or settled within the öre band (the builder's paymentAmount option).
+ */
+export async function createSupplierInvoiceCashInstalmentEntry(
+  supabase: SupabaseClient,
+  companyId: string,
+  userId: string,
+  invoice: SupplierInvoice,
+  items: SupplierInvoiceItem[],
+  paymentDate: string,
+  supplierType: string,
+  options: {
+    supplierName?: string
+    paymentAccount?: string
+    paymentAmount: number
+    priorPaidAmount: number
+  }
+): Promise<JournalEntry | null> {
+  const fiscalPeriodId = await findFiscalPeriod(supabase, companyId, paymentDate)
+  if (!fiscalPeriodId) {
+    log.warn('No open fiscal period found for payment date:', paymentDate)
+    return null
+  }
+
+  const { description, lines } = buildSupplierInvoiceCashLines(invoice, items, supplierType, options)
 
   const input: CreateJournalEntryInput = {
     fiscal_period_id: fiscalPeriodId,

@@ -94,12 +94,12 @@ function cashInvoice(
 
 const SETTINGS = { accounting_method: 'cash', last_supplier_payment_account: '1930' }
 
-async function preview(invoice: ReturnType<typeof cashInvoice>): Promise<Line[]> {
+async function preview(invoice: ReturnType<typeof cashInvoice>, amount = invoice.total): Promise<Line[]> {
   enqueue({ data: invoice })
   enqueue({ data: SETTINGS })
   const res = await GET(
     createMockRequest('/api/supplier-invoices/si-1/mark-paid/preview', {
-      searchParams: { amount: String(invoice.total), payment_account: '1930' },
+      searchParams: { amount: String(amount), payment_account: '1930' },
     }),
     createMockRouteParams({ id: 'si-1' }),
   )
@@ -109,7 +109,7 @@ async function preview(invoice: ReturnType<typeof cashInvoice>): Promise<Line[]>
   return body.lines
 }
 
-async function booked(invoice: ReturnType<typeof cashInvoice>): Promise<Line[]> {
+async function booked(invoice: ReturnType<typeof cashInvoice>, amount = invoice.total): Promise<Line[]> {
   enqueue({ data: invoice })
   enqueue({ data: SETTINGS })
   enqueue({ data: [{ id: 'si-1' }] })
@@ -117,7 +117,7 @@ async function booked(invoice: ReturnType<typeof cashInvoice>): Promise<Line[]> 
   const res = await POST(
     createMockRequest('/api/supplier-invoices/si-1/mark-paid', {
       method: 'POST',
-      body: { amount: invoice.total, payment_date: '2027-03-25', payment_account: '1930' },
+      body: { amount, payment_date: '2027-03-25', payment_account: '1930' },
     }),
     createMockRouteParams({ id: 'si-1' }),
   )
@@ -216,6 +216,60 @@ describe('GET /api/supplier-invoices/[id]/mark-paid/preview under kontantmetoden
     expect(lines.find((l) => l.account_number === '3740')).toMatchObject({ debit_amount: 0, credit_amount: 0.25 })
     expect(lines.find((l) => l.account_number === '1930')?.credit_amount).toBe(20056)
     expect(lines).toEqual(await booked(invoice))
+  })
+
+  it('matches the booked lines for a partial payment and for the payment that completes it', async () => {
+    const items = [item({ line_total: 8000, account_number: '6540' })]
+    const unpaid = cashInvoice(items)
+    const first = await preview(unpaid, 4000)
+
+    expect(first.map((l) => [l.account_number, l.debit_amount, l.credit_amount])).toEqual([
+      ['6540', 3200, 0],
+      ['2641', 800, 0],
+      ['1930', 0, 4000],
+    ])
+    expect(first).toEqual(await booked(unpaid, 4000))
+
+    const partlyPaid = cashInvoice(items, { status: 'partially_paid', paid_amount: 4000, remaining_amount: 6000 })
+    const last = await preview(partlyPaid, 6000)
+
+    expect(last.map((l) => [l.account_number, l.debit_amount, l.credit_amount])).toEqual([
+      ['6540', 4800, 0],
+      ['2641', 1200, 0],
+      ['1930', 0, 6000],
+    ])
+    expect(last).toEqual(await booked(partlyPaid, 6000))
+  })
+
+  it('matches the booked lines when the payment settles inside the öre band', async () => {
+    const invoice = cashInvoice([item({ line_total: 987.65, account_number: '6540' })])
+
+    const lines = await preview(invoice, 1235)
+
+    expect(lines.map((l) => [l.account_number, l.debit_amount, l.credit_amount])).toEqual([
+      ['6540', 987.65, 0],
+      ['2641', 246.91, 0],
+      ['1930', 0, 1235],
+      ['3740', 0.44, 0],
+    ])
+    expect(lines).toEqual(await booked(invoice, 1235))
+  })
+
+  it('refuses to preview a payment 1 kr or more above the remaining amount', async () => {
+    const invoice = cashInvoice([item({ line_total: 8000 })])
+    enqueue({ data: invoice })
+    enqueue({ data: SETTINGS })
+
+    const res = await GET(
+      createMockRequest('/api/supplier-invoices/si-1/mark-paid/preview', {
+        searchParams: { amount: '10001', payment_account: '1930' },
+      }),
+      createMockRouteParams({ id: 'si-1' }),
+    )
+    const { status, body } = await parseJsonResponse(res)
+
+    expect(status).toBe(400)
+    expect(body.error.code).toBe('SI_CASH_OVERPAYMENT_UNSUPPORTED')
   })
 
   it('refuses a foreign invoice without a rate instead of previewing it 1:1', async () => {

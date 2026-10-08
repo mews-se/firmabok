@@ -396,9 +396,16 @@ const MATCH_SI: Record<string, StructuredErrorEntry> = {
   SI_CASH_PARTIAL_UNSUPPORTED: {
     httpStatus: 400,
     message_sv:
-      'Kontantmetoden kan inte bokföra delbetalningar av en obokförd leverantörsfaktura automatiskt: hela fakturan bokförs vid betalning. Betala hela beloppet i en betalning eller bokför betalningen manuellt som verifikation.',
+      'Under kontantmetoden kan en obokförd leverantörsfaktura i utländsk valuta bara betalas med hela beloppet på en gång, eftersom hela fakturan bokförs till betalningsdagens kurs. Betala hela beloppet eller bokför betalningen manuellt som verifikation. Fakturor i svenska kronor går att delbetala: ange beloppet i betalningsdialogen.',
     message_en:
-      'The cash method cannot auto-book partial payments of an unbooked supplier invoice: the generated entry always books the full invoice. Pay the full amount in one payment or book the payment manually as a journal entry.',
+      'Under the cash method an unbooked foreign-currency supplier invoice can only be paid in full in one payment, because the whole invoice is booked at the payment-date rate. Pay the full amount or book the payment manually as a journal entry. SEK invoices can be paid in parts: enter the amount in the payment dialog.',
+  },
+  SI_CASH_OVERPAYMENT_UNSUPPORTED: {
+    httpStatus: 400,
+    message_sv:
+      'Beloppet är större än det som återstår att betala på leverantörsfakturan. Registrera högst det återstående beloppet och bokför det överskjutande beloppet separat som en fordran på leverantören.',
+    message_en:
+      'The amount exceeds what remains to be paid on the supplier invoice. Register at most the remaining amount and book the excess separately as a claim on the supplier.',
   },
 }
 

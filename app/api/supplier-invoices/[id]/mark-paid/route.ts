@@ -4,9 +4,11 @@ import { ensureInitialized } from '@/lib/init'
 import {
   createSupplierInvoicePaymentEntry,
   createSupplierInvoiceCashEntry,
+  createSupplierInvoiceCashInstalmentEntry,
 } from '@/lib/bookkeeping/supplier-invoice-entries'
 import { createJournalEntry, findFiscalPeriod } from '@/lib/bookkeeping/engine'
 import { cashPartialBlockReason } from '@/lib/bookkeeping/booking-mode'
+import { planCashInstalment } from '@/lib/bookkeeping/cash-instalment'
 import { cancelOrphanedPaymentEntry } from '@/lib/bookkeeping/cancel-orphaned-entry'
 import { isBookkeepingError } from '@/lib/bookkeeping/errors'
 import { anchorSupplierInvoiceDocument } from '@/lib/core/documents/supplier-invoice-underlag'
@@ -72,17 +74,35 @@ export const POST = withRouteContext(
     const siAlreadyBooked = !!(invoice as { registration_journal_entry_id?: string | null }).registration_journal_entry_id
     const useCashEntry = !siAlreadyBooked && accountingMethod === 'cash'
 
-    // createSupplierInvoiceCashEntry books the FULL invoice (all items + VAT)
-    // and takes no payment amount: reject partials and part-paid completions
-    // for never-booked kontantmetoden invoices instead of over-booking the
-    // expense against a smaller bank movement. Custom lines are not exempt:
-    // the dialog pre-fills the same full-invoice shape.
-    const cashBlock = cashPartialBlockReason({
-      invoiceAlreadyBooked: siAlreadyBooked,
-      accountingMethod,
-      priorPaidAmount: (invoice as { paid_amount?: number | null }).paid_amount,
-      paysRemainingInFull: paymentAmount >= invoice.remaining_amount - 0.005,
-    })
+    // A SEK invoice under kontantmetoden books each payment's share of the
+    // invoice, so the plan decides partial, settled (the öre band included) or
+    // refused. We make our own payments: an excess is not paid against the
+    // invoice but booked separately as a claim on the supplier.
+    const cashPlan =
+      useCashEntry && (invoice.currency || 'SEK') === 'SEK'
+        ? planCashInstalment(invoice, paymentAmount)
+        : null
+    if (cashPlan?.kind === 'overpayment') {
+      return errorResponseFromCode('SI_CASH_OVERPAYMENT_UNSUPPORTED', opLog, {
+        requestId,
+        details: {
+          payment_amount: paymentAmount,
+          remaining_amount: invoice.remaining_amount,
+          excess: cashPlan.difference,
+        },
+      })
+    }
+
+    // Foreign invoices still book the whole invoice at the payment-date rate,
+    // which only fits a payment that settles it in full from unpaid.
+    const cashBlock = cashPlan
+      ? null
+      : cashPartialBlockReason({
+          invoiceAlreadyBooked: siAlreadyBooked,
+          accountingMethod,
+          priorPaidAmount: (invoice as { paid_amount?: number | null }).paid_amount,
+          paysRemainingInFull: paymentAmount >= invoice.remaining_amount - 0.005,
+        })
     if (cashBlock) {
       return errorResponseFromCode('SI_CASH_PARTIAL_UNSUPPORTED', opLog, {
         requestId,
@@ -93,6 +113,9 @@ export const POST = withRouteContext(
         },
       })
     }
+    const isCashInstalment =
+      !!cashPlan &&
+      !(cashPlan.kind === 'settle' && cashPlan.priorPaid === 0 && cashPlan.difference === 0)
 
     let journalEntryId: string | null = null
 
@@ -126,6 +149,21 @@ export const POST = withRouteContext(
           lines: body.lines,
         })
         if (je) journalEntryId = je.id
+      } else if (isCashInstalment) {
+        const journalEntry = await createSupplierInvoiceCashInstalmentEntry(
+          supabase, companyId!, user.id,
+          invoice as SupplierInvoice,
+          (invoice.items || []) as SupplierInvoiceItem[],
+          paymentDate,
+          invoice.supplier?.supplier_type || 'swedish_business',
+          {
+            supplierName: invoice.supplier?.name,
+            paymentAccount,
+            paymentAmount,
+            priorPaidAmount: cashPlan.priorPaid,
+          },
+        )
+        if (journalEntry) journalEntryId = journalEntry.id
       } else if (useCashEntry) {
         const journalEntry = await createSupplierInvoiceCashEntry(
           supabase, companyId!, user.id,
@@ -170,8 +208,15 @@ export const POST = withRouteContext(
       })
     }
 
-    const newRemaining = Math.round((invoice.remaining_amount - paymentAmount) * 100) / 100
-    const newPaidAmount = Math.round((invoice.paid_amount + paymentAmount) * 100) / 100
+    // The plan's applied amount is what the invoice and its payment row are
+    // reduced by; an öresavrundning stays on the voucher (3740).
+    const { newRemaining, newPaidAmount, appliedAmount } = cashPlan
+      ? { newRemaining: cashPlan.newRemaining, newPaidAmount: cashPlan.newPaid, appliedAmount: cashPlan.applied }
+      : {
+          newRemaining: Math.round((invoice.remaining_amount - paymentAmount) * 100) / 100,
+          newPaidAmount: Math.round((invoice.paid_amount + paymentAmount) * 100) / 100,
+          appliedAmount: paymentAmount,
+        }
     const isFullyPaid = newRemaining <= 0
     const newStatus = isFullyPaid ? 'paid' : 'partially_paid'
     const paidAt = isFullyPaid ? paidAtFromDate(paymentDate) : null
@@ -228,7 +273,7 @@ export const POST = withRouteContext(
         company_id: companyId,
         supplier_invoice_id: id,
         payment_date: paymentDate,
-        amount: paymentAmount,
+        amount: appliedAmount,
         currency: invoice.currency,
         exchange_rate_difference: body.exchange_rate_difference || 0,
         journal_entry_id: journalEntryId,

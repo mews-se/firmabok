@@ -95,6 +95,9 @@ export default function SupplierInvoiceDetailPage() {
   const [isProcessing, setIsProcessing] = useState(false)
   const [markPaidPreview, setMarkPaidPreview] = useState<MarkPaidPreview | null>(null)
   const [markPaidPreviewFailed, setMarkPaidPreviewFailed] = useState(false)
+  // The server's reason when it refuses the payment (e.g. an overpayment under
+  // kontantmetoden); null when the preview failed for any other reason.
+  const [markPaidPreviewRefusal, setMarkPaidPreviewRefusal] = useState<string | null>(null)
   const [isEditingLines, setIsEditingLines] = useState(false)
   const [editLines, setEditLines] = useState<EditableLine[]>([])
   const { dialogProps: confirmDialogProps, confirm: confirmAction } = useDestructiveConfirm()
@@ -219,17 +222,20 @@ export default function SupplierInvoiceDetailPage() {
     if (!isPayDialogOpen || !invoice) {
       setMarkPaidPreview(null)
       setMarkPaidPreviewFailed(false)
+      setMarkPaidPreviewRefusal(null)
       return
     }
     const amountNum = Number(payAmount)
     if (!Number.isFinite(amountNum) || amountNum <= 0) {
       setMarkPaidPreview(null)
+      setMarkPaidPreviewRefusal(null)
       return
     }
     let cancelled = false
     const ctrl = new AbortController()
     ;(async () => {
       setMarkPaidPreviewFailed(false)
+      setMarkPaidPreviewRefusal(null)
       try {
         const qs = new URLSearchParams({
           amount: String(amountNum),
@@ -240,7 +246,15 @@ export default function SupplierInvoiceDetailPage() {
           { signal: ctrl.signal },
         )
         if (!res.ok) {
-          if (!cancelled) setMarkPaidPreviewFailed(true)
+          const body = await res.json().catch(() => null)
+          if (cancelled) return
+          setMarkPaidPreviewFailed(true)
+          if (res.status < 500 && body?.error) {
+            setMarkPaidPreview(null)
+            setMarkPaidPreviewRefusal(
+              getErrorMessage(body, { statusCode: res.status, context: 'supplier_invoice' }),
+            )
+          }
           return
         }
         const data = (await res.json()) as MarkPaidPreview
@@ -999,9 +1013,13 @@ export default function SupplierInvoiceDetailPage() {
                     </div>
 
                     {markPaidPreviewFailed && !markPaidPreview && (
-                      <p className="text-sm text-muted-foreground">
-                        Kunde inte förhandsgranska bokföringen. Fortsätt eller avbryt.
-                      </p>
+                      markPaidPreviewRefusal ? (
+                        <p className="text-sm text-destructive">{markPaidPreviewRefusal}</p>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">
+                          Kunde inte förhandsgranska bokföringen. Fortsätt eller avbryt.
+                        </p>
+                      )
                     )}
 
                     {markPaidPreview && !isEditingLines && (
@@ -1118,7 +1136,11 @@ export default function SupplierInvoiceDetailPage() {
                   </Button>
                   <Button
                     onClick={() => handleMarkPaid()}
-                    disabled={isProcessing || (isEditingLines && !editValidation.isValid)}
+                    disabled={
+                      isProcessing ||
+                      (isEditingLines && !editValidation.isValid) ||
+                      markPaidPreviewRefusal !== null
+                    }
                   >
                     {isProcessing ? t('processing') : t('register_payment')}
                   </Button>

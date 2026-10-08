@@ -35,6 +35,22 @@ export const POST = withRouteContext(
       return errorResponseFromCode('SI_CREDIT_ALREADY_CREDITED', opLog, { requestId })
     }
 
+    // Under kontantmetoden a part-paid, never-booked invoice has only its paid
+    // shares in the ledger, while the credit note reverses the whole invoice.
+    if (original.status === 'partially_paid' && !original.registration_journal_entry_id) {
+      const { data: methodSettings } = await supabase
+        .from('company_settings')
+        .select('accounting_method')
+        .eq('company_id', companyId)
+        .single()
+      if (methodSettings?.accounting_method === 'cash') {
+        return errorResponseFromCode('SI_CREDIT_CASH_PARTIALLY_PAID', opLog, {
+          requestId,
+          details: { paid_amount: original.paid_amount, remaining_amount: original.remaining_amount },
+        })
+      }
+    }
+
     const { data: arrivalNum } = await supabase
       .rpc('get_next_arrival_number', { p_company_id: companyId })
 

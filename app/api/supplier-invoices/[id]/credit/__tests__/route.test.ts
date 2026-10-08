@@ -121,6 +121,51 @@ describe('POST /api/supplier-invoices/[id]/credit', () => {
     expect(response.status).toBe(409)
   })
 
+  it('refuses a part-paid never-booked invoice under kontantmetoden before creating anything', async () => {
+    enqueueMany([
+      { data: { ...original, status: 'partially_paid', paid_amount: 400, remaining_amount: 850, registration_journal_entry_id: null }, error: null },
+      { data: { accounting_method: 'cash' }, error: null },
+    ])
+
+    const response = await POST(
+      createMockRequest('/api/supplier-invoices/invoice-1/credit', { method: 'POST' }),
+      createMockRouteParams({ id: 'invoice-1' }),
+    )
+    const { status, body } = await parseJsonResponse<{ error: { code: string } }>(response)
+
+    expect(status).toBe(409)
+    expect(body.error.code).toBe('SI_CREDIT_CASH_PARTIALLY_PAID')
+    expect(findCall('supplier_invoices', 'insert')).toBeUndefined()
+    expect(createCreditEntryMock).not.toHaveBeenCalled()
+  })
+
+  it('credits a part-paid invoice in full under faktureringsmetoden', async () => {
+    const creditNote = makeSupplierInvoice({
+      id: 'credit-1',
+      is_credit_note: true,
+      credited_invoice_id: 'invoice-1',
+    })
+    enqueueMany([
+      { data: { ...original, status: 'partially_paid', paid_amount: 400, remaining_amount: 850, registration_journal_entry_id: 'je-reg' }, error: null },
+      { data: 2, error: null },
+      { data: creditNote, error: null },
+      { data: null, error: null },
+      { data: { accounting_method: 'accrual' }, error: null },
+      { data: null, error: null },
+      { data: null, error: null },
+    ])
+    createCreditEntryMock.mockResolvedValue({ id: 'journal-1' })
+
+    const response = await POST(
+      createMockRequest('/api/supplier-invoices/invoice-1/credit', { method: 'POST' }),
+      createMockRouteParams({ id: 'invoice-1' }),
+    )
+    const { status } = await parseJsonResponse(response)
+
+    expect(status).toBe(200)
+    expect(createCreditEntryMock).toHaveBeenCalledTimes(1)
+  })
+
   it('normalizes copied item storage but keeps original items for reversal', async () => {
     const creditNote = makeSupplierInvoice({
       id: 'credit-1',

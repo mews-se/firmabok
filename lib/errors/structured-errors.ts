@@ -1634,6 +1634,13 @@ const SUPPLIER_INVOICE_WAVE4: Record<string, StructuredErrorEntry> = {
     message_sv: 'Leverantörsfakturan har redan krediterats.',
     message_en: 'Supplier invoice has already been credited.',
   },
+  SI_CREDIT_CASH_PARTIALLY_PAID: {
+    httpStatus: 409,
+    message_sv:
+      'En delbetald leverantörsfaktura kan inte krediteras under kontantmetoden. Bara de betalda delarna är bokförda, men krediteringen skulle vända hela fakturans kostnad och moms. Betala resten av fakturan först, eller bokför krediteringen manuellt som verifikation.',
+    message_en:
+      'A partly paid supplier invoice cannot be credited under the cash method. Only the paid parts are booked, but the credit note would reverse the cost and VAT of the whole invoice. Pay the rest of the invoice first, or book the credit manually as a journal entry.',
+  },
   SI_CREDIT_PERIOD_LOCKED: {
     httpStatus: 400,
     message_sv: 'Bokföringen är låst. Krediteringen kan inte skapas.',

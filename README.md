@@ -36,16 +36,19 @@ antingen som inline-rättelse i samma verifikat med logg över vem och
 när (BFL 5 kap 5 och 9 §§) eller som storno som återför hela
 verifikationen. Debet=kredit, obruten nummerserie, periodlås och
 arkiveringsskyddet upprätthålls av databasens egna triggrar, inte bara
-av appkoden.
+av appkoden. Både faktureringsmetoden och kontantmetoden stöds; under
+kontantmetoden bokförs intäkter, kostnader och moms när betalningen
+sker.
 
-**Dokumentinkorg.** Kvitton, fakturor och avtal släpps i inkorgen,
+**Dokumentinkorg.** Kvitton, fakturor och avtal släpps under Underlag,
 förhandsgranskas och blir underlag: koppla till befintligt verifikat,
 bokför direkt eller skapa leverantörsfaktura. Dokument som nått
 bokföringen räknas som räkenskapsinformation och skyddas mot radering.
 
 **Fakturering.** Kundfakturor med PDF-export, kreditfaktura, ROT/RUT
-och manuell betalningsregistrering; leverantörsfakturor med attest och
-underlag. Inget utskick – PDF:en skickas hur du vill.
+och manuell betalningsregistrering, även delbetalningar;
+leverantörsfakturor med attest och underlag. Inget utskick – PDF:en
+skickas hur du vill.
 
 **Moms och rapporter.** Momsdeklarationens rutor (SKV 4700) räknas fram
 ur bokföringen, tillsammans med huvudbok, resultat- och balansräkning
@@ -60,7 +63,7 @@ följer med in, och allt går att ta med sig ut igen.
 **MCP och API.** Den inbyggda AI:n är borta men maskinvägen är öppen:
 en MCP-server med API-nycklar låter en AI-agent (t.ex. Claude) eller
 egna skript sköta bokföringen. Skrivande verktyg lägger förslag som
-godkänns innan de bokförs.
+godkänns under Granskning innan de bokförs.
 
 ## Installation och drift
 
@@ -125,12 +128,12 @@ arkitekturen, miljövariablerna, backupkommandona och bygge från källa.
 Logga in och skapa företaget vid första starten. Finns bokföring sedan
 tidigare importeras den via SIE.
 
-Vardagsflödet: släpp kvitton och fakturor i inkorgen, bokför dem som
+Vardagsflödet: släpp kvitton och fakturor under Underlag, bokför dem som
 verifikat eller skapa leverantörsfaktura direkt från underlaget.
-Kundfakturor skapas under Fakturor och exporteras som PDF; betalningar
-registreras manuellt. Momsunderlaget (SKV 4700) räknas fram under
-Rapporter, och vid årets slut finns NE-bilaga och årsbokslut för enskild
-firma.
+Kundfakturor skapas under Kundfakturor och exporteras som PDF;
+betalningar registreras manuellt med Markera som betald. Momsunderlaget
+(SKV 4700) räknas fram under Moms, och vid årets slut finns Årsbokslut
+och Inkomstdeklaration (NE-bilagan) för enskild firma.
 
 Claude kopplas via MCP: skapa en API-nyckel under Inställningar → API och
 koppla Claude Desktop med stdio-bryggan `npx gnubok-mcp`. Bryggan går

@@ -88,7 +88,7 @@ webben. För leverantörsfakturor, se nästa avsnitt.
   t.ex. `Invoice can only be marked as paid when status is "sent" or
   "overdue"`. Webbens felmeddelanden är på svenska.
 - Ett förslag som nekas först när det godkänns bokför ingenting. Felet
-  syns i notisen vid godkännandet, men under Väntande → Historik står
+  syns i notisen vid godkännandet, men under Granskning → Historik står
   förslaget sedan som *Avvisad*, samma märke som när du själv avvisar
   ett förslag.
 - Svaret från `gnubok_mark_invoice_as_paid` beskriver bokningen som

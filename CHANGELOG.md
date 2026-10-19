@@ -4,6 +4,46 @@ Alla märkbara ändringar i Firmabok, nyaste först. Versionerna följer
 taggarna i det här repot; varje version publiceras som containerimage på
 `ghcr.io/mews-se/firmabok`.
 
+## 5.1.0 — 2026-10-19
+
+NE-bilagan får alla resultatkonton med och rutorna R12-R14, och
+deklarationspanelen i årsbokslutet räknar i NE-bilagans ordning. En
+databasmigration byter SRU-koderna i befintliga kontoplaner; `.env` och
+volymerna lämnas orörda.
+
+Rättat:
+
+- NE-bilagan tappade utan varning belopp på konton utanför sina intervall,
+  till exempel 6991-6999, 36xx, 38xx och stora delar av 77xx-89xx, så R11
+  kunde skilja sig från det bokförda resultatet. Rutorna följer nu
+  BAS-kontogruppens kopplingstabell (NE_EJ_K1): R6 är 5000-6999, 79xx hör
+  till R8, av- och nedskrivningar delas mellan R9 och R10 efter
+  tillgångsslag och finansiella konton som kan vara både intäkt och kostnad
+  går till R4 eller R8 efter saldot. Ett resultatkonto som ändå inte hör
+  till någon ruta ger en varning.
+- Underlaget för egenavgifter och periodiseringsfond i deklarationspanelen
+  utgick från R11 och räknades i fel ordning. Det börjar nu i
+  R12 + R13 - R14, periodiseringsfonden begränsas till 30 % av R33 och
+  schablonavdraget för egenavgifter räknas på R42, som i NE-bilagan.
+  Panelen visar det justerade underlaget när det skiljer sig från det
+  bokförda resultatet.
+- Deklarationspanelen hänvisade till fel rutor för periodiseringsfond,
+  räntefördelning och expansionsfond.
+- SIE-exporten skrev SRU-koder (#SRU) som inte motsvarar någon ruta i
+  NE-bilagan, till exempel B4 Maskiner och inventarier för 1930.
+  Kontoplanen har nu NE-bilagans fältkoder, och migrationen byter de koder
+  som programmet själv har satt; koder du har skrivit in för hand lämnas
+  kvar.
+
+Nytt:
+
+- R12 (bokfört resultat), R13 (bokförda kostnader som inte ska dras av) och
+  R14 (bokförda intäkter som inte ska tas upp) i NE-bilagan och i
+  SRU-filen. R13 tar med konton som BAS märker som ej avdragsgilla och
+  kostnadsräntan på skattekontot (8423), R14 de skattefria
+  ränteintäkterna (8314 och 8254). Andra justeringar för du in själv.
+
+
 ## 5.0.1 — 2026-10-09
 
 Säkerhetsuppdatering; imagen byggs om med de lagade paketen. Dependabot

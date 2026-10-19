@@ -8,6 +8,7 @@ describe('calculateRantefordelning', () => {
     expect(r).not.toBeNull()
     expect(r!.kind).toBe('rantefordelning_positive')
     expect(r!.amount).toBe(85_500)
+    expect(r!.ne_ruta).toMatch(/^R30 /)
   })
 
   it('returns null between 0 and the -500 000 negative threshold', () => {
@@ -23,6 +24,7 @@ describe('calculateRantefordelning', () => {
     expect(r!.kind).toBe('rantefordelning_negative')
     expect(r!.amount).toBe(21_300)
     expect(r!.warnings[0]).toContain('-500 000')
+    expect(r!.ne_ruta).toMatch(/^R31 /)
   })
 
   it('honors a custom SLR rate', () => {

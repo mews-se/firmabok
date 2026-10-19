@@ -92,7 +92,7 @@ export function calculateExpansionsfondChange(
         ? `Avsättning ${actualChange} kr. Skatt 20,6 % (${Math.abs(taxOnChange)} kr) betalas i år.`
         : `Återföring ${Math.abs(actualChange)} kr. Tidigare betald skatt (${Math.abs(taxOnChange)} kr) tillgodoräknas.`,
     amount: Math.abs(actualChange),
-    ne_ruta: actualChange > 0 ? 'R34' : 'R33',
+    ne_ruta: actualChange > 0 ? 'R36' : 'R37',
     computation: computation as unknown as Record<string, unknown>,
     warnings,
   }

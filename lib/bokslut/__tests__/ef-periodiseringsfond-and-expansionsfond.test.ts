@@ -11,6 +11,12 @@ describe('EF periodiseringsfond: avsättning', () => {
     expect(r!.warnings[0]).toContain('30')
   })
 
+  it('lands in NE R34', () => {
+    const r = proposeEfPfondAvsattning({ surplus: 100_000, fiscalYear: 2026 })
+    expect(r!.ne_ruta).toBe('R34')
+    expect(r!.description).toContain('R34')
+  })
+
   it('returns null on zero / negative surplus', () => {
     expect(proposeEfPfondAvsattning({ surplus: 0, fiscalYear: 2026 })).toBeNull()
     expect(proposeEfPfondAvsattning({ surplus: -1, fiscalYear: 2026 })).toBeNull()
@@ -36,6 +42,15 @@ describe('EF periodiseringsfond: återföring', () => {
     })
     expect(items[0].amount).toBe(20_000)
   })
+
+  it('lands in NE R32', () => {
+    const items = proposeEfPfondAteforing({
+      existingFonder: [{ cohort_year: 2020, balance: 50_000 }],
+      closingYear: 2026,
+    })
+    expect(items[0].ne_ruta).toBe('R32')
+    expect(items[0].description).toContain('R32')
+  })
 })
 
 describe('Expansionsfond', () => {
@@ -48,6 +63,7 @@ describe('Expansionsfond', () => {
     expect(r).not.toBeNull()
     expect(r!.amount).toBe(125_940)
     expect(r!.warnings[0]).toContain('125,94')
+    expect(r!.ne_ruta).toBe('R36')
   })
 
   it('limits återföring to existing balance', () => {
@@ -59,6 +75,7 @@ describe('Expansionsfond', () => {
     expect(r).not.toBeNull()
     expect(r!.kind).toBe('expansionsfond_ateforing')
     expect(r!.amount).toBe(30_000)
+    expect(r!.ne_ruta).toBe('R37')
   })
 
   it('returns null when desiredChange is 0', () => {

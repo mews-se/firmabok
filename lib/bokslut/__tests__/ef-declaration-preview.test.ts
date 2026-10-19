@@ -93,3 +93,54 @@ describe('computeEfDeclarationPreview: base is NE R11', () => {
     expect(preview.bookedSurplus).toBe(80_000)
   })
 })
+
+describe('computeEfDeclarationPreview: R13 and R14 adjust the base', () => {
+  // Representation on 6072 and skattekonto interest on 8423 stay in R6 and R8
+  // but go back in R13; the skattekonto interest income on 8314 stays in R4
+  // and comes out in R14. R11 145 850 + R13 4 300 - R14 150 = 150 000.
+  beforeEach(() => {
+    vi.clearAllMocks()
+    useRows(() => [
+      row('3001', 'credit', 200_000),
+      row('5010', 'debit', 50_000),
+      row('6072', 'debit', 4_000),
+      row('8423', 'debit', 300),
+      row('8314', 'credit', 150),
+    ])
+  })
+
+  it('reports the booked result and the adjusted base apart', async () => {
+    const supabase = makeSupabase()
+
+    const preview = await computeEfDeclarationPreview(supabase, 'co-1', 'fp-1')
+    const ne = await generateNEDeclaration(supabase, 'co-1', 'fp-1')
+
+    expect(ne.rutor).toMatchObject({ R11: 145_850, R12: 145_850, R13: 4_300, R14: 150 })
+    expect(preview.bookedSurplus).toBe(145_850)
+    expect(preview.surplusBeforeRantefordelning).toBe(150_000)
+  })
+
+  it('computes egenavgifter on the adjusted base', async () => {
+    const preview = await computeEfDeclarationPreview(makeSupabase(), 'co-1', 'fp-1')
+    const egenavgifter = preview.items.find((i) => i.kind === 'egenavgifter')
+
+    expect(egenavgifter?.computation).toMatchObject({ surplusBeforeEgenavgifter: 150_000 })
+    expect(egenavgifter?.amount).toBe(37_500)
+  })
+
+  it('caps the periodiseringsfond on the adjusted base', async () => {
+    const preview = await computeEfDeclarationPreview(makeSupabase(), 'co-1', 'fp-1')
+    const pfond = preview.items.find((i) => i.kind === 'periodiseringsfond_avsattning')
+
+    expect(pfond?.computation).toMatchObject({ surplus: 112_500, maxAmount: 33_750 })
+  })
+
+  it('leaves the base at R11 when nothing goes in R13 or R14', async () => {
+    useRows(() => [row('3001', 'credit', 200_000), row('6071', 'debit', 4_000)])
+
+    const preview = await computeEfDeclarationPreview(makeSupabase(), 'co-1', 'fp-1')
+
+    expect(preview.bookedSurplus).toBe(196_000)
+    expect(preview.surplusBeforeRantefordelning).toBe(196_000)
+  })
+})

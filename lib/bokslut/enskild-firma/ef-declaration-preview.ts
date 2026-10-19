@@ -25,6 +25,8 @@ export interface EfDeclarationPreview {
   }
   /** NE R11 (bokfört resultat), whole kronor. */
   bookedSurplus: number
+  /** NE R12 + R13 - R14: R29 as long as R15-R28, which are entered by hand, stay empty. */
+  surplusBeforeRantefordelning: number
   items: EfDeclarationItem[]
 }
 
@@ -48,16 +50,18 @@ export async function computeEfDeclarationPreview(
     .single()
   if (error || !period) throw new Error('Fiscal period not found')
 
-  // the base is NE R11, the figure the declaration starts from: the income
-  // statement leaves out every year-end entry, booked avskrivningar included
-  const neDeclaration = await generateNEDeclaration(supabase, companyId, fiscalPeriodId)
-  const bookedSurplus = neDeclaration.rutor.R11
+  // the declaration starts from NE R11, not the income statement, which
+  // leaves out every year-end entry, booked avskrivningar included; R13 adds
+  // back the costs that may not be deducted and R14 takes out tax-free income
+  const { rutor } = await generateNEDeclaration(supabase, companyId, fiscalPeriodId)
+  const bookedSurplus = rutor.R11
+  const surplusBeforeRantefordelning = rutor.R12 + rutor.R13 - rutor.R14
   const fiscalYear = parseInt(period.period_end.slice(0, 4), 10)
 
   const items: EfDeclarationItem[] = []
 
   const eg = calculateEgenavgifter({
-    surplusBeforeEgenavgifter: bookedSurplus,
+    surplusBeforeEgenavgifter: surplusBeforeRantefordelning,
     category: input.category,
     priorYearSchablonavdrag: input.priorYearSchablonavdrag,
     priorYearActualCharged: input.priorYearActualCharged,
@@ -67,7 +71,7 @@ export async function computeEfDeclarationPreview(
   const r = calculateRantefordelning({ kapitalunderlag: input.kapitalunderlag ?? 0 })
   if (r) items.push(r)
 
-  const surplusAfterEg = bookedSurplus - eg.amount
+  const surplusAfterEg = surplusBeforeRantefordelning - eg.amount
   const pfond = proposeEfPfondAvsattning({
     surplus: surplusAfterEg,
     fiscalYear,
@@ -87,6 +91,7 @@ export async function computeEfDeclarationPreview(
   return {
     fiscalPeriod: period,
     bookedSurplus,
+    surplusBeforeRantefordelning,
     items,
   }
 }

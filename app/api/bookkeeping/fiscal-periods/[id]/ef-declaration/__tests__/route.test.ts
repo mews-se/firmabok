@@ -22,6 +22,7 @@ import { GET } from '../route'
 const PREVIEW: EfDeclarationPreview = {
   fiscalPeriod: { id: 'period-1', name: '2025', period_start: '2025-01-01', period_end: '2025-12-31' },
   bookedSurplus: 130_000,
+  surplusBeforeRantefordelning: 130_000,
   items: [
     {
       kind: 'egenavgifter',

@@ -40,6 +40,7 @@ interface EfPreviewResponse {
     period_end: string
   }
   bookedSurplus: number
+  surplusBeforeRantefordelning: number
   items: EfDeclarationItem[]
   postedEntryCount: number
   inputWarnings: string[]
@@ -207,6 +208,14 @@ export function EfDeclarationSection({
               {formatCurrency(preview?.bookedSurplus ?? bookedSurplus)}
             </span>
           </p>
+          {preview && preview.surplusBeforeRantefordelning !== preview.bookedSurplus && (
+            <p className="text-sm text-muted-foreground">
+              Justerat för R13 och R14:{' '}
+              <span className="tabular-nums font-medium text-foreground">
+                {formatCurrency(preview.surplusBeforeRantefordelning)}
+              </span>
+            </p>
+          )}
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-2 gap-4">

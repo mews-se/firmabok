@@ -78,7 +78,9 @@ describe('computeEfDeclarationPreview: base is NE R11', () => {
   })
 
   it('computes egenavgifter on that base', async () => {
-    const preview = await computeEfDeclarationPreview(makeSupabase(), 'co-1', 'fp-1')
+    const preview = await computeEfDeclarationPreview(makeSupabase(), 'co-1', 'fp-1', {
+      pfondDesiredAmount: 0,
+    })
     const egenavgifter = preview.items.find((i) => i.kind === 'egenavgifter')
 
     expect(egenavgifter?.computation).toMatchObject({ surplusBeforeEgenavgifter: 130_000 })
@@ -121,7 +123,9 @@ describe('computeEfDeclarationPreview: R13 and R14 adjust the base', () => {
   })
 
   it('computes egenavgifter on the adjusted base', async () => {
-    const preview = await computeEfDeclarationPreview(makeSupabase(), 'co-1', 'fp-1')
+    const preview = await computeEfDeclarationPreview(makeSupabase(), 'co-1', 'fp-1', {
+      pfondDesiredAmount: 0,
+    })
     const egenavgifter = preview.items.find((i) => i.kind === 'egenavgifter')
 
     expect(egenavgifter?.computation).toMatchObject({ surplusBeforeEgenavgifter: 150_000 })
@@ -132,7 +136,7 @@ describe('computeEfDeclarationPreview: R13 and R14 adjust the base', () => {
     const preview = await computeEfDeclarationPreview(makeSupabase(), 'co-1', 'fp-1')
     const pfond = preview.items.find((i) => i.kind === 'periodiseringsfond_avsattning')
 
-    expect(pfond?.computation).toMatchObject({ surplus: 112_500, maxAmount: 33_750 })
+    expect(pfond?.computation).toMatchObject({ surplus: 150_000, maxAmount: 45_000 })
   })
 
   it('leaves the base at R11 when nothing goes in R13 or R14', async () => {
@@ -142,5 +146,84 @@ describe('computeEfDeclarationPreview: R13 and R14 adjust the base', () => {
 
     expect(preview.bookedSurplus).toBe(196_000)
     expect(preview.surplusBeforeRantefordelning).toBe(196_000)
+  })
+})
+
+describe('computeEfDeclarationPreview: NE order of the adjustments', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    useRows(() => [row('3001', 'credit', 200_000), row('5010', 'debit', 50_000)])
+  })
+
+  it('caps the periodiseringsfond before the schablonavdrag and takes it off R42', async () => {
+    const preview = await computeEfDeclarationPreview(makeSupabase(), 'co-1', 'fp-1')
+    const pfond = preview.items.find((i) => i.kind === 'periodiseringsfond_avsattning')
+    const egenavgifter = preview.items.find((i) => i.kind === 'egenavgifter')
+
+    expect(pfond?.computation).toMatchObject({ surplus: 150_000, maxAmount: 45_000 })
+    expect(pfond?.amount).toBe(45_000)
+    expect(egenavgifter?.computation).toMatchObject({ surplusBeforeEgenavgifter: 105_000 })
+    expect(egenavgifter?.amount).toBe(26_250)
+  })
+
+  it('adds negative räntefördelning before the periodiseringsfond cap', async () => {
+    const preview = await computeEfDeclarationPreview(makeSupabase(), 'co-1', 'fp-1', {
+      kapitalunderlag: -600_000,
+    })
+    const r = preview.items.find((i) => i.kind === 'rantefordelning_negative')
+    const pfond = preview.items.find((i) => i.kind === 'periodiseringsfond_avsattning')
+    const egenavgifter = preview.items.find((i) => i.kind === 'egenavgifter')
+
+    expect(r?.amount).toBe(21_300)
+    expect(pfond?.computation).toMatchObject({ surplus: 171_300, maxAmount: 51_390 })
+    expect(egenavgifter?.computation).toMatchObject({ surplusBeforeEgenavgifter: 119_910 })
+  })
+
+  it('adds an expansionsfond återföring to the schablonavdrag base', async () => {
+    const preview = await computeEfDeclarationPreview(makeSupabase(), 'co-1', 'fp-1', {
+      pfondDesiredAmount: 0,
+      expansionsfondExistingBalance: 30_000,
+      expansionsfondDesiredChange: -10_000,
+    })
+    const egenavgifter = preview.items.find((i) => i.kind === 'egenavgifter')
+
+    expect(preview.items.map((i) => i.kind)).toEqual(['egenavgifter', 'expansionsfond_ateforing'])
+    expect(egenavgifter?.computation).toMatchObject({ surplusBeforeEgenavgifter: 160_000 })
+    expect(egenavgifter?.amount).toBe(40_000)
+  })
+
+  it("matches Skatteverket's worked NE example up to R42", async () => {
+    // "Fylla i NE-bilagan, exempel": R13 1 250, R30 25 000, R34 10 000,
+    // R36 100 000, R40 98 527 and R41 81 768 give R35 239 400 and R42 156 159
+    useRows(() => [
+      row('3001', 'credit', 400_000),
+      row('5010', 'debit', 125_600),
+      row('6072', 'debit', 1_250),
+    ])
+
+    const preview = await computeEfDeclarationPreview(makeSupabase(), 'co-1', 'fp-1', {
+      kapitalunderlag: 292_398,
+      pfondDesiredAmount: 10_000,
+      expansionsfondDesiredChange: 100_000,
+      priorYearSchablonavdrag: 98_527,
+      priorYearActualCharged: 81_768,
+    })
+    const byKind = Object.fromEntries(preview.items.map((i) => [i.kind, i]))
+
+    expect(preview.items.map((i) => i.kind)).toEqual([
+      'egenavgifter',
+      'rantefordelning_positive',
+      'periodiseringsfond_avsattning',
+      'expansionsfond_avsattning',
+    ])
+    expect(preview.surplusBeforeRantefordelning).toBe(274_400)
+    expect(byKind.rantefordelning_positive.amount).toBe(25_000)
+    expect(byKind.periodiseringsfond_avsattning.computation).toMatchObject({ surplus: 249_400 })
+    expect(byKind.periodiseringsfond_avsattning.amount).toBe(10_000)
+    expect(byKind.expansionsfond_avsattning.amount).toBe(100_000)
+    expect(byKind.egenavgifter.computation).toMatchObject({
+      surplusBeforeEgenavgifter: 139_400,
+      netSurplusForSchablon: 156_159,
+    })
   })
 })

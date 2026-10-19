@@ -33,8 +33,8 @@ export interface EfDeclarationPreview {
 /**
  * Server-side mirror of the EfDeclarationSection client logic. The MCP tool
  * (Phase 7) calls this so agents can preview the same numbers without
- * round-tripping through the browser. Inputs default to "no adjustment"
- * which produces just the egenavgifter line.
+ * round-tripping through the browser. Without inputs the periodiseringsfond
+ * is proposed at its maximum, which also lowers the schablonavdrag.
  */
 export async function computeEfDeclarationPreview(
   supabase: SupabaseClient,
@@ -58,35 +58,39 @@ export async function computeEfDeclarationPreview(
   const surplusBeforeRantefordelning = rutor.R12 + rutor.R13 - rutor.R14
   const fiscalYear = parseInt(period.period_end.slice(0, 4), 10)
 
-  const items: EfDeclarationItem[] = []
-
-  const eg = calculateEgenavgifter({
-    surplusBeforeEgenavgifter: surplusBeforeRantefordelning,
-    category: input.category,
-    priorYearSchablonavdrag: input.priorYearSchablonavdrag,
-    priorYearActualCharged: input.priorYearActualCharged,
-  })
-  items.push(eg)
+  // follow the NE order: räntefördelning comes before the periodiseringsfond
+  // cap in R33, and both fonder come before R42, the schablonavdrag base; the
+  // schablonavdrag never lowers the periodiseringsfond base (IL 30 kap. 6 §)
+  let surplus = surplusBeforeRantefordelning
 
   const r = calculateRantefordelning({ kapitalunderlag: input.kapitalunderlag ?? 0 })
-  if (r) items.push(r)
+  if (r) surplus += r.kind === 'rantefordelning_positive' ? -r.amount : r.amount
 
-  const surplusAfterEg = surplusBeforeRantefordelning - eg.amount
   const pfond = proposeEfPfondAvsattning({
-    surplus: surplusAfterEg,
+    surplus,
     fiscalYear,
     desiredAmount: input.pfondDesiredAmount,
   })
-  if (pfond) items.push(pfond)
+  if (pfond) surplus -= pfond.amount
 
+  let exp: EfDeclarationItem | null = null
   if (input.expansionsfondDesiredChange && input.expansionsfondDesiredChange !== 0) {
-    const exp = calculateExpansionsfondChange({
+    exp = calculateExpansionsfondChange({
       kapitalunderlag: input.kapitalunderlag ?? 0,
       existingBalance: input.expansionsfondExistingBalance,
       desiredChange: input.expansionsfondDesiredChange,
     })
-    if (exp) items.push(exp)
+    if (exp) surplus += exp.kind === 'expansionsfond_avsattning' ? -exp.amount : exp.amount
   }
+
+  const eg = calculateEgenavgifter({
+    surplusBeforeEgenavgifter: surplus,
+    category: input.category,
+    priorYearSchablonavdrag: input.priorYearSchablonavdrag,
+    priorYearActualCharged: input.priorYearActualCharged,
+  })
+
+  const items = [eg, r, pfond, exp].filter((item): item is EfDeclarationItem => item !== null)
 
   return {
     fiscalPeriod: period,

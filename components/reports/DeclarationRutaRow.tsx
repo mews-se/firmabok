@@ -11,10 +11,10 @@ export interface DeclarationAccountLine {
 }
 
 /**
- * Default formatter: whole kronor, matching the filed SRU values. Truncation,
- * not rounding: SFL "öretal faller bort" and the NE/INK2 SRU generators drop
- * öre with Math.trunc, so the UI must agree with the filed figures. Callers
- * that need öre pass their own formatter.
+ * Default formatter: whole kronor, matching the filed SRU values. The NE engine
+ * rounds each ruta to the nearest krona before it gets here; Math.trunc drops
+ * any öre left the way the SRU generator does, so the screen and the file
+ * agree. Callers that need öre pass their own formatter.
  */
 export function formatWholeKronor(n: number): string {
   // + 0 normalizes -0 (Math.trunc(-0.3) is -0, which sv-SE renders "−0").

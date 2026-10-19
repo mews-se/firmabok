@@ -224,7 +224,8 @@ export function findNEMapping(accountNumber: string, balance: number): NEAccount
 }
 
 /**
- * Round to nearest krona (whole number) for NE declaration
+ * Round to the nearest krona. Skatteverket wants whole kronor on the NE without
+ * saying which way; "öretal faller bort" (SFF 22 kap. 1 §) covers skatt and avgift.
  */
 function roundToKrona(value: number): number {
   return Math.round(value)

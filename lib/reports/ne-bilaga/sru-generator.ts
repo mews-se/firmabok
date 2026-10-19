@@ -14,7 +14,7 @@ import type { NEDeclaration, NEDeclarationRutor, SRUSubmission } from '@/lib/rep
  * NOT a juridisk-person org number with the "16" century prefix used by INK2.
  *
  * Encoding: ISO 8859-1 (applied by the API route via encodeISO88591).
- * Line endings: CRLF. Amounts: integers in hela kronor (öre truncated per SFL 22:1).
+ * Line endings: CRLF. Amounts: integers in hela kronor, rounded to the nearest krona by the NE engine.
  *
  * Field codes (Fältkod -> Rad NE) are taken from BAS-kontogruppen's official
  * coupling table "NE - Inkomst av näringsverksamhet, Enskilda näringsidkare"

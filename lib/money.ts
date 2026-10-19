@@ -73,10 +73,11 @@ export function roundOre(n: number): number {
 }
 
 /**
- * Truncate a SEK amount to whole kronor, dropping the öre (öretal bortfaller).
+ * Truncate a SEK amount to whole kronor, dropping the öre.
  *
- * This is the amount rule for the NE-bilaga SRU fields: 16 073,84 kr is
- * declared as 16 073 kr. Truncation, not rounding.
+ * The NE-bilaga SRU generator writes every amount through this, but the NE
+ * engine has already rounded each ruta to the nearest krona, so here it only
+ * catches a stray non-integer.
  *
  * Runs through `roundOre` first so IEEE drift just below an integer
  * (16 073,9999999… for a true 16 074,00) cannot lose a whole krona.

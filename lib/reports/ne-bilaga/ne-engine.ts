@@ -11,7 +11,7 @@ import type {
 /**
  * NE-bilaga (Enskild Firma / Sole Proprietorship Declaration)
  *
- * Maps BAS account balances to NE declaration rutor (R1-R11) for
+ * Maps BAS account balances to NE declaration rutor (R1-R13) for
  * tax reporting to Skatteverket.
  *
  * The ranges follow BAS-kontogruppen's kopplingstabell NE_EJ_K1
@@ -32,7 +32,28 @@ import type {
  * BAS splits 30xx-37xx and 39xx between R1 and R2 by the VAT on each account;
  * 3100 and 39xx count as momsfria here. Groups that BAS marks (+) or (-) go to
  * R4 when they hold an intäkt and to R8 when they hold a kostnad.
+ *
+ * On page 2, R12 carries R11 over and R13 adds back the costs booked on
+ * NE_NON_DEDUCTIBLE_ACCOUNTS, which stay in R5-R10 as well.
  */
+
+/**
+ * Accounts whose BAS name says the cost is ej avdragsgill, plus 8423 where the
+ * skattekonto rules book the kostnadsränta. Other costs that may not be
+ * deducted are entered in R13 by hand.
+ */
+export const NE_NON_DEDUCTIBLE_ACCOUNTS = [
+  '5982', // Ej avdragsgill sponsring
+  '6072', // Representation, ej avdragsgill
+  '6342', // Lämnade skadestånd, ej avdragsgilla
+  '6392', // Övriga riskkostnader, ej avdragsgilla
+  '6982', // Föreningsavgifter, ej avdragsgilla
+  '6992', // Övriga externa kostnader, ej avdragsgilla
+  '7622', // Sjuk- och hälsovård, ej avdragsgill
+  '7623', // Sjukvårdsförsäkring, ej avdragsgill
+  '7632', // Personalrepresentation, ej avdragsgill
+  '8423', // Räntekostnader för skatter och avgifter
+]
 
 /**
  * Account mapping configuration for NE declaration
@@ -277,6 +298,8 @@ export async function generateNEDeclaration(
     R9: 0,
     R10: 0,
     R11: 0,
+    R12: 0,
+    R13: 0,
   }
 
   const breakdown: Record<keyof NEDeclarationRutor, {
@@ -294,6 +317,8 @@ export async function generateNEDeclaration(
     R9: { accounts: [], total: 0 },
     R10: { accounts: [], total: 0 },
     R11: { accounts: [], total: 0 },
+    R12: { accounts: [], total: 0 },
+    R13: { accounts: [], total: 0 },
   }
 
   const warnings: string[] = []
@@ -323,30 +348,38 @@ export async function generateNEDeclaration(
     // - Revenue accounts have negative net balance (credit > debit)
     // - Expense accounts have positive net balance (debit > credit)
     const amount = mapping.isExpense ? balance : -balance
+    const accountName = accountNameMap.get(accountNumber) || `Konto ${accountNumber}`
 
     rutor[mapping.ruta] += amount
 
     breakdown[mapping.ruta].accounts.push({
       accountNumber,
-      accountName: accountNameMap.get(accountNumber) || `Konto ${accountNumber}`,
+      accountName,
       amount: roundToKrona(amount),
     })
+
+    if (NE_NON_DEDUCTIBLE_ACCOUNTS.includes(accountNumber)) {
+      rutor.R13 += balance
+      breakdown.R13.accounts.push({ accountNumber, accountName, amount: roundToKrona(balance) })
+    }
   }
 
   // Round all rutor to whole numbers
   for (const key of Object.keys(rutor) as (keyof NEDeclarationRutor)[]) {
-    if (key !== 'R11') {
+    if (key !== 'R11' && key !== 'R12') {
       rutor[key] = roundToKrona(rutor[key])
       breakdown[key].total = rutor[key]
     }
   }
 
-  // Calculate R11 (Årets resultat)
+  // Calculate R11 (Bokfört resultat)
   // Result = Revenue (R1+R2+R3+R4) - Expenses (R5+R6+R7+R8+R9+R10)
   const totalRevenue = rutor.R1 + rutor.R2 + rutor.R3 + rutor.R4
   const totalExpenses = rutor.R5 + rutor.R6 + rutor.R7 + rutor.R8 + rutor.R9 + rutor.R10
   rutor.R11 = totalRevenue - totalExpenses
   breakdown.R11.total = rutor.R11
+  rutor.R12 = rutor.R11
+  breakdown.R12.total = rutor.R12
 
   // Add warnings
   if (!(period as FiscalPeriod).is_closed) {
@@ -358,6 +391,13 @@ export async function generateNEDeclaration(
   }
 
   warnings.push(...unmappedWarnings)
+
+  // the SRU field only takes a positive amount; a net credit means more came back than was booked
+  if (rutor.R13 < 0) {
+    warnings.push('Kontona för ej avdragsgilla kostnader har sammanlagt ett kreditsaldo, så R13 lämnas tom.')
+    rutor.R13 = 0
+    breakdown.R13.total = 0
+  }
 
   return {
     fiscalYear: {

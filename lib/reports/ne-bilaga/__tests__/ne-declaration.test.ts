@@ -157,6 +157,53 @@ describe('generateNEDeclaration: R11 is the booked result', () => {
   })
 })
 
+describe('generateNEDeclaration: R12 and R13', () => {
+  function mockRows(extra: TrialBalanceRow[]) {
+    vi.mocked(generateTrialBalance).mockResolvedValue({
+      rows: [...PRE_CLOSING_ROWS, ...extra],
+      totalDebit: 0,
+      totalCredit: 0,
+      isBalanced: true,
+    })
+  }
+
+  it('adds back ej avdragsgilla costs in R13 and keeps them in R6 and R8', async () => {
+    mockRows([
+      row('6072', 'Representation, ej avdragsgill', 1_250),
+      row('6992', 'Övriga externa kostnader, ej avdragsgilla', 1_082.8),
+      row('8423', 'Räntekostnader för skatter och avgifter', 300),
+    ])
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const result = await generateNEDeclaration(makeSupabase() as any, COMPANY_ID, PERIOD_ID)
+
+    expect(result.rutor.R6).toBe(152_333)
+    expect(result.rutor.R8).toBe(300)
+    expect(result.rutor.R11).toBe(247_367)
+    expect(result.rutor.R12).toBe(247_367)
+    expect(result.rutor.R13).toBe(2_633)
+    expect(result.breakdown.R13.accounts.map((a) => a.accountNumber)).toEqual(['6072', '6992', '8423'])
+  })
+
+  it('leaves R13 empty without ej avdragsgilla accounts', async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const result = await generateNEDeclaration(makeSupabase() as any, COMPANY_ID, PERIOD_ID)
+
+    expect(result.rutor.R12).toBe(250_000)
+    expect(result.rutor.R13).toBe(0)
+  })
+
+  it('never puts a negative amount in R13', async () => {
+    mockRows([row('6992', 'Övriga externa kostnader, ej avdragsgilla', -500)])
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const result = await generateNEDeclaration(makeSupabase() as any, COMPANY_ID, PERIOD_ID)
+
+    expect(result.rutor.R13).toBe(0)
+    expect(result.warnings.some((w) => w.includes('R13'))).toBe(true)
+  })
+})
+
 describe('generateNEDeclaration: accounts outside every ruta', () => {
   it('warns about a result account no ruta takes instead of dropping it silently', async () => {
     vi.mocked(generateTrialBalance).mockResolvedValue({

@@ -9,7 +9,7 @@ import {
   DeclarationRutaRow,
   formatWholeKronor,
 } from '@/components/reports/DeclarationRutaRow'
-import type { NEDeclaration } from '@/lib/reports/ne-bilaga/types'
+import { NE_RUTA_LABELS, type NEDeclaration } from '@/lib/reports/ne-bilaga/types'
 
 /** API errors may be a plain string or the canonical { code, message } envelope. */
 function parseApiError(error: unknown, fallback: string): string {
@@ -84,21 +84,6 @@ export function NEDeclarationView({ periodId }: { periodId: string }) {
     } finally {
       setDownloading(false)
     }
-  }
-
-  // NE ruta labels
-  const rutaLabels: Record<string, string> = {
-    R1: 'Försäljning med moms (25%)',
-    R2: 'Momsfria intäkter',
-    R3: 'Bil/bostadsförmån',
-    R4: 'Ränteintäkter',
-    R5: 'Varuinköp',
-    R6: 'Övriga kostnader',
-    R7: 'Lönekostnader',
-    R8: 'Räntekostnader',
-    R9: 'Avskrivningar fastighet',
-    R10: 'Avskrivningar övriga tillgångar',
-    R11: 'Årets resultat',
   }
 
   // Categorize rutor
@@ -190,7 +175,7 @@ export function NEDeclarationView({ periodId }: { periodId: string }) {
                 <DeclarationRutaRow
                   key={ruta}
                   code={ruta}
-                  label={rutaLabels[ruta]}
+                  label={NE_RUTA_LABELS[ruta]}
                   amount={data.rutor[ruta]}
                   accounts={data.breakdown[ruta]?.accounts || []}
                 />
@@ -231,7 +216,7 @@ export function NEDeclarationView({ periodId }: { periodId: string }) {
                 <DeclarationRutaRow
                   key={ruta}
                   code={ruta}
-                  label={rutaLabels[ruta]}
+                  label={NE_RUTA_LABELS[ruta]}
                   amount={-data.rutor[ruta]}
                   accounts={(data.breakdown[ruta]?.accounts || []).map((acc) => ({
                     ...acc,
@@ -258,7 +243,7 @@ export function NEDeclarationView({ periodId }: { periodId: string }) {
       {/* Result: the emphasized document foot (house skv-foot idiom). */}
       <div className="flex items-baseline gap-3 border-t-2 border-foreground/80 px-1 pt-3">
         <span className="font-mono text-xs text-muted-foreground">R11</span>
-        <span className="flex-1 text-sm font-medium">Årets resultat</span>
+        <span className="flex-1 text-sm font-medium">{NE_RUTA_LABELS.R11}</span>
         <span
           className={`text-sm font-semibold tabular-nums ${
             data.rutor.R11 >= 0 ? '' : 'text-destructive'
@@ -267,6 +252,44 @@ export function NEDeclarationView({ periodId }: { periodId: string }) {
           {formatWholeKronor(data.rutor.R11)}
         </span>
       </div>
+
+      {data.rutor.R13 !== 0 && (
+        <section>
+          <div className="mb-1 flex items-center gap-2 px-1">
+            <h3 className="font-sans text-xs font-medium uppercase tracking-wider text-muted-foreground">Skattemässiga justeringar</h3>
+            <div className="h-px flex-1 bg-border/60" />
+          </div>
+          <div className="px-1 pt-2">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="px-0">Post</TableHead>
+                  <TableHead className="px-0 text-right">Belopp</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                <DeclarationRutaRow
+                  code="R12"
+                  label={NE_RUTA_LABELS.R12}
+                  amount={data.rutor.R12}
+                  hideWhenZero={false}
+                />
+                <DeclarationRutaRow
+                  code="R13"
+                  label={NE_RUTA_LABELS.R13}
+                  amount={data.rutor.R13}
+                  accounts={data.breakdown.R13?.accounts || []}
+                />
+              </TableBody>
+            </Table>
+            <p className="pt-2 text-[12.5px] leading-5 text-muted-foreground">
+              R13 tar med konton som BAS märker som ej avdragsgilla och kostnadsräntan på
+              skattekontot. Andra kostnader som inte får dras av, till exempel privata utgifter
+              eller egna pensionspremier, lägger du till i NE-bilagan själv.
+            </p>
+          </div>
+        </section>
+      )}
     </div>
   )
 }

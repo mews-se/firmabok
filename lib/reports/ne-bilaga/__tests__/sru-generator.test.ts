@@ -16,6 +16,7 @@ function makeDeclaration(opts: {
     R1: 500000, R2: 0, R3: 0, R4: 1200,
     R5: 120000, R6: 80000, R7: 0, R8: 3000,
     R9: 0, R10: 20000, R11: 198200,
+    R12: 198200, R13: 0,
     ...opts.rutor,
   }
   const breakdown = Object.fromEntries(
@@ -102,6 +103,13 @@ describe('NE-bilaga SRU generator', () => {
       expect(blanketterSru).toContain('#UPPGIFT 7503 3000')   // R8
       expect(blanketterSru).toContain('#UPPGIFT 7505 20000')  // R10
       expect(blanketterSru).toContain('#UPPGIFT 7440 198200') // R11
+      expect(blanketterSru).toContain('#UPPGIFT 7600 198200') // R12
+    })
+
+    it('emits R13 under 7601 and leaves it out when zero', () => {
+      const withR13 = generateNESRUSubmission(makeDeclaration({ rutor: { R13: 1083 } })).blanketterSru
+      expect(withR13).toContain('#UPPGIFT 7601 1083')
+      expect(generateNESRUSubmission(makeDeclaration()).blanketterSru).not.toContain('#UPPGIFT 7601')
     })
 
     it('does not use the old (wrong) 73xx field codes', () => {
@@ -124,8 +132,9 @@ describe('NE-bilaga SRU generator', () => {
     })
 
     it('renders a negative result (loss) with a minus sign', () => {
-      const { blanketterSru } = generateNESRUSubmission(makeDeclaration({ rutor: { R11: -5000 } }))
+      const { blanketterSru } = generateNESRUSubmission(makeDeclaration({ rutor: { R11: -5000, R12: -5000 } }))
       expect(blanketterSru).toContain('#UPPGIFT 7440 -5000')
+      expect(blanketterSru).toContain('#UPPGIFT 7600 -5000')
     })
   })
 

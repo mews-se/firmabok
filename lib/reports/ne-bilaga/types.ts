@@ -11,6 +11,8 @@ export interface NEDeclarationRutor {
   R9: number   // Avskrivningar byggnader och mark (772x, 777x, 782x, 784x)
   R10: number  // Avskrivningar övrigt (771x, 773x, 776x, 778x, 781x, 783x, 885x)
   R11: number  // Bokfört resultat (beräknat)
+  R12: number  // Bokfört resultat, förs över från R11
+  R13: number  // Bokförda kostnader som inte ska dras av (NE_NON_DEDUCTIBLE_ACCOUNTS)
 }
 
 // NE account mapping configuration
@@ -78,5 +80,7 @@ export const NE_RUTA_LABELS: Record<keyof NEDeclarationRutor, string> = {
   R8: 'Räntekostnader',
   R9: 'Avskrivningar fastighet',
   R10: 'Avskrivningar övriga tillgångar',
-  R11: 'Årets resultat'
+  R11: 'Bokfört resultat',
+  R12: 'Bokfört resultat (från R11)',
+  R13: 'Bokförda kostnader som inte ska dras av',
 }

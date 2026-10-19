@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { insertAuthUser, insertCompany, seedCompany } from '@/tests/pg/fixtures'
 import { getPool } from '@/tests/pg/setup'
@@ -163,13 +165,10 @@ describe('seed_chart_of_accounts: Swedish characters', () => {
     expect(byNum.has('2091')).toBe(false)
     expect(byNum.has('2099')).toBe(false)
 
-    // EF equity accounts must NOT carry the AB-oriented INK2 SRU code 7221.
-    // EF entities file NE-bilaga instead of INK2; emitting `#SRU 2013 7221`
-    // in a SIE export would steer downstream tax software to report owner
-    // drawings as balance-sheet equity, which is wrong for sole traders.
-    expect(byNum.get('2010')?.sru_code).toBeNull()
-    expect(byNum.get('2013')?.sru_code).toBeNull()
-    expect(byNum.get('2018')?.sru_code).toBeNull()
+    // All of 201x sums into NE B10 Eget kapital (BAS NE_EJ_K1).
+    expect(byNum.get('2010')?.sru_code).toBe('7300')
+    expect(byNum.get('2013')?.sru_code).toBe('7300')
+    expect(byNum.get('2018')?.sru_code).toBe('7300')
   })
 
   it('stores diacritics as multi-byte UTF-8, not as ASCII folds', async () => {
@@ -202,9 +201,10 @@ describe('seed_chart_of_accounts: Swedish characters', () => {
 })
 
 describe('seed_chart_of_accounts: SRU codes', () => {
-  it('populates sru_code for every seeded account so the K1 chart can produce SRU/INK2 filings', async () => {
-    const { companyId } = await seedCompany()
-    await callSeed(companyId, 'aktiebolag')
+  it('populates sru_code for every account seeded for an enskild firma', async () => {
+    const userId = await insertAuthUser()
+    const companyId = await insertCompany({ createdBy: userId, entityType: 'enskild_firma' })
+    await callSeed(companyId, 'enskild_firma')
     const rows = await getAccounts(companyId)
 
     const missing = rows.filter((r) => r.sru_code === null)
@@ -216,20 +216,98 @@ describe('seed_chart_of_accounts: SRU codes', () => {
     ).toHaveLength(0)
   })
 
-  it('maps representative accounts to the SRU codes from BAS reference', async () => {
-    const { companyId } = await seedCompany()
-    await callSeed(companyId, 'aktiebolag')
+  it('maps representative accounts to their NE fields', async () => {
+    const userId = await insertAuthUser()
+    const companyId = await insertCompany({ createdBy: userId, entityType: 'enskild_firma' })
+    await callSeed(companyId, 'enskild_firma')
     const byNum = new Map((await getAccounts(companyId)).map((r) => [r.account_number, r]))
 
-    // Spot-check values pulled from lib/bookkeeping/bas-data/. These three
-    // map to Skatteverket SRU fields in INK2; getting them wrong would
-    // silently break tax filing.
-    expect(byNum.get('2099')?.sru_code).toBe('7222')
-    expect(byNum.get('2611')?.sru_code).toBe('7231')
-    expect(byNum.get('2731')?.sru_code).toBe('7231')
-    expect(byNum.get('1930')?.sru_code).toBe('7212')
-    expect(byNum.get('3001')?.sru_code).toBe('7310')
-    expect(byNum.get('7010')?.sru_code).toBe('7322')
+    // Same codes as lib/bookkeeping/bas-data/sru-mapping.ts; the SIE export
+    // writes them as #SRU.
+    expect(byNum.get('1510')?.sru_code).toBe('7250')
+    expect(byNum.get('1930')?.sru_code).toBe('7280')
+    expect(byNum.get('2440')?.sru_code).toBe('7382')
+    expect(byNum.get('2611')?.sru_code).toBe('7383')
+    expect(byNum.get('3001')?.sru_code).toBe('7400')
+    expect(byNum.get('3100')?.sru_code).toBe('7401')
+    expect(byNum.get('4000')?.sru_code).toBe('7500')
+    expect(byNum.get('6991')?.sru_code).toBe('7501')
+    expect(byNum.get('7960')?.sru_code).toBe('7503')
+    expect(byNum.get('8310')?.sru_code).toBe('7403')
+    expect(byNum.get('8410')?.sru_code).toBe('7503')
+  })
+})
+
+describe('20261019200000: existing SRU codes move to the NE fields', () => {
+  const MIGRATION_SQL = readFileSync(
+    join(process.cwd(), 'supabase/migrations/20261019200000_ne_sru_codes.sql'),
+    'utf8',
+  )
+
+  async function setCode(companyId: string, accountNumber: string, code: string | null) {
+    await getPool().query(
+      `UPDATE public.chart_of_accounts SET sru_code = $3
+        WHERE company_id = $1 AND account_number = $2`,
+      [companyId, accountNumber, code],
+    )
+  }
+
+  async function addAccount(
+    userId: string,
+    companyId: string,
+    accountNumber: string,
+    accountType: 'revenue' | 'expense' | 'liability',
+    normalBalance: 'debit' | 'credit',
+    code: string,
+  ) {
+    await getPool().query(
+      `INSERT INTO public.chart_of_accounts
+         (user_id, company_id, account_number, account_name, account_class,
+          account_group, account_type, normal_balance, sru_code)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+      [
+        userId,
+        companyId,
+        accountNumber,
+        `Testkonto ${accountNumber}`,
+        Number(accountNumber[0]),
+        accountNumber.substring(0, 2),
+        accountType,
+        normalBalance,
+        code,
+      ],
+    )
+  }
+
+  it('rewrites the codes this program generated and keeps the ones entered by hand', async () => {
+    const userId = await insertAuthUser()
+    const companyId = await insertCompany({ createdBy: userId, entityType: 'enskild_firma' })
+    await callSeed(companyId, 'enskild_firma')
+
+    // The chart as the earlier seed and BAS data left it
+    await setCode(companyId, '1930', '7212')
+    await setCode(companyId, '2013', null)
+    await setCode(companyId, '4000', '7320')
+    await setCode(companyId, '8410', '7323')
+    await addAccount(userId, companyId, '8811', 'expense', 'debit', '7380')
+    await addAccount(userId, companyId, '8819', 'revenue', 'credit', '7380')
+    await addAccount(userId, companyId, '2510', 'liability', 'credit', '7230')
+    // Codes a user chose
+    await setCode(companyId, '3001', '7401')
+    await setCode(companyId, '5010', null)
+
+    await getPool().query(MIGRATION_SQL)
+    const byNum = new Map((await getAccounts(companyId)).map((r) => [r.account_number, r.sru_code]))
+
+    expect(byNum.get('1930')).toBe('7280')
+    expect(byNum.get('2013')).toBe('7300')
+    expect(byNum.get('4000')).toBe('7500')
+    expect(byNum.get('8410')).toBe('7503')
+    expect(byNum.get('8811')).toBe('7503')
+    expect(byNum.get('8819')).toBe('7403')
+    expect(byNum.get('2510')).toBeNull()
+    expect(byNum.get('3001')).toBe('7401')
+    expect(byNum.get('5010')).toBeNull()
   })
 })
 

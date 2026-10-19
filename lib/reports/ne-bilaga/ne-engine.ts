@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { generateTrialBalance } from '@/lib/reports/trial-balance'
+import { formatCurrency } from '@/lib/utils'
 import type { FiscalPeriod } from '@/types'
 import type {
   NEDeclaration,
@@ -141,6 +142,13 @@ function isAccountInMapping(accountNumber: string, mapping: NEAccountMapping): b
 }
 
 /**
+ * The mapping whose ruta an account belongs to, or null when no ruta takes it
+ */
+export function findNEMapping(accountNumber: string): NEAccountMapping | null {
+  return NE_ACCOUNT_MAPPINGS.find((mapping) => isAccountInMapping(accountNumber, mapping)) ?? null
+}
+
+/**
  * Round to nearest krona (whole number) for NE declaration
  */
 function roundToKrona(value: number): number {
@@ -244,33 +252,40 @@ export async function generateNEDeclaration(
   }
 
   const warnings: string[] = []
+  const unmappedWarnings: string[] = []
 
   // Process each account balance
   for (const [accountNumber, balance] of accountBalances) {
     // Skip zero balances
     if (Math.abs(balance) < 0.01) continue
 
-    // Find which ruta this account belongs to
-    for (const mapping of NE_ACCOUNT_MAPPINGS) {
-      if (isAccountInMapping(accountNumber, mapping)) {
-        // For revenue accounts (credit normal), negate the balance
-        // For expense accounts (debit normal), use as-is
-        // Net balance is debit - credit, so:
-        // - Revenue accounts have negative net balance (credit > debit)
-        // - Expense accounts have positive net balance (debit > credit)
-        const amount = mapping.isExpense ? balance : -balance
-
-        rutor[mapping.ruta] += amount
-
-        breakdown[mapping.ruta].accounts.push({
-          accountNumber,
-          accountName: accountNameMap.get(accountNumber) || `Konto ${accountNumber}`,
-          amount: roundToKrona(amount),
-        })
-
-        break // Account matched, no need to check other mappings
+    const mapping = findNEMapping(accountNumber)
+    if (!mapping) {
+      // classes 1-2 are the balance sheet; a result account left here is missing from R11
+      if (accountNumber[0] >= '3' && accountNumber[0] <= '8') {
+        const amount = formatCurrency(Math.abs(balance), 'SEK', { minimumFractionDigits: 2 })
+        unmappedWarnings.push(
+          `Konto ${accountNumber} ${accountNameMap.get(accountNumber) ?? ''} (${amount} i ${balance > 0 ? 'debet' : 'kredit'}) ` +
+            'hör inte till någon ruta och saknas i NE-bilagan, så R11 skiljer sig från det bokförda resultatet.',
+        )
       }
+      continue
     }
+
+    // For revenue accounts (credit normal), negate the balance
+    // For expense accounts (debit normal), use as-is
+    // Net balance is debit - credit, so:
+    // - Revenue accounts have negative net balance (credit > debit)
+    // - Expense accounts have positive net balance (debit > credit)
+    const amount = mapping.isExpense ? balance : -balance
+
+    rutor[mapping.ruta] += amount
+
+    breakdown[mapping.ruta].accounts.push({
+      accountNumber,
+      accountName: accountNameMap.get(accountNumber) || `Konto ${accountNumber}`,
+      amount: roundToKrona(amount),
+    })
   }
 
   // Round all rutor to whole numbers
@@ -296,6 +311,8 @@ export async function generateNEDeclaration(
   if (rutor.R11 === 0 && totalRevenue === 0) {
     warnings.push('Inga bokförda intäkter eller kostnader hittades för perioden.')
   }
+
+  warnings.push(...unmappedWarnings)
 
   return {
     fiscalYear: {

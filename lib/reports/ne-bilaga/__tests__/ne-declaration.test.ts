@@ -125,3 +125,29 @@ describe('generateNEDeclaration: closed fiscal year', () => {
     expect(result.warnings.some((w) => w.includes('Inga bokförda intäkter'))).toBe(false)
   })
 })
+
+describe('generateNEDeclaration: accounts outside every ruta', () => {
+  it('warns about a result account no ruta takes instead of dropping it silently', async () => {
+    vi.mocked(generateTrialBalance).mockResolvedValue({
+      rows: [...PRE_CLOSING_ROWS, row('8820', 'Mottagna koncernbidrag', -1_000)],
+      totalDebit: 0,
+      totalCredit: 0,
+      isBalanced: true,
+    })
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const result = await generateNEDeclaration(makeSupabase() as any, COMPANY_ID, PERIOD_ID)
+
+    expect(result.rutor.R11).toBe(250_000)
+    const warning = result.warnings.find((w) => w.startsWith('Konto 8820'))
+    expect(warning).toContain('Mottagna koncernbidrag')
+    expect(warning).toContain('kredit')
+  })
+
+  it('leaves balance sheet accounts out of the warning', async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const result = await generateNEDeclaration(makeSupabase() as any, COMPANY_ID, PERIOD_ID)
+
+    expect(result.warnings.some((w) => w.startsWith('Konto '))).toBe(false)
+  })
+})

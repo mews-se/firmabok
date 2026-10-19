@@ -126,6 +126,37 @@ describe('generateNEDeclaration: closed fiscal year', () => {
   })
 })
 
+describe('generateNEDeclaration: R11 is the booked result', () => {
+  it('keeps 36xx, 6991-6999, 79xx and a currency loss in R1-R10', async () => {
+    vi.mocked(generateTrialBalance).mockResolvedValue({
+      rows: [
+        row('1930', 'Företagskonto', 276_167.2),
+        row('3001', 'Försäljning', -400_000),
+        row('3600', 'Rörelsens sidointäkter', -2_000),
+        row('5010', 'Lokalhyra', 120_000),
+        row('6991', 'Övriga externa kostnader, avdragsgilla', 1_500),
+        row('6992', 'Övriga externa kostnader, ej avdragsgilla', 1_082.8),
+        row('7970', 'Förlust vid avyttring av anläggningstillgångar', 3_000),
+        row('8330', 'Valutakursdifferenser på kortfristiga fordringar', 250),
+      ],
+      totalDebit: 0,
+      totalCredit: 0,
+      isBalanced: true,
+    })
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const result = await generateNEDeclaration(makeSupabase() as any, COMPANY_ID, PERIOD_ID)
+
+    expect(result.rutor.R1).toBe(402_000)
+    expect(result.rutor.R4).toBe(0)
+    expect(result.rutor.R6).toBe(122_583)
+    expect(result.rutor.R8).toBe(3_250)
+    expect(result.rutor.R11).toBe(276_167)
+    expect(result.breakdown.R6.accounts.map((a) => a.accountNumber)).toEqual(['5010', '6991', '6992'])
+    expect(result.warnings.some((w) => w.startsWith('Konto '))).toBe(false)
+  })
+})
+
 describe('generateNEDeclaration: accounts outside every ruta', () => {
   it('warns about a result account no ruta takes instead of dropping it silently', async () => {
     vi.mocked(generateTrialBalance).mockResolvedValue({

@@ -14,23 +14,24 @@ import type {
  * Maps BAS account balances to NE declaration rutor (R1-R11) for
  * tax reporting to Skatteverket.
  *
- * Account mappings:
- * R1:  Försäljning med moms (3000-3599 excl 3100, 3700-3799)
- * R2:  Momsfria intäkter (3100, 3900-3969, 3970-3980, 3981-3999) - inkl gåvor utan motprestation
- * R3:  Bil/bostadsförmån (3200)
- * R4:  Ränteintäkter (8310-8330)
- * R5:  Varuinköp (4000-4990)
- * R6:  Övriga kostnader (5000-6990, 7970) - inkl avdragsgilla gåvor (5460)
- * R7:  Lönekostnader (7000-7699)
- * R8:  Räntekostnader (8400-8499)
- * R9:  Avskrivningar fastighet (7820)
- * R10: Avskrivningar övrigt (7700-7899 excl 7820)
- * R11: Årets resultat (calculated)
+ * The ranges follow BAS-kontogruppen's kopplingstabell NE_EJ_K1
+ * (bas.se/kontoplaner/sru), which covers every result account:
+ * R1:  Momspliktiga intäkter (3000-3799 excl 3100)
+ * R2:  Momsfria intäkter (3100, 3900-3999)
+ * R3:  Bil- och bostadsförmån: no BAS account, entered by hand
+ * R4:  Ränteintäkter m.m. (38xx and the financial income groups in 80xx-88xx)
+ * R5:  Varor, material och tjänster (4000-4999)
+ * R6:  Övriga externa kostnader (5000-6999)
+ * R7:  Anställd personal (7000-7699)
+ * R8:  Räntekostnader m.m. (774x, 779x, 79xx and the financial cost groups in 80xx-89xx)
+ * R9:  Av- och nedskrivningar byggnader och markanläggningar (772x, 777x, 782x, 784x)
+ * R10: Av- och nedskrivningar maskiner, inventarier och immateriella tillgångar
+ *      (771x, 773x, 776x, 778x, 781x, 783x, 885x)
+ * R11: Bokfört resultat (calculated)
  *
- * Gift handling:
- * - Gåvor MED motprestation: R1 (momspliktig bytestransaktion)
- * - Gåvor UTAN motprestation: R2 via konto 3900
- * - Avdragsgilla gåvor: R6 via konto 5460
+ * BAS splits 30xx-37xx and 39xx between R1 and R2 by the VAT on each account;
+ * 3100 and 39xx count as momsfria here. Groups that BAS marks (+) or (-) go to
+ * R4 when they hold an intäkt and to R8 when they hold a kostnad.
  */
 
 /**
@@ -39,10 +40,9 @@ import type {
 export const NE_ACCOUNT_MAPPINGS: NEAccountMapping[] = [
   {
     ruta: 'R1',
-    description: 'Försäljning med moms (25%)',
+    description: 'Försäljning och utfört arbete samt övriga momspliktiga intäkter',
     accountRanges: [
-      { start: '3000', end: '3599', exclude: ['3100'] },
-      { start: '3700', end: '3799' },
+      { start: '3000', end: '3799', exclude: ['3100'] },
     ],
     isExpense: false,
   },
@@ -51,48 +51,58 @@ export const NE_ACCOUNT_MAPPINGS: NEAccountMapping[] = [
     description: 'Momsfria intäkter',
     accountRanges: [
       { start: '3100', end: '3100' },
-      { start: '3900', end: '3969' }, // Övriga rörelseintäkter (inkl gåvor utan motprestation)
-      { start: '3970', end: '3980' },
-      { start: '3981', end: '3999' },
-    ],
-    isExpense: false,
-  },
-  {
-    ruta: 'R3',
-    description: 'Bil/bostadsförmån',
-    accountRanges: [
-      { start: '3200', end: '3299' },
+      { start: '3900', end: '3999' },
     ],
     isExpense: false,
   },
   {
     ruta: 'R4',
-    description: 'Ränteintäkter',
+    description: 'Ränteintäkter m.m.',
     accountRanges: [
-      { start: '8310', end: '8330' },
+      { start: '3800', end: '3899' },
+      { start: '8010', end: '8019' },
+      { start: '8020', end: '8039', side: 'credit' },
+      { start: '8110', end: '8119' },
+      { start: '8120', end: '8139', side: 'credit' },
+      { start: '8200', end: '8219' },
+      { start: '8220', end: '8249', side: 'credit' },
+      { start: '8250', end: '8269' },
+      { start: '8290', end: '8299', side: 'credit' },
+      { start: '8300', end: '8319' },
+      { start: '8320', end: '8339', side: 'credit' },
+      { start: '8340', end: '8349' },
+      { start: '8350', end: '8359', side: 'credit' },
+      { start: '8360', end: '8369' },
+      { start: '8390', end: '8399' },
+      { start: '8430', end: '8439', side: 'credit' },
+      { start: '8440', end: '8449' },
+      { start: '8450', end: '8459', side: 'credit' },
+      { start: '8490', end: '8499', side: 'credit' },
+      { start: '8810', end: '8819', side: 'credit' },
+      { start: '8860', end: '8869', side: 'credit' },
+      { start: '8880', end: '8899', side: 'credit' },
     ],
     isExpense: false,
   },
   {
     ruta: 'R5',
-    description: 'Varuinköp',
+    description: 'Varor, material och tjänster',
     accountRanges: [
-      { start: '4000', end: '4990' },
+      { start: '4000', end: '4999' },
     ],
     isExpense: true,
   },
   {
     ruta: 'R6',
-    description: 'Övriga kostnader',
+    description: 'Övriga externa kostnader',
     accountRanges: [
-      { start: '5000', end: '6990' },
-      { start: '7970', end: '7970' },
+      { start: '5000', end: '6999' },
     ],
     isExpense: true,
   },
   {
     ruta: 'R7',
-    description: 'Lönekostnader',
+    description: 'Anställd personal',
     accountRanges: [
       { start: '7000', end: '7699' },
     ],
@@ -100,39 +110,74 @@ export const NE_ACCOUNT_MAPPINGS: NEAccountMapping[] = [
   },
   {
     ruta: 'R8',
-    description: 'Räntekostnader',
+    description: 'Räntekostnader m.m.',
     accountRanges: [
-      { start: '8400', end: '8499' },
+      { start: '7740', end: '7749' },
+      { start: '7790', end: '7799' },
+      { start: '7900', end: '7999' },
+      { start: '8020', end: '8039', side: 'debit' },
+      { start: '8070', end: '8089' },
+      { start: '8120', end: '8139', side: 'debit' },
+      { start: '8170', end: '8189' },
+      { start: '8220', end: '8249', side: 'debit' },
+      { start: '8270', end: '8289' },
+      { start: '8290', end: '8299', side: 'debit' },
+      { start: '8320', end: '8339', side: 'debit' },
+      { start: '8350', end: '8359', side: 'debit' },
+      { start: '8370', end: '8389' },
+      { start: '8400', end: '8429' },
+      { start: '8430', end: '8439', side: 'debit' },
+      { start: '8450', end: '8459', side: 'debit' },
+      { start: '8460', end: '8469' },
+      { start: '8480', end: '8489' },
+      { start: '8490', end: '8499', side: 'debit' },
+      { start: '8810', end: '8819', side: 'debit' },
+      { start: '8860', end: '8869', side: 'debit' },
+      { start: '8880', end: '8899', side: 'debit' },
+      { start: '8900', end: '8989' },
     ],
     isExpense: true,
   },
   {
     ruta: 'R9',
-    description: 'Avskrivningar fastighet',
+    description: 'Av- och nedskrivningar byggnader och markanläggningar',
     accountRanges: [
-      { start: '7820', end: '7820' },
+      { start: '7720', end: '7729' },
+      { start: '7770', end: '7779' },
+      { start: '7820', end: '7829' },
+      { start: '7840', end: '7849' },
     ],
     isExpense: true,
   },
   {
     ruta: 'R10',
-    description: 'Avskrivningar övrigt',
+    description: 'Av- och nedskrivningar maskiner, inventarier och immateriella tillgångar',
     accountRanges: [
-      { start: '7700', end: '7899', exclude: ['7820'] },
+      { start: '7710', end: '7719' },
+      { start: '7730', end: '7739' },
+      { start: '7760', end: '7769' },
+      { start: '7780', end: '7789' },
+      { start: '7810', end: '7819' },
+      { start: '7830', end: '7839' },
+      { start: '8850', end: '8859' },
     ],
     isExpense: true,
   },
 ]
 
 /**
- * Check if an account number falls within a mapping's ranges
+ * Check if an account balance falls within a mapping's ranges
  */
-function isAccountInMapping(accountNumber: string, mapping: NEAccountMapping): boolean {
+function isAccountInMapping(accountNumber: string, balance: number, mapping: NEAccountMapping): boolean {
   for (const range of mapping.accountRanges) {
     const num = accountNumber
     if (num >= range.start && num <= range.end) {
       // Check exclusions
       if (range.exclude && range.exclude.includes(num)) {
+        continue
+      }
+      // balance is debit - credit, so a credit balance is negative
+      if (range.side && range.side !== (balance < 0 ? 'credit' : 'debit')) {
         continue
       }
       return true
@@ -142,10 +187,10 @@ function isAccountInMapping(accountNumber: string, mapping: NEAccountMapping): b
 }
 
 /**
- * The mapping whose ruta an account belongs to, or null when no ruta takes it
+ * The mapping whose ruta an account balance belongs to, or null when no ruta takes it
  */
-export function findNEMapping(accountNumber: string): NEAccountMapping | null {
-  return NE_ACCOUNT_MAPPINGS.find((mapping) => isAccountInMapping(accountNumber, mapping)) ?? null
+export function findNEMapping(accountNumber: string, balance: number): NEAccountMapping | null {
+  return NE_ACCOUNT_MAPPINGS.find((mapping) => isAccountInMapping(accountNumber, balance, mapping)) ?? null
 }
 
 /**
@@ -259,7 +304,7 @@ export async function generateNEDeclaration(
     // Skip zero balances
     if (Math.abs(balance) < 0.01) continue
 
-    const mapping = findNEMapping(accountNumber)
+    const mapping = findNEMapping(accountNumber, balance)
     if (!mapping) {
       // classes 1-2 are the balance sheet; a result account left here is missing from R11
       if (accountNumber[0] >= '3' && accountNumber[0] <= '8') {

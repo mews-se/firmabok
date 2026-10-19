@@ -1,16 +1,16 @@
 // NE-bilaga rutor (NE appendix boxes)
 export interface NEDeclarationRutor {
-  R1: number   // Försäljning med 25% moms (3000-3499 excl 3100)
-  R2: number   // Momsfria intäkter (3100, 3970, 3980)
-  R3: number   // Bil/bostadsförmån (3200)
-  R4: number   // Ränteintäkter (8310-8330)
-  R5: number   // Varuinköp (4000-4990)
-  R6: number   // Övriga kostnader (5000-6990, 7970)
-  R7: number   // Lönekostnader (7000-7699)
-  R8: number   // Räntekostnader (8400-8499)
-  R9: number   // Avskrivningar fastighet (7820)
-  R10: number  // Avskrivningar övrigt (7700-7899 excl 7820)
-  R11: number  // Årets resultat (beräknat)
+  R1: number   // Momspliktiga intäkter (3000-3799 excl 3100)
+  R2: number   // Momsfria intäkter (3100, 3900-3999)
+  R3: number   // Bil- och bostadsförmån (no BAS account)
+  R4: number   // Ränteintäkter m.m. (38xx, financial income in 80xx-88xx)
+  R5: number   // Varor, material och tjänster (4000-4999)
+  R6: number   // Övriga externa kostnader (5000-6999)
+  R7: number   // Anställd personal (7000-7699)
+  R8: number   // Räntekostnader m.m. (774x, 779x, 79xx, financial costs in 80xx-89xx)
+  R9: number   // Avskrivningar byggnader och mark (772x, 777x, 782x, 784x)
+  R10: number  // Avskrivningar övrigt (771x, 773x, 776x, 778x, 781x, 783x, 885x)
+  R11: number  // Bokfört resultat (beräknat)
 }
 
 // NE account mapping configuration
@@ -21,6 +21,8 @@ export interface NEAccountMapping {
     start: string
     end: string
     exclude?: string[]
+    // BAS (+)/(-): the range only takes a credit (intäkt) or a debit (kostnad) balance
+    side?: 'credit' | 'debit'
   }>
   isExpense: boolean  // true = debit normal, false = credit normal
 }

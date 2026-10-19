@@ -157,7 +157,7 @@ describe('generateNEDeclaration: R11 is the booked result', () => {
   })
 })
 
-describe('generateNEDeclaration: R12 and R13', () => {
+describe('generateNEDeclaration: R12-R14', () => {
   function mockRows(extra: TrialBalanceRow[]) {
     vi.mocked(generateTrialBalance).mockResolvedValue({
       rows: [...PRE_CLOSING_ROWS, ...extra],
@@ -191,6 +191,19 @@ describe('generateNEDeclaration: R12 and R13', () => {
 
     expect(result.rutor.R12).toBe(250_000)
     expect(result.rutor.R13).toBe(0)
+  })
+
+  it('takes skattefria ränteintäkter out in R14 and keeps them in R4', async () => {
+    mockRows([row('8314', 'Skattefria ränteintäkter', -42.4)])
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const result = await generateNEDeclaration(makeSupabase() as any, COMPANY_ID, PERIOD_ID)
+
+    expect(result.rutor.R4).toBe(42)
+    expect(result.rutor.R14).toBe(42)
+    expect(result.breakdown.R14.accounts).toEqual([
+      { accountNumber: '8314', accountName: 'Skattefria ränteintäkter', amount: 42 },
+    ])
   })
 
   it('never puts a negative amount in R13', async () => {

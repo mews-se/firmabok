@@ -253,7 +253,7 @@ export function NEDeclarationView({ periodId }: { periodId: string }) {
         </span>
       </div>
 
-      {data.rutor.R13 !== 0 && (
+      {(data.rutor.R13 !== 0 || data.rutor.R14 !== 0) && (
         <section>
           <div className="mb-1 flex items-center gap-2 px-1">
             <h3 className="font-sans text-xs font-medium uppercase tracking-wider text-muted-foreground">Skattemässiga justeringar</h3>
@@ -280,12 +280,22 @@ export function NEDeclarationView({ periodId }: { periodId: string }) {
                   amount={data.rutor.R13}
                   accounts={data.breakdown.R13?.accounts || []}
                 />
+                <DeclarationRutaRow
+                  code="R14"
+                  label={NE_RUTA_LABELS.R14}
+                  amount={-data.rutor.R14}
+                  accounts={(data.breakdown.R14?.accounts || []).map((acc) => ({
+                    ...acc,
+                    amount: -acc.amount,
+                  }))}
+                />
               </TableBody>
             </Table>
             <p className="pt-2 text-[12.5px] leading-5 text-muted-foreground">
               R13 tar med konton som BAS märker som ej avdragsgilla och kostnadsräntan på
-              skattekontot. Andra kostnader som inte får dras av, till exempel privata utgifter
-              eller egna pensionspremier, lägger du till i NE-bilagan själv.
+              skattekontot, R14 de skattefria ränteintäkterna. Andra kostnader som inte får dras
+              av, till exempel privata utgifter eller egna pensionspremier, lägger du till i
+              NE-bilagan själv.
             </p>
           </div>
         </section>

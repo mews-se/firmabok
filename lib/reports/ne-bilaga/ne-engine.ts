@@ -11,7 +11,7 @@ import type {
 /**
  * NE-bilaga (Enskild Firma / Sole Proprietorship Declaration)
  *
- * Maps BAS account balances to NE declaration rutor (R1-R13) for
+ * Maps BAS account balances to NE declaration rutor (R1-R14) for
  * tax reporting to Skatteverket.
  *
  * The ranges follow BAS-kontogruppen's kopplingstabell NE_EJ_K1
@@ -33,8 +33,9 @@ import type {
  * 3100 and 39xx count as momsfria here. Groups that BAS marks (+) or (-) go to
  * R4 when they hold an intäkt and to R8 when they hold a kostnad.
  *
- * On page 2, R12 carries R11 over and R13 adds back the costs booked on
- * NE_NON_DEDUCTIBLE_ACCOUNTS, which stay in R5-R10 as well.
+ * On page 2, R12 carries R11 over, R13 adds back the costs booked on
+ * NE_NON_DEDUCTIBLE_ACCOUNTS and R14 takes out the income booked on
+ * NE_TAX_FREE_INCOME_ACCOUNTS; both stay in R1-R10 as well.
  */
 
 /**
@@ -53,6 +54,14 @@ export const NE_NON_DEDUCTIBLE_ACCOUNTS = [
   '7623', // Sjukvårdsförsäkring, ej avdragsgill
   '7632', // Personalrepresentation, ej avdragsgill
   '8423', // Räntekostnader för skatter och avgifter
+]
+
+/**
+ * Interest that is not taxed, such as the intäktsränta on the skattekonto (8314)
+ */
+export const NE_TAX_FREE_INCOME_ACCOUNTS = [
+  '8254', // Skattefria ränteintäkter, långfristiga tillgångar
+  '8314', // Skattefria ränteintäkter
 ]
 
 /**
@@ -300,6 +309,7 @@ export async function generateNEDeclaration(
     R11: 0,
     R12: 0,
     R13: 0,
+    R14: 0,
   }
 
   const breakdown: Record<keyof NEDeclarationRutor, {
@@ -319,6 +329,7 @@ export async function generateNEDeclaration(
     R11: { accounts: [], total: 0 },
     R12: { accounts: [], total: 0 },
     R13: { accounts: [], total: 0 },
+    R14: { accounts: [], total: 0 },
   }
 
   const warnings: string[] = []
@@ -362,6 +373,10 @@ export async function generateNEDeclaration(
       rutor.R13 += balance
       breakdown.R13.accounts.push({ accountNumber, accountName, amount: roundToKrona(balance) })
     }
+    if (NE_TAX_FREE_INCOME_ACCOUNTS.includes(accountNumber)) {
+      rutor.R14 -= balance
+      breakdown.R14.accounts.push({ accountNumber, accountName, amount: roundToKrona(-balance) })
+    }
   }
 
   // Round all rutor to whole numbers
@@ -392,11 +407,16 @@ export async function generateNEDeclaration(
 
   warnings.push(...unmappedWarnings)
 
-  // the SRU field only takes a positive amount; a net credit means more came back than was booked
+  // the SRU fields only take a positive amount; the other sign means a reversal outweighed the year
   if (rutor.R13 < 0) {
     warnings.push('Kontona för ej avdragsgilla kostnader har sammanlagt ett kreditsaldo, så R13 lämnas tom.')
     rutor.R13 = 0
     breakdown.R13.total = 0
+  }
+  if (rutor.R14 < 0) {
+    warnings.push('Kontona för skattefria ränteintäkter har sammanlagt ett debetsaldo, så R14 lämnas tom.')
+    rutor.R14 = 0
+    breakdown.R14.total = 0
   }
 
   return {

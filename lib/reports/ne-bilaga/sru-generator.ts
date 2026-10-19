@@ -7,7 +7,7 @@ import type { NEDeclaration, NEDeclarationRutor, SRUSubmission } from '@/lib/rep
  *
  * Generates a Skatteverket-compliant SRU submission consisting of two files:
  *   - INFO.SRU:       submitter metadata (who is filing)
- *   - BLANKETTER.SRU: a single NE blankett block with the räkenskapsschema rutor and R12-R13
+ *   - BLANKETTER.SRU: a single NE blankett block with the räkenskapsschema rutor and R12-R14
  *
  * The NE-bilaga is an appendix to Inkomstdeklaration 1 (INK1) filed by a physical
  * person, so the identifier is the owner's PERSONNUMMER (12-digit YYYYMMDDNNNN):
@@ -22,7 +22,7 @@ import type { NEDeclaration, NEDeclarationRutor, SRUSubmission } from '@/lib/rep
  *   R1 7400 · R2 7401 · R3 7402 · R4 7403 · R5 7500 · R6 7501 · R7 7502 ·
  *   R8 7503 · R9 7504 · R10 7505 · R11 7440. Period dates: 7011 (start) / 7012 (end).
  * Page 2 codes from Skatteverket's fältnamnstabell NE_SKV2161 (2025P4, 2026P4):
- *   R12 7600 · R13 7601.
+ *   R12 7600 · R13 7601 · R14 7700.
  */
 
 const CRLF = '\r\n'
@@ -47,6 +47,7 @@ const NE_SRU_FIELD_CODES: Record<keyof NEDeclarationRutor, string> = {
   R11: '7440', // Bokfört resultat
   R12: '7600', // Bokfört resultat, från R11
   R13: '7601', // Bokförda kostnader som inte ska dras av
+  R14: '7700', // Bokförda intäkter som inte ska tas upp
 }
 
 /**
@@ -167,9 +168,9 @@ function generateBlanketterSru(declaration: NEDeclaration, now: Date, identity12
   lines.push(`#UPPGIFT ${FISCAL_START_CODE} ${dateStringToSRU(declaration.fiscalYear.start)}`)
   lines.push(`#UPPGIFT ${FISCAL_END_CODE} ${dateStringToSRU(declaration.fiscalYear.end)}`)
 
-  // NE rutor R1-R13: emit non-zero values only (zero/empty fields must be omitted)
+  // NE rutor R1-R14: emit non-zero values only (zero/empty fields must be omitted)
   const rutaOrder: (keyof NEDeclarationRutor)[] = [
-    'R1', 'R2', 'R3', 'R4', 'R5', 'R6', 'R7', 'R8', 'R9', 'R10', 'R11', 'R12', 'R13',
+    'R1', 'R2', 'R3', 'R4', 'R5', 'R6', 'R7', 'R8', 'R9', 'R10', 'R11', 'R12', 'R13', 'R14',
   ]
   for (const ruta of rutaOrder) {
     const value = declaration.rutor[ruta]

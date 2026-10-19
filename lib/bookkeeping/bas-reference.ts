@@ -5,7 +5,7 @@
  * Data files live in ./bas-data/ and are aggregated here.
  *
  * Reference: BAS Kontoplan 2026 v1.0
- * SRU codes follow Skatteverket's SRU specification for NE and INK2 forms.
+ * SRU codes are the NE-bilaga fields, derived in ./bas-data/sru-mapping.ts.
  */
 
 // ---------------------------------------------------------------------------
@@ -23,6 +23,9 @@ export interface BASReferenceAccount {
   sru_code: string | null
   k2_excluded: boolean
 }
+
+/** An account as the per-class data files hold it, before the SRU code is added */
+export type BASAccountData = Omit<BASReferenceAccount, 'sru_code'>
 
 // ---------------------------------------------------------------------------
 // Data (imported from per-class data files)

@@ -52,7 +52,7 @@ describe('commitPendingOperation: create_account', () => {
     account_type: 'expense',
     normal_balance: 'debit',
     plan_type: 'full_bas',
-    sru_code: '7321', // 5410's catalog value (lib/bookkeeping/bas-data)
+    sru_code: '7501', // 5410's catalog value (lib/bookkeeping/bas-data)
   }
 
   it('happy path: inserts the account and returns committed', async () => {

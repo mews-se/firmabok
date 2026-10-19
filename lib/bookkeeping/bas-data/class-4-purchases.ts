@@ -1,6 +1,6 @@
-import type { BASReferenceAccount } from '../bas-reference'
+import type { BASAccountData } from '../bas-reference'
 
-export const CLASS_4_ACCOUNTS: BASReferenceAccount[] = [
+export const CLASS_4_ACCOUNTS: BASAccountData[] = [
   {
     account_number: '4000',
     account_name: 'Inköp av handelsvaror (gruppkonto)',
@@ -9,7 +9,6 @@ export const CLASS_4_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'expense',
     normal_balance: 'debit',
     description: 'Inköp av handelsvaror (gruppkonto)',
-    sru_code: '7320',
     k2_excluded: false,
   },
   {
@@ -20,7 +19,6 @@ export const CLASS_4_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'expense',
     normal_balance: 'debit',
     description: 'Kostnader för inköp av varor avsedda för vidareförsäljning.',
-    sru_code: '7320',
     k2_excluded: false,
   },
   {
@@ -31,7 +29,6 @@ export const CLASS_4_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'expense',
     normal_balance: 'debit',
     description: 'Inköp av handelsvaror i Sverige, omvänd betalningsskyldighet',
-    sru_code: '7320',
     k2_excluded: false,
   },
   {
@@ -42,7 +39,6 @@ export const CLASS_4_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'expense',
     normal_balance: 'debit',
     description: 'Inköp av handelsvaror i Sverige, omvänd betalningsskyldighet, 25 % moms',
-    sru_code: '7320',
     k2_excluded: false,
   },
   {
@@ -53,7 +49,6 @@ export const CLASS_4_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'expense',
     normal_balance: 'debit',
     description: 'Inköp av handelsvaror i Sverige, omvänd betalningsskyldighet, 12 % moms',
-    sru_code: '7320',
     k2_excluded: false,
   },
   {
@@ -64,7 +59,6 @@ export const CLASS_4_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'expense',
     normal_balance: 'debit',
     description: 'Inköp av handelsvaror i Sverige, omvänd betalningsskyldighet, 6 % moms',
-    sru_code: '7320',
     k2_excluded: false,
   },
   {
@@ -75,7 +69,6 @@ export const CLASS_4_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'expense',
     normal_balance: 'debit',
     description: 'Inköp av handelsvaror från annat EU-land',
-    sru_code: '7320',
     k2_excluded: false,
   },
   {
@@ -86,7 +79,6 @@ export const CLASS_4_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'expense',
     normal_balance: 'debit',
     description: 'Inköp av handelsvaror från annat EU-land, 25 % moms',
-    sru_code: '7320',
     k2_excluded: false,
   },
   {
@@ -97,7 +89,6 @@ export const CLASS_4_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'expense',
     normal_balance: 'debit',
     description: 'Inköp av handelsvaror från annat EU-land, 12 % moms',
-    sru_code: '7320',
     k2_excluded: false,
   },
   {
@@ -108,7 +99,6 @@ export const CLASS_4_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'expense',
     normal_balance: 'debit',
     description: 'Inköp av handelsvaror från annat EU-land, 6 % moms',
-    sru_code: '7320',
     k2_excluded: false,
   },
   {
@@ -119,7 +109,6 @@ export const CLASS_4_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'expense',
     normal_balance: 'debit',
     description: 'Inköp av handelsvaror från annat EU-land, momsfri',
-    sru_code: '7320',
     k2_excluded: false,
   },
   {
@@ -130,7 +119,6 @@ export const CLASS_4_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'expense',
     normal_balance: 'debit',
     description: 'Import av handelsvaror',
-    sru_code: '7320',
     k2_excluded: false,
   },
   {
@@ -141,7 +129,6 @@ export const CLASS_4_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'expense',
     normal_balance: 'debit',
     description: 'Import av handelsvaror, 25 % moms',
-    sru_code: '7320',
     k2_excluded: false,
   },
   {
@@ -152,7 +139,6 @@ export const CLASS_4_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'expense',
     normal_balance: 'debit',
     description: 'Import av handelsvaror, 12 % moms',
-    sru_code: '7320',
     k2_excluded: false,
   },
   {
@@ -163,7 +149,6 @@ export const CLASS_4_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'expense',
     normal_balance: 'debit',
     description: 'Import av handelsvaror, 6 % moms',
-    sru_code: '7320',
     k2_excluded: false,
   },
   {
@@ -174,7 +159,6 @@ export const CLASS_4_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'expense',
     normal_balance: 'credit',
     description: 'Erhållna rabatter (Handelsvaror)',
-    sru_code: '7320',
     k2_excluded: false,
   },
   {
@@ -185,7 +169,6 @@ export const CLASS_4_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'expense',
     normal_balance: 'credit',
     description: 'Erhållna kassarabatter (Handelsvaror)',
-    sru_code: '7320',
     k2_excluded: false,
   },
   {
@@ -196,7 +179,6 @@ export const CLASS_4_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'expense',
     normal_balance: 'credit',
     description: 'Erhållna mängdrabatter (inkl. bonus) (Handelsvaror)',
-    sru_code: '7320',
     k2_excluded: false,
   },
   {
@@ -207,7 +189,6 @@ export const CLASS_4_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'expense',
     normal_balance: 'credit',
     description: 'Övriga reduktioner av inköpspriser (Handelsvaror)',
-    sru_code: '7320',
     k2_excluded: false,
   },
   {
@@ -218,7 +199,6 @@ export const CLASS_4_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'expense',
     normal_balance: 'debit',
     description: 'Sålda handelsvaror VMB (gruppkonto)',
-    sru_code: '7320',
     k2_excluded: false,
   },
   {
@@ -229,7 +209,6 @@ export const CLASS_4_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'expense',
     normal_balance: 'debit',
     description: 'Sålda handelsvaror VMB',
-    sru_code: '7320',
     k2_excluded: false,
   },
   {
@@ -240,7 +219,6 @@ export const CLASS_4_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'expense',
     normal_balance: 'debit',
     description: 'Sålda handelsvaror positiv VMB 25 %',
-    sru_code: '7320',
     k2_excluded: false,
   },
   {
@@ -251,7 +229,6 @@ export const CLASS_4_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'expense',
     normal_balance: 'debit',
     description: 'Sålda handelsvaror negativ VMB 25 %',
-    sru_code: '7320',
     k2_excluded: false,
   },
   {
@@ -262,7 +239,6 @@ export const CLASS_4_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'expense',
     normal_balance: 'debit',
     description: 'Inköp av råvaror och material i Sverige (gruppkonto)',
-    sru_code: '7320',
     k2_excluded: false,
   },
   {
@@ -273,7 +249,6 @@ export const CLASS_4_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'expense',
     normal_balance: 'debit',
     description: 'Inköp av råvaror och material i Sverige',
-    sru_code: '7320',
     k2_excluded: false,
   },
   {
@@ -284,7 +259,6 @@ export const CLASS_4_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'expense',
     normal_balance: 'debit',
     description: 'Inköp av råvaror och material, tjänster m.m. i Sverige, omvänd betalningsskyldighet (gruppkonto)',
-    sru_code: '7320',
     k2_excluded: false,
   },
   {
@@ -295,7 +269,6 @@ export const CLASS_4_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'expense',
     normal_balance: 'debit',
     description: 'Inköp av råvaror och material i Sverige, omvänd betalningsskyldighet',
-    sru_code: '7320',
     k2_excluded: false,
   },
   {
@@ -306,7 +279,6 @@ export const CLASS_4_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'expense',
     normal_balance: 'debit',
     description: 'Inköp av råvaror och material i Sverige, omvänd betalningsskyldighet, 25 % moms',
-    sru_code: '7320',
     k2_excluded: false,
   },
   {
@@ -317,7 +289,6 @@ export const CLASS_4_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'expense',
     normal_balance: 'debit',
     description: 'Inköp av råvaror och material i Sverige, omvänd betalningsskyldighet, 12 % moms',
-    sru_code: '7320',
     k2_excluded: false,
   },
   {
@@ -328,7 +299,6 @@ export const CLASS_4_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'expense',
     normal_balance: 'debit',
     description: 'Inköp av råvaror och material i Sverige, omvänd betalningsskyldighet, 6 % moms',
-    sru_code: '7320',
     k2_excluded: false,
   },
   {
@@ -339,7 +309,6 @@ export const CLASS_4_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'expense',
     normal_balance: 'debit',
     description: 'Inköp av tjänster i Sverige, omvänd betalningsskyldighet',
-    sru_code: '7320',
     k2_excluded: false,
   },
   {
@@ -350,7 +319,6 @@ export const CLASS_4_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'expense',
     normal_balance: 'debit',
     description: 'Inköp av tjänster i Sverige, omvänd betalningsskyldighet, 25 % moms',
-    sru_code: '7320',
     k2_excluded: false,
   },
   {
@@ -361,7 +329,6 @@ export const CLASS_4_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'expense',
     normal_balance: 'debit',
     description: 'Inköp av tjänster i Sverige, omvänd betalningsskyldighet, 12 % moms',
-    sru_code: '7320',
     k2_excluded: false,
   },
   {
@@ -372,7 +339,6 @@ export const CLASS_4_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'expense',
     normal_balance: 'debit',
     description: 'Inköp av tjänster i Sverige, omvänd betalningsskyldighet, 6 % moms',
-    sru_code: '7320',
     k2_excluded: false,
   },
   {
@@ -383,7 +349,6 @@ export const CLASS_4_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'expense',
     normal_balance: 'debit',
     description: 'Varuinköp från utlandet (råvaror och förnödenheter).',
-    sru_code: '7320',
     k2_excluded: false,
   },
   {
@@ -394,7 +359,6 @@ export const CLASS_4_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'expense',
     normal_balance: 'debit',
     description: 'Inköp av råvaror och material från annat EU-land',
-    sru_code: '7320',
     k2_excluded: false,
   },
   {
@@ -405,7 +369,6 @@ export const CLASS_4_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'expense',
     normal_balance: 'debit',
     description: 'Inköp av råvaror och material från annat EU-land, 25 %',
-    sru_code: '7320',
     k2_excluded: false,
   },
   {
@@ -416,7 +379,6 @@ export const CLASS_4_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'expense',
     normal_balance: 'debit',
     description: 'Inköp av råvaror och material från annat EU-land, 12 %',
-    sru_code: '7320',
     k2_excluded: false,
   },
   {
@@ -427,7 +389,6 @@ export const CLASS_4_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'expense',
     normal_balance: 'debit',
     description: 'Inköp av råvaror och material från annat EU-land, 6 %',
-    sru_code: '7320',
     k2_excluded: false,
   },
   {
@@ -438,7 +399,6 @@ export const CLASS_4_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'expense',
     normal_balance: 'debit',
     description: 'Inköp av råvaror och material från annat EU-land, momsfri',
-    sru_code: '7320',
     k2_excluded: false,
   },
   {
@@ -449,7 +409,6 @@ export const CLASS_4_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'expense',
     normal_balance: 'debit',
     description: 'Inköp av tjänster m.m. från utlandet',
-    sru_code: '7320',
     k2_excluded: false,
   },
   {
@@ -460,7 +419,6 @@ export const CLASS_4_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'expense',
     normal_balance: 'debit',
     description: 'Inköp av tjänster från ett land utanför EU, 25 % moms',
-    sru_code: '7320',
     k2_excluded: false,
   },
   {
@@ -471,7 +429,6 @@ export const CLASS_4_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'expense',
     normal_balance: 'debit',
     description: 'Inköp av tjänster från ett land utanför EU, 12 % moms',
-    sru_code: '7320',
     k2_excluded: false,
   },
   {
@@ -482,7 +439,6 @@ export const CLASS_4_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'expense',
     normal_balance: 'debit',
     description: 'Inköp av tjänster från ett land utanför EU, 6 % moms',
-    sru_code: '7320',
     k2_excluded: false,
   },
   {
@@ -493,7 +449,6 @@ export const CLASS_4_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'expense',
     normal_balance: 'debit',
     description: 'Inköp av tjänster från annat EU-land, 25 %',
-    sru_code: '7320',
     k2_excluded: false,
   },
   {
@@ -504,7 +459,6 @@ export const CLASS_4_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'expense',
     normal_balance: 'debit',
     description: 'Inköp av tjänster från annat EU-land, 12 %',
-    sru_code: '7320',
     k2_excluded: false,
   },
   {
@@ -515,7 +469,6 @@ export const CLASS_4_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'expense',
     normal_balance: 'debit',
     description: 'Inköp av tjänster från annat EU-land, 6 %',
-    sru_code: '7320',
     k2_excluded: false,
   },
   {
@@ -526,7 +479,6 @@ export const CLASS_4_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'expense',
     normal_balance: 'debit',
     description: 'Inköp av tjänster från annat EU-land, momsfri',
-    sru_code: '7320',
     k2_excluded: false,
   },
   {
@@ -537,7 +489,6 @@ export const CLASS_4_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'expense',
     normal_balance: 'debit',
     description: 'Import av råvaror och material',
-    sru_code: '7320',
     k2_excluded: false,
   },
   {
@@ -548,7 +499,6 @@ export const CLASS_4_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'expense',
     normal_balance: 'debit',
     description: 'Import av råvaror och material, 25 % moms',
-    sru_code: '7320',
     k2_excluded: false,
   },
   {
@@ -559,7 +509,6 @@ export const CLASS_4_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'expense',
     normal_balance: 'debit',
     description: 'Import av råvaror och material, 12 % moms',
-    sru_code: '7320',
     k2_excluded: false,
   },
   {
@@ -570,7 +519,6 @@ export const CLASS_4_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'expense',
     normal_balance: 'debit',
     description: 'Import av råvaror och material, 6 % moms',
-    sru_code: '7320',
     k2_excluded: false,
   },
   {
@@ -581,7 +529,6 @@ export const CLASS_4_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'expense',
     normal_balance: 'credit',
     description: 'Tekniskt motkonto till beräknad omvänd skattskyldighet (4415-4427, 4515-4537). Nettar ut basbeloppet i resultatrapporten samtidigt som 45xx-konton synliggör underlaget för momsdeklarationens ruta 20-24.',
-    sru_code: '7320',
     k2_excluded: false,
   },
   {
@@ -592,7 +539,6 @@ export const CLASS_4_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'expense',
     normal_balance: 'debit',
     description: 'Kostnader för arbete utfört av underleverantörer som del av leverans till kund.',
-    sru_code: '7320',
     k2_excluded: false,
   },
   {
@@ -603,7 +549,6 @@ export const CLASS_4_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'expense',
     normal_balance: 'debit',
     description: 'Inköp av tjänster och underentreprenader',
-    sru_code: '7320',
     k2_excluded: false,
   },
   {
@@ -614,7 +559,6 @@ export const CLASS_4_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'expense',
     normal_balance: 'debit',
     description: 'Inköp av legoarbeten',
-    sru_code: '7320',
     k2_excluded: false,
   },
   {
@@ -625,7 +569,6 @@ export const CLASS_4_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'expense',
     normal_balance: 'credit',
     description: 'Reduktion av inköpspriser (gruppkonto)',
-    sru_code: '7320',
     k2_excluded: false,
   },
   {
@@ -636,7 +579,6 @@ export const CLASS_4_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'expense',
     normal_balance: 'credit',
     description: 'Erhållna rabatter (Råvaror och förnödenheter)',
-    sru_code: '7320',
     k2_excluded: false,
   },
   {
@@ -647,7 +589,6 @@ export const CLASS_4_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'expense',
     normal_balance: 'credit',
     description: 'Erhållna kassarabatter (Råvaror och förnödenheter)',
-    sru_code: '7320',
     k2_excluded: false,
   },
   {
@@ -658,7 +599,6 @@ export const CLASS_4_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'expense',
     normal_balance: 'credit',
     description: 'Erhållna mängdrabatter (inkl. bonus) (Råvaror och förnödenheter)',
-    sru_code: '7320',
     k2_excluded: false,
   },
   {
@@ -669,7 +609,6 @@ export const CLASS_4_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'expense',
     normal_balance: 'credit',
     description: 'Övriga reduktioner av inköpspriser (Råvaror och förnödenheter)',
-    sru_code: '7320',
     k2_excluded: false,
   },
   {
@@ -680,7 +619,6 @@ export const CLASS_4_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'expense',
     normal_balance: 'debit',
     description: 'Andra produktionskostnader (gruppkonto)',
-    sru_code: '7320',
     k2_excluded: false,
   },
   {
@@ -691,7 +629,6 @@ export const CLASS_4_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'expense',
     normal_balance: 'debit',
     description: 'Kostnader för energi (Råvaror och förnödenheter)',
-    sru_code: '7320',
     k2_excluded: false,
   },
   {
@@ -702,7 +639,6 @@ export const CLASS_4_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'expense',
     normal_balance: 'debit',
     description: 'Kostnader för drivmedel (Råvaror och förnödenheter)',
-    sru_code: '7320',
     k2_excluded: false,
   },
   {
@@ -713,7 +649,6 @@ export const CLASS_4_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'expense',
     normal_balance: 'debit',
     description: 'Kostnader för resor (Råvaror och förnödenheter)',
-    sru_code: '7320',
     k2_excluded: false,
   },
   {
@@ -724,7 +659,6 @@ export const CLASS_4_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'expense',
     normal_balance: 'debit',
     description: 'Kostnader för hyra av utrustning (Råvaror och förnödenheter)',
-    sru_code: '7320',
     k2_excluded: false,
   },
   {
@@ -735,7 +669,6 @@ export const CLASS_4_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'expense',
     normal_balance: 'debit',
     description: 'Övriga produktionskostnader (Råvaror och förnödenheter)',
-    sru_code: '7320',
     k2_excluded: false,
   },
   {
@@ -746,7 +679,6 @@ export const CLASS_4_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'expense',
     normal_balance: 'credit',
     description: 'Förändring av lager (gruppkonto)',
-    sru_code: '7320',
     k2_excluded: false,
   },
   {
@@ -757,7 +689,6 @@ export const CLASS_4_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'expense',
     normal_balance: 'credit',
     description: 'Förändring av lager av råvaror',
-    sru_code: '7320',
     k2_excluded: false,
   },
   {
@@ -768,7 +699,6 @@ export const CLASS_4_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'expense',
     normal_balance: 'credit',
     description: 'Förändring av lager av tillsatsmaterial och förnödenheter',
-    sru_code: '7320',
     k2_excluded: false,
   },
   {
@@ -779,7 +709,6 @@ export const CLASS_4_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'expense',
     normal_balance: 'credit',
     description: 'Förändring av produkter i arbete',
-    sru_code: '7320',
     k2_excluded: false,
   },
   {
@@ -790,7 +719,6 @@ export const CLASS_4_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'expense',
     normal_balance: 'credit',
     description: 'Förändring av produkter i arbete, material och utlägg',
-    sru_code: '7320',
     k2_excluded: false,
   },
   {
@@ -801,7 +729,6 @@ export const CLASS_4_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'expense',
     normal_balance: 'credit',
     description: 'Förändring av produkter i arbete, omkostnader',
-    sru_code: '7320',
     k2_excluded: false,
   },
   {
@@ -812,7 +739,6 @@ export const CLASS_4_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'expense',
     normal_balance: 'credit',
     description: 'Förändring av produkter i arbete, personalkostnader',
-    sru_code: '7320',
     k2_excluded: false,
   },
   {
@@ -823,7 +749,6 @@ export const CLASS_4_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'expense',
     normal_balance: 'credit',
     description: 'Förändring av lager av färdiga varor',
-    sru_code: '7320',
     k2_excluded: false,
   },
   {
@@ -834,7 +759,6 @@ export const CLASS_4_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'expense',
     normal_balance: 'credit',
     description: 'Förändring av lager av handelsvaror',
-    sru_code: '7320',
     k2_excluded: false,
   },
   {
@@ -845,7 +769,6 @@ export const CLASS_4_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'expense',
     normal_balance: 'credit',
     description: 'Förändring av pågående arbeten, nedlagda kostnader',
-    sru_code: '7320',
     k2_excluded: false,
   },
   {
@@ -856,7 +779,6 @@ export const CLASS_4_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'expense',
     normal_balance: 'credit',
     description: 'Förändring av pågående arbeten, material och utlägg',
-    sru_code: '7320',
     k2_excluded: false,
   },
   {
@@ -867,7 +789,6 @@ export const CLASS_4_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'expense',
     normal_balance: 'credit',
     description: 'Förändring av pågående arbeten, omkostnader',
-    sru_code: '7320',
     k2_excluded: false,
   },
   {
@@ -878,7 +799,6 @@ export const CLASS_4_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'expense',
     normal_balance: 'credit',
     description: 'Förändring av pågående arbeten, personalkostnader',
-    sru_code: '7320',
     k2_excluded: false,
   },
   {
@@ -889,7 +809,6 @@ export const CLASS_4_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'expense',
     normal_balance: 'credit',
     description: 'Förändring av lager av värdepapper (Handelsvaror)',
-    sru_code: '7320',
     k2_excluded: false,
   },
   {
@@ -900,7 +819,6 @@ export const CLASS_4_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'expense',
     normal_balance: 'credit',
     description: 'Sålda värdepappers anskaffningsvärde (Handelsvaror)',
-    sru_code: '7320',
     k2_excluded: false,
   },
   {
@@ -911,7 +829,6 @@ export const CLASS_4_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'expense',
     normal_balance: 'credit',
     description: 'Nedskrivning av värdepapper (Handelsvaror)',
-    sru_code: '7320',
     k2_excluded: false,
   },
   {
@@ -922,7 +839,6 @@ export const CLASS_4_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'expense',
     normal_balance: 'credit',
     description: 'Återföring av nedskrivning av värdepapper (Handelsvaror)',
-    sru_code: '7320',
     k2_excluded: false,
   },
 ]

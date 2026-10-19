@@ -92,7 +92,7 @@ function buildInsertRow(
     account_group: accountNumber.substring(0, 2),
     account_type: classified.account_type,
     normal_balance: classified.normal_balance,
-    sru_code: computeSRUCode(accountNumber),
+    sru_code: computeSRUCode(accountNumber, classified.normal_balance),
     plan_type: 'full_bas' as const,
     is_active: true,
     is_system_account: false,

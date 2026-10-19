@@ -32,8 +32,10 @@ describe('BAS_REFERENCE data integrity', () => {
     }
   })
 
-  it('every account has a non-null sru_code', () => {
-    const withoutSru = BAS_REFERENCE.filter((a) => a.sru_code === null)
+  it('every account has an sru_code except those NE has no field for', () => {
+    // aktiebolag/handelsbolag equity, 25xx skatteskulder, koncernbidrag
+    const notOnNE = /^(20[2-46-9]\d|25\d\d|88[2-4]\d)$/
+    const withoutSru = BAS_REFERENCE.filter((a) => a.sru_code === null && !notOnNE.test(a.account_number))
     expect(withoutSru).toEqual([])
   })
 

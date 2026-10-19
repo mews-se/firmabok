@@ -1641,7 +1641,7 @@ async function ensureAccountExists(
     account_group: group,
     account_type: classified.account_type,
     normal_balance: classified.normal_balance,
-    sru_code: computeSRUCode(accountNumber),
+    sru_code: computeSRUCode(accountNumber, classified.normal_balance),
     plan_type: 'full_bas',
     is_active: true,
     is_system_account: false,

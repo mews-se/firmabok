@@ -1,6 +1,6 @@
-import type { BASReferenceAccount } from '../bas-reference'
+import type { BASAccountData } from '../bas-reference'
 
-export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
+export const CLASS_3_ACCOUNTS: BASAccountData[] = [
   {
     account_number: '3000',
     account_name: 'Försäljning inom Sverige',
@@ -9,7 +9,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Försäljning inom Sverige',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -20,7 +19,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Intäkter från försäljning med 25% moms - den vanligaste intäktsraden för svenska företag.',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -31,7 +29,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Intäkter från försäljning med 12% moms, t.ex. livsmedel och restaurang.',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -42,7 +39,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Intäkter från försäljning med 6% moms, t.ex. böcker, tidningar och kollektivtrafik.',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -53,7 +49,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Intäkter från försäljning som är undantagen från moms, t.ex. sjukvård och utbildning.',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -64,7 +59,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Försäljning av varor utanfor Sverige, gruppkonto.',
-    sru_code: '7311',
     k2_excluded: false,
   },
   {
@@ -75,7 +69,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Intäkter från försäljning av varor till kunder utanfor EU. Momsfritt.',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -86,7 +79,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Försäljning varor till annat EU-land, momspliktig',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -97,7 +89,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Intäkter från försäljning av varor till momsregistrerade företag i andra EU-länder.',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -108,7 +99,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Försäljning VMB och omvänd moms',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -119,7 +109,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Försäljning positiv VMB 25 %',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -130,7 +119,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Försäljning negativ VMB 25 %',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -141,7 +129,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Försäljning inom byggsektorn, omvänd betalningsskyldighet moms',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -152,7 +139,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Försäljning av tjänster utanför Sverige',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -163,7 +149,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Intäkter från försäljning av tjänster till kunder utanfor EU. Momsfritt.',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -174,7 +159,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Intäkter från försäljning av tjänster till företag i andra EU-länder. Omvänd skattskyldighet.',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -185,7 +169,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Försäljning, egna uttag',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -196,7 +179,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Egna uttag momspliktiga, 25 %',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -207,7 +189,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Egna uttag momspliktiga, 12 %',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -218,7 +199,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Egna uttag momspliktiga, 6 %',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -229,7 +209,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Egna uttag, momsfria',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -240,7 +219,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Fakturerade kostnader (gruppkonto)',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -251,7 +229,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Kostnader för emballage som vidarefaktureras till kunder.',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -262,7 +239,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Fakturerat emballage',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -273,7 +249,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Returnerat emballage',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -284,7 +259,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Fakturerade frakter',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -295,7 +269,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Fraktkostnader som vidarefaktureras till kunder i andra EU-länder.',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -306,7 +279,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Fraktkostnader som vidarefaktureras till kunder utanfor EU. Momsfritt.',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -317,7 +289,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Fakturerade tull- och speditionskostnader m.m.',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -328,7 +299,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Faktureringsavgifter',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -339,7 +309,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Faktureringsavgifter, EU-land',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -350,7 +319,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Faktureringsavgifter, export',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -361,7 +329,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Fakturerade resekostnader',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -372,7 +339,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Fakturerade kostnader till koncernföretag',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -383,7 +349,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Fakturerade kostnader till moderföretag',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -394,7 +359,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Fakturerade kostnader till dotterföretag',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -405,7 +369,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Fakturerade kostnader till andra koncernföretag',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -416,7 +379,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Fakturerade kostnader till intresseföretag, gemensamt styrda företag och övriga företag som det finns ett ägarintresse i',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -427,7 +389,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Övriga fakturerade kostnader',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -438,7 +399,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Rörelsens sidointäkter (gruppkonto)',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -449,7 +409,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Försäljning av material',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -460,7 +419,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Försäljning av råmaterial',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -471,7 +429,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Försäljning av skrot',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -482,7 +439,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Försäljning av förbrukningsmaterial',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -493,7 +449,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Försäljning av övrigt material',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -504,7 +459,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Tillfällig uthyrning av personal',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -515,7 +469,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Tillfällig uthyrning av transportmedel',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -526,7 +479,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Intäkter från värdepapper',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -537,7 +489,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Försäljning av värdepapper',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -548,7 +499,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Utdelning från värdepapper',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -559,7 +509,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Övriga intäkter från värdepapper',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -570,7 +519,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Management fees',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -581,7 +529,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Övriga sidointäkter',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -592,7 +539,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'debit',
     description: 'Intäktskorrigeringar (gruppkonto)',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -603,7 +549,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'debit',
     description: 'Ofördelade intäktsreduktioner',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -614,7 +559,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'debit',
     description: 'Lämnade rabatter',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -625,7 +569,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'debit',
     description: 'Lämnade kassarabatter',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -636,7 +579,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'debit',
     description: 'Lämnade mängdrabatter',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -647,7 +589,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'debit',
     description: 'Oreskillnad som uppstår vid avrundning av betalningar (oret).',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -658,7 +599,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'debit',
     description: 'Punktskatter',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -669,7 +609,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Intäktsförda punktskatter (kreditkonto)',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -680,7 +619,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'debit',
     description: 'Skuldförda punktskatter (debetkonto)',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -691,7 +629,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'debit',
     description: 'Övriga intäktskorrigeringar',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -702,7 +639,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Aktiverat arbete för egen räkning (gruppkonto)',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -713,7 +649,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Aktiverat arbete (material)',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -724,7 +659,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Aktiverat arbete (omkostnader)',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -735,7 +669,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Aktiverat arbete (personal)',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -746,7 +679,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Andra intäkter som inte hör till kärnverksamheten, t.ex. uthyrning av lokal.',
-    sru_code: '7311',
     k2_excluded: false,
   },
   {
@@ -757,7 +689,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Intäkter från uthyrning av lokaler, mark eller annan egendom.',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -768,7 +699,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Hyresintäkter',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -779,7 +709,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Arrendeintäkter',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -790,7 +719,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Frivilligt momspliktiga hyresintäkter',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -801,7 +729,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Övriga momspliktiga hyresintäkter',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -812,7 +739,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Provisionsintäkter, licensintäkter och royalties',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -823,7 +749,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Provisionsintäkter',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -834,7 +759,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Licensintäkter och royalties',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -845,7 +769,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Franchiseintäkter',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -856,7 +779,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Orealiserade negativa/positiva värdeförändringar på säkringsinstrument',
-    sru_code: '7310',
     k2_excluded: true,
   },
   {
@@ -867,7 +789,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Återvunna, tidigare avskrivna kundfordringar',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -878,7 +799,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Vinster som uppstår vid valutaväxling eller betalningar i utländsk valuta.',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -889,7 +809,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Vinst vid försäljning av anläggningstillgångar, t.ex. maskiner eller inventarier.',
-    sru_code: '7311',
     k2_excluded: false,
   },
   {
@@ -900,7 +819,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Vinst vid avyttring av immateriella anläggningstillgångar',
-    sru_code: '7311',
     k2_excluded: false,
   },
   {
@@ -911,7 +829,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Vinst vid avyttring av byggnader och mark',
-    sru_code: '7311',
     k2_excluded: false,
   },
   {
@@ -922,7 +839,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Vinst vid avyttring av maskiner och inventarier',
-    sru_code: '7311',
     k2_excluded: false,
   },
   {
@@ -933,7 +849,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Erhållna offentliga bidrag',
-    sru_code: '7311',
     k2_excluded: false,
   },
   {
@@ -944,7 +859,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Erhållna EU-bidrag',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -955,7 +869,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Erhållna statliga bidrag',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -966,7 +879,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Erhållna kommunala bidrag',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -977,7 +889,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Erhållna offentliga bidrag för personal',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -988,7 +899,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Övriga erhållna offentliga bidrag',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -999,7 +909,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Diverse andra rörelseintäkter som inte passar i övriga kategorier.',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -1010,7 +919,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Konfliktersättning',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -1021,7 +929,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Erhållna skadestånd',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -1032,7 +939,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Erhållna donationer och gåvor',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -1043,7 +949,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Försäkringsersättningar',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -1054,7 +959,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Erhållet ackord på skulder av rörelsekaraktär',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -1065,7 +969,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Erhållna reklambidrag',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -1076,7 +979,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Sjuklöneersättning',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -1087,7 +989,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Återbäring av överskott från försäkringsföretag',
-    sru_code: '7310',
     k2_excluded: false,
   },
   {
@@ -1098,7 +999,6 @@ export const CLASS_3_ACCOUNTS: BASReferenceAccount[] = [
     account_type: 'revenue',
     normal_balance: 'credit',
     description: 'Övriga rörelseintäkter',
-    sru_code: '7310',
     k2_excluded: false,
   },
 ]

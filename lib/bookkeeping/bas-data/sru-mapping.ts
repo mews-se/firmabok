@@ -1,108 +1,204 @@
 /**
  * SRU Code Computation
  *
- * Replicates the range-based SRU code assignment logic from
- * supabase/migrations/20240101000021_sru_codes.sql.
+ * The SRU code on an account is the NE-bilaga field its balance sums into,
+ * which the SIE export writes as #SRU. Ranges follow BAS-kontogruppen's
+ * kopplingstabell NE_EJ_K1 (bas.se/kontoplaner/sru), the same table the NE
+ * engine maps by; field codes are Skatteverket's (NE_SKV2161, 2026P4).
  *
- * SRU codes are used for NE (enskild firma) and INK2 (aktiebolag) tax forms
- * filed with Skatteverket.
+ * BAS lets 30xx-37xx and 39xx go to R1 or R2 by the VAT on the account; like
+ * the NE engine, 3100 and 39xx count as momsfria here. Groups that BAS marks
+ * (+) or (-) go to R4 or R8 by sign. SIE allows only one of the two codes on
+ * such an account (the receiving program moves the amount by sign), so the
+ * account's normal balance picks it.
  */
+
+interface SRURange {
+  start: string
+  end: string
+  exclude?: string[]
+}
+
+const NE_SRU_RANGES: Array<{ code: string; ranges: SRURange[] }> = [
+  // B1 Immateriella anläggningstillgångar
+  { code: '7200', ranges: [{ start: '1000', end: '1099' }] },
+  // B2 Byggnader och markanläggningar
+  {
+    code: '7210',
+    ranges: [
+      { start: '1100', end: '1129' },
+      { start: '1150', end: '1179' },
+      { start: '1190', end: '1199' },
+    ],
+  },
+  // B3 Mark och andra tillgångar som inte får skrivas av
+  {
+    code: '7211',
+    ranges: [
+      { start: '1130', end: '1149' },
+      { start: '1180', end: '1189' },
+      { start: '1291', end: '1291' },
+    ],
+  },
+  // B4 Maskiner och inventarier
+  { code: '7212', ranges: [{ start: '1200', end: '1299', exclude: ['1291'] }] },
+  // B5 Övriga anläggningstillgångar
+  { code: '7213', ranges: [{ start: '1300', end: '1399' }] },
+  // B6 Varulager
+  { code: '7240', ranges: [{ start: '1400', end: '1499' }] },
+  // B7 Kundfordringar
+  { code: '7250', ranges: [{ start: '1500', end: '1599' }] },
+  // B8 Övriga fordringar
+  { code: '7260', ranges: [{ start: '1600', end: '1899' }] },
+  // B9 Kassa och bank
+  { code: '7280', ranges: [{ start: '1900', end: '1999' }] },
+  // B10 Eget kapital
+  {
+    code: '7300',
+    ranges: [
+      { start: '2010', end: '2019' },
+      { start: '2050', end: '2059' },
+    ],
+  },
+  // B11 Obeskattade reserver
+  { code: '7320', ranges: [{ start: '2100', end: '2199' }] },
+  // B12 Avsättningar
+  { code: '7330', ranges: [{ start: '2200', end: '2299' }] },
+  // B13 Låneskulder
+  {
+    code: '7380',
+    ranges: [
+      { start: '2300', end: '2399' },
+      { start: '2410', end: '2419' },
+      { start: '2480', end: '2489' },
+    ],
+  },
+  // B14 Skatteskulder (7381): BAS maps no account here, so 25xx gets no code.
+  // B15 Leverantörsskulder
+  {
+    code: '7382',
+    ranges: [
+      { start: '2440', end: '2449' },
+      { start: '2460', end: '2479' },
+    ],
+  },
+  // B16 Övriga skulder
+  {
+    code: '7383',
+    ranges: [
+      { start: '2420', end: '2439' },
+      { start: '2450', end: '2459' },
+      { start: '2490', end: '2499' },
+      { start: '2600', end: '2999' },
+    ],
+  },
+  // R1 Försäljning och utfört arbete samt övriga momspliktiga intäkter
+  { code: '7400', ranges: [{ start: '3000', end: '3799', exclude: ['3100'] }] },
+  // R2 Momsfria intäkter
+  {
+    code: '7401',
+    ranges: [
+      { start: '3100', end: '3100' },
+      { start: '3900', end: '3999' },
+    ],
+  },
+  // R4 Ränteintäkter m.m.
+  {
+    code: '7403',
+    ranges: [
+      { start: '3800', end: '3899' },
+      { start: '8010', end: '8019' },
+      { start: '8110', end: '8119' },
+      { start: '8200', end: '8219' },
+      { start: '8250', end: '8269' },
+      { start: '8300', end: '8319' },
+      { start: '8340', end: '8349' },
+      { start: '8360', end: '8369' },
+      { start: '8390', end: '8399' },
+      { start: '8440', end: '8449' },
+    ],
+  },
+  // R5 Varor, material och tjänster
+  { code: '7500', ranges: [{ start: '4000', end: '4999' }] },
+  // R6 Övriga externa kostnader
+  { code: '7501', ranges: [{ start: '5000', end: '6999' }] },
+  // R7 Anställd personal
+  { code: '7502', ranges: [{ start: '7000', end: '7699' }] },
+  // R8 Räntekostnader m.m.
+  {
+    code: '7503',
+    ranges: [
+      { start: '7740', end: '7749' },
+      { start: '7790', end: '7799' },
+      { start: '7900', end: '7999' },
+      { start: '8070', end: '8089' },
+      { start: '8170', end: '8189' },
+      { start: '8270', end: '8289' },
+      { start: '8370', end: '8389' },
+      { start: '8400', end: '8429' },
+      { start: '8460', end: '8469' },
+      { start: '8480', end: '8489' },
+      { start: '8900', end: '8989' },
+    ],
+  },
+  // R9 Av- och nedskrivningar byggnader och markanläggningar
+  {
+    code: '7504',
+    ranges: [
+      { start: '7720', end: '7729' },
+      { start: '7770', end: '7779' },
+      { start: '7820', end: '7829' },
+      { start: '7840', end: '7849' },
+    ],
+  },
+  // R10 Av- och nedskrivningar maskiner, inventarier och immateriella tillgångar
+  {
+    code: '7505',
+    ranges: [
+      { start: '7710', end: '7719' },
+      { start: '7730', end: '7739' },
+      { start: '7760', end: '7769' },
+      { start: '7780', end: '7789' },
+      { start: '7810', end: '7819' },
+      { start: '7830', end: '7839' },
+      { start: '8850', end: '8859' },
+    ],
+  },
+  // R11 Bokfört resultat
+  { code: '7440', ranges: [{ start: '8990', end: '8999' }] },
+]
+
+/** Groups BAS marks (+) on R4 and (-) on R8 */
+const NE_SIGN_SPLIT_RANGES: SRURange[] = [
+  { start: '8020', end: '8039' },
+  { start: '8120', end: '8139' },
+  { start: '8220', end: '8249' },
+  { start: '8290', end: '8299' },
+  { start: '8320', end: '8339' },
+  { start: '8350', end: '8359' },
+  { start: '8430', end: '8439' },
+  { start: '8450', end: '8459' },
+  { start: '8490', end: '8499' },
+  { start: '8810', end: '8819' },
+  { start: '8860', end: '8869' },
+  { start: '8880', end: '8899' },
+]
+
+function inRanges(num: string, ranges: SRURange[]): boolean {
+  return ranges.some((r) => num >= r.start && num <= r.end && !r.exclude?.includes(num))
+}
 
 /**
- * Compute the SRU code for a given BAS account number.
- *
- * The logic applies NE-form codes first (higher priority for revenue/expense
- * accounts), then falls back to INK2 balance sheet codes.
+ * Compute the SRU code for a given BAS account number, or null when the
+ * account belongs to no NE field (aktiebolag/handelsbolag equity, 25xx,
+ * koncernbidrag, class 9).
  */
-export function computeSRUCode(accountNumber: string): string | null {
-  const num = accountNumber
-
-  // ---------------------------------------------------------------------------
-  // NE form codes (enskild firma): fields 7310-7325
-  // ---------------------------------------------------------------------------
-
-  // NE: R1 - Försäljning med moms (3000-3499 excl 3100)
-  if (num >= '3000' && num <= '3499' && num !== '3100') return '7310'
-
-  // NE: R2 - Momsfria intäkter (3100, 3900, 3970-3980)
-  if (num === '3100' || num === '3900' || (num >= '3970' && num <= '3980')) return '7311'
-
-  // NE: R3 - Bil/bostadsförmån (3200-3299): overlaps with R1, R1 wins
-  if (num >= '3200' && num <= '3299') return '7312'
-
-  // NE: R4 - Ränteintäkter (8310-8330)
-  if (num >= '8310' && num <= '8330') return '7313'
-
-  // NE: R5 - Varuinköp (4000-4990)
-  if (num >= '4000' && num <= '4990') return '7320'
-
-  // NE: R6 - Övriga kostnader (5000-6990, 7970)
-  if ((num >= '5000' && num <= '6990') || num === '7970') return '7321'
-
-  // NE: R7 - Lönekostnader (7000-7699)
-  if (num >= '7000' && num <= '7699') return '7322'
-
-  // NE: R8 - Räntekostnader (8400-8499)
-  if (num >= '8400' && num <= '8499') return '7323'
-
-  // NE: R9 - Avskrivningar fastighet (7820)
-  if (num === '7820') return '7324'
-
-  // NE: R10 - Avskrivningar övrigt (7700-7899 excl 7820)
-  if (num >= '7700' && num <= '7899' && num !== '7820') return '7325'
-
-  // ---------------------------------------------------------------------------
-  // INK2 form codes (aktiebolag): fields 7201-7380
-  // ---------------------------------------------------------------------------
-
-  // INK2: Immateriella anläggningstillgångar (1000-1099)
-  if (num >= '1000' && num <= '1099') return '7201'
-
-  // INK2: Materiella anläggningstillgångar (1100-1299)
-  if (num >= '1100' && num <= '1299') return '7202'
-
-  // INK2: Finansiella anläggningstillgångar (1300-1399)
-  if (num >= '1300' && num <= '1399') return '7203'
-
-  // INK2: Varulager (1400-1499)
-  if (num >= '1400' && num <= '1499') return '7210'
-
-  // INK2: Kundfordringar (1500-1599)
-  if (num >= '1500' && num <= '1599') return '7211'
-
-  // INK2: Övriga omsättningstillgångar (1600-1999)
-  if (num >= '1600' && num <= '1999') return '7212'
-
-  // INK2: Aktiekapital (2081)
-  if (num === '2081') return '7220'
-
-  // INK2: Övrigt eget kapital (2085-2098)
-  if (num >= '2085' && num <= '2098') return '7221'
-
-  // INK2: Årets resultat (2099)
-  if (num === '2099') return '7222'
-
-  // INK2: Skulder (2100-2499)
-  if (num >= '2100' && num <= '2499') return '7230'
-
-  // INK2: Övriga skulder (2500-2999)
-  if (num >= '2500' && num <= '2999') return '7231'
-
-  // ---------------------------------------------------------------------------
-  // INK2 remaining income statement (fallback for class 3-8 not covered by NE)
-  // ---------------------------------------------------------------------------
-
-  if (num >= '3000' && num <= '3999') return '7310'
-  if (num >= '4000' && num <= '4999') return '7320'
-  if (num >= '5000' && num <= '6999') return '7330'
-  if (num >= '7000' && num <= '7699') return '7340'
-  if (num >= '7700' && num <= '7899') return '7350'
-  if (num >= '7900' && num <= '7999') return '7360'
-  if (num >= '8000' && num <= '8499') return '7370'
-  if (num >= '8500' && num <= '8999') return '7380'
-
-  // Equity accounts not covered above (2000-2084)
-  if (num >= '2000' && num <= '2084') return '7221'
-
-  return null
+export function computeSRUCode(
+  accountNumber: string,
+  normalBalance: 'debit' | 'credit' = 'credit',
+): string | null {
+  if (inRanges(accountNumber, NE_SIGN_SPLIT_RANGES)) {
+    return normalBalance === 'debit' ? '7503' : '7403'
+  }
+  return NE_SRU_RANGES.find((row) => inRanges(accountNumber, row.ranges))?.code ?? null
 }

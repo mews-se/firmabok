@@ -379,7 +379,7 @@ describe('gnubok_update_account', () => {
         description: null,
         default_vat_code: null,
         default_vat_rate: null,
-        sru_code: '7321', // 5410's catalog value (lib/bookkeeping/bas-data)
+        sru_code: '7501', // 5410's catalog value (lib/bookkeeping/bas-data)
         is_active: true,
       },
     })

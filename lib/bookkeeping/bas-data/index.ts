@@ -6,6 +6,7 @@ import { CLASS_5_ACCOUNTS } from './class-5-external-expenses'
 import { CLASS_6_ACCOUNTS } from './class-6-other-external'
 import { CLASS_7_ACCOUNTS } from './class-7-personnel'
 import { CLASS_8_ACCOUNTS } from './class-8-financial'
+import { computeSRUCode } from './sru-mapping'
 
 import type { BASReferenceAccount } from '../bas-reference'
 
@@ -18,4 +19,7 @@ export const BAS_REFERENCE: BASReferenceAccount[] = [
   ...CLASS_6_ACCOUNTS,
   ...CLASS_7_ACCOUNTS,
   ...CLASS_8_ACCOUNTS,
-]
+].map((account) => ({
+  ...account,
+  sru_code: computeSRUCode(account.account_number, account.normal_balance),
+}))

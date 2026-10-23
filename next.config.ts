@@ -47,6 +47,11 @@ const nextConfig: NextConfig = {
     root: projectRoot,
   },
   skipTrailingSlashRedirect: true,
+  // the settings modal's (.)settings/[[...section]] has no catch-all page
+  // behind it, which strict route matching (Next 16.4) refuses to build
+  deprecated: {
+    looseRouteMatching: true,
+  },
   experimental: {
     optimizePackageImports: ['recharts', 'date-fns', 'framer-motion'],
   },

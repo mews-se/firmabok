@@ -4,6 +4,22 @@ Alla märkbara ändringar i Firmabok, nyaste först. Versionerna följer
 taggarna i det här repot; varje version publiceras som containerimage på
 `ghcr.io/mews-se/firmabok`.
 
+## 5.1.1 — 2026-10-23
+
+Säkerhetsuppdatering; imagen byggs om med de lagade paketen.
+
+- next uppdateras från 16.3.8 till 16.4.2 och åtgärdar två kritiska
+  sårbarheter med fjärrkörning av kod, GHSA-673q-mjm6-r5xr i
+  `use cache`-funktioner och GHSA-2464-fhr4-w9xw i bildoptimeringen när
+  SVG-filer används, samt GHSA-p3m5-59mp-jv5r, där Server Actions kunde
+  överbelastas. Alla tre är rättade i 16.4.1. Firmabok använder varken
+  `use cache` eller SVG-optimering och en LAN-installation är inte
+  exponerad mot internet, men uppdateringen stänger dem ändå.
+- vite uppdateras från 8.3.1 till 8.3.4 och åtgärdar tre sårbarheter i
+  launch-editor (GHSA-587h-7wmj-h5pm, GHSA-r825-w8mm-5pxw och
+  GHSA-698v-4r3x-3vcv), rättade i 8.3.3. vite används bara av testerna
+  och följer inte med i imagen.
+
 ## 5.1.0 — 2026-10-19
 
 NE-bilagan får alla resultatkonton med och rutorna R12-R14, och

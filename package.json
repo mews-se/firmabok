@@ -73,7 +73,7 @@
     "pg": "^8.23.0",
     "tailwindcss": "^4",
     "typescript": "^5",
-    "vitest": "^5.0.1"
+    "vitest": "^5.0.5"
   },
   "overrides": {
     "sharp": "^0.35.5",

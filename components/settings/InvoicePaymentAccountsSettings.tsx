@@ -112,7 +112,9 @@ export function InvoicePaymentAccountsSettings({
   const [hasExternalUpdate, setHasExternalUpdate] = useState(false)
   const accountsRef = useRef(accounts)
   const previousServerAccountsKey = useRef(serverAccountsKey)
-  accountsRef.current = accounts
+  useEffect(() => {
+    accountsRef.current = accounts
+  }, [accounts])
 
   useEffect(() => {
     const previousKey = previousServerAccountsKey.current

@@ -140,7 +140,9 @@ export default function ChartOfAccountsManager() {
   // whole blocking load on every toggle (the same double-fetch the comment
   // below warns about for hideK2Excluded).
   const showInactiveRef = useRef(showInactive)
-  showInactiveRef.current = showInactive
+  useEffect(() => {
+    showInactiveRef.current = showInactive
+  }, [showInactive])
 
   const fetchAccounts = useCallback(async () => {
     // `?active=false` disables the filter entirely (active + inactive), it does

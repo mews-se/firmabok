@@ -90,7 +90,9 @@ export default function JournalEntryAttachments({
   const replaceTargetIdRef = useRef<string | null>(null)
 
   const onCountChangeRef = useRef(onCountChange)
-  onCountChangeRef.current = onCountChange
+  useEffect(() => {
+    onCountChangeRef.current = onCountChange
+  }, [onCountChange])
 
   const fetchDocuments = useCallback(async () => {
     try {

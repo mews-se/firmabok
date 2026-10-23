@@ -45,7 +45,7 @@ Designval som är bra att känna till:
   administrera databasen med `psql` genom `docker exec`. Appen frågar
   servern i bakgrunden efter ändringar gjorda utanför den egna fliken
   i stället för att hålla websockets öppna, och dokumentarkivet läses
-  och skrivs direkt av appen på volymen `storage_data` – de två
+  och skrivs direkt av appen på volymen `storage_data`. De två
   tyngsta vilotjänsterna i stacken behövdes inte.
 - **Migrationerna är en tjänst.** Engångscontainern `migrate` kör nya
   filer ur `supabase/migrations/` vid varje `up`, bokför dem i
@@ -79,7 +79,7 @@ om. Inget annat behöver skötas.
 
 ## Backup
 
-De namngivna volymerna är inte kopierbara – ta backuper logiskt:
+De namngivna volymerna är inte kopierbara, så ta backuper logiskt:
 
 ```bash
 docker exec firmabok-db-1 pg_dump -U postgres -d postgres | gzip > firmabok-$(date +%F).sql.gz
@@ -87,8 +87,8 @@ docker exec firmabok-db-1 pg_dump -U postgres -d postgres | gzip > firmabok-$(da
 
 Överför den filen till någon lokal lagringsplats, gärna schemalagt. Som ett portabelt,
 leverantörsneutralt lager ovanpå: exportera varje räkenskapsår som SIE
-via appen (Rapporter → SIE) – vilket svenskt bokföringsprogram som
-helst kan läsa in den igen. Dokumenten ligger i volymen
+via appen (Rapporter → SIE), som vilket svenskt bokföringsprogram
+som helst kan läsa in igen. Dokumenten ligger i volymen
 `storage_data`; ta med den om du vill ha kopior på filnivå:
 
 ```bash

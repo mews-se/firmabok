@@ -9,12 +9,12 @@
 ![Docker](https://img.shields.io/badge/Docker-2496ED.svg?logo=docker&logoColor=white)
 
 Svensk bokföring för enskild firma, byggd för självhostad drift på eget
-nätverk – utan molnberoenden, integrationer eller inbyggd AI.
+nätverk, utan molnberoenden, integrationer eller inbyggd AI.
 
 ## Bakgrund
 
 Firmabok bygger på [Accounted](https://github.com/erp-mafia/accounted)
-(erp-mafia) – bokföringsmotorn, regelefterlevnaden i databasen,
+(erp-mafia): bokföringsmotorn, regelefterlevnaden i databasen,
 rapporterna och SIE-stödet är uppströmsprojektets förtjänst. Uppströms
 är ett flerbolags-SaaS med bankkoppling, AI-assistent, löner och
 aktiebolagsstöd; vill du ha det är
@@ -25,7 +25,7 @@ tjänsts livscykel avgör om bokföringen går att öppna om sju år.
 
 Uppströms inloggnings- och säkerhetslager (BankID, MFA-krav,
 sessionstimeouts, telemetri) är också bortrensade, så installationen
-ska stå på eget nätverk bakom egen kontroll – aldrig exponeras som
+ska stå på eget nätverk bakom egen kontroll och aldrig exponeras som
 öppen tjänst mot internet eller delas med folk du inte litar på.
 
 ## Funktioner
@@ -47,7 +47,7 @@ bokföringen räknas som räkenskapsinformation och skyddas mot radering.
 
 **Fakturering.** Kundfakturor med PDF-export, kreditfaktura, ROT/RUT
 och manuell betalningsregistrering, även delbetalningar;
-leverantörsfakturor med attest och underlag. Inget utskick – PDF:en
+leverantörsfakturor med attest och underlag. Inget utskick: PDF:en
 skickas hur du vill.
 
 **Moms och rapporter.** Momsdeklarationens rutor (SKV 4700) räknas fram
@@ -57,7 +57,7 @@ och råbalans.
 **Årsbokslut.** Förenklat årsbokslut för enskild firma med NE-bilagans
 fält, avskrivningar och dispositioner.
 
-**SIE.** Import och export av SIE4 – historiken från andra program
+**SIE.** Import och export av SIE4: historiken från andra program
 följer med in, och allt går att ta med sig ut igen.
 
 **MCP och API.** Den inbyggda AI:n är borta men maskinvägen är öppen:
@@ -67,8 +67,8 @@ godkänns under Granskning innan de bokförs.
 
 ## Installation och drift
 
-Allt som behövs är en färdig Debian-server och serverns LAN-IP –
-exemplet använder `10.0.0.30`, byt mot din egen. Kör som vanlig
+Allt som behövs är en färdig Debian-server och serverns LAN-IP.
+Exemplet använder `10.0.0.30`, byt mot din egen. Kör som vanlig
 användare; sudo används bara om Docker eller git saknas:
 
 ```bash
@@ -78,13 +78,13 @@ sh install-debian.sh 10.0.0.30
 
 [install-debian.sh](install-debian.sh) gör resten självt: hämtar repot,
 installerar Docker, genererar hemligheterna och startar hela stacken ur
-[docker-compose.yml](docker-compose.yml) – appen, dess cron-sidovagn
+[docker-compose.yml](docker-compose.yml): appen, dess cron-sidovagn
 och tjänsterna den behöver (postgres, GoTrue, PostgREST), bakom en tunn
 nginx på en gemensam adress. Migrationerna körs automatiskt, även vid
 uppdateringar. Ren HTTP på det egna nätet, som allt annat i stacken.
 
-Surfa sedan till `http://10.0.0.30` och skapa kontot – e-postadressen
-är bara ett lokalt användarnamn, ingen mail skickas någonsin – gå
+Surfa sedan till `http://10.0.0.30` och skapa kontot (e-postadressen
+är bara ett lokalt användarnamn, ingen mail skickas någonsin), gå
 igenom onboardingen och stäng därefter registreringen:
 
 ```bash
@@ -162,8 +162,8 @@ Vad MCP-verktygen inte klarar, och hur samma sak görs i webben, står i
 [docs/mcp-kanda-begransningar.md](docs/mcp-kanda-begransningar.md).
 
 Uppströms finns dessutom
-[swedish-accounting-skills](https://github.com/erp-mafia/swedish-accounting-skills)
-– fristående Claude-skills som täcker mer än Firmabok gör (AB-bokslut,
+[swedish-accounting-skills](https://github.com/erp-mafia/swedish-accounting-skills):
+fristående Claude-skills som täcker mer än Firmabok gör (AB-bokslut,
 lön, skatteplanering) och fungerar utan någon appkoppling.
 
 ## Licens

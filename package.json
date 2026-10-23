@@ -40,7 +40,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.4.0",
-    "framer-motion": "^13.4.3",
+    "framer-motion": "^14.3.0",
     "fuse.js": "^7.5.0",
     "js-yaml": "5.5.0",
     "jszip": "^3.10.2",

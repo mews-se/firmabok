@@ -4,6 +4,32 @@ Alla märkbara ändringar i Firmabok, nyaste först. Versionerna följer
 taggarna i det här repot; varje version publiceras som containerimage på
 `ghcr.io/mews-se/firmabok`.
 
+## 5.2.0 — 2026-10-24
+
+Rättat:
+
+- Planenlig avskrivning tar hänsyn till räkenskapsårets längd (K2 punkt
+  10.23). Ett förlängt första räkenskapsår på 15 månader fick tidigare
+  bara 12 månaders avskrivning, och ett förkortat år på 6 månader fick en
+  hel årsavskrivning. Ett vanligt år på 12 månader påverkas inte.
+- Exemplet för Claude Desktop under Inställningar → API saknade
+  `GNUBOK_URL`, så bryggan gick till uppströms molntjänst och varje nyckel
+  fick 401. Nu pekar exemplet på den egna installationen.
+- Hjälptexterna för leverantörsfakturor och import nämnde en bankkoppling
+  som inte finns.
+
+Nytt:
+
+- Bokföringsskillsen som AI-assistenten läser via MCP är uppdaterade till
+  uppströms läge, med bland annat BAS 2026 för inventarier, K1 förenklat
+  årsbokslut och SRU-filformatet. Två nya skills tillkommer: löpande
+  bokföring och skatteplanering för enskild firma.
+
+Beroenden:
+
+- framer-motion uppdateras från 13 till 14, och npm-gruppen får 24 mindre
+  uppdateringar.
+
 ## 5.1.1 — 2026-10-23
 
 Säkerhetsuppdatering; imagen byggs om med de lagade paketen.

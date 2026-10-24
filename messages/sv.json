@@ -370,7 +370,7 @@
     "status_picker_aria": "Filtrera på status",
     "search_placeholder": "Sök leverantörsfaktura …",
     "status_paid_date": "Betald {date}",
-    "help_body": "Godkännandet attesterar fakturan för betalning. Betalningar prickas av automatiskt när de matchas mot banken, så det finns ingen \"markera som betald\"-knapp här."
+    "help_body": "Godkännandet attesterar fakturan för betalning. Betalningen registrerar du sedan med Markera betald på fakturan."
   },
   "suppliers": {
     "title": "Leverantörer",
@@ -3274,7 +3274,7 @@
     "archive_toast_created": "Arkivet har laddats ner",
     "archive_toast_failed": "Kunde inte skapa arkivet",
     "archive_error_fallback": "Försök igen.",
-    "help_text": "Här samlas alla vägar in och ut: bankkoppling, filimporter och flytt från andra system, samt export av SIE och säkerhetskopior. Varje import granskas innan något bokförs.",
+    "help_text": "Här samlas alla vägar in och ut: filimporter och flytt från andra system, samt export av SIE och säkerhetskopior. Varje import granskas innan något bokförs.",
     "pgnote": "Varje import går genom samma steg: ladda upp, mappa kolumner, granska, resultat. Inget bokförs utan att du ser det först.",
     "sie_history_title": "Tidigare SIE-importer",
     "sie_history_description": "Se historik och ångra en genomförd import",

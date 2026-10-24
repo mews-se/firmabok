@@ -36,7 +36,8 @@ export interface DepreciationProposal {
  * Compute avskrivning för en enskild tillgång under en given fiscal period.
  *
  * Ordinary depreciation is always linear at asset level and pro-rates by the
- * active-life overlap. The pooled 30, 20 and 25 percent tax rules live in
+ * active-life overlap, scaled by the fiscal year's length (see
+ * fiscalYearLengthFactor). The pooled 30, 20 and 25 percent tax rules live in
  * tax-depreciation.ts and never create ordinary per-asset postings.
  */
 export function computeAnnualDepreciation(
@@ -93,9 +94,10 @@ function computeLinearAnnual(
   const fraction = windowDays / fullPeriodDays
   const proRated = fraction < 0.999
 
-  // Full-year amount = annualRate × depreciableBase (linear).
+  // Full-year amount = annualRate × depreciableBase (linear), for 12 months.
   const annualAmount = depreciableBase * annualRate
-  const proRatedAmount = annualAmount * fraction
+  const proRatedAmount =
+    annualAmount * fraction * fiscalYearLengthFactor(periodStart, periodEndInclusive)
 
   return {
     amount: Math.round(proRatedAmount),
@@ -120,10 +122,11 @@ export interface ComponentDepreciationResult {
  *
  * Mirrors `computeLinearAnnual` per component: the depreciable base is
  * `cost − salvage_value` (salvage defaults to 0 when omitted), and the
- * annual amount is `depreciableBase × 12 / useful_life_months`. The
- * pro-ration window is the overlap between the period and the asset's
- * active life: components share the same acquisition_date and disposal
- * date as the parent asset, because BFNAR 2012:1 treats them as a single
+ * annual amount is `depreciableBase × 12 / useful_life_months`, scaled by
+ * the fiscal year's length like the asset-level path. The pro-ration window
+ * is the overlap between the period and the asset's active life: components
+ * share the same acquisition_date and disposal date as the parent asset,
+ * because BFNAR 2012:1 treats them as a single
  * accounting unit for acquisition / disposal purposes; only the depreciation
  * schedule is split.
  *
@@ -148,6 +151,7 @@ export function computeComponentDepreciation(
   const periodEndInclusive = isoToDate(fiscalPeriod.period_end)
   const disposalEnd = asset.disposed_at ? isoToDate(asset.disposed_at) : null
   const fullPeriodDays = daysBetween(periodStart, periodEndInclusive) + 1
+  const yearLength = fiscalYearLengthFactor(periodStart, periodEndInclusive)
 
   const perComponent: { name: string; amount: number }[] = []
   let total = 0
@@ -180,7 +184,7 @@ export function computeComponentDepreciation(
     if (fraction < 0.999) anyProRated = true
 
     const annualAmount = depreciableBase * annualRate
-    const proRatedAmount = annualAmount * fraction
+    const proRatedAmount = annualAmount * fraction * yearLength
     const rounded = Math.round(proRatedAmount)
     perComponent.push({ name: label, amount: rounded })
     total += rounded
@@ -418,6 +422,37 @@ function maxDate(a: Date, b: Date): Date {
 
 function minDate(a: Date, b: Date): Date {
   return a < b ? a : b
+}
+
+/**
+ * The fiscal year's length in months over 12: exactly 1 for every 12-month
+ * year, 1.25 for a förlängt 15-month first year, 0.5 for a förkortat 6-month
+ * year. Every path multiplies its 12-month amount by this, after the day
+ * share of the year the asset was in use.
+ *
+ * K2 (BFNAR 2016:10) punkt 10.23, BFN's kommentar: "Omfattar räkenskapsåret
+ * annan tid än 12 månader behöver avskrivningen justeras utifrån
+ * räkenskapsårets längd." Without it a 15-month year never carried more
+ * than 12 months of depreciation and a 6-month year carried a full 12.
+ */
+function fiscalYearLengthFactor(periodStart: Date, periodEndInclusive: Date): number {
+  return fractionalMonthsBetween(periodStart, addDays(periodEndInclusive, 1)) / 12
+}
+
+/**
+ * Months from `start` (inclusive) to `endExclusive`, fractional: whole
+ * calendar months stepped with the same end-of-month clamping as addMonths,
+ * plus the leftover days as a share of the next month's length.
+ */
+function fractionalMonthsBetween(start: Date, endExclusive: Date): number {
+  if (endExclusive <= start) return 0
+  let whole = 0
+  while (addMonths(start, whole + 1) <= endExclusive) whole += 1
+  const stepStart = addMonths(start, whole)
+  const stepEnd = addMonths(start, whole + 1)
+  const leftover = daysBetween(stepStart, endExclusive)
+  const stepDays = daysBetween(stepStart, stepEnd)
+  return whole + (stepDays > 0 ? leftover / stepDays : 0)
 }
 
 function daysBetween(a: Date, b: Date): number {

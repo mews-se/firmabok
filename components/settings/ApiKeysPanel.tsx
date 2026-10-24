@@ -485,8 +485,8 @@ export function ApiKeysPanel() {
       "command": "npx",
       "args": ["gnubok-mcp"],
       "env": {
-        "GNUBOK_API_KEY": "gnubok_sk_...",
-        "GNUBOK_CLIENT": "claude-desktop"
+        "GNUBOK_URL": "${mcpUrl('claude-desktop')}",
+        "GNUBOK_API_KEY": "gnubok_sk_..."
       }
     }
   }

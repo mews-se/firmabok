@@ -62,7 +62,7 @@ Variablerna:
 
 | Variabel | Betydelse |
 |---|---|
-| `DOMAIN` | Serverns LAN-IP (eller ett lokalt DNS-namn) |
+| `DOMAIN` | Serverns LAN-IP, den du gav till `install-debian.sh` |
 | `POSTGRES_PASSWORD` | Databaslösenord för alla tjänsteroller |
 | `JWT_SECRET` | HS256-hemlighet som varje tjänst verifierar tokens mot |
 | `ANON_KEY` / `SERVICE_ROLE_KEY` | JWT:er i Supabase-stil, signerade med `JWT_SECRET` |

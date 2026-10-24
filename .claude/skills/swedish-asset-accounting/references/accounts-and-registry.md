@@ -1,8 +1,27 @@
 # BAS Account Mapping & Anläggningsregister
 
+<!-- toc -->
+**Contents**
+
+- [BAS Account Structure for Fixed Assets](#bas-account-structure-for-fixed-assets)
+- [Anläggningsregister (Fixed Asset Register)](#anläggningsregister-fixed-asset-register)
+- [Förbrukningsinventarier](#förbrukningsinventarier)
+
+<!-- /toc -->
+
 ## BAS Account Structure for Fixed Assets
 
 Pattern: xx0 = asset, xx8 = accumulated impairment (nedskrivning), xx9 = accumulated depreciation.
+
+Kontogrupp 12 is the exception after BAS 2026: 1212/1214/1216/1217 and
+1222/1224/1226/1227 are asset accounts that all accumulate on the group's
+single xx9 (1219 and 1229 respectively).
+
+Other BAS 2026 changes relevant here: group 10 gains **1090 Övriga immateriella
+anläggningstillgångar** (1092 tomträtter, 1098/1099), matching the new K2
+balance-sheet post; 1292 = djur som anläggningstillgång; impairment is
+7731/7732/7733 with reversals 7781/7782/7783; 7836 leasade tillgångar and 7839
+övriga remain.
 
 ### Intangible Assets (Kontogrupp 10)
 
@@ -42,37 +61,58 @@ Pattern: xx0 = asset, xx8 = accumulated impairment (nedskrivning), xx9 = accumul
 
 ### Machinery and Inventory (Kontogrupp 12)
 
+BAS 2026 splits kontogrupp 12 by **production use**, not by asset kind. 121x
+is maskiner (för produktion), 122x is inventarier (ej för produktion), and the
+same kind of asset lands in either block depending on what it is used for. The
+old per-kind accounts (1240 Bilar, 1250 Datorer, 1260 Leasade tillgångar and
+their 124x subdivisions) are gone: 1230, 1240/1249, 1250/1259 and 1260/1269 are
+now **fria konton** with no prescribed meaning. Do not book new assets there.
+
 | Account | Description | Notes |
 |---|---|---|
-| 1210 | Maskiner och andra tekniska anläggningar | |
-| 1211 | Maskiner | |
-| 1213 | Övriga tekniska anläggningar | |
+| 1210 | Maskiner och andra tekniska anläggningar | Head, för produktion |
+| 1211 | Maskiner och andra tekniska anläggningar i övrigt | |
+| 1212 | Byggnads- och markinventarier (för produktion) | Tax: follows IL 18 kap, not building rates |
+| 1214 | Datorer (för produktion) | |
+| 1216 | Arbetsfordon | Vehicles used in production |
+| 1217 | Finansiellt leasade maskiner | Ej K2. K3 financial leases, IFRS 16 ROU. |
 | 1218 | Ack. nedskr. maskiner | |
-| 1219 | Ack. avskr. maskiner | |
-| 1220 | Inventarier och verktyg | |
-| 1221 | Inventarier | |
-| 1222 | Byggnadsinventarier | Tax: follows IL 18 kap, not building rates |
-| 1223 | Markinventarier | Tax: follows IL 18 kap |
+| 1219 | Ack. avskr. maskiner | Contra for all of 121x |
+| 1220 | Inventarier, verktyg och installationer | Head, ej för produktion |
+| 1221 | Inventarier, verktyg och installationer i övrigt | |
+| 1222 | Byggnads- och markinventarier (ej för produktion) | Tax: follows IL 18 kap, not building rates |
+| 1224 | Datorer (ej för produktion) | Office laptops, not production hardware |
+| 1226 | Bilar och transportmedel (ej för produktion) | Personbilar, lastbilar, övriga transportmedel |
+| 1227 | Finansiellt leasade inventarier | Ej K2. K3 financial leases, IFRS 16 ROU. |
 | 1228 | Ack. nedskr. inventarier | |
-| 1229 | Ack. avskr. inventarier | |
-| 1230 | Installationer | |
-| 1239 | Ack. avskr. installationer | |
-| 1240 | Bilar och andra transportmedel | |
-| 1241 | Personbilar | |
-| 1242 | Lastbilar | |
-| 1243 | Truckar | |
-| 1244 | Arbetsmaskiner | |
-| 1245 | Traktorer | |
-| 1246 | Övriga transportmedel | |
-| 1249 | Ack. avskr. bilar/transport | |
-| 1250 | Datorer | |
-| 1259 | Ack. avskr. datorer | |
-| 1260 | Leasade tillgångar | Ej K2. K3 financial leases, IFRS 16 ROU. |
-| 1269 | Ack. avskr. leasade tillgångar | |
+| 1229 | Ack. avskr. inventarier | Contra for all of 122x |
+| 1230 | (Fritt konto för maskiner) | No BAS 2026 meaning. Not "Installationer". |
+| 1240 | (Fritt konto för maskiner) | No BAS 2026 meaning. Not "Bilar". |
+| 1249 | Ack. avskr. (fritt konto för maskiner) | Contra for 1240 |
+| 1250 | (Fritt konto för inventarier) | No BAS 2026 meaning. Not "Datorer". |
+| 1259 | Ack. avskr. (fritt konto för inventarier) | Contra for 1250 |
+| 1260 | (Fritt konto för inventarier) | No BAS 2026 meaning. Not "Leasade tillgångar". |
+| 1269 | Ack. avskr. (fritt konto för inventarier) | Contra for 1260 |
 | 1280 | Pågående nyanläggningar/förskott | |
 | 1290 | Övriga materiella anläggningstillgångar | |
 | 1291 | Konst och liknande tillgångar | Not depreciated |
 | 1299 | Ack. avskr. övriga materiella | |
+
+**Picking an account.** Ask what the asset is used for, then what it is:
+
+| Asset | För produktion | Ej för produktion |
+|---|---|---|
+| Vehicle | 1216 Arbetsfordon / 1219 | 1226 Bilar och transportmedel / 1229 |
+| Computer | 1214 / 1219 | 1224 / 1229 |
+| Byggnads-/markinventarier | 1212 / 1219 | 1222 / 1229 |
+| Financial lease | 1217 / 1219 | 1227 / 1229 |
+
+Depreciation expense follows the block, not the kind: **7831** for 121x, **7832**
+for 122x (**7836** for leasade tillgångar). 7833/7834 are not BAS accounts.
+
+Assets booked before BAS 2026 keep their stored accounts: an existing car on
+1240/1249 or laptop on 1250/1259 is not restated, it just sits on what is now a
+free account.
 
 ### Impairment Expense (Kontogrupp 77)
 
@@ -138,7 +178,7 @@ BFL 5 kap. 4 § requires subsidiary accounting (sidoordnad bokföring) for fixed
 - **K3 (punkt 4.8):** Must record information per component
 - **Grouping (punkt 4.9):** Similar low-value assets acquired simultaneously may be grouped as one entry
 - **Disposals (punkt 4.7):** Must note date and proceeds of disposals/scrappings
-- **Theft-attractive items (punkt 4.11):** Items expensed as förbrukningsinventarier but stöldbegärliga should still be tracked
+- **Directly expensed assets (punkt 4.11):** Assets expensed directly in accordance with god redovisningssed (e.g. förbrukningsinventarier) need not be entered in the anläggningsregister. Tracking stöldbegärliga items separately is an internal-control choice, not a BFNAR requirement.
 
 ### Note Disclosure (ÅRL 5 kap. 8 §, 25 §)
 
@@ -162,6 +202,7 @@ Immediate expensing permitted for:
 | 2024 | 57,300 kr | **28,650 kr** |
 | 2025 | 58,800 kr | **29,400 kr** |
 | 2026 | 59,200 kr | **29,600 kr** |
+| 2027 | 59,600 kr | **29,800 kr** (calculated by SCB, not yet formally set) |
 
 Measured excluding deductible VAT.
 

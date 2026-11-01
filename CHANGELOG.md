@@ -4,6 +4,18 @@ Alla märkbara ändringar i Firmabok, nyaste först. Versionerna följer
 taggarna i det här repot; varje version publiceras som containerimage på
 `ghcr.io/mews-se/firmabok`.
 
+## 5.2.1 — 2026-11-01
+
+Månadens beroendeuppdateringar från Dependabot.
+
+- next och eslint-config-next uppdateras från 16.4.2 till 16.4.3, och
+  npm-gruppen får fyra mindre uppdateringar: framer-motion 14.6.0,
+  lucide-react 1.61.0, react-hook-form 7.91.0 och dotenv 18.0.9.
+- @hookform/resolvers uppdateras från 5 till 6. Det enda som bryts i 6.0.0
+  är resolvern för effect-ts, och formulären använder bara zodResolver.
+- I GitHub Actions uppdateras codeql-action till 4.39.1 och
+  docker/login-action till 4.7.0.
+
 ## 5.2.0 — 2026-10-24
 
 Rättat:

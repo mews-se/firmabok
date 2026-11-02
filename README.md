@@ -120,14 +120,15 @@ Båda vägarna hämtar det som ligger på main, inte en viss release, kör
 bara de nya migrationerna och startar om med appimagen `latest`,
 publicerad till `ghcr.io/mews-se/firmabok` och speglad till Docker Hub
 som [`mewsse/firmabok`](https://hub.docker.com/r/mewsse/firmabok),
-samma byggen och versionstaggar. Din `.env` och dina volymer lämnas
-orörda.
+samma byggen och versionstaggar. Dina volymer rörs inte, och i `.env`
+läggs bara nycklar till som saknas.
 
 **Backup.** Ditt ansvar: `pg_dump` mot en annan maskin, gärna
 kompletterat med SIE-export per räkenskapsår. Underlagen ligger i
 volymen `storage_data` och följer inte med i någon av dem; kopiera
 volymen eller ladda ner Komplett arkiv under Importera/Exportera, en
-ZIP med SIE, rapporter och alla underlag.
+ZIP med SIE, rapporter och alla underlag. Spara också `.env`, annars
+går krypterade personnummer inte att läsa efter en återställning.
 
 **Stopp och avinstallation.** Vardagskommandona körs i `~/firmabok`:
 `docker compose stop`, `start`, `logs`. Om skriptet installerade Docker

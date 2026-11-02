@@ -57,7 +57,8 @@ Designval som är bra att känna till:
 
 ## Miljövariabler
 
-`install-debian.sh` genererar `.env` vid första installationen.
+`install-debian.sh` genererar `.env` vid första installationen och lägger
+till nycklar som saknas när den körs igen.
 Variablerna:
 
 | Variabel | Betydelse |
@@ -67,6 +68,7 @@ Variablerna:
 | `JWT_SECRET` | HS256-hemlighet som varje tjänst verifierar tokens mot |
 | `ANON_KEY` / `SERVICE_ROLE_KEY` | JWT:er i Supabase-stil, signerade med `JWT_SECRET` |
 | `CRON_SECRET` | Bearer-token som cron-sidovagnen autentiserar med |
+| `PERSONNUMMER_ENCRYPTION_KEY` | Nyckeln som personnummer krypteras med i databasen (privatkunder, ROT/RUT); byts aldrig ut |
 | `AUTH_SIGNUPS_DISABLED` | `true` efter första kontot (`install-debian.sh lock`) |
 | `IMAGE_TAG` | Valfri: appens image-tagg, standard `latest` |
 
@@ -94,6 +96,9 @@ som helst kan läsa in igen. Dokumenten ligger i volymen
 ```bash
 docker run --rm -v firmabok_storage_data:/data -v "$PWD":/out alpine tar czf /out/firmabok-documents.tgz -C /data .
 ```
+
+Spara också `.env` på samma ställe. Utan `PERSONNUMMER_ENCRYPTION_KEY`
+går de krypterade personnumren i en återställd databas inte att läsa.
 
 ## Bygga från källa
 

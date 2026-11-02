@@ -44,6 +44,7 @@ services:
       SUPABASE_SERVICE_ROLE_KEY: ${SERVICE_ROLE_KEY:?generated into .env by install-debian.sh}
       NEXT_PUBLIC_APP_URL: http://${DOMAIN}
       CRON_SECRET: ${CRON_SECRET:?generated into .env by install-debian.sh}
+      PERSONNUMMER_ENCRYPTION_KEY: ${PERSONNUMMER_ENCRYPTION_KEY:?generated into .env by install-debian.sh}
       NEXT_PUBLIC_BRANDING_APP_NAME: Firmabok
       NEXT_PUBLIC_SELF_HOSTED: "true"
       STORAGE_DIR: /var/lib/firmabok-storage

@@ -47,6 +47,15 @@ ensure_docker() {
     fi
 }
 
+# The personnummer key came after the first installs, so an existing .env
+# gets one here on its next update. Never replace it: values encrypted with
+# the old key could not be read any more.
+ensure_pnr_key() {
+    grep -q '^PERSONNUMMER_ENCRYPTION_KEY=' "$REPO_DIR/.env" && return
+    echo "PERSONNUMMER_ENCRYPTION_KEY=$(openssl rand -hex 32)" >> "$REPO_DIR/.env"
+    echo 'Added PERSONNUMMER_ENCRYPTION_KEY to .env - keep a copy of .env with your backups.'
+}
+
 b64url() {
     openssl enc -base64 -A | tr '+/' '-_' | tr -d '='
 }
@@ -76,6 +85,7 @@ case "${1:-}" in
     lock)
         ensure_docker
         [ -f "$REPO_DIR/.env" ] || fail 'no .env yet - run the install first'
+        ensure_pnr_key
         grep -q '^AUTH_SIGNUPS_DISABLED=' "$REPO_DIR/.env" || echo 'AUTH_SIGNUPS_DISABLED=true' >> "$REPO_DIR/.env"
         sed -i 's|^AUTH_SIGNUPS_DISABLED=.*|AUTH_SIGNUPS_DISABLED=true|' "$REPO_DIR/.env"
         compose up -d
@@ -138,6 +148,7 @@ else
     current=$(sed -n 's/^DOMAIN=//p' .env)
     [ "$current" = "$IP" ] || echo "Note: .env says DOMAIN=$current - the address you gave ($IP) is only used for the health check below."
 fi
+ensure_pnr_key
 
 # ─── Start everything ───
 # Tolerate pull failures: a locally built IMAGE_TAG has no registry

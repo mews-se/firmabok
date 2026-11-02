@@ -4,6 +4,22 @@ Alla märkbara ändringar i Firmabok, nyaste först. Versionerna följer
 taggarna i det här repot; varje version publiceras som containerimage på
 `ghcr.io/mews-se/firmabok`.
 
+## 5.2.2 — 2026-11-02
+
+Personnummer fungerar på egna installationer.
+
+Rättat:
+
+- Det gick inte att spara en privatkund med personnummer eller en
+  ROT/RUT-faktura, eftersom nyckeln som personnumren krypteras med
+  aldrig sattes på en egen installation. `install-debian.sh` lägger nu
+  till `PERSONNUMMER_ENCRYPTION_KEY` i `.env` om den saknas, både vid
+  installation, uppdatering och `lock`, och `docker-compose.yml` skickar
+  den till appen. En befintlig nyckel byts aldrig ut.
+- Kör installationsskriptet en gång efter uppdateringen så läggs
+  nyckeln till. Spara `.env` tillsammans med backuperna: utan nyckeln
+  går krypterade personnummer inte att läsa efter en återställning.
+
 ## 5.2.1 — 2026-11-01
 
 Månadens beroendeuppdateringar från Dependabot.

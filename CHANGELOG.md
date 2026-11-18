@@ -4,6 +4,26 @@ Alla märkbara ändringar i Firmabok, nyaste först. Versionerna följer
 taggarna i det här repot; varje version publiceras som containerimage på
 `ghcr.io/mews-se/firmabok`.
 
+## 5.2.3 — 2026-11-18
+
+Beroendeuppdateringar och en rättning i skanningen av containerimagen.
+
+Beroenden:
+
+- next uppdateras från 16.4.3 till 16.4.6. 16.4.5 är novembers
+  säkerhetsuppdatering och stänger två varningar om `'use cache'`, som
+  appen inte använder. 16.4.6 innehåller rättningar, bland annat
+  komprimering av svar från route handlers.
+- typescript-eslint uppdateras från 8.71.2 till 8.73.0, och dess kopia av
+  minimatch går från 10.2.6 till 11.0.9. Det rör bara
+  utvecklingsverktygen, inte appen.
+
+Rättat:
+
+- Skanningen i publiceringsflödet skickar nu bara CRITICAL och HIGH till
+  fliken Security, precis som den schemalagda skanningen. Tidigare
+  öppnades och stängdes samma varningar på medelnivå vid varje bygge.
+
 ## 5.2.2 — 2026-11-02
 
 Personnummer fungerar på egna installationer.

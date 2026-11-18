@@ -290,6 +290,12 @@ jobs:
           ignore-unfixed: true
           format: sarif
           output: trivy-results.sarif
+          # Same setting as every scan step in docker-image-scan.yml. Without
+          # it this step uploads all severities under the shared `trivy`
+          # category, the scan workflow's CRITICAL/HIGH upload then marks the
+          # medium findings as fixed, and the same alerts open and close on
+          # every build.
+          limit-severities-for-sarif: true
 
       - name: Upload Trivy results to GitHub Security tab
         # if: always(), evidence must reach the Security tab regardless of the
